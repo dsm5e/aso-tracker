@@ -1,0 +1,42 @@
+{
+  "name": "aso-tracker-oss",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently -n vite,api -c magenta,cyan \"npm:dev:vite\" \"npm:dev:api\"",
+    "dev:vite": "vite",
+    "dev:api": "tsx watch server/index.ts",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "start": "tsx server/index.ts",
+    "snapshot": "tsx cli/snapshot.ts",
+    "migrate-jsonl": "tsx cli/migrate-jsonl.ts",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "express": "^5.2.1",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.12.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.58.2",
+    "vite": "^8.0.9"
+  }
+}

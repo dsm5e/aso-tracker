@@ -1,0 +1,275 @@
+/* ============================================================
+   ASO Tracker — Design tokens
+   ============================================================ */
+
+:root {
+  /* Light theme — warm off-white */
+  --bg: #FAFAF7;
+  --bg-raised: #FFFFFF;
+  --bg-sunken: #F4F3EE;
+  --bg-hover: #F0EFE9;
+  --tile-bg: #F4F3EE;    /* inset tiles inside cards — in light: same as sunken */
+
+  --border: #E8E6E1;
+  --border-strong: #D9D6CE;
+  --border-subtle: #EFEDE7;
+
+  --text: #121212;
+  --text-2: #3A3A36;
+  --text-muted: #6E6B63;
+  --text-faint: #A19E95;
+
+  --accent: #FF5C3C;
+  --accent-hover: #F04A2A;
+  --accent-tint: #FFEDE7;
+  --accent-tint-2: #FFD9CD;
+
+  --pos: #10B981;
+  --pos-tint: #E4F6EE;
+
+  --neg: #E0A020;
+  --neg-tint: #FBF0D8;
+
+  --neutral: #9A9790;
+  --neutral-tint: #EEECE6;
+
+  --top10: #10B981;
+  --top50: #E0A020;
+  --unranked: #BDB8AD;
+
+  --shadow-card: 0 0 0 1px var(--border) inset;
+
+  --mono: "JetBrains Mono", "SF Mono", ui-monospace, Menlo, monospace;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  --display: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+}
+
+[data-theme="dark"] {
+  --bg: #0A0A0A;
+  --bg-raised: #1D1D1B;
+  --bg-sunken: #141413;
+  --bg-hover: #282825;
+  --tile-bg: #2E2E2B;    /* in dark: brighter than card so tiles pop */
+
+  --border: #303029;
+  --border-strong: #3C3C35;
+  --border-subtle: #252522;
+
+  --text: #F5F4EF;
+  --text-2: #D5D3CC;
+  --text-muted: #85827A;
+  --text-faint: #55534D;
+
+  --accent: #FF5C3C;
+  --accent-hover: #FF7256;
+  --accent-tint: #2A1410;
+  --accent-tint-2: #3D1C16;
+
+  --pos: #3CCF8E;
+  --pos-tint: #0F2419;
+
+  --neg: #E8B344;
+  --neg-tint: #261E0C;
+
+  --neutral: #6E6B63;
+  --neutral-tint: #1A1A18;
+
+  --top10: #3CCF8E;
+  --top50: #E8B344;
+  --unranked: #55534D;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv11";
+}
+
+.app {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: -0.005em;
+}
+
+/* Typography utilities */
+.num { font-variant-numeric: tabular-nums; letter-spacing: -0.02em; font-feature-settings: "tnum"; }
+.mono { font-family: var(--mono); }
+.hero-num { font-family: var(--display); font-weight: 600; letter-spacing: -0.035em; font-variant-numeric: tabular-nums; }
+
+.label {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+/* Card base */
+.card {
+  background: var(--bg-raised);
+  border-radius: 20px;
+  box-shadow: var(--shadow-card);
+}
+
+.card-tight {
+  background: var(--bg-raised);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+}
+
+/* Button base */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-family: var(--sans);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  color: var(--text);
+  background: var(--bg-raised);
+  box-shadow: inset 0 0 0 1px var(--border);
+  cursor: pointer;
+  border: 0;
+  transition: background 120ms, box-shadow 120ms, transform 120ms;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--bg-hover); }
+.btn:active { transform: translateY(1px); }
+
+.btn-primary {
+  background: var(--accent);
+  color: #FFFFFF;
+  box-shadow: none;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+
+.btn-ghost { background: transparent; box-shadow: none; color: var(--text-2); }
+.btn-ghost:hover { background: var(--bg-hover); }
+
+.btn-sm { height: 26px; padding: 0 9px; font-size: 11.5px; border-radius: 8px; }
+.btn-lg { height: 40px; padding: 0 16px; font-size: 13.5px; border-radius: 12px; }
+
+/* Chip */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  color: var(--text-2);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
+}
+
+.delta-pos { color: var(--pos); }
+.delta-neg { color: var(--neg); }
+.delta-neutral { color: var(--text-muted); }
+
+/* Kbd key */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--bg-sunken);
+  box-shadow: inset 0 0 0 1px var(--border);
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+/* Divider */
+.divider { height: 1px; background: var(--border-subtle); width: 100%; }
+.divider-v { width: 1px; background: var(--border-subtle); align-self: stretch; }
+
+/* Table */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.table th {
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-sunken);
+}
+.table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: middle;
+}
+.table tr:last-child td { border-bottom: 0; }
+.table tr.hover-row:hover td { background: var(--bg-hover); }
+
+/* Status dot */
+.dot { width: 7px; height: 7px; border-radius: 999px; display: inline-block; }
+.dot-pos { background: var(--top10); }
+.dot-neg { background: var(--top50); }
+.dot-gray { background: var(--unranked); }
+
+/* Flag */
+.flag {
+  width: 18px;
+  height: 13px;
+  border-radius: 2.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+/* Sparkline stroke colors via CSS var */
+.spark-pos path.line { stroke: var(--pos); }
+.spark-neg path.line { stroke: var(--neg); }
+.spark-neutral path.line { stroke: var(--text-muted); }
+.spark-accent path.line { stroke: var(--accent); }
+
+/* Scrollbar taming */
+.scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+.scroll::-webkit-scrollbar-track { background: transparent; }
+
+/* Focus */
+button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Remove default input chrome */
+input, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  outline: 0;
+}
