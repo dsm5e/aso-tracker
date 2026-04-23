@@ -6,11 +6,7 @@ Stop paying $500/mo to Sensor Tower or AppTweak. Track your App Store keyword po
 
 ## Demo
 
-https://github.com/dsm5e/aso-tracker/releases/download/v1.0.0/demo.mp4
-
-<p align="center">
-  <video src="https://github.com/dsm5e/aso-tracker/releases/download/v1.0.0/demo.mp4" autoplay loop muted playsinline width="720" controls></video>
-</p>
+![ASO Tracker demo](docs/demo.gif)
 
 ## Features
 
