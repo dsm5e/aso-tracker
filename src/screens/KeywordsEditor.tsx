@@ -12,29 +12,66 @@ interface Props {
   initialLocale?: string;
 }
 
+// Complete list of Apple App Store storefronts (≈175). Key = lowercase ISO 3166-1 alpha-2.
 const LOCALE_NAMES: Record<string, string> = {
   // Americas
   us: 'United States', ca: 'Canada', mx: 'Mexico', br: 'Brazil', ar: 'Argentina',
-  cl: 'Chile', co: 'Colombia', pe: 'Peru', ve: 'Venezuela',
+  cl: 'Chile', co: 'Colombia', pe: 'Peru', ve: 'Venezuela', uy: 'Uruguay',
+  py: 'Paraguay', bo: 'Bolivia', ec: 'Ecuador', cr: 'Costa Rica', pa: 'Panama',
+  gt: 'Guatemala', hn: 'Honduras', ni: 'Nicaragua', sv: 'El Salvador',
+  do: 'Dominican Republic', jm: 'Jamaica', bb: 'Barbados', bs: 'Bahamas',
+  tt: 'Trinidad & Tobago', bz: 'Belize', bm: 'Bermuda', ky: 'Cayman Islands',
+  ag: 'Antigua & Barbuda', dm: 'Dominica', gd: 'Grenada', kn: 'St. Kitts & Nevis',
+  lc: 'St. Lucia', vc: 'St. Vincent & the Grenadines', sr: 'Suriname',
+  ai: 'Anguilla', ms: 'Montserrat', tc: 'Turks & Caicos', vg: 'British Virgin Islands',
+
   // Western Europe
   gb: 'United Kingdom', ie: 'Ireland', de: 'Germany', at: 'Austria', ch: 'Switzerland',
-  fr: 'France', be: 'Belgium', lu: 'Luxembourg', nl: 'Netherlands',
-  es: 'Spain', pt: 'Portugal', it: 'Italy',
+  fr: 'France', be: 'Belgium', lu: 'Luxembourg', nl: 'Netherlands', mc: 'Monaco',
+  es: 'Spain', pt: 'Portugal', it: 'Italy', mt: 'Malta', cy: 'Cyprus',
+
   // Nordics
   se: 'Sweden', no: 'Norway', dk: 'Denmark', fi: 'Finland', is: 'Iceland',
+
   // Eastern Europe
   pl: 'Poland', cz: 'Czechia', sk: 'Slovakia', hu: 'Hungary', ro: 'Romania',
   hr: 'Croatia', si: 'Slovenia', ua: 'Ukraine', ru: 'Russia', gr: 'Greece',
-  // Middle East / Africa
+  bg: 'Bulgaria', ee: 'Estonia', lv: 'Latvia', lt: 'Lithuania',
+  md: 'Moldova', by: 'Belarus', mk: 'North Macedonia', al: 'Albania',
+  me: 'Montenegro', ba: 'Bosnia & Herzegovina', rs: 'Serbia', xk: 'Kosovo',
+
+  // Middle East
   tr: 'Turkey', il: 'Israel', sa: 'Saudi Arabia', ae: 'UAE', eg: 'Egypt',
-  ma: 'Morocco', za: 'South Africa',
+  jo: 'Jordan', lb: 'Lebanon', kw: 'Kuwait', qa: 'Qatar', bh: 'Bahrain',
+  om: 'Oman', ye: 'Yemen', iq: 'Iraq',
+
+  // Africa
+  ma: 'Morocco', dz: 'Algeria', tn: 'Tunisia', ly: 'Libya',
+  za: 'South Africa', ng: 'Nigeria', ke: 'Kenya', gh: 'Ghana',
+  ci: 'Ivory Coast', sn: 'Senegal', tz: 'Tanzania', ug: 'Uganda',
+  zw: 'Zimbabwe', zm: 'Zambia', mu: 'Mauritius', na: 'Namibia',
+  bw: 'Botswana', cm: 'Cameroon', ml: 'Mali', bf: 'Burkina Faso',
+  ne: 'Niger', cd: 'DR Congo', cg: 'Republic of Congo', ga: 'Gabon',
+  mg: 'Madagascar', mw: 'Malawi', mz: 'Mozambique', cv: 'Cape Verde',
+  sc: 'Seychelles', sz: 'Eswatini', ao: 'Angola', sl: 'Sierra Leone',
+  lr: 'Liberia', rw: 'Rwanda', bj: 'Benin', td: 'Chad', gm: 'Gambia',
+  gn: 'Guinea', gw: 'Guinea-Bissau', st: 'São Tomé & Príncipe',
+
   // Asia Pacific
   au: 'Australia', nz: 'New Zealand', jp: 'Japan', kr: 'South Korea',
-  cn: 'China', tw: 'Taiwan', hk: 'Hong Kong', sg: 'Singapore',
+  cn: 'China', tw: 'Taiwan', hk: 'Hong Kong', mo: 'Macao', sg: 'Singapore',
   id: 'Indonesia', my: 'Malaysia', th: 'Thailand', vn: 'Vietnam', ph: 'Philippines',
-  // South Asia
+  mm: 'Myanmar', kh: 'Cambodia', la: 'Laos', bn: 'Brunei', mn: 'Mongolia',
+  fj: 'Fiji', pg: 'Papua New Guinea', sb: 'Solomon Islands', to: 'Tonga',
+  fm: 'Micronesia', pw: 'Palau',
+
+  // South / Central Asia
   in: 'India', pk: 'Pakistan', bd: 'Bangladesh', lk: 'Sri Lanka',
-  // Regional script locales (Apple uses these as keys even if API country stays country-level)
+  np: 'Nepal', bt: 'Bhutan', mv: 'Maldives', af: 'Afghanistan',
+  kz: 'Kazakhstan', uz: 'Uzbekistan', kg: 'Kyrgyzstan', tj: 'Tajikistan',
+  tm: 'Turkmenistan', am: 'Armenia', ge: 'Georgia', az: 'Azerbaijan',
+
+  // Regional script locales (Apple uses these as keys even if the API country stays country-level)
   'es-ca': 'Catalonia (Spain)',
   'in-hi': 'India (Hindi)', 'in-gu': 'India (Gujarati)', 'in-kn': 'India (Kannada)',
   'in-ml': 'India (Malayalam)', 'in-mr': 'India (Marathi)', 'in-or': 'India (Odia)',

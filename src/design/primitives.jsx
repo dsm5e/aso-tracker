@@ -74,25 +74,45 @@ const Sparkline = ({ data, width = 64, height = 20, tone = "accent", fill = true
   );
 };
 
-// ===================== Flag (emoji + fallback) =====================
-const FLAG = {
-  US: "🇺🇸", GB: "🇬🇧", DE: "🇩🇪", FR: "🇫🇷", JP: "🇯🇵", CN: "🇨🇳", KR: "🇰🇷",
-  CA: "🇨🇦", AU: "🇦🇺", NL: "🇳🇱", ES: "🇪🇸", IT: "🇮🇹", SE: "🇸🇪", BR: "🇧🇷",
-  MX: "🇲🇽", IN: "🇮🇳", RU: "🇷🇺", PL: "🇵🇱", TR: "🇹🇷", NO: "🇳🇴", DK: "🇩🇰",
-  FI: "🇫🇮", CH: "🇨🇭", AT: "🇦🇹", BE: "🇧🇪", IE: "🇮🇪", NZ: "🇳🇿", SG: "🇸🇬",
-  HK: "🇭🇰", TW: "🇹🇼", ZA: "🇿🇦", AR: "🇦🇷", CL: "🇨🇱", CO: "🇨🇴", PT: "🇵🇹",
-  // additions from real Nomly tracking
-  SA: "🇸🇦", BD: "🇧🇩", CZ: "🇨🇿", GR: "🇬🇷", IL: "🇮🇱", HR: "🇭🇷", HU: "🇭🇺",
-  ID: "🇮🇩", MY: "🇲🇾", PK: "🇵🇰", RO: "🇷🇴", SK: "🇸🇰", SI: "🇸🇮", TH: "🇹🇭",
-  UA: "🇺🇦", VN: "🇻🇳", IS: "🇮🇸",
-  // regional variants fallback to country flag
-  "IN-HI": "🇮🇳", "IN-GU": "🇮🇳", "IN-KN": "🇮🇳", "IN-ML": "🇮🇳",
-  "IN-MR": "🇮🇳", "IN-OR": "🇮🇳", "IN-PA": "🇮🇳", "IN-TA": "🇮🇳", "IN-TE": "🇮🇳",
-  "ES-CA": "🇪🇸",
+// ===================== Flag (derived emoji from ISO country code) =====================
+// Regional-variant locales map to their parent country so Apple's `in-hi`, `es-ca`, etc. render correctly.
+const REGIONAL_TO_COUNTRY = {
+  "IN-HI": "IN", "IN-GU": "IN", "IN-KN": "IN", "IN-ML": "IN",
+  "IN-MR": "IN", "IN-OR": "IN", "IN-PA": "IN", "IN-TA": "IN", "IN-TE": "IN",
+  "ES-CA": "ES",
+  // Generic English/locale codes Apple sometimes surfaces for the US storefront.
+  "EN": "US", "EN-US": "US", "EN-GB": "GB", "EN-AU": "AU", "EN-CA": "CA",
 };
-const Flag = ({ code, size = 14 }) => (
-  <span className="flag" style={{ fontSize: size, width: size + 4, height: Math.round(size * 0.75) }}>{FLAG[code] || "🏳️"}</span>
-);
+
+// Build a regional-indicator flag emoji from a 2-letter ISO country code (e.g. "FR" → 🇫🇷).
+// Returns "" if the code isn't a valid 2-letter alpha pair, so the fallback kicks in.
+function codeToEmojiFlag(cc) {
+  if (!cc || cc.length !== 2) return "";
+  const A = 0x1F1E6;
+  const a = cc.charCodeAt(0);
+  const b = cc.charCodeAt(1);
+  if (a < 65 || a > 90 || b < 65 || b > 90) return "";
+  return String.fromCodePoint(A + (a - 65)) + String.fromCodePoint(A + (b - 65));
+}
+
+// Back-compat export for any code that imported FLAG; it's now a Proxy that derives flags on demand.
+const FLAG = new Proxy({}, {
+  get(_, key) {
+    if (typeof key !== "string") return undefined;
+    const upper = key.toUpperCase();
+    const mapped = REGIONAL_TO_COUNTRY[upper] || upper.slice(0, 2);
+    return codeToEmojiFlag(mapped);
+  }
+});
+
+const Flag = ({ code, size = 14 }) => {
+  const upper = String(code || "").toUpperCase();
+  const cc = REGIONAL_TO_COUNTRY[upper] || upper.slice(0, 2);
+  const emoji = codeToEmojiFlag(cc) || "🏳️";
+  return (
+    <span className="flag" style={{ fontSize: size, width: size + 4, height: Math.round(size * 0.75) }}>{emoji}</span>
+  );
+};
 
 // ===================== Locale-flag-dot widget =====================
 const LocaleFlagDot = ({ code, status = "pos", compact = false }) => (
