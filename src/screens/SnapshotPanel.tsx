@@ -255,7 +255,7 @@ export default function SnapshotPanel({
                 const tone = rank == null ? 'muted' : rank <= 10 ? 'pos' : rank <= 50 ? 'neg' : 'muted';
                 return (
                   <div key={i} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, borderBottom: '1px solid var(--border-subtle)' }}>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{it.keyword}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500, color: 'var(--text-muted)' }}>{it.keyword}</span>
                     {isErr ? <span style={{ fontSize: 12, color: 'var(--neg)' }} title={it.error}>{shortError(it.error)}</span>
                       : rank != null && rank > 0 ? <RankPill rank={rank} />
                       : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— not ranked</span>}
