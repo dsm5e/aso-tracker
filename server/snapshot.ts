@@ -56,14 +56,20 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
     keyword: string;
   }
   const byLocale = new Map<string, Task[]>();
+  const seenTasks = new Set<string>();
   for (const app of apps) {
     const kws = loadKeywords(app.id);
     for (const [loc, list] of Object.entries(kws)) {
       if (locales && !locales.includes(loc)) continue;
       for (const kw of list) {
-        if (alreadyDone.has(`${app.id}|${loc}|${kw}`)) continue;
+        const normalized = kw.trim();
+        if (!normalized) continue;
+        const key = `${app.id}|${loc}|${normalized}`;
+        if (seenTasks.has(key)) continue; // dedupe: config can have duplicate keywords
+        seenTasks.add(key);
+        if (alreadyDone.has(key)) continue;
         if (!byLocale.has(loc)) byLocale.set(loc, []);
-        byLocale.get(loc)!.push({ app, locale: loc, keyword: kw });
+        byLocale.get(loc)!.push({ app, locale: loc, keyword: normalized });
       }
     }
   }

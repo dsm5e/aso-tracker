@@ -236,15 +236,30 @@ export async function runSnapshot(
   const decoder = new TextDecoder();
   let buf = '';
   let gotFinal = false;
+
+  // Inactivity watchdog — if server stops sending anything (including heartbeat pings)
+  // for 45s, treat the stream as dead. Guards against proxy keeping a socket open after
+  // the upstream server was killed (e.g. tsx watch restart mid-snapshot).
+  let lastActivity = Date.now();
+  const IDLE_MS = 45_000;
+  const watchdog = setInterval(() => {
+    if (Date.now() - lastActivity > IDLE_MS) {
+      try { reader.cancel('inactivity timeout'); } catch {}
+    }
+  }, 5_000);
+
   try {
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
+      lastActivity = Date.now();
       buf += decoder.decode(value, { stream: true });
       const parts = buf.split('\n\n');
       buf = parts.pop() || '';
       for (const chunk of parts) {
         const line = chunk.trim();
+        // Heartbeat comment line (":ping 12345") — bumps lastActivity, no event emitted.
+        if (line.startsWith(':')) continue;
         if (!line.startsWith('data:')) continue;
         try {
           const ev = JSON.parse(line.slice(5).trim()) as SnapshotEvent;
@@ -257,7 +272,13 @@ export async function runSnapshot(
     }
     // Stream closed normally. If we never got a done/abort — inject one so UI shows a clear state.
     if (!gotFinal) {
-      onEvent({ type: 'abort', reason: 'Connection closed unexpectedly (server may have restarted). Use Resume to continue.' });
+      const idle = Date.now() - lastActivity > IDLE_MS;
+      onEvent({
+        type: 'abort',
+        reason: idle
+          ? 'No data from server for 45s — connection appears dead. Use Resume to continue.'
+          : 'Connection closed unexpectedly (server may have restarted). Use Resume to continue.',
+      });
     }
   } catch (e) {
     if ((e as Error).name === 'AbortError') {
@@ -265,5 +286,7 @@ export async function runSnapshot(
       return;
     }
     onEvent({ type: 'abort', reason: `Stream error: ${(e as Error).message}` });
+  } finally {
+    clearInterval(watchdog);
   }
 }

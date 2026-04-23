@@ -254,6 +254,14 @@ app.post('/api/snapshot', (req, res) => {
     res.write(`data: ${JSON.stringify(event)}\n\n`);
   };
 
+  // Heartbeat every 15s — SSE comment lines don't trigger onEvent but keep the connection
+  // alive and let the client detect a dead server (no heartbeat → watchdog fires).
+  const heartbeat = setInterval(() => {
+    if (res.writableEnded) return;
+    try { res.write(`: ping ${Date.now()}\n\n`); } catch {}
+  }, 15_000);
+  res.on('close', () => clearInterval(heartbeat));
+
   runSnapshot({
     appIds,
     locales,
