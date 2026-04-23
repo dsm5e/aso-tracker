@@ -232,13 +232,13 @@ ${currentKeywordsForLocale.join(', ')}
 2. **Fetch our current App Store metadata** for the \`${locale}\` localization via \`asc-mcp\` (\`apps_get_metadata\` with \`app_id: ${app.iTunesId}\`, \`locale: ${locale}-${locale.toUpperCase()}\` or equivalent). Show me title, subtitle, and the keyword field so we can see the full picture.
 
 3. **Recommend ONE of these actions** with reasoning:
-   a) **Remove** \`${keyword}\` from the \`${locale}\` keyword field and free up those characters for a better dream-related keyword
-   b) **Keep** it, arguing for broader intent catch (explain expected conversion trade-off)
-   c) **Adjust** title/subtitle to pull dream-journal intent above the mismatched results
+   a) **Remove** \`${keyword}\` from the \`${locale}\` keyword field and free up those characters for a better keyword more aligned with ${app.name}'s category (${target.ourGenre || 'our category'})
+   b) **Keep** it, arguing for broader intent catch (explain expected conversion trade-off — is the traffic worth it even if some users bounce?)
+   c) **Adjust** title/subtitle to pull ${app.name}'s intent above the mismatched results (rework copy so Apple's algorithm ranks us above off-category competitors)
 
 4. If the recommendation involves metadata changes, **show me the exact diff** (old vs new) side by side.
 
 5. **DO NOT apply any changes** until I explicitly approve with "да, деплой" or similar. Always wait for my go-ahead before any \`asc-mcp\` write operations.
 
-Think carefully about the ${locale.toUpperCase()} market and cultural context — don't just auto-remove. Some seemingly mismatched keywords have long-tail value.`;
+Think carefully about the ${locale.toUpperCase()} market and cultural context — don't just auto-remove. Some seemingly mismatched keywords have long-tail value, and some languages have polysemy (same word, different meanings across categories) that fools the algorithm but not real users.`;
 }
