@@ -4,9 +4,12 @@ import { join } from 'node:path';
 import { getAppsWithStats, getLocaleStatsByApp, getRankings } from './queries.js';
 import { loadApps, saveApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
 import { db } from './db.js';
-import { runSnapshot } from './snapshot.js';
+import { runSnapshot, refreshKeyword } from './snapshot.js';
 import { lookupItunes } from './itunes.js';
 import { competitorInfo, competitorKeywords, topCompetitors } from './competitors.js';
+import { getCompetitorPricing } from './pricing.js';
+import { getCompetitorReviews } from './reviews.js';
+import { keywordRelevance, buildClaudePrompt } from './relevance.js';
 
 const app = express();
 app.use(express.json());
@@ -100,6 +103,72 @@ app.get('/api/competitors/info', async (req, res) => {
   }
 });
 
+app.get('/api/apps/:id/keyword-relevance', async (req, res) => {
+  const appId = req.params.id;
+  const locale = (req.query.locale as string | undefined)?.toLowerCase();
+  try {
+    const data = await keywordRelevance(appId, locale);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.get('/api/apps/:id/claude-prompt', async (req, res) => {
+  const appId = req.params.id;
+  const keyword = (req.query.keyword as string | undefined)?.trim();
+  const locale = (req.query.locale as string | undefined)?.trim()?.toLowerCase();
+  if (!keyword || !locale) {
+    res.status(400).json({ error: 'keyword and locale required' });
+    return;
+  }
+  try {
+    const prompt = await buildClaudePrompt(appId, keyword, locale);
+    if (!prompt) {
+      res.status(404).json({ error: 'no data for this keyword/locale' });
+      return;
+    }
+    res.json({ prompt });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.get('/api/competitors/reviews', async (req, res) => {
+  const iTunesId = (req.query.id as string || '').trim();
+  const country = (req.query.country as string || 'us').toLowerCase();
+  if (!iTunesId || !/^\d+$/.test(iTunesId)) {
+    res.status(400).json({ error: 'numeric id required' });
+    return;
+  }
+  try {
+    const info = await getCompetitorReviews(iTunesId, country);
+    if (!info) { res.status(404).json({ error: 'fetch failed' }); return; }
+    res.json(info);
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.get('/api/competitors/pricing', async (req, res) => {
+  const iTunesId = (req.query.id as string || '').trim();
+  const country = (req.query.country as string || 'us').toLowerCase();
+  if (!iTunesId || !/^\d+$/.test(iTunesId)) {
+    res.status(400).json({ error: 'numeric id required' });
+    return;
+  }
+  try {
+    const info = await getCompetitorPricing(iTunesId, country);
+    if (!info) {
+      res.status(404).json({ error: 'not found or fetch failed' });
+      return;
+    }
+    res.json(info);
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
 // --- iTunes search (name / bundleId / numeric id) ---
 app.get('/api/itunes/search', async (req, res) => {
   const term = (req.query.term as string || '').trim();
@@ -142,6 +211,22 @@ app.get('/api/itunes/lookup', async (req, res) => {
   try {
     const result = await lookupItunes(id, country);
     res.json(result);
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// --- Refresh a single keyword (on-demand from UI) ---
+app.post('/api/apps/:id/refresh-keyword', async (req, res) => {
+  const appId = req.params.id;
+  const { locale, keyword } = req.body || {};
+  if (!locale || !keyword) {
+    res.status(400).json({ error: 'locale and keyword required' });
+    return;
+  }
+  try {
+    const rec = await refreshKeyword(appId, locale, keyword);
+    res.json({ ok: true, position: rec.position, top5: rec.top5 });
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }

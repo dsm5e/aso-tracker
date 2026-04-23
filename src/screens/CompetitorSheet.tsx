@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Icon, Flag, RankPill, Badge } from '../design/primitives.jsx';
-import { api, type CompetitorInfo, type CompetitorKeywordRow } from '../api';
+import { api, type CompetitorInfo, type CompetitorKeywordRow, type PricingInfo, type ReviewsPayload } from '../api';
 
 interface Props {
   appId: string;
@@ -16,6 +16,14 @@ export default function CompetitorSheet({ appId, bundleId, onClose, onTrack }: P
   const [keywords, setKeywords] = useState<CompetitorKeywordRow[]>([]);
   const [copied, setCopied] = useState(false);
   const [kwFilter, setKwFilter] = useState('');
+  const [pricing, setPricing] = useState<PricingInfo | null>(null);
+  const [pricingCountry, setPricingCountry] = useState('us');
+  const [pricingLoading, setPricingLoading] = useState(false);
+  const [pricingError, setPricingError] = useState<string | null>(null);
+  const [reviews, setReviews] = useState<ReviewsPayload | null>(null);
+  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
+  const [reviewsError, setReviewsError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -31,6 +39,34 @@ export default function CompetitorSheet({ appId, bundleId, onClose, onTrack }: P
     });
     return () => { cancelled = true; };
   }, [appId, bundleId]);
+
+  useEffect(() => {
+    if (!info?.iTunesId) return;
+    setPricingLoading(true);
+    setPricingError(null);
+    let cancelled = false;
+    api
+      .competitorPricing(info.iTunesId, pricingCountry)
+      .then((p) => { if (!cancelled) setPricing(p); })
+      .catch((e) => { if (!cancelled) setPricingError((e as Error).message); })
+      .finally(() => { if (!cancelled) setPricingLoading(false); });
+    return () => { cancelled = true; };
+  }, [info?.iTunesId, pricingCountry]);
+
+  // Auto-fetch reviews when app/country changes — used to fix the
+  // iTunes Search API bug of returning 0 for apps with few reviews.
+  useEffect(() => {
+    if (!info?.iTunesId) return;
+    setReviewsLoading(true);
+    setReviewsError(null);
+    let cancelled = false;
+    api
+      .competitorReviews(info.iTunesId, pricingCountry)
+      .then((p) => { if (!cancelled) setReviews(p); })
+      .catch((e) => { if (!cancelled) setReviewsError((e as Error).message); })
+      .finally(() => { if (!cancelled) setReviewsLoading(false); });
+    return () => { cancelled = true; };
+  }, [info?.iTunesId, pricingCountry]);
 
   const filtered = useMemo(() => {
     const q = kwFilter.toLowerCase();
@@ -86,16 +122,36 @@ export default function CompetitorSheet({ appId, bundleId, onClose, onTrack }: P
             <div style={{ fontSize: 16, fontWeight: 600, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
               {loading ? 'Loading…' : info?.name || bundleId}
             </div>
-            {info?.dev && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{info.dev}</div>}
+            {info?.dev && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>{info.dev}</div>}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8, alignItems: 'center' }}>
               {info?.category && <Badge tone="neutral">{info.category}</Badge>}
-              {info?.rating != null && (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: 'var(--text-muted)' }}>
-                  ⭐ <span className="num">{info.rating.toFixed(2)}</span>
-                  {info.ratingCount != null && <span style={{ color: 'var(--text-faint)' }}>({info.ratingCount.toLocaleString()})</span>}
-                </span>
-              )}
-              <span style={{ fontSize: 10.5, color: 'var(--text-faint)', fontFamily: '"JetBrains Mono", monospace' }}>{bundleId}</span>
+              {(() => {
+                // Prefer iTunes Search API if available (aggregate across all countries),
+                // otherwise fall back to RSS feed for current country (fixes Apple's 0-rating bug for small apps).
+                const hasIT = info?.ratingCount != null && info.ratingCount > 0 && info.rating;
+                const hasRSS = reviews && reviews.totalCount > 0 && reviews.avgRating != null;
+                if (hasIT) {
+                  return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      ⭐ <span className="num">{info!.rating!.toFixed(2)}</span>
+                      <span style={{ color: 'var(--text-faint)' }}>({info!.ratingCount!.toLocaleString()})</span>
+                    </span>
+                  );
+                }
+                if (hasRSS) {
+                  return (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12.5, color: 'var(--text-muted)' }}>
+                      ⭐ <span className="num">{reviews!.avgRating!.toFixed(2)}</span>
+                      <span style={{ color: 'var(--text-faint)' }}>({reviews!.totalCount} in {reviews!.country.toUpperCase()})</span>
+                    </span>
+                  );
+                }
+                if (reviewsLoading) {
+                  return <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>loading…</span>;
+                }
+                return <span style={{ fontSize: 12, color: 'var(--text-faint)', fontStyle: 'italic' }}>No ratings yet</span>;
+              })()}
+              <span style={{ fontSize: 11.5, color: 'var(--text-faint)', fontFamily: '"JetBrains Mono", monospace' }}>{bundleId}</span>
             </div>
           </div>
           <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={13} /></button>
@@ -124,6 +180,8 @@ export default function CompetitorSheet({ appId, bundleId, onClose, onTrack }: P
           )}
         </div>
 
+        {/* Scrollable content */}
+        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
         {/* Stats strip */}
         <div style={{ display: 'flex', padding: 16, gap: 12, borderBottom: '1px solid var(--border-subtle)' }}>
           <Stat label="Seen in" value={stats.keywords} sub="of your keywords" />
@@ -131,6 +189,98 @@ export default function CompetitorSheet({ appId, bundleId, onClose, onTrack }: P
           <Stat label="Avg rank" value={stats.avgRank} accent />
           <Stat label="Beats you" value={stats.beatUs} sub={`of ${stats.keywords}`} tone={stats.beatUs > stats.keywords / 2 ? 'neg' : 'pos'} />
         </div>
+
+        {/* Pricing */}
+        {info?.iTunesId && (
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <div className="label" style={{ flex: 1 }}>Pricing</div>
+              <select
+                value={pricingCountry}
+                onChange={(e) => setPricingCountry(e.target.value)}
+                style={{ fontSize: 12, padding: '3px 6px', background: 'var(--bg-sunken)', border: '1px solid var(--border-subtle)', borderRadius: 6, color: 'var(--text)' }}
+              >
+                {['us', 'gb', 'au', 'ca', 'de', 'fr', 'it', 'es', 'jp', 'br', 'mx', 'kr', 'ru', 'tr'].map((c) => (
+                  <option key={c} value={c}>{c.toUpperCase()}</option>
+                ))}
+              </select>
+            </div>
+            {pricingLoading && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</div>}
+            {pricingError && <div style={{ fontSize: 12, color: 'var(--neg)' }}>Failed: {pricingError}</div>}
+            {!pricingLoading && !pricingError && pricing && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {pricing.subscriptions.length === 0 && pricing.iap.length === 0 && (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>No subscriptions or IAPs visible on store page.</div>
+                )}
+                {pricing.subscriptions.length > 0 && (
+                  <PricingTable title="Subscriptions" rows={pricing.subscriptions} />
+                )}
+                {pricing.iap.length > 0 && (
+                  <PricingTable title="In-app purchases" rows={pricing.iap} />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reviews */}
+        {info?.iTunesId && (
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-subtle)' }}>
+            <button
+              onClick={() => setReviewsOpen((v) => !v)}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: 8,
+                background: 'transparent', border: 0, padding: 0, cursor: 'pointer',
+                color: 'var(--text)',
+              }}
+            >
+              <Icon name={reviewsOpen ? 'chevron-down' : 'chevron-right'} size={12} />
+              <div className="label" style={{ flex: 1, textAlign: 'left' }}>
+                Reviews ({pricingCountry.toUpperCase()})
+              </div>
+              {reviews && reviews.avgRating != null && (
+                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  ★ {reviews.avgRating.toFixed(1)} · {reviews.totalCount}
+                </span>
+              )}
+            </button>
+            {reviewsOpen && (
+              <div style={{ marginTop: 10 }}>
+                {reviewsLoading && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading…</div>}
+                {reviewsError && <div style={{ fontSize: 12, color: 'var(--neg)' }}>Failed: {reviewsError}</div>}
+                {!reviewsLoading && !reviewsError && reviews && (
+                  <>
+                    {reviews.reviews.length === 0 ? (
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        No reviews visible for {pricingCountry.toUpperCase()}. Try another country.
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                        {reviews.reviews.map((r) => (
+                          <div key={r.id} style={{
+                            background: 'var(--bg-sunken)', borderRadius: 8, padding: 10,
+                            boxShadow: 'inset 0 0 0 1px var(--border-subtle)',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 4 }}>
+                              <span style={{ color: 'var(--warn, #E6AA14)', fontSize: 13 }}>{'★'.repeat(r.rating)}{'☆'.repeat(5-r.rating)}</span>
+                              <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text)' }}>{r.title}</span>
+                            </div>
+                            <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.4, marginBottom: 4 }}>
+                              {r.content}
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
+                              {r.author}{r.version ? ` · v${r.version}` : ''}{r.date ? ` · ${r.date.slice(0, 10)}` : ''}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Filter */}
         <div style={{ padding: '12px 16px 8px', display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -141,7 +291,7 @@ export default function CompetitorSheet({ appId, bundleId, onClose, onTrack }: P
               value={kwFilter}
               onChange={(e) => setKwFilter(e.target.value)}
               placeholder="Filter…"
-              style={{ flex: 1, fontSize: 12, background: 'transparent', border: 0, color: 'var(--text)', outline: 'none' }}
+              style={{ flex: 1, fontSize: 13, background: 'transparent', border: 0, color: 'var(--text)', outline: 'none' }}
             />
           </div>
         </div>
@@ -157,23 +307,43 @@ export default function CompetitorSheet({ appId, bundleId, onClose, onTrack }: P
           {filtered.map((r, i) => {
             const beatsUs = r.yourRank == null || r.theirRank < r.yourRank;
             return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 12.5 }}>
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--border-subtle)', fontSize: 13.5 }}>
                 <Flag code={r.locale.toUpperCase()} size={13} />
-                <span className="num" style={{ fontSize: 10.5, color: 'var(--text-muted)', width: 28, fontWeight: 500 }}>{r.locale.toUpperCase()}</span>
+                <span className="num" style={{ fontSize: 11.5, color: 'var(--text-muted)', width: 28, fontWeight: 500 }}>{r.locale.toUpperCase()}</span>
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{r.keyword}</span>
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                  <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>them</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>them</span>
                   <RankPill rank={r.theirRank} />
-                  <span style={{ fontSize: 10.5, color: 'var(--text-muted)', marginLeft: 8 }}>you</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)', marginLeft: 8 }}>you</span>
                   <RankPill rank={r.yourRank} />
-                  {beatsUs && <span title="They rank better than you here" style={{ color: 'var(--neg)', fontSize: 11, fontWeight: 600 }}>↑</span>}
+                  {beatsUs && <span title="They rank better than you here" style={{ color: 'var(--neg)', fontSize: 12, fontWeight: 600 }}>↑</span>}
                 </div>
               </div>
             );
           })}
         </div>
+        </div>
       </aside>
     </>
+  );
+}
+
+function PricingTable({ title, rows }: { title: string; rows: { name: string; subtitle?: string; price: string; duration?: string }[] }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', marginBottom: 6 }}>{title}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--bg-sunken)', borderRadius: 8, padding: 8, boxShadow: 'inset 0 0 0 1px var(--border-subtle)' }}>
+        {rows.map((r, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 13, padding: '2px 4px' }}>
+            <div style={{ flex: 1, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {r.name}
+              {r.duration && <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontSize: 11.5 }}>· {r.duration}</span>}
+            </div>
+            <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: 'var(--accent)' }}>{r.price}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -181,9 +351,9 @@ function Stat({ label, value, sub, accent, tone }: { label: string; value: strin
   const color = accent ? 'var(--accent)' : tone === 'pos' ? 'var(--pos)' : tone === 'neg' ? 'var(--neg)' : 'var(--text)';
   return (
     <div style={{ flex: 1, padding: 12, background: 'var(--bg-sunken)', borderRadius: 10, boxShadow: 'inset 0 0 0 1px var(--border-subtle)', minWidth: 0 }}>
-      <div className="label" style={{ fontSize: 10, marginBottom: 4 }}>{label}</div>
+      <div className="label" style={{ fontSize: 11, marginBottom: 4 }}>{label}</div>
       <div className="hero-num" style={{ fontSize: 20, color, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 3 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>{sub}</div>}
     </div>
   );
 }

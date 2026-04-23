@@ -154,7 +154,7 @@ export default function KeywordsEditor({ app, onChanged, onRunLocaleSnapshot, on
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search locales…"
-            style={{ flex: 1, fontSize: 12, background: 'transparent', border: 0, color: 'var(--text)', outline: 'none' }}
+            style={{ flex: 1, fontSize: 13, background: 'transparent', border: 0, color: 'var(--text)', outline: 'none' }}
           />
         </div>
 
@@ -171,12 +171,12 @@ export default function KeywordsEditor({ app, onChanged, onRunLocaleSnapshot, on
                 background: activeLocale === l.code ? 'var(--bg-sunken)' : 'transparent',
                 boxShadow: activeLocale === l.code ? 'inset 0 0 0 1px var(--border)' : 'none',
                 border: 0, cursor: 'pointer', textAlign: 'left', color: 'var(--text)',
-                fontSize: 12.5, fontWeight: activeLocale === l.code ? 600 : 500,
+                fontSize: 13.5, fontWeight: activeLocale === l.code ? 600 : 500,
               }}
             >
               <Flag code={l.code.toUpperCase()} size={14} />
               <span style={{ flex: 1 }}>{LOCALE_NAMES[l.code] || l.code.toUpperCase()}</span>
-              <span className="num" style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>{l.count}</span>
+              <span className="num" style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>{l.count}</span>
             </button>
           ))}
         </div>
@@ -202,7 +202,7 @@ export default function KeywordsEditor({ app, onChanged, onRunLocaleSnapshot, on
               <Flag code={activeLocale.toUpperCase()} size={20} />
               <div>
                 <div style={{ fontSize: 18, fontWeight: 600, letterSpacing: '-0.015em' }}>{LOCALE_NAMES[activeLocale] || activeLocale.toUpperCase()}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{currentKws.length} keywords · locale code <code>{activeLocale}</code></div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{currentKws.length} keywords · locale code <code>{activeLocale}</code></div>
               </div>
               <div style={{ flex: 1 }} />
               {onRunLocaleSnapshot && (
@@ -242,7 +242,7 @@ export default function KeywordsEditor({ app, onChanged, onRunLocaleSnapshot, on
             {/* Chip grid */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: 12, background: 'var(--bg-sunken)', borderRadius: 12, minHeight: 80 }}>
               {currentKws.length === 0 && (
-                <div style={{ color: 'var(--text-faint)', fontSize: 12.5, padding: 12 }}>No keywords yet — add one above.</div>
+                <div style={{ color: 'var(--text-faint)', fontSize: 13.5, padding: 12 }}>No keywords yet — add one above.</div>
               )}
               {currentKws.map((kw) => (
                 <div
@@ -252,7 +252,7 @@ export default function KeywordsEditor({ app, onChanged, onRunLocaleSnapshot, on
                     height: 28, padding: '0 6px 0 10px',
                     borderRadius: 8, background: 'var(--bg-raised)',
                     boxShadow: 'inset 0 0 0 1px var(--border)',
-                    fontSize: 12.5, fontWeight: 500,
+                    fontSize: 13.5, fontWeight: 500,
                   }}
                 >
                   <span>{kw}</span>
@@ -271,7 +271,7 @@ export default function KeywordsEditor({ app, onChanged, onRunLocaleSnapshot, on
 
         {/* Footer */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, borderTop: '1px solid var(--border-subtle)', paddingTop: 14 }}>
-          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+          <div style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>
             Total: <b style={{ color: 'var(--text-2)', fontWeight: 500 }}>{totalKw}</b> keywords across {Object.keys(kwMap).length} locales
             {dirty && <Badge tone="accent"><span style={{ marginLeft: 4 }}>unsaved changes</span></Badge>}
           </div>
@@ -356,14 +356,14 @@ function AddLocalePicker({ existing, onPick, onClose }: { existing: string[]; on
                   boxShadow: 'inset 0 0 0 1px var(--border-subtle)',
                   border: 0, cursor: 'pointer', textAlign: 'left',
                   color: 'var(--text)',
-                  fontSize: 12.5, fontWeight: 500,
+                  fontSize: 13.5, fontWeight: 500,
                 }}
                 onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'; }}
                 onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-sunken)'; }}
               >
                 <Flag code={code.toUpperCase()} size={14} />
                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
-                <span className="num" style={{ fontSize: 10.5, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{code}</span>
+                <span className="num" style={{ fontSize: 11.5, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{code}</span>
                 <span style={{ color: 'var(--accent)' }}><Icon name="plus" size={12} /></span>
               </button>
             ))}

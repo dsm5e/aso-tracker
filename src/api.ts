@@ -40,7 +40,7 @@ export interface RankingRow {
   yesterday: number | null;
   w1: number | null;
   w4: number | null;
-  top5: Array<{ name: string; id: string; dev: string }>;
+  top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
   trend: number[];
 }
 
@@ -73,6 +73,53 @@ export interface CompetitorInfo {
   storeUrl?: string;
 }
 
+export interface PricingProduct {
+  name: string;
+  subtitle?: string;
+  price: string;
+  duration?: string;
+  kind: 'subscription' | 'iap';
+}
+
+export interface PricingInfo {
+  iTunesId: string;
+  country: string;
+  subscriptions: PricingProduct[];
+  iap: PricingProduct[];
+  fetchedAt: number;
+}
+
+export interface Review {
+  id: string;
+  rating: number;
+  title: string;
+  content: string;
+  author: string;
+  version?: string;
+  date?: string;
+}
+
+export interface ReviewsPayload {
+  iTunesId: string;
+  country: string;
+  totalCount: number;
+  avgRating: number | null;
+  reviews: Review[];
+  fetchedAt: number;
+}
+
+export interface RelevanceRow {
+  locale: string;
+  keyword: string;
+  ourPosition: number | null;
+  ourGenre: string;
+  top5: Array<{ name: string; bundleId?: string; id?: string; dev: string; genre?: string }>;
+  genreHistogram: Array<{ genre: string; count: number }>;
+  matchCount: number;
+  relevance: number;
+  flag: 'match' | 'ambiguous' | 'mismatch' | 'unknown';
+}
+
 export const api = {
   apps: () => fetch('/api/apps').then((r) => j<AppStats[]>(r)),
   appLocales: (id: string) =>
@@ -85,6 +132,20 @@ export const api = {
     fetch(`/api/competitors/info?bundleId=${encodeURIComponent(bundleId)}`).then((r) => j<CompetitorInfo>(r)),
   competitorKeywords: (appId: string, bundleId: string) =>
     fetch(`/api/competitors/keywords?app=${appId}&bundleId=${encodeURIComponent(bundleId)}`).then((r) => j<CompetitorKeywordRow[]>(r)),
+  competitorPricing: (iTunesId: string, country = 'us') =>
+    fetch(`/api/competitors/pricing?id=${iTunesId}&country=${country}`).then((r) => j<PricingInfo>(r)),
+  competitorReviews: (iTunesId: string, country = 'us') =>
+    fetch(`/api/competitors/reviews?id=${iTunesId}&country=${country}`).then((r) => j<ReviewsPayload>(r)),
+  keywordRelevance: (appId: string, locale?: string) =>
+    fetch(`/api/apps/${appId}/keyword-relevance${locale ? `?locale=${locale}` : ''}`).then((r) => j<RelevanceRow[]>(r)),
+  refreshKeyword: (appId: string, locale: string, keyword: string) =>
+    fetch(`/api/apps/${appId}/refresh-keyword`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locale, keyword }),
+    }).then((r) => j<{ ok: true; position: number | null; top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }> }>(r)),
+  claudePrompt: (appId: string, keyword: string, locale: string) =>
+    fetch(`/api/apps/${appId}/claude-prompt?keyword=${encodeURIComponent(keyword)}&locale=${locale}`).then((r) => j<{ prompt: string }>(r)),
   addApp: (app: Partial<AppStats>) =>
     fetch('/api/apps', {
       method: 'POST',

@@ -167,3 +167,45 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
 
   return { records, aborted, abortReason };
 }
+
+/**
+ * Refresh a single (app, locale, keyword) combo on demand. Inserts a new row
+ * with today's date so the rankings table picks it up on next fetch.
+ */
+export async function refreshKeyword(
+  appId: string,
+  locale: string,
+  keyword: string
+): Promise<SnapshotRow> {
+  const app = loadApps().find((a) => a.id === appId);
+  if (!app) throw new Error(`unknown app ${appId}`);
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const results = await searchItunes(locale, keyword, { sleepMs: 0 });
+    const { position, total, top5 } = findPosition(results, app.bundle);
+    const rec: SnapshotRow = {
+      date: today,
+      app: app.id,
+      locale,
+      keyword,
+      position,
+      total,
+      top5,
+    };
+    insertSnapshotsBatch([rec]);
+    return rec;
+  } catch (e) {
+    const rec: SnapshotRow = {
+      date: today,
+      app: app.id,
+      locale,
+      keyword,
+      position: null,
+      total: 0,
+      top5: [],
+      error: (e as Error).message || 'unknown',
+    };
+    insertSnapshotsBatch([rec]);
+    throw e;
+  }
+}

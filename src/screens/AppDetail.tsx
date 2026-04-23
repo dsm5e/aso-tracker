@@ -10,7 +10,7 @@ import {
   Segmented,
 } from '../design/primitives.jsx';
 import { TopBar } from '../design/screen-dashboard.jsx';
-import { api, type AppStats, type RankingRow, type CompetitorSummary } from '../api';
+import { api, type AppStats, type RankingRow, type CompetitorSummary, type RelevanceRow } from '../api';
 import KeywordsEditor from './KeywordsEditor';
 
 const PAGE_SIZES = [50, 100, 200, 500] as const;
@@ -48,11 +48,23 @@ export default function AppDetailScreen({
   const [rankings, setRankings] = useState<RankingRow[]>([]);
   const [selectedIdx, setSelectedIdx] = useState<number>(-1);
   const [competitors, setCompetitors] = useState<CompetitorSummary[]>([]);
+  const [relevance, setRelevance] = useState<Record<string, RelevanceRow>>({});
+  const [relevanceLoading, setRelevanceLoading] = useState(false);
 
   useEffect(() => {
     if (tab !== 'rankings') return;
     api.rankings(app.id, locale === 'ALL' ? undefined : locale).then(setRankings).catch(() => setRankings([]));
     api.competitors(app.id).then(setCompetitors).catch(() => setCompetitors([]));
+    setRelevanceLoading(true);
+    api
+      .keywordRelevance(app.id, locale === 'ALL' ? undefined : locale)
+      .then((rows) => {
+        const map: Record<string, RelevanceRow> = {};
+        for (const r of rows) map[`${r.locale}|${r.keyword}`] = r;
+        setRelevance(map);
+      })
+      .catch(() => setRelevance({}))
+      .finally(() => setRelevanceLoading(false));
     // Also re-fetch whenever the `app` object identity changes (App.tsx refreshes after snapshot)
   }, [app, locale, tab]);
 
@@ -81,10 +93,10 @@ export default function AppDetailScreen({
         <AppIcon bg={app.iconBg} emoji={app.emoji} iconUrl={app.iconUrl} size={28} rounded={8} />
         <div>
           <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em' }}>{app.name}</div>
-          <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{app.bundle} · iTunes {app.iTunesId}</div>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{app.bundle} · iTunes {app.iTunesId}</div>
         </div>
         <div style={{ flex: 1 }} />
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, color: 'var(--text-muted)' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-muted)' }}>
           <Icon name="clock" size={11} stroke={1.8} /> Last snapshot {app.lastSnapshot ?? '—'}
         </div>
         <button className="btn btn-primary btn-sm" onClick={() => onRunSnapshot()}>
@@ -135,7 +147,7 @@ export default function AppDetailScreen({
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Filter keywords…"
-                  style={{ flex: 1, fontSize: 12, background: 'transparent', border: 0, color: 'var(--text)', outline: 'none' }}
+                  style={{ flex: 1, fontSize: 13, background: 'transparent', border: 0, color: 'var(--text)', outline: 'none' }}
                 />
               </div>
               <LocalePicker value={locale} options={app.locales} onChange={setLocale} />
@@ -156,13 +168,23 @@ export default function AppDetailScreen({
         {tab === 'rankings' && (
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <RankingsTable rows={visible} selectedIdx={selectedIdx} onRowClick={(i) => setSelectedIdx(i === selectedIdx ? -1 : i)} onCompetitorClick={onOpenCompetitor} />
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 4px', fontSize: 11.5, color: 'var(--text-muted)' }}>
+              <RankingsTable rows={visible} selectedIdx={selectedIdx} onRowClick={(i) => setSelectedIdx(i === selectedIdx ? -1 : i)} onCompetitorClick={onOpenCompetitor} relevance={relevance} relevanceLoading={relevanceLoading} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 4px', fontSize: 12.5, color: 'var(--text-muted)' }}>
                 <span>Showing {visible.length} of {filtered.length} keywords {search && <span style={{ color: 'var(--text-faint)' }}>(filtered from {rankings.length})</span>}</span>
               </div>
             </div>
             {selectedRow && (
-              <CompetitorDrawer row={selectedRow} onClose={() => setSelectedIdx(-1)} onCompetitorClick={onOpenCompetitor} />
+              <CompetitorDrawer
+                row={selectedRow}
+                onClose={() => setSelectedIdx(-1)}
+                onCompetitorClick={onOpenCompetitor}
+                relevance={relevance[`${selectedRow.locale}|${selectedRow.keyword}`]}
+                appId={app.id}
+                onRefreshed={() => {
+                  api.rankings(app.id, locale === 'ALL' ? undefined : locale)
+                    .then(setRankings).catch(() => {});
+                }}
+              />
             )}
           </div>
         )}
@@ -205,9 +227,9 @@ export default function AppDetailScreen({
                     height: 32,
                   }}
                 >
-                  <span style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--text)' }}>{c.name}</span>
+                  <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--text)' }}>{c.name}</span>
                   <Badge tone="neutral">{c.appearances}×</Badge>
-                  <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>avg #{c.avgRank}</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>avg #{c.avgRank}</span>
                 </button>
               ))}
             </div>
@@ -228,7 +250,7 @@ function BigMetric({ label, value, delta, accent, toneInverted }: { label: strin
         {delta != null && delta !== 0 && (
           <span className={`num ${deltaPos ? 'delta-pos' : 'delta-neg'}`} style={{ fontSize: 13, fontWeight: 500 }}>
             {deltaPos ? '↑' : '↓'}{Math.abs(delta)}
-            <span style={{ fontSize: 10.5, color: 'var(--text-muted)', marginLeft: 4 }}>7d</span>
+            <span style={{ fontSize: 11.5, color: 'var(--text-muted)', marginLeft: 4 }}>7d</span>
           </span>
         )}
       </div>
@@ -247,7 +269,7 @@ function LocalePicker({ value, options, onChange }: { value: string; options: st
           appearance: 'none',
           background: isFiltered ? 'var(--accent-tint)' : 'var(--bg-sunken)',
           color: isFiltered ? 'var(--accent)' : 'var(--text)',
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: isFiltered ? 600 : 500,
           border: 0,
           borderRadius: 8,
@@ -297,7 +319,7 @@ function PageSizePicker({ value, onChange }: { value: PageSize; onChange: (v: Pa
           appearance: 'none',
           background: 'var(--bg-sunken)',
           color: 'var(--text)',
-          fontSize: 12,
+          fontSize: 13,
           fontWeight: 500,
           border: 0,
           borderRadius: 8,
@@ -315,10 +337,10 @@ function PageSizePicker({ value, onChange }: { value: PageSize; onChange: (v: Pa
   );
 }
 
-function RankingsTable({ rows, selectedIdx, onRowClick, onCompetitorClick }: { rows: RankingRow[]; selectedIdx: number; onRowClick: (i: number) => void; onCompetitorClick: (bundleId: string) => void }) {
+function RankingsTable({ rows, selectedIdx, onRowClick, onCompetitorClick, relevance, relevanceLoading }: { rows: RankingRow[]; selectedIdx: number; onRowClick: (i: number) => void; onCompetitorClick: (bundleId: string) => void; relevance?: Record<string, RelevanceRow>; relevanceLoading?: boolean }) {
   return (
     <div style={{ background: 'var(--bg-raised)', borderRadius: 16, boxShadow: 'inset 0 0 0 1px var(--border)', overflow: 'hidden' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
         <thead>
           <tr style={{ background: 'var(--bg-sunken)' }}>
             <th style={th}>Locale</th>
@@ -327,6 +349,10 @@ function RankingsTable({ rows, selectedIdx, onRowClick, onCompetitorClick }: { r
             <th style={th}>Yesterday</th>
             <th style={th}>7d ago</th>
             <th style={th}>30d ago</th>
+            <th style={th}>
+              Relevance
+              {relevanceLoading && <span style={{ marginLeft: 6, fontSize: 9, color: 'var(--text-faint)', textTransform: 'none' }}>loading…</span>}
+            </th>
             <th style={th}>Trend</th>
             <th style={{ ...th, width: 32 }}></th>
           </tr>
@@ -345,7 +371,7 @@ function RankingsTable({ rows, selectedIdx, onRowClick, onCompetitorClick }: { r
                 <td style={td}>
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     <Flag code={r.locale.toUpperCase()} size={13} />
-                    <span className="num" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.locale.toUpperCase()}</span>
+                    <span className="num" style={{ fontSize: 12, color: 'var(--text-muted)' }}>{r.locale.toUpperCase()}</span>
                   </span>
                 </td>
                 <td style={{ ...td, fontWeight: sel ? 600 : 500, color: sel ? 'var(--accent)' : 'var(--text)' }}>{r.keyword}</td>
@@ -353,6 +379,7 @@ function RankingsTable({ rows, selectedIdx, onRowClick, onCompetitorClick }: { r
                 <td style={td}><RankPill rank={r.yesterday} /></td>
                 <td style={td}><RankPill rank={r.w1} /></td>
                 <td style={td}><RankPill rank={r.w4} /></td>
+                <td style={td}><RelevancePill row={relevance?.[`${r.locale}|${r.keyword}`]} /></td>
                 <td style={td}>
                   {r.trend.length > 1 && <Sparkline data={r.trend.map((p) => p > 0 ? 201 - p : 0)} width={100} height={20} tone={r.today && r.today <= 10 ? 'pos' : 'accent'} />}
                 </td>
@@ -363,7 +390,7 @@ function RankingsTable({ rows, selectedIdx, onRowClick, onCompetitorClick }: { r
             );
           })}
           {rows.length === 0 && (
-            <tr><td style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: 40 }} colSpan={7}>
+            <tr><td style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: 40 }} colSpan={9}>
               No rankings yet for this locale. Run a snapshot.
             </td></tr>
           )}
@@ -373,21 +400,81 @@ function RankingsTable({ rows, selectedIdx, onRowClick, onCompetitorClick }: { r
   );
 }
 
-const th: React.CSSProperties = { textAlign: 'left', fontSize: 10.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)' };
+const th: React.CSSProperties = { textAlign: 'left', fontSize: 11.5, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)' };
 const td: React.CSSProperties = { padding: '10px 14px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'middle' };
 
-function CompetitorDrawer({ row, onClose, onCompetitorClick }: { row: RankingRow; onClose: () => void; onCompetitorClick: (bundleId: string) => void }) {
+function RelevancePill({ row }: { row?: RelevanceRow }) {
+  if (!row) return <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>—</span>;
+  if (row.flag === 'unknown') return <span style={{ color: 'var(--text-faint)', fontSize: 11 }}>n/a</span>;
+  const bg =
+    row.flag === 'match' ? 'rgba(48,200,120,0.15)'
+    : row.flag === 'ambiguous' ? 'rgba(230,170,20,0.15)'
+    : 'rgba(230,80,80,0.15)';
+  const color =
+    row.flag === 'match' ? 'var(--pos)'
+    : row.flag === 'ambiguous' ? 'var(--warn)'
+    : 'var(--neg)';
+  const histText = row.genreHistogram
+    .map((h) => `${h.count}× ${h.genre}`)
+    .join(', ');
   return (
-    <div style={{ width: 340, flex: 'none', background: 'var(--bg-raised)', borderRadius: 16, boxShadow: 'inset 0 0 0 1px var(--border)', padding: 20, display: 'flex', flexDirection: 'column', gap: 16, alignSelf: 'flex-start', position: 'sticky', top: 20 }}>
+    <span
+      title={`${row.relevance}% match — ${histText}`}
+      style={{
+        display: 'inline-block', padding: '2px 8px', borderRadius: 12,
+        background: bg, color, fontSize: 12, fontVariantNumeric: 'tabular-nums', fontWeight: 600,
+      }}
+    >
+      {row.relevance}%
+    </span>
+  );
+}
+
+function CompetitorDrawer({ row, onClose, onCompetitorClick, relevance, appId, onRefreshed }: { row: RankingRow; onClose: () => void; onCompetitorClick: (bundleId: string) => void; relevance?: RelevanceRow; appId: string; onRefreshed?: () => void }) {
+  const [copied, setCopied] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    setRefreshing(true); setErr(null);
+    try {
+      await api.refreshKeyword(appId, row.locale, row.keyword);
+      onRefreshed?.();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+  const askClaude = async () => {
+    setLoading(true); setErr(null);
+    try {
+      const { prompt } = await api.claudePrompt(appId, row.keyword, row.locale);
+      await navigator.clipboard.writeText(prompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <div style={{ width: 340, flex: 'none', background: 'var(--bg-raised)', borderRadius: 16, boxShadow: 'inset 0 0 0 1px var(--border)', padding: 20, display: 'flex', flexDirection: 'column', gap: 16, alignSelf: 'flex-start', position: 'sticky', top: 80 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <div className="label" style={{ marginBottom: 4 }}>Keyword</div>
           <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>{row.keyword}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: 11.5, color: 'var(--text-muted)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, fontSize: 12.5, color: 'var(--text-muted)' }}>
             <Flag code={row.locale.toUpperCase()} size={12} /> {row.locale.toUpperCase()} · App Store
           </div>
         </div>
-        <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={12} /></button>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button className="btn btn-ghost btn-sm" onClick={refresh} disabled={refreshing} title="Re-run this keyword now">
+            <Icon name="refresh" size={12} style={refreshing ? { animation: 'spin 0.8s linear infinite' } : undefined} /> {refreshing ? '…' : 'Refresh'}
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={12} /></button>
+        </div>
       </div>
 
       <div style={{ background: 'var(--bg-sunken)', borderRadius: 10, padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -397,6 +484,37 @@ function CompetitorDrawer({ row, onClose, onCompetitorClick }: { row: RankingRow
         </div>
         <PositionDelta fromRank={row.yesterday} toRank={row.today} />
       </div>
+
+      {relevance && relevance.flag !== 'unknown' && (
+        <div style={{
+          background: 'var(--bg-sunken)', borderRadius: 10, padding: 12,
+          boxShadow: relevance.flag === 'mismatch' ? 'inset 0 0 0 1px rgba(230,80,80,0.35)' : 'inset 0 0 0 1px var(--border-subtle)',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <div className="label">Relevance vs your category ({relevance.ourGenre})</div>
+            <RelevancePill row={relevance} />
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+            {relevance.genreHistogram.map((h) => `${h.count}× ${h.genre}`).join(' · ')}
+          </div>
+          {relevance.flag === 'mismatch' && (
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.4 }}>
+              Top results are a different category. Users searching this keyword may not be looking for your app.
+              Low expected install CR, but could still attract niche users.
+            </div>
+          )}
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={askClaude}
+            disabled={loading}
+            style={{ width: '100%' }}
+            title="Copy a rich prompt to clipboard — paste into Claude Code to get analysis + asc-mcp apply plan"
+          >
+            <Icon name={copied ? 'check' : 'play'} size={11} /> {loading ? 'Building prompt…' : copied ? 'Prompt copied — paste in Claude Code' : '🤖 Ask Claude to fix this'}
+          </button>
+          {err && <div style={{ fontSize: 11.5, color: 'var(--neg)', marginTop: 6 }}>Failed: {err}</div>}
+        </div>
+      )}
 
       <div>
         <div className="label" style={{ marginBottom: 8 }}>Top-5 results today · click to profile</div>
@@ -418,13 +536,13 @@ function CompetitorDrawer({ row, onClose, onCompetitorClick }: { row: RankingRow
               onMouseEnter={(e) => { if (c.id) (e.currentTarget as HTMLButtonElement).style.background = 'var(--bg-hover)'; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
             >
-              <span className="num" style={{ fontSize: 11, color: 'var(--text-muted)', width: 14, fontWeight: 500 }}>#{i + 1}</span>
-              <span style={{ width: 22, height: 22, borderRadius: 5, background: 'var(--bg-sunken)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 600, color: 'var(--text-muted)' }}>
+              <span className="num" style={{ fontSize: 12, color: 'var(--text-muted)', width: 14, fontWeight: 500 }}>#{c.pos ?? i + 1}</span>
+              <span style={{ width: 22, height: 22, borderRadius: 5, background: 'var(--bg-sunken)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
                 {(c.name || '?').charAt(0).toUpperCase()}
               </span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 500 }}>{c.name || 'unknown'}</div>
-                {c.dev && <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{c.dev}</div>}
+                <div style={{ fontSize: 13.5, fontWeight: 500 }}>{c.name || 'unknown'}</div>
+                {c.dev && <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{c.dev}</div>}
               </div>
               {c.id && <Icon name="arrow-right" size={11} style={{ color: 'var(--text-faint)' }} />}
             </button>
@@ -461,7 +579,7 @@ function LocalesGrid({ appId, onPick }: { appId: string; onPick: (loc: string) =
           {s.avg != null ? (
             <span className="num" style={{ fontSize: 13, fontWeight: 600, color: s.avg <= 10 ? 'var(--pos)' : s.avg <= 50 ? 'var(--neg)' : 'var(--text-muted)' }}>#{s.avg}</span>
           ) : (
-            <span style={{ fontSize: 11, color: 'var(--text-faint)' }}>—</span>
+            <span style={{ fontSize: 12, color: 'var(--text-faint)' }}>—</span>
           )}
         </button>
       ))}

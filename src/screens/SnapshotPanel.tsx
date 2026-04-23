@@ -101,11 +101,11 @@ export default function SnapshotPanel({
       >
         {/* Rate-limit banner */}
         {isRateLimitAbort && (
-          <div style={{ background: '#FFE8E2', color: '#B8270A', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, borderBottom: '1px solid rgba(184,39,10,0.15)' }}>
+          <div style={{ background: '#FFE8E2', color: '#B8270A', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, borderBottom: '1px solid rgba(184,39,10,0.15)' }}>
             <Icon name="alert" size={14} />
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600 }}>iTunes rate-limited your IP</div>
-              <div style={{ fontSize: 11, opacity: 0.8, marginTop: 2 }}>
+              <div style={{ fontSize: 12, opacity: 0.8, marginTop: 2 }}>
                 Try Slow preset below, wait 2-3 min, then Resume.
               </div>
             </div>
@@ -125,7 +125,7 @@ export default function SnapshotPanel({
               <span className="dot" style={{ width: 8, height: 8, background: 'var(--text-faint)', borderRadius: 999 }} />
             )}
             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, letterSpacing: '-0.01em' }}>{stateTitle}</h2>
-            {scopeLabel && <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>· {scopeLabel}</span>}
+            {scopeLabel && <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>· {scopeLabel}</span>}
             <div style={{ flex: 1 }} />
             <button className="btn btn-ghost btn-sm" onClick={onClose} title="Close"><Icon name="x" size={13} /></button>
           </div>
@@ -147,7 +147,7 @@ export default function SnapshotPanel({
                       padding: '8px 10px', borderRadius: 7,
                       background: active ? 'var(--bg-raised)' : 'transparent',
                       color: active ? 'var(--text)' : 'var(--text-muted)',
-                      fontSize: 12, fontWeight: active ? 600 : 500,
+                      fontSize: 13, fontWeight: active ? 600 : 500,
                       boxShadow: active ? '0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,0.04)' : 'none',
                       border: 0,
                       cursor: running ? 'not-allowed' : 'pointer',
@@ -156,9 +156,9 @@ export default function SnapshotPanel({
                     }}
                   >
                     <div style={{ fontWeight: active ? 600 : 500 }}>
-                      {p.label}{key === 'slow' && <span style={{ color: 'var(--pos)', marginLeft: 6, fontSize: 10.5, fontWeight: 600 }}>SAFE</span>}
+                      {p.label}{key === 'slow' && <span style={{ color: 'var(--pos)', marginLeft: 6, fontSize: 11.5, fontWeight: 600 }}>SAFE</span>}
                     </div>
-                    <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>
+                    <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>
                       {p.workers}w · {p.sleepMs}ms
                     </div>
                   </button>
@@ -175,7 +175,7 @@ export default function SnapshotPanel({
           ) : summary.aborted ? (
             <button className="btn btn-primary" onClick={onResume} style={{ height: 40 }}>
               <Icon name="play" size={12} /> Resume
-              <span style={{ fontSize: 10.5, color: 'var(--accent-tint)', marginLeft: 8, fontWeight: 500 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--accent-tint)', marginLeft: 8, fontWeight: 500 }}>
                 — skip {summary.completed} already done
               </span>
             </button>
@@ -200,11 +200,11 @@ export default function SnapshotPanel({
                 <span className="hero-num" style={{ fontSize: 22, color: summary.aborted && !isUserCancelled ? 'var(--neg)' : 'var(--text)' }}>
                   {pct}%
                 </span>
-                <span className="num" style={{ fontSize: 12, color: 'var(--text-muted)' }}>{summary.completed} / {summary.total}</span>
+                <span className="num" style={{ fontSize: 13, color: 'var(--text-muted)' }}>{summary.completed} / {summary.total}</span>
                 {summary.currentLocale && running && (
                   <>
                     <span style={{ flex: 1 }} />
-                    <span style={{ fontSize: 11.5, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontSize: 12.5, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                       <Flag code={summary.currentLocale.toUpperCase()} size={12} />
                       {summary.currentLocale.toUpperCase()}
                     </span>
@@ -227,7 +227,7 @@ export default function SnapshotPanel({
         <div ref={scrollRef} style={{ flex: 1, overflow: 'auto', padding: '4px 0' }}>
           {Object.entries(groupedByLocale).map(([loc, items]) => (
             <div key={loc}>
-              <div style={{ position: 'sticky', top: 0, background: 'var(--bg-sunken)', padding: '6px 16px', fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-subtle)' }}>
+              <div style={{ position: 'sticky', top: 0, background: 'var(--bg-sunken)', padding: '6px 16px', fontSize: 11.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-subtle)' }}>
                 <Flag code={loc.toUpperCase()} size={12} />
                 <span>{loc.toUpperCase()}</span>
                 <div style={{ flex: 1 }} />
@@ -238,11 +238,11 @@ export default function SnapshotPanel({
                 const rank = it.position;
                 const tone = rank == null ? 'muted' : rank <= 10 ? 'pos' : rank <= 50 ? 'neg' : 'muted';
                 return (
-                  <div key={i} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div key={i} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, borderBottom: '1px solid var(--border-subtle)' }}>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{it.keyword}</span>
-                    {isErr ? <span style={{ fontSize: 11, color: 'var(--neg)' }} title={it.error}>error</span>
+                    {isErr ? <span style={{ fontSize: 12, color: 'var(--neg)' }} title={it.error}>error</span>
                       : rank != null && rank > 0 ? <RankPill rank={rank} />
-                      : <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>— not ranked</span>}
+                      : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— not ranked</span>}
                     <span className="dot" style={{ width: 7, height: 7, background: isErr ? 'var(--neg)' : tone === 'pos' ? 'var(--pos)' : tone === 'neg' ? 'var(--neg)' : 'var(--text-faint)' }} />
                   </div>
                 );
@@ -260,7 +260,7 @@ export default function SnapshotPanel({
         </div>
 
         {summary.aborted && summary.reason && (
-          <div style={{ padding: 12, borderTop: '1px solid var(--border-subtle)', fontSize: 11, color: 'var(--neg)' }}>
+          <div style={{ padding: 12, borderTop: '1px solid var(--border-subtle)', fontSize: 12, color: 'var(--neg)' }}>
             {summary.reason}
           </div>
         )}

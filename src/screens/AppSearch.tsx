@@ -125,17 +125,17 @@ export default function AppSearch({ onClose, onTrack }: Props) {
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.trackName}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {r.artistName}
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
                   {r.primaryGenreName && <Badge tone="neutral">{r.primaryGenreName}</Badge>}
-                  {r.averageUserRating != null && <span style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>⭐ {r.averageUserRating.toFixed(2)}</span>}
-                  <span style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{r.bundleId}</span>
-                  <span style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>· id={r.trackId}</span>
+                  {r.averageUserRating != null && <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>⭐ {r.averageUserRating.toFixed(2)}</span>}
+                  <span style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{r.bundleId}</span>
+                  <span style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>· id={r.trackId}</span>
                 </div>
               </div>
-              <div style={{ color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, flexShrink: 0 }}>
+              <div style={{ color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, flexShrink: 0 }}>
                 <Icon name="plus" size={11} /> Track
               </div>
             </button>

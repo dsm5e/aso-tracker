@@ -95,7 +95,7 @@ export async function lookupItunes(
 export interface Position {
   position: number | null;
   total: number;
-  top5: Array<{ name: string; id: string; dev: string }>;
+  top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
 }
 
 export function findPosition(results: SearchResult[], match: string): Position {
@@ -108,10 +108,14 @@ export function findPosition(results: SearchResult[], match: string): Position {
       break;
     }
   }
-  const top5 = results.slice(0, 5).map((a) => ({
+  // Capture top-6 so after excluding ourselves (when we rank in top-5)
+  // we still have 5 real competitors to display.
+  const top5 = results.slice(0, 6).map((a, i) => ({
     name: a.trackName || '',
     id: a.bundleId || '',
     dev: a.artistName || '',
+    tid: a.trackId,
+    pos: i + 1,
   }));
   return { position, total: results.length, top5 };
 }

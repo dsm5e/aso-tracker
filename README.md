@@ -4,6 +4,14 @@
 
 Stop paying $500/mo to Sensor Tower or AppTweak. Track your App Store keyword positions across every locale, on your own machine, for free.
 
+## Demo
+
+https://github.com/user-attachments/assets/placeholder — see [`docs/demo.mp4`](docs/demo.mp4)
+
+<p align="center">
+  <video src="docs/demo.mp4" autoplay loop muted playsinline width="720"></video>
+</p>
+
 ## Features
 
 - 🔍 **Per-keyword, per-locale position tracking** across 50+ countries

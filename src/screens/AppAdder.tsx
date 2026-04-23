@@ -111,7 +111,7 @@ export default function AppAdder({ onClose, onAdded, initialITunesId }: Props) {
         <header style={{ padding: '20px 24px 12px', display: 'flex', alignItems: 'flex-start', gap: 12 }}>
           <div style={{ flex: 1 }}>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, letterSpacing: '-0.02em' }}>Add an app</h2>
-            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Verify the iTunes ID, then confirm bundle + display name.</div>
+            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Verify the iTunes ID, then confirm bundle + display name.</div>
           </div>
           <button className="btn btn-ghost btn-sm" onClick={onClose}><Icon name="x" size={13} /></button>
         </header>
@@ -122,7 +122,7 @@ export default function AppAdder({ onClose, onAdded, initialITunesId }: Props) {
             <label className="label" style={{ display: 'block', marginBottom: 6 }}>iTunes App ID</label>
             <div style={{ display: 'flex', gap: 8 }}>
               <div style={{ flex: 1, display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--bg-sunken)', borderRadius: 10, padding: '0 12px', height: 36, boxShadow: 'inset 0 0 0 1px var(--border-subtle)' }}>
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 12, color: 'var(--text-muted)' }}>id=</span>
+                <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--text-muted)' }}>id=</span>
                 <input
                   value={iTunesId}
                   onChange={(e) => { setITunesId(e.target.value.replace(/[^0-9]/g, '')); setLookup(null); setTestError(null); }}
@@ -140,14 +140,14 @@ export default function AppAdder({ onClose, onAdded, initialITunesId }: Props) {
                 )}
               </button>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-faint)', marginTop: 6 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-faint)', marginTop: 6 }}>
               Find the ID in the App Store URL: <code>https://apps.apple.com/app/id<b>324684580</b></code>
             </div>
           </div>
 
           {/* Result card */}
           {testError && (
-            <div style={{ background: '#FFE8E2', color: '#B8270A', padding: '12px 16px', borderRadius: 10, fontSize: 12, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <div style={{ background: '#FFE8E2', color: '#B8270A', padding: '12px 16px', borderRadius: 10, fontSize: 13, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
               <Icon name="alert" size={14} style={{ marginTop: 2 }} />
               <div>{testError}</div>
             </div>
@@ -160,19 +160,19 @@ export default function AppAdder({ onClose, onAdded, initialITunesId }: Props) {
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: '-0.01em' }}>{lookup.trackName}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{lookup.artistName}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', marginTop: 2 }}>{lookup.artistName}</div>
                 <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
                   {lookup.primaryGenreName && <Badge tone="neutral">{lookup.primaryGenreName}</Badge>}
                   {lookup.averageUserRating != null && (
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                       ⭐ {lookup.averageUserRating.toFixed(2)}
                       {lookup.userRatingCount ? ` (${lookup.userRatingCount.toLocaleString()})` : ''}
                     </span>
                   )}
-                  <span style={{ fontSize: 10.5, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{lookup.bundleId}</span>
+                  <span style={{ fontSize: 11.5, color: 'var(--text-faint)', fontFamily: 'var(--mono)' }}>{lookup.bundleId}</span>
                 </div>
               </div>
-              <div style={{ color: 'var(--pos)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600 }}>
+              <div style={{ color: 'var(--pos)', display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 13, fontWeight: 600 }}>
                 <Icon name="check-circle" size={14} /> Match confirmed
               </div>
             </div>
@@ -187,10 +187,10 @@ export default function AppAdder({ onClose, onAdded, initialITunesId }: Props) {
                   value={bundle}
                   onChange={(e) => setBundle(e.target.value)}
                   placeholder="com.example.app"
-                  style={{ flex: 1, fontSize: 12.5, fontFamily: 'var(--mono)', background: 'transparent', border: 0, color: 'var(--text)', outline: 'none' }}
+                  style={{ flex: 1, fontSize: 13.5, fontFamily: 'var(--mono)', background: 'transparent', border: 0, color: 'var(--text)', outline: 'none' }}
                 />
               </div>
-              <div style={{ fontSize: 10.5, color: 'var(--text-faint)', marginTop: 4 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--text-faint)', marginTop: 4 }}>
                 Used to detect your app in iTunes results (prefix match).
               </div>
             </div>

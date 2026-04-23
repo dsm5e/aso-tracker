@@ -16,13 +16,13 @@ const MetricTile = ({ label, value, delta, tone = "neutral", spark, suffix = "" 
       boxShadow: "inset 0 0 0 1px var(--border-subtle)",
       minWidth: 0,
     }}>
-      <div className="label" style={{ fontSize: 10.5, marginBottom: 8, color: "var(--text-muted)" }}>{label}</div>
+      <div className="label" style={{ fontSize: 11.5, marginBottom: 8, color: "var(--text-muted)" }}>{label}</div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: spark ? 6 : 0 }}>
         <span className="hero-num" style={{ fontSize: 30, color: "var(--text)", lineHeight: 1 }}>
           {value}<span style={{ fontSize: 16, color: "var(--text-muted)", marginLeft: 2 }}>{suffix}</span>
         </span>
         {delta != null && (
-          <span className={`num ${deltaTone === "pos" ? "delta-pos" : "delta-neg"}`} style={{ fontSize: 11.5, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 2 }}>
+          <span className={`num ${deltaTone === "pos" ? "delta-pos" : "delta-neg"}`} style={{ fontSize: 12.5, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 2 }}>
             <span>{delta > 0 ? "↑" : "↓"}</span>{Math.abs(delta)}
           </span>
         )}
@@ -51,7 +51,7 @@ const LocaleStrip = ({ stats }) => {
         }}>
           <Flag code={s.code} size={13} />
           <span className="num" style={{
-            fontSize: 11, fontWeight: 500,
+            fontSize: 12, fontWeight: 500,
             color: "var(--text-2)",
           }}>{`#${s.avg}`}</span>
           <span className={`dot dot-${statusFromAvg(s.avg)}`} />
@@ -64,7 +64,7 @@ const LocaleStrip = ({ stats }) => {
           background: "var(--bg-sunken)",
           boxShadow: "inset 0 0 0 1px var(--border-subtle)",
           color: "var(--text-muted)",
-          fontSize: 11, fontWeight: 500,
+          fontSize: 12, fontWeight: 500,
         }}>
           <span className="dot dot-gray" />
           +{unrankedCount} unranked
@@ -83,11 +83,11 @@ const MoverChip = ({ item, tone }) => (
     background: tone === "pos" ? "var(--pos-tint)" : "var(--neg-tint)",
     color: tone === "pos" ? "var(--pos)" : "var(--neg)",
   }}>
-    <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-2)", letterSpacing: "-0.005em" }}>{item.kw}</span>
-    <span className="num" style={{ fontSize: 11.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 2 }}>
+    <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-2)", letterSpacing: "-0.005em" }}>{item.kw}</span>
+    <span className="num" style={{ fontSize: 12.5, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 2 }}>
       <span>{tone === "pos" ? "↑" : "↓"}</span>{Math.abs(item.delta)}
     </span>
-    <span className="num" style={{ fontSize: 10.5, color: "var(--text-faint)" }}>
+    <span className="num" style={{ fontSize: 11.5, color: "var(--text-faint)" }}>
       #{item.from}→#{item.to}
     </span>
   </div>
@@ -109,9 +109,9 @@ const AppCard = ({ app, onOpen, onRun, localeStats: localeStatsProp }) => {
             <Badge>{app.keywords} keywords</Badge>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3 }}>
-            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{app.tagline}</span>
-            <span style={{ fontSize: 11, color: "var(--text-faint)" }}>·</span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, color: "var(--text-muted)" }}>
+            <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{app.tagline}</span>
+            <span style={{ fontSize: 12, color: "var(--text-faint)" }}>·</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12.5, color: "var(--text-muted)" }}>
               <Icon name="clock" size={11} stroke={1.8} />
               Snapshot {app.lastSnapshot}
             </span>
@@ -120,10 +120,6 @@ const AppCard = ({ app, onOpen, onRun, localeStats: localeStatsProp }) => {
         <button className="btn btn-ghost btn-sm" onClick={onOpen}>
           Open
           <Icon name="arrow-right" size={12} />
-        </button>
-        <button className="btn btn-primary" onClick={onRun}>
-          <Icon name="play" size={11} />
-          Run snapshot
         </button>
       </div>
 
@@ -140,9 +136,9 @@ const AppCard = ({ app, onOpen, onRun, localeStats: localeStatsProp }) => {
         <div className="label" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
           <span>Locales · {localeStats.length} tracked</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 10, marginLeft: "auto", textTransform: "none", letterSpacing: 0, fontWeight: 400 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className="dot dot-pos" /> <span style={{ fontSize: 10.5 }}>Top 10</span></span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className="dot dot-neg" /> <span style={{ fontSize: 10.5 }}>Top 50</span></span>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className="dot dot-gray" /> <span style={{ fontSize: 10.5 }}>Unranked</span></span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className="dot dot-pos" /> <span style={{ fontSize: 11.5 }}>Top 10</span></span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className="dot dot-neg" /> <span style={{ fontSize: 11.5 }}>Top 50</span></span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><span className="dot dot-gray" /> <span style={{ fontSize: 11.5 }}>Unranked</span></span>
           </span>
         </div>
         <LocaleStrip stats={localeStats} />
@@ -192,7 +188,7 @@ const TopBar = ({ theme, onToggleTheme, onCmdK, active = "Overview", onNavigate 
       }}>◇</div>
       <div>
         <div style={{ fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.01em" }}>ASO Tracker</div>
-        <div style={{ fontSize: 10.5, color: "var(--text-muted)", letterSpacing: "0.02em" }}>v0.4.1 · self-hosted</div>
+        <div style={{ fontSize: 11.5, color: "var(--text-muted)", letterSpacing: "0.02em" }}>v0.4.1 · self-hosted</div>
       </div>
     </div>
 
@@ -241,7 +237,7 @@ const TopBar = ({ theme, onToggleTheme, onCmdK, active = "Overview", onNavigate 
       width: 30, height: 30, borderRadius: 999,
       background: "linear-gradient(135deg, #FFC9B8 0%, #FF5C3C 100%)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      color: "#fff", fontSize: 11, fontWeight: 600,
+      color: "#fff", fontSize: 12, fontWeight: 600,
       boxShadow: "inset 0 0 0 1.5px var(--bg-raised)",
     }}>JS</div>
   </header>
@@ -276,7 +272,7 @@ const OverviewStrip = ({ apps }) => {
           display: "flex", flexDirection: "column", justifyContent: "center", gap: 4,
           minWidth: 0,
         }}>
-          <div className="label" style={{ fontSize: 10.5 }}>{c.label}</div>
+          <div className="label" style={{ fontSize: 11.5 }}>{c.label}</div>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
             <span className="hero-num" style={{
               fontSize: 28,
@@ -284,7 +280,7 @@ const OverviewStrip = ({ apps }) => {
             }}>{c.value}</span>
             {c.clock && <span className="dot dot-pos" style={{ animation: "pulse 2s infinite" }} />}
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{c.sub}</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.sub}</div>
         </div>
       ))}
     </div>
@@ -302,7 +298,7 @@ const DashboardScreen = ({ theme = "light", onToggleTheme, onCmdK, onOpenApp, on
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: "-0.02em" }}>Good morning</h1>
-          <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 2 }}>{today} · {apps.length} apps · {totalKw.toLocaleString()} keywords tracked</div>
+          <div style={{ fontSize: 13.5, color: "var(--text-muted)", marginTop: 2 }}>{today} · {apps.length} apps · {totalKw.toLocaleString()} keywords tracked</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           <button className="btn btn-sm" onClick={onAddApp}>
