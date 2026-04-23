@@ -48,6 +48,10 @@ export default function SnapshotPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const summary = useMemo(() => {
+    // Accumulate across resume cycles: each server run sends its own {type:'start', total:<remaining>}
+    // and counts keyword events from 1. To show continuous progress we count keyword events as
+    // the real `completed` and lift `total` on each new start by adding its total to what we
+    // already had, so the bar never jumps back to 0.
     let total = 0;
     let completed = 0;
     let currentLocale: string | undefined;
@@ -56,23 +60,30 @@ export default function SnapshotPanel({
     let done = false;
     const keywordEvents: SnapshotEvent[] = [];
     for (const e of events) {
-      if (e.type === 'start' && e.total != null) total = e.total;
-      else if (e.type === 'locale' && e.locale) currentLocale = e.locale;
+      if (e.type === 'start' && e.total != null) {
+        // New session's total = what we've already processed + this run's remaining.
+        total = completed + e.total;
+        // A fresh start clears abort/done flags from the previous run — we're back in motion.
+        aborted = false;
+        reason = undefined;
+        done = false;
+      } else if (e.type === 'locale' && e.locale) currentLocale = e.locale;
       else if (e.type === 'keyword') {
-        completed = e.completed ?? completed;
+        completed += 1;
         keywordEvents.push(e);
       } else if (e.type === 'abort') {
         aborted = true;
         reason = e.reason;
       } else if (e.type === 'done') {
         done = true;
-        completed = e.completed ?? completed;
       }
     }
+    // Guard: if total somehow slipped below completed, keep them in sync.
+    if (total < completed) total = completed;
     return { total, completed, currentLocale, aborted, reason, done, keywordEvents };
   }, [events]);
 
-  const isRateLimitAbort = summary.aborted && (summary.reason || '').toLowerCase().includes('502');
+  const isRateLimitAbort = summary.aborted && /(403|429|502|503|504|rate|throttl)/i.test(summary.reason || '');
   const isUserCancelled = summary.aborted && (summary.reason || '').toLowerCase().includes('cancelled');
 
   const groupedByLocale = useMemo(() => {
@@ -85,8 +96,13 @@ export default function SnapshotPanel({
     return groups;
   }, [summary.keywordEvents]);
 
+  // Auto-follow the bottom only while the user already is near the bottom.
+  // Prevents "snap-to-bottom" when the user manually scrolled up to inspect an error.
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const el = scrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    if (distanceFromBottom < 80) el.scrollTop = el.scrollHeight;
   }, [events.length]);
 
   const pct = summary.total ? Math.round((summary.completed / summary.total) * 100) : 0;
