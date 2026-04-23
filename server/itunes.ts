@@ -35,6 +35,10 @@ async function throttle(sleepMs: number) {
   nextAllowedAt = Math.max(nextAllowedAt, Date.now()) + sleepMs;
 }
 
+// iTunes returns 403/429 when IP is throttled, 502/503/504 when overloaded.
+// Treat all of these as transient — pause + retry. Persistent = RateLimited (aborts snapshot).
+const RATE_LIMIT_STATUSES = new Set([403, 429, 502, 503, 504]);
+
 export async function searchItunes(
   country: string,
   term: string,
@@ -50,32 +54,41 @@ export async function searchItunes(
   });
   await throttle(sleepMs);
 
-  for (let attempt = 0; attempt < 2; attempt++) {
+  // Up to 3 attempts: immediate, +5s, +30s. If still throttled → RateLimited.
+  const backoffs = [0, 5_000, 30_000];
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt < backoffs.length; attempt++) {
+    if (backoffs[attempt] > 0) {
+      await new Promise((r) => setTimeout(r, backoffs[attempt]));
+    }
     try {
       const res = await fetch(`${BASE}/search?${params}`, {
         headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.1 (self-hosted)' },
         signal: AbortSignal.timeout(30_000),
       });
-      if (res.status === 502) {
-        if (attempt === 0) {
-          await new Promise((r) => setTimeout(r, 3000));
-          continue;
-        }
-        throw new RateLimited(`iTunes 502 twice for ${cc}/${term}`);
+      if (RATE_LIMIT_STATUSES.has(res.status)) {
+        lastErr = new Error(`iTunes throttled (HTTP ${res.status}) for ${cc}/${term}`);
+        console.warn(`[itunes] ${cc}/"${term}" → HTTP ${res.status} (attempt ${attempt + 1}/${backoffs.length})`);
+        continue;
       }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`iTunes HTTP ${res.status} for ${cc}/${term}`);
       const data = (await res.json()) as { results?: SearchResult[] };
       return data.results || [];
     } catch (e) {
-      if (e instanceof RateLimited) throw e;
-      if (attempt === 0) {
-        await new Promise((r) => setTimeout(r, 3000));
+      const err = e as Error;
+      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
+        lastErr = new Error(`iTunes timeout (30s) for ${cc}/${term}`);
+        console.warn(`[itunes] ${cc}/"${term}" → timeout (attempt ${attempt + 1}/${backoffs.length})`);
         continue;
       }
-      throw e;
+      // Non-retriable (bad URL, parse error, etc.)
+      throw err;
     }
   }
-  return [];
+  // Persistent throttle → abort snapshot with readable reason.
+  throw new RateLimited(
+    `iTunes is rate-limiting your IP (persistent ${lastErr?.message || 'errors'}). Wait 2–5 min and Resume.`
+  );
 }
 
 export async function lookupItunes(

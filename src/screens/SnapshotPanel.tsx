@@ -2,6 +2,22 @@ import { useEffect, useMemo, useRef } from 'react';
 import { Icon, Flag, RankPill } from '../design/primitives.jsx';
 import { SPEED_PRESETS, type SnapshotEvent, type SnapshotSpeed } from '../api';
 
+function shortError(msg?: string): string {
+  if (!msg) return 'error';
+  const m = msg.toLowerCase();
+  const http = msg.match(/http (\d{3})/i);
+  if (http) {
+    const code = http[1];
+    if (code === '403' || code === '429') return `throttled ${code}`;
+    if (code === '502' || code === '503' || code === '504') return `server ${code}`;
+    return `http ${code}`;
+  }
+  if (m.includes('timeout')) return 'timeout';
+  if (m.includes('rate') || m.includes('throttl')) return 'rate limit';
+  if (m.includes('network') || m.includes('fetch')) return 'network';
+  return msg.length > 24 ? msg.slice(0, 24) + '…' : msg;
+}
+
 interface Props {
   events: SnapshotEvent[];
   running: boolean;
@@ -240,7 +256,7 @@ export default function SnapshotPanel({
                 return (
                   <div key={i} style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, borderBottom: '1px solid var(--border-subtle)' }}>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 500 }}>{it.keyword}</span>
-                    {isErr ? <span style={{ fontSize: 12, color: 'var(--neg)' }} title={it.error}>error</span>
+                    {isErr ? <span style={{ fontSize: 12, color: 'var(--neg)' }} title={it.error}>{shortError(it.error)}</span>
                       : rank != null && rank > 0 ? <RankPill rank={rank} />
                       : <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>— not ranked</span>}
                     <span className="dot" style={{ width: 7, height: 7, background: isErr ? 'var(--neg)' : tone === 'pos' ? 'var(--pos)' : tone === 'neg' ? 'var(--neg)' : 'var(--text-faint)' }} />
