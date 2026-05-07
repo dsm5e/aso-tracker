@@ -4,7 +4,7 @@
 
 Stop paying \$500/mo to Sensor Tower / AppTweak / SplitMetrics. ASO Studio runs on your machine, uses public APIs where possible, and stores everything locally.
 
-https://github.com/dsm5e/aso-tracker/raw/main/docs/demo.mp4
+<video src="https://github.com/dsm5e/aso-tracker/raw/main/docs/demo.mp4" controls width="100%"></video>
 
 ## What's inside
 
@@ -116,11 +116,13 @@ Each treatment uses a locked **palette + atmosphere + lighting + signature eleme
 
 Three UGC ad creatives generated end-to-end by the video sub-tool — script → voiceover → b-roll selection → captions → endcard:
 
-https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-1.mp4
-
-https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-2.mp4
-
-https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-3.mp4
+<table>
+  <tr>
+    <td><video src="https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-1.mp4" controls width="100%"></video></td>
+    <td><video src="https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-2.mp4" controls width="100%"></video></td>
+    <td><video src="https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-3.mp4" controls width="100%"></video></td>
+  </tr>
+</table>
 
 ## LLM context
 

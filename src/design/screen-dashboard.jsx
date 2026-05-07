@@ -279,7 +279,7 @@ const BrandSwitcher = ({ current }) => {
 };
 
 // ----- Top bar -----
-const TopBar = ({ theme, onToggleTheme, onCmdK, active = "Overview", onNavigate }) => (
+const TopBar = ({ theme, onToggleTheme, onCmdK, onSettings, active = "Overview", onNavigate }) => (
   <header style={{
     display: "flex", alignItems: "center", gap: 16,
     padding: "18px 28px",
@@ -328,7 +328,7 @@ const TopBar = ({ theme, onToggleTheme, onCmdK, active = "Overview", onNavigate 
     <button className="btn btn-sm" onClick={onToggleTheme} title="Toggle theme">
       <Icon name={theme === "dark" ? "sun" : "moon"} size={13} />
     </button>
-    <button className="btn btn-sm">
+    <button className="btn btn-sm" onClick={onSettings} title="API keys & settings">
       <Icon name="settings" size={13} />
     </button>
     <div style={{
@@ -385,13 +385,13 @@ const OverviewStrip = ({ apps }) => {
   );
 };
 
-const DashboardScreen = ({ theme = "light", onToggleTheme, onCmdK, onOpenApp, onRunAll, onNavigate, onAddApp, apps: appsProp, localeStatsByApp = {} }) => {
+const DashboardScreen = ({ theme = "light", onToggleTheme, onCmdK, onSettings, onOpenApp, onRunAll, onNavigate, onAddApp, apps: appsProp, localeStatsByApp = {} }) => {
   const apps = appsProp ?? APPS_MOCK;
   const totalKw = apps.reduce((a, b) => a + b.keywords, 0);
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   return (
   <div className="app" data-theme={theme} style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
-    <TopBar theme={theme} onToggleTheme={onToggleTheme} onCmdK={onCmdK} active="Overview" onNavigate={onNavigate} />
+    <TopBar theme={theme} onToggleTheme={onToggleTheme} onCmdK={onCmdK} onSettings={onSettings} active="Overview" onNavigate={onNavigate} />
     <div style={{ flex: 1, overflow: "auto", padding: "24px 28px 40px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 18 }}>
         <div>

@@ -10,6 +10,7 @@ interface Props {
   apps: AppStats[];
   onToggleTheme: () => void;
   onCmdK: () => void;
+  onSettings?: () => void;
   onNavigate: (label: string) => void;
 }
 
@@ -19,7 +20,7 @@ const PERIOD_LABEL: Record<Period, string> = {
   month: 'vs 30d ago',
 };
 
-export default function AnalyticsScreen({ theme, apps, onToggleTheme, onCmdK, onNavigate }: Props) {
+export default function AnalyticsScreen({ theme, apps, onToggleTheme, onCmdK, onSettings, onNavigate }: Props) {
   const [period, setPeriod] = useState<Period>('week');
   const [appFilter, setAppFilter] = useState<string>(''); // '' = all
   const [data, setData] = useState<MoversResponse | null>(null);
@@ -41,7 +42,7 @@ export default function AnalyticsScreen({ theme, apps, onToggleTheme, onCmdK, on
 
   return (
     <div className="app" data-theme={theme} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-      <TopBar theme={theme} onToggleTheme={onToggleTheme} onCmdK={onCmdK} active="Analytics" onNavigate={onNavigate} />
+      <TopBar theme={theme} onToggleTheme={onToggleTheme} onCmdK={onCmdK} onSettings={onSettings} active="Analytics" onNavigate={onNavigate} />
       <div style={{ padding: '24px 28px 60px', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
 
         {/* Header row */}

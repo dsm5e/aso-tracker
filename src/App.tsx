@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DashboardScreen, TopBar } from './design/screen-dashboard.jsx';
+import SettingsModal from './components/SettingsModal';
 import AppDetailScreen from './screens/AppDetail';
 import KeywordsEditor from './screens/KeywordsEditor';
 import AppAdder from './screens/AppAdder';
@@ -25,6 +26,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('dashboard');
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   const [cmdOpen, setCmdOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [snapshotOpen, setSnapshotOpen] = useState(false);
   const [appAdderOpen, setAppAdderOpen] = useState(false);
 
@@ -191,6 +193,7 @@ export default function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           onCmdK={() => setCmdOpen(true)}
+          onSettings={() => setSettingsOpen(true)}
           onOpenApp={(app: AppStats) => openApp(app.id)}
           onRunAll={() => openSnapshotPanel({ label: 'All apps, all locales' })}
           onAddApp={() => setAppAdderOpen(true)}
@@ -206,6 +209,7 @@ export default function App() {
           theme={theme}
           onBack={() => { setScreen('dashboard'); setSelectedAppId(null); }}
           onCmdK={() => setCmdOpen(true)}
+          onSettings={() => setSettingsOpen(true)}
           onToggleTheme={toggleTheme}
           onNavigate={handleNavigate}
           onOpenCompetitor={(bundleId) => setCompetitorSheet({ appId: selectedApp.id, bundleId })}
@@ -242,6 +246,7 @@ export default function App() {
           apps={apps ?? []}
           onToggleTheme={toggleTheme}
           onCmdK={() => setCmdOpen(true)}
+          onSettings={() => setSettingsOpen(true)}
           onNavigate={handleNavigate}
         />
       )}
@@ -252,6 +257,7 @@ export default function App() {
           apps={apps}
           onToggleTheme={toggleTheme}
           onCmdK={() => setCmdOpen(true)}
+          onSettings={() => setSettingsOpen(true)}
           onNavigate={handleNavigate}
           onRunLocale={(appId, loc) => openSnapshotPanel({
             appIds: [appId],
@@ -351,6 +357,8 @@ export default function App() {
         />
       )}
 
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+
       {competitorSheet && (
         <CompetitorSheet
           appId={competitorSheet.appId}
@@ -382,12 +390,12 @@ export default function App() {
   );
 }
 
-function StandaloneKeywordsScreen({ theme, apps, onToggleTheme, onCmdK, onNavigate, onRunLocale }: { theme: string; apps: AppStats[]; onToggleTheme: () => void; onCmdK: () => void; onNavigate: (label: string) => void; onRunLocale: (appId: string, locale: string) => void }) {
+function StandaloneKeywordsScreen({ theme, apps, onToggleTheme, onCmdK, onSettings, onNavigate, onRunLocale }: { theme: string; apps: AppStats[]; onToggleTheme: () => void; onCmdK: () => void; onSettings?: () => void; onNavigate: (label: string) => void; onRunLocale: (appId: string, locale: string) => void }) {
   const [selectedId, setSelectedId] = useState(apps[0].id);
   const selected = apps.find((a) => a.id === selectedId) ?? apps[0];
   return (
     <div className="app" data-theme={theme} style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-      <TopBar theme={theme} onToggleTheme={onToggleTheme} onCmdK={onCmdK} active="Keywords" onNavigate={onNavigate} />
+      <TopBar theme={theme} onToggleTheme={onToggleTheme} onCmdK={onCmdK} onSettings={onSettings} active="Keywords" onNavigate={onNavigate} />
       <div style={{ padding: '24px 28px 40px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em' }}>Keywords</h1>

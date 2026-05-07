@@ -1,7 +1,7 @@
 {
   "name": "aso-tracker-oss",
   "private": true,
-  "version": "2.0.0",
+  "version": "2.1.0",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n vite,api -c magenta,cyan \"npm:dev:vite\" \"npm:dev:api\"",

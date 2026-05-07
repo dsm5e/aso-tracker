@@ -22,6 +22,7 @@ interface Props {
   onBack: () => void;
   onCmdK: () => void;
   onToggleTheme: () => void;
+  onSettings?: () => void;
   onNavigate?: (label: string) => void;
   onOpenCompetitor: (bundleId: string) => void;
   onRunSnapshot: (opts?: { locales?: string[] }) => void;
@@ -36,6 +37,7 @@ export default function AppDetailScreen({
   onBack,
   onCmdK,
   onToggleTheme,
+  onSettings,
   onNavigate,
   onOpenCompetitor,
   onRunSnapshot,
@@ -82,7 +84,7 @@ export default function AppDetailScreen({
   return (
     <div className="app" data-theme={theme} style={{ width: '100%', minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
       {/* Keep the same top bar so navigation stays consistent */}
-      <TopBar theme={theme} onToggleTheme={onToggleTheme} onCmdK={onCmdK} active="Apps" onNavigate={onNavigate} />
+      <TopBar theme={theme} onToggleTheme={onToggleTheme} onCmdK={onCmdK} onSettings={onSettings} active="Apps" onNavigate={onNavigate} />
 
       {/* Header row */}
       <header style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '18px 28px', borderBottom: '1px solid var(--border-subtle)' }}>
