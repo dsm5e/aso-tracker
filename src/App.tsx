@@ -7,13 +7,15 @@ import AppSearch from './screens/AppSearch';
 import SnapshotPanel from './screens/SnapshotPanel';
 import CompetitorSheet from './screens/CompetitorSheet';
 import { AppIcon } from './design/primitives.jsx';
-import { api, runSnapshot, type AppStats, type LocaleAvg, type SnapshotEvent, type SnapshotSpeed } from './api';
+import AnalyticsScreen from './screens/Analytics';
+import { api, runSnapshot, getSnapshotState, subscribeToSnapshot, abortSnapshot as serverAbortSnapshot, SPEED_PRESETS, type AppStats, type LocaleAvg, type SnapshotEvent, type SnapshotSpeed } from './api';
 
-type Screen = 'dashboard' | 'app-detail' | 'keywords';
+type Screen = 'dashboard' | 'app-detail' | 'keywords' | 'analytics';
 
 const NAV_TO_SCREEN: Record<string, Screen> = {
   Overview: 'dashboard',
   Keywords: 'keywords',
+  Analytics: 'analytics',
 };
 
 export default function App() {
@@ -34,9 +36,22 @@ export default function App() {
   const [snapshotRunning, setSnapshotRunning] = useState(false);
   const [snapshotAbort, setSnapshotAbort] = useState<AbortController | null>(null);
   const [snapshotSpeed, setSnapshotSpeed] = useState<SnapshotSpeed>(
-    () => (localStorage.getItem('snapshotSpeed') as SnapshotSpeed) ?? 'medium'
+    () => {
+      const v = localStorage.getItem('snapshotSpeed') as SnapshotSpeed | 'fast' | null;
+      return v === 'medium' || v === 'slow' ? v : 'medium';
+    }
   );
   useEffect(() => { localStorage.setItem('snapshotSpeed', snapshotSpeed); }, [snapshotSpeed]);
+
+  // Live speed change: when user picks a preset while a snapshot is running, push it to the
+  // server so the in-flight worker pool picks up the new pacing without restarting.
+  const handleSpeedChange = useCallback((s: SnapshotSpeed) => {
+    setSnapshotSpeed(s);
+    if (snapshotRunning) {
+      const p = SPEED_PRESETS[s];
+      api.setSnapshotSpeed(p.sleepMs, p.workers).catch(() => {/* ignore — server may have just finished */});
+    }
+  }, [snapshotRunning]);
 
   const loadApps = useCallback(async () => {
     try {
@@ -56,6 +71,37 @@ export default function App() {
   }, []);
 
   useEffect(() => { loadApps(); }, [loadApps]);
+
+  // On mount, ask the server whether a snapshot is mid-flight (started in
+  // a previous browser session, or before the user navigated to Studio and
+  // back). If yes, attach to the live event stream and rebuild local state.
+  useEffect(() => {
+    let cleanup: (() => void) | null = null;
+    let cancelled = false;
+    getSnapshotState()
+      .then((state) => {
+        if (cancelled || !state.running) return;
+        setSnapshotRunning(true);
+        // Replay any prior progress quickly via the lastProgress hint, then
+        // subscribe for live updates. SSE replays buffered events too so we
+        // get the full series including 'start' (with total).
+        if (state.lastProgress) setSnapshotEvents([state.lastProgress]);
+        cleanup = subscribeToSnapshot((ev) => {
+          setSnapshotEvents((evs) => [...evs, ev]);
+          if (ev.type === 'done' || ev.type === 'abort') {
+            setSnapshotRunning(false);
+            cleanup?.();
+            cleanup = null;
+            loadApps();
+          }
+        });
+      })
+      .catch(() => { /* server unreachable — ignore */ });
+    return () => {
+      cancelled = true;
+      cleanup?.();
+    };
+  }, [loadApps]);
 
   useEffect(() => { localStorage.setItem('theme', theme); }, [theme]);
 
@@ -114,6 +160,11 @@ export default function App() {
   }, [snapshotScope, snapshotRunning, runSnapshotInternal]);
 
   const abortSnapshot = useCallback(() => {
+    // Tell the server to set its cancellation flag — the worker exits at the
+    // next chunk regardless of which client / browser tab requested it. The
+    // local AbortController (if we kicked off the run from this tab) gets
+    // signaled too, which closes the EventSource subscription cleanly.
+    void serverAbortSnapshot();
     snapshotAbort?.abort();
   }, [snapshotAbort]);
 
@@ -185,6 +236,16 @@ export default function App() {
         />
       )}
 
+      {screen === 'analytics' && (
+        <AnalyticsScreen
+          theme={theme}
+          apps={apps ?? []}
+          onToggleTheme={toggleTheme}
+          onCmdK={() => setCmdOpen(true)}
+          onNavigate={handleNavigate}
+        />
+      )}
+
       {screen === 'keywords' && (apps && apps.length > 0 ? (
         <StandaloneKeywordsScreen
           theme={theme}
@@ -214,30 +275,52 @@ export default function App() {
           onResume={handleResume}
           onAbort={abortSnapshot}
           speed={snapshotSpeed}
-          onSpeedChange={setSnapshotSpeed}
+          onSpeedChange={handleSpeedChange}
         />
       )}
 
-      {/* Floating mini indicator — shown when snapshot is running but panel is hidden */}
+      {/* Floating mini indicator — top-center, sticky across pages while a
+          snapshot is running anywhere on the server. Click → opens the
+          SnapshotPanel modal and reattaches scope from the live stream if we
+          don't already have one. */}
       {snapshotRunning && !snapshotOpen && (
         <button
-          onClick={() => setSnapshotOpen(true)}
+          onClick={() => {
+            // Re-attach the panel to whatever's running. If user came from
+            // a fresh Tracker mount, snapshotScope is null — pull from
+            // server state for the label.
+            if (!snapshotScope) {
+              getSnapshotState().then((s) => {
+                setSnapshotScope({
+                  appIds: s.options?.appIds,
+                  locales: s.options?.locales,
+                  label: s.options?.appIds?.length
+                    ? `${s.options.appIds.length} app${s.options.appIds.length === 1 ? '' : 's'}`
+                    : 'All apps',
+                });
+                setSnapshotOpen(true);
+              });
+              return;
+            }
+            setSnapshotOpen(true);
+          }}
           style={{
             position: 'fixed',
             top: 14,
-            right: 14,
+            left: '50%',
+            transform: 'translateX(-50%)',
             zIndex: 60,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 10,
-            padding: '8px 14px',
+            padding: '8px 16px',
             background: 'var(--bg-raised)',
             borderRadius: 999,
-            boxShadow: 'inset 0 0 0 1px var(--border), 0 10px 30px -10px rgba(0,0,0,0.2)',
+            boxShadow: 'inset 0 0 0 1px var(--border), 0 12px 30px -10px rgba(0,0,0,0.25)',
             cursor: 'pointer',
             border: 0,
           }}
-          title="Snapshot running — click to reopen panel"
+          title="Snapshot running — click to open progress"
         >
           <span className="dot" style={{ width: 8, height: 8, background: 'var(--accent)', animation: 'pulse 1.4s infinite' }} />
           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>

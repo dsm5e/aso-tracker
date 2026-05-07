@@ -175,10 +175,60 @@ export const api = {
       averageUserRating?: number;
       trackViewUrl?: string;
     }>>(r)),
+  setSnapshotSpeed: (sleepMs: number, workers: number) =>
+    fetch('/api/snapshot/speed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sleepMs, workers }),
+    }).then((r) => j<{ ok: true; runtime: { sleepMs: number; workers: number } }>(r)),
+  movers: (period: 'day' | 'week' | 'month', appId?: string, locale?: string) => {
+    const qs = new URLSearchParams({ period });
+    if (appId) qs.set('app', appId);
+    if (locale) qs.set('locale', locale);
+    return fetch(`/api/analytics/movers?${qs}`).then((r) => j<MoversResponse>(r));
+  },
 };
 
+export interface MoversSummary {
+  totalRanked: number;
+  prevRanked: number;
+  rankedDelta: number;
+  top10: number;
+  prevTop10: number;
+  top10Delta: number;
+  top50: number;
+  prevTop50: number;
+  top50Delta: number;
+  avgPosition: number | null;
+  prevAvgPosition: number | null;
+  avgDelta: number | null;
+  combos: number;
+}
+
+export interface Mover {
+  app: string;
+  appName: string;
+  locale: string;
+  keyword: string;
+  from: number | null;
+  to: number | null;
+  delta: number;
+}
+
+export interface MoversResponse {
+  period: 'day' | 'week' | 'month';
+  days: number;
+  scope: { appId?: string; locale?: string };
+  summary: MoversSummary;
+  perApp: Array<{ id: string; name: string } & MoversSummary>;
+  gainers: Mover[];
+  losers: Mover[];
+  newlyRanked: Mover[];
+  dropouts: Mover[];
+}
+
 export interface SnapshotEvent {
-  type: 'start' | 'locale' | 'keyword' | 'done' | 'abort';
+  type: 'start' | 'locale' | 'keyword' | 'done' | 'abort' | 'throttle' | 'speed';
   total?: number;
   completed?: number;
   locale?: string;
@@ -186,107 +236,117 @@ export interface SnapshotEvent {
   position?: number | null;
   error?: string;
   reason?: string;
+  /** For 'throttle' / 'speed' events */
+  sleepMs?: number;
+  workers?: number;
+  cooldownSec?: number;
+  source?: 'auto' | 'user';
 }
 
-export type SnapshotSpeed = 'fast' | 'medium' | 'slow';
+export type SnapshotSpeed = 'medium' | 'slow';
 
 export const SPEED_PRESETS: Record<SnapshotSpeed, { workers: number; sleepMs: number; label: string; note: string }> = {
-  fast:   { workers: 4, sleepMs: 200, label: 'Fast',   note: 'Aggressive — risk of rate limit' },
   medium: { workers: 2, sleepMs: 500, label: 'Medium', note: 'Balanced — default' },
   slow:   { workers: 1, sleepMs: 1000, label: 'Slow',  note: 'Safe — never rate-limits' },
 };
+
+export interface SnapshotPublicState {
+  running: boolean;
+  startedAt: number | null;
+  endedAt: number | null;
+  cancelled: boolean;
+  options: { appIds?: string[]; locales?: string[]; total: number } | null;
+  lastProgress: SnapshotEvent | null;
+  finalEvent: SnapshotEvent | null;
+}
+
+/** Cold-fetch the server's current snapshot status. Used by the global
+ *  capsule to decide whether to render on app mount, and by SnapshotPanel
+ *  to sync UI when the user lands mid-run. */
+export async function getSnapshotState(): Promise<SnapshotPublicState> {
+  const r = await fetch('/api/snapshot/state');
+  return j<SnapshotPublicState>(r);
+}
+
+/** Abort the in-flight snapshot, if any. Server-side cancellation flag — the
+ *  worker exits at the next chunk boundary. */
+export async function abortSnapshot(): Promise<void> {
+  await fetch('/api/snapshot/abort', { method: 'POST' });
+}
+
+/** Subscribe to the in-flight snapshot's event stream WITHOUT starting one.
+ *  Server replays buffered events so a late subscriber sees the full history.
+ *  Returns a cleanup callback that closes the connection. */
+export function subscribeToSnapshot(onEvent: (e: SnapshotEvent) => void): () => void {
+  const es = new EventSource('/api/snapshot/stream');
+  es.onmessage = (m) => {
+    try {
+      onEvent(JSON.parse(m.data) as SnapshotEvent);
+    } catch {
+      // ignore malformed
+    }
+  };
+  return () => es.close();
+}
 
 export async function runSnapshot(
   opts: { appIds?: string[]; locales?: string[]; speed?: SnapshotSpeed; skipExisting?: boolean },
   onEvent: (e: SnapshotEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
-  let res: Response;
-  try {
-    const preset = SPEED_PRESETS[opts.speed ?? 'medium'];
-    res = await fetch('/api/snapshot', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        appIds: opts.appIds,
-        locales: opts.locales,
-        workers: preset.workers,
-        sleepMs: preset.sleepMs,
-        skipExisting: !!opts.skipExisting,
-      }),
-      signal,
-    });
-  } catch (e) {
-    if ((e as Error).name === 'AbortError') {
-      onEvent({ type: 'abort', reason: 'Cancelled by user' });
-      return;
-    }
-    onEvent({ type: 'abort', reason: `Network error: ${(e as Error).message}` });
+  // Two-phase: POST /api/snapshot to KICK OFF the singleton background run,
+  // then subscribe to /stream for live events. The run survives client
+  // disconnect — closing the EventSource doesn't abort the snapshot.
+  const preset = SPEED_PRESETS[opts.speed ?? 'medium'];
+  const startRes = await fetch('/api/snapshot', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      appIds: opts.appIds,
+      locales: opts.locales,
+      workers: preset.workers,
+      sleepMs: preset.sleepMs,
+      skipExisting: !!opts.skipExisting,
+    }),
+  });
+  if (!startRes.ok && startRes.status !== 409) {
+    onEvent({ type: 'abort', reason: `Server ${startRes.status} ${startRes.statusText}` });
     return;
   }
-  if (!res.ok) {
-    onEvent({ type: 'abort', reason: `Server ${res.status} ${res.statusText}` });
-    return;
-  }
-  if (!res.body) {
-    onEvent({ type: 'abort', reason: 'No stream body' });
-    return;
-  }
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buf = '';
-  let gotFinal = false;
+  // 409 = already running → just subscribe and tail. Otherwise we just kicked it off.
 
-  // Inactivity watchdog — if server stops sending anything (including heartbeat pings)
-  // for 45s, treat the stream as dead. Guards against proxy keeping a socket open after
-  // the upstream server was killed (e.g. tsx watch restart mid-snapshot).
-  let lastActivity = Date.now();
-  const IDLE_MS = 45_000;
-  const watchdog = setInterval(() => {
-    if (Date.now() - lastActivity > IDLE_MS) {
-      try { reader.cancel('inactivity timeout'); } catch {}
-    }
-  }, 5_000);
-
-  try {
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      lastActivity = Date.now();
-      buf += decoder.decode(value, { stream: true });
-      const parts = buf.split('\n\n');
-      buf = parts.pop() || '';
-      for (const chunk of parts) {
-        const line = chunk.trim();
-        // Heartbeat comment line (":ping 12345") — bumps lastActivity, no event emitted.
-        if (line.startsWith(':')) continue;
-        if (!line.startsWith('data:')) continue;
-        try {
-          const ev = JSON.parse(line.slice(5).trim()) as SnapshotEvent;
-          if (ev.type === 'done' || ev.type === 'abort') gotFinal = true;
-          onEvent(ev);
-        } catch {
-          // ignore bad frame
-        }
+  return new Promise<void>((resolve) => {
+    const es = new EventSource('/api/snapshot/stream');
+    let settled = false;
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
+      es.close();
+      resolve();
+    };
+    es.onmessage = (m) => {
+      try {
+        const ev = JSON.parse(m.data) as SnapshotEvent;
+        onEvent(ev);
+        if (ev.type === 'done' || ev.type === 'abort') cleanup();
+      } catch {
+        // ignore malformed
       }
-    }
-    // Stream closed normally. If we never got a done/abort — inject one so UI shows a clear state.
-    if (!gotFinal) {
-      const idle = Date.now() - lastActivity > IDLE_MS;
-      onEvent({
-        type: 'abort',
-        reason: idle
-          ? 'No data from server for 45s — connection appears dead. Use Resume to continue.'
-          : 'Connection closed unexpectedly (server may have restarted). Use Resume to continue.',
+    };
+    es.onerror = () => {
+      // Browser auto-reconnects; only treat as terminal if the run is gone.
+    };
+    if (signal) {
+      signal.addEventListener('abort', () => {
+        // Client cancellation — request server-side abort, then unhook stream.
+        void abortSnapshot();
+        onEvent({ type: 'abort', reason: 'Cancelled by user' });
+        cleanup();
       });
     }
-  } catch (e) {
-    if ((e as Error).name === 'AbortError') {
-      onEvent({ type: 'abort', reason: 'Cancelled by user' });
-      return;
-    }
-    onEvent({ type: 'abort', reason: `Stream error: ${(e as Error).message}` });
-  } finally {
-    clearInterval(watchdog);
-  }
+  });
 }
+
+/** Legacy POST-stream variant removed — runSnapshot now uses the singleton
+ *  /api/snapshot + /api/snapshot/stream pair so the run survives client
+ *  navigation. */

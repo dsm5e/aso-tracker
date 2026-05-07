@@ -1,0 +1,249 @@
+# ASO Studio — LLM Context
+
+> Full architectural context for AI agents (Claude Code, ChatGPT-as-IDE, Cursor) working with this repository. Compatible with the [llmstxt.org](https://llmstxt.org/) standard. The shorter `llms.txt` index is at the same path.
+
+## Overview
+
+ASO Studio is a self-hosted indie-developer toolkit for Apple App Store work. Three sub-tools share one shell, one settings page, one local key vault:
+
+- **Keywords** (`/`, `/app/:id`, `/keywords`, `/analytics`) — rank tracking via iTunes Search API, snapshot engine, competitor intelligence.
+- **Studio** (`/studio`, `/studio/setup`, `/studio/editor`, `/studio/ppo`, `/studio/locales`, `/studio/export`) — App Store screenshot generator + PPO experiment builder, AI hero enhancement via fal.ai gpt-image-2.
+- **Video** (`/video`) — UGC video pipeline (script → voiceover → b-roll → captions). Beta.
+
+The repo is a npm workspace monorepo:
+- `aso-keywords/` — main shell (this README is here, port 5174 server / 5173 vite)
+- `aso-screenshots/` — Studio sub-app (port 5181 server / 5180 vite)
+- `aso-video/` — Video sub-app
+
+Vite proxy in `aso-keywords/vite.config.ts` forwards `/studio/*` and `/studio-api/*` to `aso-screenshots`.
+
+## Local data layout
+
+All user data lives outside the repo:
+
+```
+~/.aso-studio/
+├── keys.json            ← API keys (mode 0600), settings UI writes here
+├── keys/                ← raw key files (e.g. ASA private .p8)
+├── state.json           ← Studio editor state (canonical, mirrored to all open tabs via SSE)
+├── keywords/            ← keyword editor drafts
+└── video/               ← video pipeline outputs
+```
+
+Inside the repo:
+
+```
+aso-keywords/
+├── config/apps.json                    ← tracked apps (gitignored)
+├── config/keywords/<app>.json          ← per-app keyword lists (gitignored)
+├── data/rankings.db                    ← SQLite snapshot history (gitignored)
+└── public/llms-full.txt                ← this file
+```
+
+## Settings (API keys)
+
+User-provided API keys are managed via the Settings modal (gear icon, top-right) and stored at `~/.aso-studio/keys.json` (mode 0600). The server-side resolver is `aso-screenshots/server/lib/keys.ts` (`KEY_NAMES` const lists all supported keys). Resolution priority: `process.env[name]` → `keys.json` → throw.
+
+| Key | Required for | Where to get |
+|---|---|---|
+| `FAL_API_KEY` | Screenshots, PPO image generation | https://fal.ai/dashboard/keys |
+| `OPENAI_API_KEY` | Locale translations | https://platform.openai.com/api-keys |
+
+Other API keys (App Store Connect, Apple Search Ads, social posting) are NOT managed here — those belong to the tools that actually use them (e.g. MCP servers like `asc-mcp` or `apple-search-ads-mcp` configure their own credentials via their own setup flows).
+
+## State schema (Studio editor)
+
+`~/.aso-studio/state.json` is the source of truth for the Studio editor. The browser store (Zustand) syncs both directions via Server-Sent Events: changes in any open tab are mirrored to all other tabs and to the file. Agents can edit this file directly and post via `/api/studio-state/push`.
+
+Top-level fields:
+
+```ts
+interface StudioState {
+  appName: string;
+  appColor: string;          // hex, used for default backgrounds
+  appIconUrl: string | null;
+  devices: 'iphone' | 'ipad' | 'both';
+  selectedPresetId: string | null;
+  outputFolder: string;       // user export destination
+  screenshots: Screenshot[];  // editor slots
+  locales: LocaleEntry[];     // per-locale translations
+  ppo?: PPOExperiment;        // multi-strategy PPO mode
+  archivedProjects: ArchivedProject[];
+  archivedPPOExperiments: ArchivedPPOExperiment[];
+  // ...
+}
+```
+
+`Screenshot` (per-slot in editor):
+
+```ts
+{
+  id: string;
+  filename: '1.png' | '2.png' | ...;
+  device: 'iphone' | 'ipad';
+  kind: 'action' | 'regular';   // action = hero (full ingredient set), regular = feature
+  headline: { verb: string; descriptor: string; subhead: string };
+  font: 'Inter' | string;
+  // Composition
+  titlePx: number;                  // headline line-height
+  textYFraction: number;            // 0–1 vertical position of headline
+  deviceX: number;                  // horizontal offset from canvas center (px)
+  deviceY: number;
+  deviceScale: number;
+  tiltDeg: number;
+  tiltY: number;                    // 3D perspective tilt
+  breakout: boolean;                // whether device extends past frame edge
+  // Hero-only
+  action?: ActionData;
+}
+```
+
+`PPOExperiment` (PPO mode):
+
+```ts
+interface PPOExperiment {
+  sourceScreens: PPOSourceScreen[];      // uploaded once, reused across strategies
+  strategies: PPOStrategy[];             // 1–10 treatments per experiment
+  activeStrategyId?: string;
+  collapsedStrategyIds: string[];        // UI fold state
+}
+
+interface PPOStrategy {
+  id: string;
+  title: string;                          // e.g. "A · Anxious Dreamer"
+  audience?: string;
+  prompts: Record<string, string>;        // screenId → per-screen prompt
+  generations: Record<string, PPOGeneration>;
+}
+
+interface PPOGeneration {
+  generateState: 'idle' | 'generating' | 'done' | 'error';
+  aiImageUrl?: string;
+  aiHistory?: string[];                   // last 8 successful renders
+  // fal.queue tracking — survives server restart
+  requestId?: string;
+  requestEndpoint?: string;               // 'openai/gpt-image-2/edit'
+  requestStartedAt?: string;              // ISO timestamp
+  errorMessage?: string;
+}
+```
+
+## API endpoints (aso-screenshots backend)
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/api/health` | `{ ok: true, service, phase }` |
+| GET | `/api/studio-state` | Get full editor state |
+| POST | `/api/studio-state` | Sync state (no broadcast — for browser debounce) |
+| POST | `/api/studio-state/push` | Push state → broadcasts to all open tabs |
+| GET | `/api/studio-state/stream` | SSE stream of state changes |
+| GET | `/api/settings/keys` | Read key statuses (set/unset, masked, source) |
+| POST | `/api/settings/keys` | Save or clear a key |
+| POST | `/api/screenshots/generate-hero` | AI hero generation (fal.ai gpt-image-2) |
+| POST | `/api/translate/batch` | gpt-4o-mini batch translate headlines |
+| POST | `/api/export/save-png` | Save rendered PNG to disk |
+| POST | `/api/templates/save` | Save current preset to disk |
+| POST | `/api/ppo/generate` | PPO single-screen generation (queue.submit + background poll) |
+| GET | `/api/ppo/proxy-image?url=...&w=400` or `&exportSize=appstore-iphone` | Server-side image proxy with optional thumbnail / ASC-resize |
+
+PPO uses `fal.queue.submit` (returns `request_id`) + background polling, so generation outlives both browser refresh and server restart. Boot recovery (`ppoResumeAll`) re-attaches polling on startup for any tile still in `generating` state.
+
+## MCP integrations
+
+For full coverage of App Store Connect and Apple Search Ads programmatically, two MCP servers pair perfectly with this studio:
+
+### asc-mcp ([dsm5e/nomly-asc-mcp](https://github.com/dsm5e/nomly-asc-mcp))
+
+Full App Store Connect API. Tool families: `apps_*`, `app_versions_*`, `app_info_*`, `builds_*`, `screenshots_*`, `iap_*`, `subscriptions_*`, `ppo_*` (custom product page experiments), `custom_pages_*`, `analytics_*`, `reviews_*`, `provisioning_*`, `pricing_*`, `users_*`, `beta_*` (TestFlight), `metrics_*`, `winback_*`, `intro_offers_*`, `promo_offers_*`, `sandbox_*`, etc.
+
+### apple-search-ads-mcp ([AppVisionOS](https://github.com/AppVisionOS/apple-search-ads-mcp))
+
+Full Apple Ads (Search Ads) Campaign Management API v5 with 74 tools, 1:1 endpoint coverage. Tool families: `campaigns_*`, `adgroups_*`, `ads_*`, `targeting_keywords_*`, `campaign_negative_keywords_*`, `adgroup_negative_keywords_*`, `budget_orders_*`, `creatives_*`, `cpp_*` (custom product pages), `reports_*`, `search_apps`, `search_geo`, `org_acls`, `me_user`.
+
+## Common agent tasks (recipes)
+
+### Push a complete project state into the dashboard
+
+```python
+import json, urllib.request
+
+with open('/Users/you/.aso-studio/state.json') as f:
+    state = json.load(f)
+
+state['appName'] = 'MyApp'
+state['appColor'] = '#7C3AED'
+# ... mutate freely ...
+
+body = json.dumps(state).encode()
+req = urllib.request.Request(
+    'http://localhost:5181/api/studio-state/push',
+    data=body, headers={'Content-Type': 'application/json'}, method='POST'
+)
+with urllib.request.urlopen(req) as r:
+    print(r.read().decode())   # {"ok":true,"broadcast":N}
+```
+
+### Set headlines for all slots by filename
+
+```python
+HEADLINES = {
+  '1.png': {'verb': 'DECODE', 'descriptor': 'YOUR DREAMS', 'subhead': ''},
+  '2.png': {'verb': 'EVERY DREAM', 'descriptor': 'REMEMBERED', 'subhead': ''},
+}
+for ss in state['screenshots']:
+    if ss['filename'] in HEADLINES:
+        ss['headline'] = HEADLINES[ss['filename']]
+```
+
+### Build a PPO strategy with locked style anchor
+
+For coherent treatments, every prompt in one strategy must share **palette + atmosphere + lighting + signature element** (style lock). Per-screen variation is composition only (tilt, framing distance, break-out element). See `claude/references/PPO Visual Style Techniques.md` in the Obsidian vault for the full methodology.
+
+### Run an Apple Search Ads campaign end-to-end
+
+```
+# 1. Research keywords
+analyze_top_keywords(keyword="rüya tabiri", country="tr", platform="ios")
+get_keyword_scores(keyword="rüya tabiri", country="tr", platform="ios")
+
+# 2. Find your app's adamId
+apps_search(query="dream")
+mcp__apple-ads__apps_get(adamId=6761296564)
+
+# 3. Create budget order + campaign + ad group + keywords
+mcp__apple-ads__budget_orders_create({...})
+mcp__apple-ads__campaigns_create({...})
+mcp__apple-ads__adgroups_create({...})
+mcp__apple-ads__targeting_keywords_create({...})
+
+# 4. Pull reports
+mcp__apple-ads__reports_campaigns({...})
+```
+
+## Conventions
+
+- **Keyword research**: prefer `get_keyword_scores` (traffic + difficulty) over raw competitor counts. Sweet spot = traffic ≥ 7 + difficulty ≤ 7.
+- **Keyword localization**: native language always wins in non-English stores. Don't blanket-translate; research the actual user query (e.g. Turkish dreamers search "rüya tabiri", not "dream journal").
+- **Budget allocation for indie**: concentrate on 1 market with $50+ before testing the second. $100 in 5 markets = noise everywhere.
+- **PPO**: 3 treatments max per active experiment (Apple lock). Use Custom Product Pages for additional variants tied to specific traffic sources (TikTok ads, etc.).
+- **Image generation**: gpt-image-2 outputs at 768×1664 for iPhone aspect — server upscales to 1290×2796 (iPhone 6.9") or 2064×2752 (iPad 13") via Sharp Lanczos when `?exportSize=appstore-iphone|appstore-ipad` is passed to the proxy.
+
+## Run
+
+```bash
+cd ~/Developer/MYPROJECT/aso-studio
+npm install
+npm run dev   # starts all 3 sub-tools concurrently
+# open http://localhost:5173
+```
+
+Or per sub-tool:
+```bash
+cd aso-keywords    && npm run dev   # main shell, vite :5173, server :5174
+cd aso-screenshots && npm run dev   # vite :5180, server :5181
+cd aso-video       && npm run dev
+```
+
+## License
+
+MIT.

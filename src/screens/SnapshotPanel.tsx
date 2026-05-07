@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon, Flag, RankPill } from '../design/primitives.jsx';
 import { SPEED_PRESETS, type SnapshotEvent, type SnapshotSpeed } from '../api';
 
@@ -48,22 +48,21 @@ export default function SnapshotPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const summary = useMemo(() => {
-    // Accumulate across resume cycles: each server run sends its own {type:'start', total:<remaining>}
-    // and counts keyword events from 1. To show continuous progress we count keyword events as
-    // the real `completed` and lift `total` on each new start by adding its total to what we
-    // already had, so the bar never jumps back to 0.
     let total = 0;
     let completed = 0;
     let currentLocale: string | undefined;
     let aborted = false;
     let reason: string | undefined;
     let done = false;
+    let lastThrottleAt: number | null = null;
+    let lastThrottleEvent: SnapshotEvent | null = null;
+    let keywordsSinceThrottle = 0;
+    let lastSpeedEvent: SnapshotEvent | null = null;
+    let lastSpeedAt: number | null = null;
     const keywordEvents: SnapshotEvent[] = [];
     for (const e of events) {
       if (e.type === 'start' && e.total != null) {
-        // New session's total = what we've already processed + this run's remaining.
         total = completed + e.total;
-        // A fresh start clears abort/done flags from the previous run — we're back in motion.
         aborted = false;
         reason = undefined;
         done = false;
@@ -71,20 +70,62 @@ export default function SnapshotPanel({
       else if (e.type === 'keyword') {
         completed += 1;
         keywordEvents.push(e);
+        if (lastThrottleEvent) keywordsSinceThrottle += 1;
       } else if (e.type === 'abort') {
         aborted = true;
         reason = e.reason;
       } else if (e.type === 'done') {
         done = true;
+      } else if (e.type === 'throttle') {
+        lastThrottleAt = Date.now();
+        lastThrottleEvent = e;
+        keywordsSinceThrottle = 0;
+      } else if (e.type === 'speed') {
+        lastSpeedEvent = e;
+        lastSpeedAt = Date.now();
       }
     }
-    // Guard: if total somehow slipped below completed, keep them in sync.
     if (total < completed) total = completed;
-    return { total, completed, currentLocale, aborted, reason, done, keywordEvents };
+    return {
+      total,
+      completed,
+      currentLocale,
+      aborted,
+      reason,
+      done,
+      keywordEvents,
+      lastThrottleAt,
+      lastThrottleEvent,
+      keywordsSinceThrottle,
+      lastSpeedEvent,
+      lastSpeedAt,
+    };
   }, [events]);
+
+  // Show a transient confirmation banner under the speed picker for ~3s after
+  // the server acknowledges a manual speed change. Re-renders on tick so the
+  // banner fades out without us hooking into a separate state machine.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (!summary.lastSpeedAt) return;
+    const t = setTimeout(() => forceTick((n) => n + 1), 3100);
+    return () => clearTimeout(t);
+  }, [summary.lastSpeedAt]);
+  const speedAck = summary.lastSpeedEvent && summary.lastSpeedAt && Date.now() - summary.lastSpeedAt < 3000
+    ? summary.lastSpeedEvent
+    : null;
 
   const isRateLimitAbort = summary.aborted && /(403|429|502|503|504|rate|throttl)/i.test(summary.reason || '');
   const isUserCancelled = summary.aborted && (summary.reason || '').toLowerCase().includes('cancelled');
+
+  // Soft banner: auto-throttle is active when we just received a throttle event and either
+  // no keyword has come through since (still in cooldown) OR fewer than 5 keywords have
+  // (still in slow recovery). Cleared once we're clearly back to normal.
+  const isAutoThrottling =
+    !!summary.lastThrottleEvent &&
+    summary.lastThrottleEvent.source === 'auto' &&
+    summary.keywordsSinceThrottle < 5 &&
+    running;
 
   const groupedByLocale = useMemo(() => {
     const groups: Record<string, SnapshotEvent[]> = {};
@@ -144,6 +185,20 @@ export default function SnapshotPanel({
           </div>
         )}
 
+        {/* Auto-throttle soft banner — snapshot keeps running, just slowed itself down */}
+        {isAutoThrottling && summary.lastThrottleEvent && (
+          <div style={{ background: 'var(--bg-sunken)', color: 'var(--text)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, fontSize: 12.5, borderBottom: '1px solid var(--border-subtle)' }}>
+            <span className="dot" style={{ width: 7, height: 7, background: '#E59B3C', borderRadius: 999 }} />
+            <div style={{ flex: 1 }}>
+              <span style={{ fontWeight: 600 }}>Auto-throttled</span>{' '}
+              <span style={{ color: 'var(--text-muted)' }}>
+                → {summary.lastThrottleEvent.workers}w · {summary.lastThrottleEvent.sleepMs}ms
+                {summary.lastThrottleEvent.cooldownSec ? ` · cooldown ${summary.lastThrottleEvent.cooldownSec}s` : ''}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <header style={{ padding: 16, borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -163,17 +218,36 @@ export default function SnapshotPanel({
           </div>
 
           {/* Speed picker — always visible */}
-          <div>
+          <div style={{ position: 'relative' }}>
+            {speedAck && (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: 0,
+                  fontSize: 11.5,
+                  color: 'var(--accent)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontWeight: 500,
+                  animation: 'fadeIn 200ms ease',
+                }}
+              >
+                <span className="dot" style={{ width: 6, height: 6, background: 'var(--accent)', borderRadius: 999 }} />
+                Applied · {speedAck.workers}w · {speedAck.sleepMs}ms
+                {speedAck.source === 'auto' && <span style={{ color: 'var(--text-muted)' }}> (auto)</span>}
+              </div>
+            )}
             <div className="label" style={{ marginBottom: 6 }}>Speed · {SPEED_PRESETS[speed].note}</div>
             <div style={{ display: 'flex', gap: 6, padding: 3, background: 'var(--bg-sunken)', borderRadius: 10, boxShadow: 'inset 0 0 0 1px var(--border-subtle)' }}>
-              {(['fast','medium','slow'] as SnapshotSpeed[]).map((key) => {
+              {(['medium','slow'] as SnapshotSpeed[]).map((key) => {
                 const active = speed === key;
                 const p = SPEED_PRESETS[key];
                 return (
                   <button
                     key={key}
-                    onClick={() => !running && onSpeedChange(key)}
-                    disabled={running}
+                    onClick={() => onSpeedChange(key)}
                     style={{
                       flex: 1,
                       padding: '8px 10px', borderRadius: 7,
@@ -182,8 +256,7 @@ export default function SnapshotPanel({
                       fontSize: 13, fontWeight: active ? 600 : 500,
                       boxShadow: active ? '0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,0.04)' : 'none',
                       border: 0,
-                      cursor: running ? 'not-allowed' : 'pointer',
-                      opacity: running ? 0.6 : 1,
+                      cursor: 'pointer',
                       textAlign: 'left',
                     }}
                   >

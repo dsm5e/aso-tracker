@@ -1,58 +1,86 @@
-# ASO Tracker
+# ASO Studio
 
-> Self-hosted open-source App Store keyword-rank tracker for indie iOS developers.
+> Self-hosted open-source App Store toolkit for indie iOS developers — **keyword tracking, screenshot generation, video pipelines, and PPO experiments**, all in one place. Pair it with [Claude Code](https://claude.com/claude-code) and you get an AI co-pilot that actually understands your App Store.
 
-Stop paying $500/mo to Sensor Tower or AppTweak. Track your App Store keyword positions across every locale, on your own machine, for free.
+Stop paying \$500/mo to Sensor Tower / AppTweak / SplitMetrics. ASO Studio runs on your machine, uses public APIs where possible, and stores everything locally.
 
-## Demo
+## What's inside
 
-![ASO Tracker demo](docs/demo.gif)
+ASO Studio is a monorepo of three connected tools, accessible from a single dashboard:
 
-## Features
+| Tool | What it does |
+|---|---|
+| **Keywords** | Per-keyword, per-locale rank tracking across 50+ countries. Snapshot engine, week-over-week deltas, competitor intelligence. |
+| **Screenshots** | App Store screenshot generator with AI hero enhancement (fal.ai gpt-image-2). Templates, scaffolds, headline overlays, locale translations. |
+| **PPO Experiments** | Multi-strategy A/B treatment generator for App Store Product Page Optimization. Upload source screens once, generate per-strategy variants with different visual concepts, export ZIPs ready for ASC PPO. |
+| **Video** *(beta)* | UGC video pipeline for ad creative — script → voiceover → b-roll → captions. |
 
-- 🔍 **Per-keyword, per-locale position tracking** across 50+ countries
-- 📊 **Dashboard** with week-over-week deltas, sparklines, biggest winners/losers
-- 🗂️ **Per-app drill-down**: sortable Rankings table, pagination (50/100/200/all), locale picker, 30-day trend
-- 👥 **Competitor intelligence**: click any competitor in the top-5 to see every keyword they rank for (cross-referenced against your snapshots), add them to tracking in one click
-- 🔎 **App Store search**: find & track any iOS app by name, bundle id, or iTunes ID
-- ✏️ **Keywords editor**: add/remove per-locale, bulk-paste, save to disk
-- ⚡ **Snapshot engine** with Run / Stop / Resume controls, 3 speed presets (Fast / Medium / Slow·SAFE), live progress feed, resumable after rate-limit
-- 📈 Historical snapshots stored locally in SQLite
-- 🚀 Self-hosted — no SaaS, no account, no data leak
-- 🤖 Uses the public iTunes Search API — no scraping, no TOS issues
+All four sub-tools share one Settings page and one local key vault.
+
+## Why use it with Claude Code
+
+ASO Studio is built to be driven by AI. Every editor state is a JSON file under `~/.aso-studio/` so an LLM agent can read/write it directly. Two MCP servers sit on top:
+
+- **`asc-mcp`** ([dsm5e/nomly-asc-mcp](https://github.com/dsm5e/nomly-asc-mcp)) — full App Store Connect API: builds, versions, localizations, screenshots, in-app purchases, subscriptions, PPO experiments, custom product pages, reviews.
+- **`apple-search-ads-mcp`** ([AppVisionOS](https://github.com/AppVisionOS/apple-search-ads-mcp)) — full Apple Ads (Search Ads) Campaign Management API v5: campaigns, ad groups, keywords, negative keywords, budget orders, reports.
+
+What Claude can do for you (with these MCPs + this studio):
+
+- 🤖 **Audit your ASO** — pull current title/subtitle/keywords across all locales, score them against competitors, suggest specific replacements.
+- 🤖 **Run keyword research** — fetch competitor app metadata, analyze top apps for any keyword in any country, score difficulty/traffic ratios.
+- 🤖 **Generate App Store screenshots end-to-end** — pick a preset, write headlines per locale, generate AI hero images, export PNGs for ASC.
+- 🤖 **Run PPO experiments** — design 3 treatment concepts (palette / signature element / 3D break-out / story arc), generate 5-15 screens per concept, export ZIPs, create the ASC PPO experiment via API.
+- 🤖 **Launch Apple Search Ads campaigns** — generate keyword lists from competitor research, set bids based on traffic/difficulty scores, create campaigns + ad groups + budget orders programmatically.
+- 🤖 **Track campaign performance** — pull daily reports, surface wasted spend, suggest pause/scale/raise/lower-bid actions.
 
 ## Quickstart
 
 ```bash
-git clone https://github.com/your-name/aso-tracker.git
-cd aso-tracker
+git clone https://github.com/your-name/aso-tracker.git aso-studio
+cd aso-studio
 npm install
 npm run dev
 # open http://localhost:5173
 ```
 
 First-time setup:
-1. On the empty dashboard, click **+ Add your first app** (or use top-bar search)
-2. Enter the iTunes App ID from your App Store URL
-   (e.g. for `https://apps.apple.com/app/id1234567890` → paste `1234567890`)
-3. Click **Test connection** — confirms the app metadata
-4. Customize emoji / name / bundle if needed, hit **Add app & start tracking**
-5. Go to **Keywords** tab, pick a locale, add your keywords
-6. Click **Run snapshot** — watch live progress, get rankings
+1. **Settings** (gear icon, top-right) — paste API keys you have. Most are optional; `FAL_API_KEY` is needed for AI image generation, `OPENAI_API_KEY` for translations.
+2. **Keywords**: empty dashboard → **+ Add your first app**, paste your iTunes App ID, hit **Test connection** → **Add app & start tracking**.
+3. **Snapshot**: pick a locale, add 5-10 keywords, click **Run snapshot** — watch live progress.
+4. **Screenshots / PPO**: open the **Studio** tab → pick a preset → upload your simulator screenshots → write headlines or per-strategy prompts → generate.
+
+## Settings & API keys
+
+All keys live at `~/.aso-studio/keys.json` (mode 0600, owner-only readable). They never leave your machine — only sent to the API endpoints they belong to.
+
+Currently used by the studio:
+
+| Key | Used for | Get it from |
+|---|---|---|
+| `FAL_API_KEY` | AI image generation (gpt-image-2) — Screenshots hero, PPO, Polish | [fal.ai/dashboard/keys](https://fal.ai/dashboard/keys) |
+| `OPENAI_API_KEY` | Locale translations (gpt-4o-mini) | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
+
+Inputs are masked while you type. Click 👁 to reveal what you're pasting. Cleared keys are removed from disk. Env vars take priority and can't be cleared from the UI.
+
+## LLM context
+
+For AI agents working with this codebase, see [`llms-full.txt`](public/llms-full.txt) — full architectural context, file map, state schema, and command examples. Compatible with the [llmstxt.org](https://llmstxt.org/) standard.
 
 ## Your data stays yours
 
 - `config/apps.json` — your tracked apps (gitignored)
 - `config/keywords/*.json` — your keyword lists per app (gitignored; only `*.example.json` committed)
 - `data/rankings.db` — local SQLite with snapshot history (gitignored)
+- `~/.aso-studio/` — keys, editor state, exports (outside the repo, mode 0600)
 
-Nothing leaves your machine. You bring your own keywords.
+Nothing leaves your machine. You bring your own keywords, your own keys, your own creative.
 
 ## Tech stack
 
 - **Frontend**: React 19 + Vite + TypeScript
-- **Backend**: Express + better-sqlite3
-- **Data source**: public iTunes Search API (no keys needed)
+- **Backend**: Express + better-sqlite3 + Sharp (image processing)
+- **AI**: fal.ai (gpt-image-2 for image edits), OpenAI (translations)
+- **Data source**: public iTunes Search API (no keys), App Store Connect API (your own auth), Apple Ads API (your own auth)
 - **Rate limit**: conservative 2 workers × 500ms sleep → ~240 req/min (Apple's limit is ~500). Auto-abort + Resume on persistent 502.
 
 ## CLI (headless snapshots)
@@ -71,8 +99,6 @@ Streams line-by-line progress. Suitable for cron, CI, or Claude Code automation.
 npm run migrate-jsonl -- /path/to/aso-rankings.jsonl
 ```
 
-Loads external rank logs into the local SQLite (deduplicated by latest-per-keyword).
-
 ## Keyword methodology
 
 Track **search phrases** (2-4 words) — what real users type into App Store search. Not single words from the Keywords field in ASC.
@@ -85,4 +111,4 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-Built in public as part of the [Nomly](https://nomly.space) portfolio.
+Built in public as part of the [Nomly](https://nomly.space) indie portfolio.

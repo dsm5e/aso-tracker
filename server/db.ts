@@ -1,10 +1,8 @@
 import Database from 'better-sqlite3';
-import { existsSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { DB_PATH, ensureKeywordsHome, migrateLegacyData } from './paths.js';
 
-const DB_PATH = resolve(process.cwd(), 'data', 'rankings.db');
-
-if (!existsSync(dirname(DB_PATH))) mkdirSync(dirname(DB_PATH), { recursive: true });
+migrateLegacyData();
+ensureKeywordsHome();
 
 export const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');

@@ -521,7 +521,7 @@ const CommandPalette = ({ onClose }) => {
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className="kbd">↵</span> select</span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><span className="kbd">⌘</span><span className="kbd">↵</span> open in new</span>
           <div style={{ flex: 1 }} />
-          <span>ASO Tracker</span>
+          <span>ASO Studio</span>
         </div>
       </div>
     </div>

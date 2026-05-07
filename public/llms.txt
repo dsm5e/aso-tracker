@@ -1,0 +1,24 @@
+# ASO Studio
+
+> Self-hosted indie iOS App Store toolkit — keyword tracking, screenshot generation, and PPO experiments. Open source, AI-friendly. Pairs with Claude Code via MCP servers.
+
+## Features
+
+- [README](https://github.com/dsm5e/aso-tracker#readme): What ASO Studio is and what it does
+- [Full LLM context](llms-full.txt): Architecture, file map, state schema, recipes for AI agents
+
+## Sub-tools
+
+- **Keywords**: per-keyword, per-locale rank tracking via iTunes Search API
+- **Screenshots**: App Store screenshot generator with AI hero (fal.ai gpt-image-2)
+- **PPO**: multi-strategy A/B treatment generator for App Store Product Page Optimization
+
+## Stack
+
+- React 19 + Vite + TypeScript (frontend)
+- Express + better-sqlite3 + Sharp (backend)
+- fal.ai for image gen, OpenAI for translation, public iTunes API for ranks
+
+## License
+
+MIT.

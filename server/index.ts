@@ -1,10 +1,12 @@
 import express from 'express';
 import { existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
+import { KEYWORDS_FILES_DIR } from './paths.js';
 import { getAppsWithStats, getLocaleStatsByApp, getRankings } from './queries.js';
 import { loadApps, saveApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
 import { db } from './db.js';
-import { runSnapshot, refreshKeyword } from './snapshot.js';
+import { runSnapshot, refreshKeyword, getLiveRuntime, setLiveSpeed } from './snapshot.js';
+import { getMovers } from './analytics.js';
 import { lookupItunes } from './itunes.js';
 import { competitorInfo, competitorKeywords, topCompetitors } from './competitors.js';
 import { getCompetitorPricing } from './pricing.js';
@@ -42,7 +44,7 @@ app.delete('/api/apps/:id', (req, res) => {
 
   // Delete keywords file
   try {
-    const kwPath = join(process.cwd(), 'config', 'keywords', `${id}.json`);
+    const kwPath = join(KEYWORDS_FILES_DIR, `${id}.json`);
     if (existsSync(kwPath)) unlinkSync(kwPath);
   } catch {/* ignore */}
 
@@ -232,55 +234,205 @@ app.post('/api/apps/:id/refresh-keyword', async (req, res) => {
   }
 });
 
-// --- Snapshot with SSE progress stream ---
+// --- Live speed control for an in-flight snapshot ---
+app.get('/api/snapshot/speed', (_req, res) => {
+  const r = getLiveRuntime();
+  res.json({ running: r !== null, runtime: r });
+});
+
+app.post('/api/snapshot/speed', (req, res) => {
+  const { sleepMs, workers } = req.body || {};
+  if (typeof sleepMs !== 'number' && typeof workers !== 'number') {
+    res.status(400).json({ error: 'sleepMs or workers required' });
+    return;
+  }
+  const ok = setLiveSpeed({
+    sleepMs: typeof sleepMs === 'number' ? sleepMs : undefined,
+    workers: typeof workers === 'number' ? workers : undefined,
+    source: 'user',
+  });
+  if (!ok) {
+    res.status(409).json({ error: 'No snapshot is currently running' });
+    return;
+  }
+  res.json({ ok: true, runtime: getLiveRuntime() });
+});
+
+// --- Analytics: movers across apps & periods ---
+app.get('/api/analytics/movers', (req, res) => {
+  const appId = req.query.app as string | undefined;
+  const locale = req.query.locale as string | undefined;
+  const period = (req.query.period as string | undefined) ?? 'week';
+  if (period !== 'day' && period !== 'week' && period !== 'month') {
+    res.status(400).json({ error: 'period must be day | week | month' });
+    return;
+  }
+  const limit = Number(req.query.limit) || 15;
+  try {
+    res.json(getMovers({ appId, locale, period, limit }));
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// --- Snapshot — runs in the background as a singleton on the server. Browser
+// navigation no longer kills the run; clients subscribe via SSE for live
+// events and may reconnect at any time to see the buffered history + tail. ---
+
+interface SnapshotEvent { type: string; [k: string]: unknown }
+interface SnapshotRunState {
+  running: boolean;
+  startedAt: number | null;
+  endedAt: number | null;
+  /** Buffered events for cold reconnect. Capped to keep memory bounded. */
+  events: SnapshotEvent[];
+  /** Last "progress"-flavour event for quick rendering of a global indicator
+   *  without replaying the whole buffer. */
+  lastProgress: SnapshotEvent | null;
+  /** Final outcome of the latest run (for clients arriving post-completion). */
+  finalEvent: SnapshotEvent | null;
+  cancelled: boolean;
+  /** Active SSE subscribers. Disconnect → remove; does NOT abort the run. */
+  subscribers: Set<express.Response>;
+  /** Snapshot of options the run started with — useful for the UI capsule. */
+  options: { appIds?: string[]; locales?: string[]; total: number } | null;
+}
+
+const snapshotState: SnapshotRunState = {
+  running: false,
+  startedAt: null,
+  endedAt: null,
+  events: [],
+  lastProgress: null,
+  finalEvent: null,
+  cancelled: false,
+  subscribers: new Set<express.Response>(),
+  options: null,
+};
+const SNAPSHOT_BUFFER_CAP = 500;
+
+function snapshotBroadcast(event: SnapshotEvent) {
+  snapshotState.events.push(event);
+  if (snapshotState.events.length > SNAPSHOT_BUFFER_CAP) {
+    snapshotState.events.splice(0, snapshotState.events.length - SNAPSHOT_BUFFER_CAP);
+  }
+  if (event.type === 'progress' || event.type === 'app-start' || event.type === 'app-done') {
+    snapshotState.lastProgress = event;
+  }
+  if (event.type === 'done' || event.type === 'abort') {
+    snapshotState.finalEvent = event;
+  }
+  const payload = `data: ${JSON.stringify(event)}\n\n`;
+  for (const r of snapshotState.subscribers) {
+    try { r.write(payload); } catch { snapshotState.subscribers.delete(r); }
+  }
+}
+
+function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: number; sleepMs?: number; skipExisting?: boolean }) {
+  if (snapshotState.running) return false;
+  snapshotState.running = true;
+  snapshotState.startedAt = Date.now();
+  snapshotState.endedAt = null;
+  snapshotState.events = [];
+  snapshotState.lastProgress = null;
+  snapshotState.finalEvent = null;
+  snapshotState.cancelled = false;
+  snapshotState.options = {
+    appIds: opts.appIds,
+    locales: opts.locales,
+    total: 0, // populated by first 'init' event from runSnapshot
+  };
+  snapshotBroadcast({ type: 'started', startedAt: snapshotState.startedAt });
+
+  runSnapshot({
+    appIds: opts.appIds,
+    locales: opts.locales,
+    workers: typeof opts.workers === 'number' ? opts.workers : undefined,
+    sleepMs: typeof opts.sleepMs === 'number' ? opts.sleepMs : undefined,
+    skipExisting: opts.skipExisting === true,
+    onProgress: (ev) => {
+      // Track total once we receive the init event so the capsule can show "X/Y".
+      if (snapshotState.options && (ev as SnapshotEvent).type === 'init') {
+        const total = (ev as { total?: number }).total;
+        if (typeof total === 'number') snapshotState.options.total = total;
+      }
+      snapshotBroadcast(ev as SnapshotEvent);
+    },
+    isCancelled: () => snapshotState.cancelled,
+  })
+    .then(() => {
+      snapshotState.running = false;
+      snapshotState.endedAt = Date.now();
+      snapshotBroadcast({ type: 'done', at: snapshotState.endedAt });
+    })
+    .catch((e) => {
+      snapshotState.running = false;
+      snapshotState.endedAt = Date.now();
+      snapshotBroadcast({ type: 'abort', reason: (e as Error).message });
+    });
+  return true;
+}
+
 app.post('/api/snapshot', (req, res) => {
+  if (snapshotState.running) {
+    res.status(409).json({ error: 'snapshot already running', state: snapshotPublicState() });
+    return;
+  }
   const { appIds, locales, workers, sleepMs, skipExisting } = req.body || {};
+  startSnapshot({ appIds, locales, workers, sleepMs, skipExisting });
+  res.status(202).json({ ok: true, state: snapshotPublicState() });
+});
+
+app.post('/api/snapshot/abort', (_req, res) => {
+  if (!snapshotState.running) {
+    res.json({ ok: true, alreadyIdle: true });
+    return;
+  }
+  snapshotState.cancelled = true;
+  res.json({ ok: true });
+});
+
+function snapshotPublicState() {
+  return {
+    running: snapshotState.running,
+    startedAt: snapshotState.startedAt,
+    endedAt: snapshotState.endedAt,
+    cancelled: snapshotState.cancelled,
+    options: snapshotState.options,
+    lastProgress: snapshotState.lastProgress,
+    finalEvent: snapshotState.finalEvent,
+  };
+}
+
+app.get('/api/snapshot/state', (_req, res) => {
+  res.json(snapshotPublicState());
+});
+
+app.get('/api/snapshot/stream', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders();
 
-  let cancelled = false;
-  // Use res.on('close') (not req.on) — Express 5 / Node emits `req.close` right after
-  // flushHeaders() even while the client is still connected. `res.on('close')` fires
-  // only on real disconnect or after we've ended the response ourselves.
-  res.on('close', () => {
-    if (res.writableEnded || cancelled) return;
-    cancelled = true;
-  });
+  // Replay buffer so a client landing mid-run sees prior events (esp. 'init').
+  for (const ev of snapshotState.events) {
+    res.write(`data: ${JSON.stringify(ev)}\n\n`);
+  }
+  // If the run has ended already, replay the final event so the client knows.
+  if (!snapshotState.running && snapshotState.finalEvent) {
+    res.write(`data: ${JSON.stringify(snapshotState.finalEvent)}\n\n`);
+  }
 
-  const send = (event: object) => {
-    if (res.writableEnded) return;
-    res.write(`data: ${JSON.stringify(event)}\n\n`);
-  };
-
-  // Heartbeat every 15s — SSE comment lines don't trigger onEvent but keep the connection
-  // alive and let the client detect a dead server (no heartbeat → watchdog fires).
   const heartbeat = setInterval(() => {
     if (res.writableEnded) return;
     try { res.write(`: ping ${Date.now()}\n\n`); } catch {}
   }, 15_000);
-  res.on('close', () => clearInterval(heartbeat));
 
-  runSnapshot({
-    appIds,
-    locales,
-    workers: typeof workers === 'number' ? workers : undefined,
-    sleepMs: typeof sleepMs === 'number' ? sleepMs : undefined,
-    skipExisting: skipExisting === true,
-    onProgress: send,
-    isCancelled: () => cancelled,
-  })
-    .then(() => {
-      if (!res.writableEnded) {
-        res.write('event: end\ndata: {}\n\n');
-        res.end();
-      }
-    })
-    .catch((e) => {
-      send({ type: 'abort', reason: (e as Error).message });
-      if (!res.writableEnded) res.end();
-    });
+  snapshotState.subscribers.add(res);
+  req.on('close', () => {
+    snapshotState.subscribers.delete(res);
+    clearInterval(heartbeat);
+  });
 });
 
 const PORT = Number(process.env.PORT) || 5174;
