@@ -1,0 +1,11 @@
+[
+  {
+    "id": "myapp",
+    "name": "My App",
+    "emoji": "✨",
+    "bundle": "com.example.myapp",
+    "iTunesId": "1234567890",
+    "iconBg": "linear-gradient(135deg, #E5D8F5 0%, #7B4AC3 100%)",
+    "tagline": "Short description"
+  }
+]

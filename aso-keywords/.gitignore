@@ -1,0 +1,44 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build output
+dist
+dist-ssr
+*.local
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# ===== USER DATA (never commit!) =====
+config/keywords/*.json
+!config/keywords/*.example.json
+!config/keywords/README.md
+config/apps.json
+
+# Local database with snapshot history
+data/
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Migrated rankings / raw data
+*.jsonl

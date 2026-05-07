@@ -1,0 +1,397 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "7d3218cb-a009-4004-8a32-28370725aae6",
+      "type": "reference-image",
+      "position": {
+        "x": 40,
+        "y": 618
+      },
+      "data": {
+        "url": "/output/uploads/a9aad356-f97e-4058-8ead-954e64ab55e2.png",
+        "label": "App Screenshot"
+      }
+    },
+    {
+      "id": "6ac292d1-b5ed-447c-ade9-b25ef450133f",
+      "type": "flux-image",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "data": {
+        "prompt": "Vertical 9:16 iPhone front-camera selfie. An attractive blonde woman in her mid-20s, polished influencer aesthetic — natural makeup with subtle gloss, glowing healthy skin, long honey-blonde hair tousled and slightly messy. Wearing a fitted white V-neck ribbed tank top, gold chain necklace resting at collar, hint of natural feminine silhouette. Sitting cross-legged on a bed with white sheets, soft morning sunlight from a window to her right, cozy bedroom in the background — slightly out of focus warm tones, hint of a plant and a candle. Confident half-smile, direct eye contact with the camera, holding her phone in selfie position. iPhone selfie aesthetic — natural skin texture, subtle grain. Casual TikTok creator vibe, no studio lighting, no logos, no text.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "status": "done",
+        "outputUrl": "/output/images/gpt2-1778111066432.png",
+        "cost": 0.04,
+        "label": "Image Gen — Blonde",
+        "usage": "character"
+      }
+    },
+    {
+      "id": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "type": "video-gen",
+      "position": {
+        "x": 440,
+        "y": 409
+      },
+      "data": {
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "prompt": "An attractive woman in her mid-20s stands in a bright modern luxury kitchen — white marble countertop, brass fixtures, light oak cabinets, soft morning sunlight from tall windows behind her. Loose silky hair, cream knit sweater, holding her phone in selfie position toward the camera.\n\nShe leans in toward the camera with a conspiratorial half-smirk and a lowered voice, saying: \"If you've ever seen a dark figure standing at the foot of your bed in your sleep — it's not a demon. Your brain is stuck mid-REM, and what it means is wild.\"\n\nShe raises her phone next to her face, screen facing the camera, displaying the app interface shown in @Element1, then nods knowingly.\n\nCamera: static, locked-off, selfie medium close-up, iPhone front-camera aesthetic. Vertical 9:16, natural skin tones, slight grain. Sound: clear casual female voice, intimate and slightly conspiratorial tone, faint kitchen room tone, no music.",
+        "duration": 10,
+        "audio": true,
+        "status": "idle",
+        "outputUrl": null,
+        "cost": 0.8400000000000001,
+        "elapsed": 147.928,
+        "multiShot": true,
+        "shots": [
+          {
+            "prompt": "CUT TO TIGHT CLOSE-UP. Same blonde woman, framing now pulls in to face and upper shoulders only, much more intimate. She leans slightly closer to the camera, animated, counts on her fingers near her cheek with a playful expression: \"Teeth falling out — that's stress. Falling forever — losing control. Naked in public — fear of being seen. But what yours says about YOU specifically is kinda wild.\" Camera: tight close-up, locked-off, intimate framing.",
+            "duration": 5
+          },
+          {
+            "prompt": "CUT TO WIDE SELFIE FRAME. Same blonde woman, framing pulled back wider showing more of the bedroom, she raises her phone next to her face with screen facing the camera (showing a dream journal app interface). Soft laugh, slight head shake: \"I literally just typed mine into this and I'm not okay.\" Camera: wider selfie framing, phone screen visible.",
+            "duration": 5
+          }
+        ],
+        "shotType": "customize",
+        "label": "Kling B — Shots 2+3 (multi)",
+        "error": null,
+        "progress": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "b86c4cea-2e58-4a4e-bd8f-3c6b36f4d2c0",
+      "type": "output",
+      "position": {
+        "x": 3640,
+        "y": 40
+      },
+      "data": {
+        "label": "Output — Kling"
+      }
+    },
+    {
+      "id": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "type": "captions",
+      "position": {
+        "x": 2840,
+        "y": 40
+      },
+      "data": {
+        "preset": "hormozi",
+        "fontSize": 140,
+        "marginV": 400,
+        "status": "idle",
+        "stage": "pending",
+        "progress": null,
+        "outputUrl": null,
+        "cost": 0.01,
+        "label": "Captions (CapCut style)",
+        "error": null
+      }
+    },
+    {
+      "id": "0dcee2e9-00af-4b3d-a088-d5b6157a40f2",
+      "type": "flux-image",
+      "position": {
+        "x": 1640,
+        "y": 330
+      },
+      "data": {
+        "prompt": "Surreal horror image, vertical 9:16. Close-up of a young woman's hand holding a single human tooth in her open palm, slight blood smear at the fingertips, soft cinematic lighting from above, shallow depth of field, dreamlike misty haze in the background. Photorealistic, eerie but not gory. A24-film aesthetic, cold blue undertones.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "status": "done",
+        "outputUrl": "/output/images/gpt2-1778111195381.png",
+        "cost": 0.04,
+        "label": "Image Gen — Teeth Dream",
+        "usage": "asset"
+      }
+    },
+    {
+      "id": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "type": "image-overlay",
+      "position": {
+        "x": 1640,
+        "y": 40
+      },
+      "data": {
+        "start": 5,
+        "end": 6.5,
+        "position": "card",
+        "fadeMs": 150,
+        "opacity": 1,
+        "status": "idle",
+        "stage": "pending",
+        "outputUrl": null,
+        "cost": 0,
+        "progress": null,
+        "label": "Teeth Overlay",
+        "error": null
+      }
+    },
+    {
+      "id": "07b5371a-269a-4581-9a47-faa365df5495",
+      "type": "end-card",
+      "position": {
+        "x": 3240,
+        "y": 40
+      },
+      "data": {
+        "duration": 3,
+        "cta": "Try Dream Free",
+        "subtitle": "Decode every dream",
+        "brand": "Dream",
+        "status": "idle",
+        "label": "End Card — Dream",
+        "stage": "pending",
+        "outputUrl": null,
+        "cost": 0,
+        "error": null
+      }
+    },
+    {
+      "id": "3dd267f7-305a-41ad-bd18-0c6c1eea4091",
+      "type": "flux-image",
+      "position": {
+        "x": 2040,
+        "y": 330
+      },
+      "data": {
+        "prompt": "POV looking straight down from a great height, surreal endless free-fall perspective, clouds and city lights spiraling far below, sense of vertigo and weightlessness, vertical 9:16. Cinematic, slightly motion-blurred, cold dramatic colors, dream-like surreal quality. No people visible. Photorealistic but stylized.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "status": "done",
+        "label": "Image Gen — Falling Dream",
+        "outputUrl": "/output/images/gpt2-1778111169889.png",
+        "cost": 0.04,
+        "usage": "asset"
+      }
+    },
+    {
+      "id": "5db50f3e-b651-48d5-a58b-05c5248cb4fd",
+      "type": "flux-image",
+      "position": {
+        "x": 2440,
+        "y": 330
+      },
+      "data": {
+        "prompt": "Surreal anxiety-dream image, vertical 9:16. A young woman from behind, wrapped tightly in a white bed sheet covering her body fully, walking through a crowded school hallway. Surrounding silhouetted students all turning to look at her. Dream-like atmosphere, slightly blurred, warm panic colors. Photorealistic but stylized, no actual nudity, embarrassment vibe.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "status": "done",
+        "label": "Image Gen — Naked Dream",
+        "outputUrl": "/output/images/gpt2-1778111193974.png",
+        "cost": 0.04,
+        "usage": "asset"
+      }
+    },
+    {
+      "id": "cf724006-f1b2-4402-bb49-ba46c70e8657",
+      "type": "image-overlay",
+      "position": {
+        "x": 2040,
+        "y": 40
+      },
+      "data": {
+        "start": 6.5,
+        "end": 8,
+        "position": "card",
+        "fadeMs": 150,
+        "opacity": 1,
+        "status": "idle",
+        "label": "Falling Overlay"
+      }
+    },
+    {
+      "id": "7fd4756f-8c9c-4b53-86cd-0dced57879df",
+      "type": "image-overlay",
+      "position": {
+        "x": 2440,
+        "y": 40
+      },
+      "data": {
+        "start": 8,
+        "end": 9.5,
+        "position": "card",
+        "fadeMs": 150,
+        "opacity": 1,
+        "status": "idle",
+        "label": "Naked-Public Overlay"
+      }
+    },
+    {
+      "id": "787ccef3-0463-4e2d-acbb-873e26a4ce9f",
+      "type": "video-gen",
+      "position": {
+        "x": 440,
+        "y": 40
+      },
+      "data": {
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "prompt": "MEDIUM SELFIE SHOT. Blonde woman in her mid-20s sits cross-legged on her unmade bed with white sheets, soft morning sunlight from her right window, white V-neck tank top, gold chain at collar. Chest-up framing, hands resting on knees, relaxed casual posture. She looks straight at the camera with a knowing smile and says: \"Y'all, everyone has had these 3 dreams at least once. Like, EVERY single person.\" Camera: locked-off iPhone selfie, medium framing. Sound: clear casual female voice, faint room tone. Her lips move clearly and naturally. Animated facial expression as she talks.",
+        "duration": 5,
+        "audio": true,
+        "status": "idle",
+        "multiShot": false,
+        "label": "Kling A — Shot 1 (single)"
+      }
+    },
+    {
+      "id": "a47a8a25-6846-4d00-9e3f-1c81d25749a1",
+      "type": "stitch",
+      "position": {
+        "x": 840,
+        "y": 40
+      },
+      "data": {
+        "status": "idle",
+        "label": "Stitch — A + B"
+      }
+    },
+    {
+      "id": "9efa6ce3-e1b1-4d64-86ef-d026c82540f4",
+      "type": "transcribe",
+      "position": {
+        "x": 1240,
+        "y": 40
+      },
+      "data": {
+        "status": "idle",
+        "label": "Transcribe — peek timings"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "d29e4764-1961-453d-b865-e007467217f8",
+      "source": "6ac292d1-b5ed-447c-ade9-b25ef450133f",
+      "sourceHandle": "image",
+      "target": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "c267b4df-ecfd-4fce-8c89-9f1cab5e2530",
+      "source": "7d3218cb-a009-4004-8a32-28370725aae6",
+      "sourceHandle": "image",
+      "target": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "targetHandle": "image_url_2"
+    },
+    {
+      "id": "e5138d0c-16f8-4de8-b3ad-4422a7498a25",
+      "source": "0dcee2e9-00af-4b3d-a088-d5b6157a40f2",
+      "sourceHandle": "image",
+      "target": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "targetHandle": "image"
+    },
+    {
+      "id": "034172de-003e-4c01-9986-1e3bdaf35487",
+      "source": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "sourceHandle": "video",
+      "target": "07b5371a-269a-4581-9a47-faa365df5495",
+      "targetHandle": "video"
+    },
+    {
+      "id": "548427fa-760d-4430-84fa-137bdedaf2d5",
+      "source": "07b5371a-269a-4581-9a47-faa365df5495",
+      "sourceHandle": "video",
+      "target": "b86c4cea-2e58-4a4e-bd8f-3c6b36f4d2c0",
+      "targetHandle": "video"
+    },
+    {
+      "id": "86178e77-5697-4153-88eb-4b0b2959def9",
+      "source": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "sourceHandle": "video",
+      "target": "cf724006-f1b2-4402-bb49-ba46c70e8657",
+      "targetHandle": "video"
+    },
+    {
+      "id": "12e41819-c52f-48ee-ae49-01160d680924",
+      "source": "3dd267f7-305a-41ad-bd18-0c6c1eea4091",
+      "sourceHandle": "image",
+      "target": "cf724006-f1b2-4402-bb49-ba46c70e8657",
+      "targetHandle": "image"
+    },
+    {
+      "id": "e36595ed-e379-4501-a1f9-431362db796f",
+      "source": "cf724006-f1b2-4402-bb49-ba46c70e8657",
+      "sourceHandle": "video",
+      "target": "7fd4756f-8c9c-4b53-86cd-0dced57879df",
+      "targetHandle": "video"
+    },
+    {
+      "id": "3212dc45-11f2-4ab2-aeef-55c1bb71ccc6",
+      "source": "5db50f3e-b651-48d5-a58b-05c5248cb4fd",
+      "sourceHandle": "image",
+      "target": "7fd4756f-8c9c-4b53-86cd-0dced57879df",
+      "targetHandle": "image"
+    },
+    {
+      "id": "ec822f0a-a51b-4dbc-ae70-e7e330ae937b",
+      "source": "7fd4756f-8c9c-4b53-86cd-0dced57879df",
+      "sourceHandle": "video",
+      "target": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "targetHandle": "video"
+    },
+    {
+      "id": "72c832dd-1b42-4a87-8f02-369bd3a8c5f9",
+      "source": "6ac292d1-b5ed-447c-ade9-b25ef450133f",
+      "sourceHandle": "image",
+      "target": "787ccef3-0463-4e2d-acbb-873e26a4ce9f",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "a7cf5e41-bd55-4a65-83a5-ede22cb677dd",
+      "source": "7d3218cb-a009-4004-8a32-28370725aae6",
+      "sourceHandle": "image",
+      "target": "787ccef3-0463-4e2d-acbb-873e26a4ce9f",
+      "targetHandle": "image_url_2"
+    },
+    {
+      "id": "4a5d6957-9ceb-45b8-be6a-f421c2a26e35",
+      "source": "787ccef3-0463-4e2d-acbb-873e26a4ce9f",
+      "sourceHandle": "video",
+      "target": "a47a8a25-6846-4d00-9e3f-1c81d25749a1",
+      "targetHandle": "video_a"
+    },
+    {
+      "id": "cf6e895f-3f92-459d-a8d2-9e1cfe334d17",
+      "source": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "sourceHandle": "video",
+      "target": "a47a8a25-6846-4d00-9e3f-1c81d25749a1",
+      "targetHandle": "video_b"
+    },
+    {
+      "id": "9d9abbee-f5f0-4600-825d-9846c1711734",
+      "source": "a47a8a25-6846-4d00-9e3f-1c81d25749a1",
+      "sourceHandle": "video",
+      "target": "9efa6ce3-e1b1-4d64-86ef-d026c82540f4",
+      "targetHandle": "video"
+    },
+    {
+      "id": "2d0a484d-b929-4536-8ea6-4f9fa1918363",
+      "source": "9efa6ce3-e1b1-4d64-86ef-d026c82540f4",
+      "sourceHandle": "video",
+      "target": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "targetHandle": "video"
+    }
+  ],
+  "meta": {
+    "updatedAt": 1778113123403,
+    "totalCost": 1.01
+  }
+}

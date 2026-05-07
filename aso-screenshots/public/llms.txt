@@ -1,0 +1,23 @@
+# ASO Screenshots Studio
+
+App Store screenshot generator with AI hero enhancement (gpt-image-2 via fal.ai).
+
+## State API
+
+All editor state is mirrored to `~/.aso-studio/state.json` and exposed via REST:
+
+- `GET  http://localhost:5181/api/studio-state`       — read full state
+- `POST http://localhost:5181/api/studio-state/push`  — write + broadcast to browser (no reload needed)
+
+Push JSON body = full state object. Browser updates live via SSE.
+
+## Key state fields
+
+- `appName`, `appColor` — project metadata
+- `screenshots[]` — array of slots; each has `device` (iphone|ipad), `kind` (action|regular), `headline`, `action.ingredients`, `action.ingredientParams`
+- `action.themeHint` — natural-language description of desired AI hero background
+- `action.ingredientParams.*` — text values for each hero ingredient toggle (empty string = AI infers from context)
+
+## Full documentation
+
+`GET http://localhost:5181/llms-full.txt`

@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "7d3218cb-a009-4004-8a32-28370725aae6",
+      "type": "reference-image",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "data": {
+        "url": "/output/uploads/a9aad356-f97e-4058-8ead-954e64ab55e2.png",
+        "label": "App Screenshot"
+      }
+    },
+    {
+      "id": "6ac292d1-b5ed-447c-ade9-b25ef450133f",
+      "type": "flux-image",
+      "position": {
+        "x": 40,
+        "y": 992
+      },
+      "data": {
+        "prompt": "Vertical 9:16 iPhone front-camera selfie. An attractive woman in her mid-20s, polished influencer aesthetic — soft natural makeup, glossy lips, glowing healthy skin. She stands in a bright modern luxury kitchen: white marble countertop, brass fixtures, light oak cabinets, an espresso machine in the background, soft morning sunlight pouring through tall windows behind her. Loose silky hair, oversized cream knit sweater, small gold jewelry. Confident half-smile, direct eye contact with the camera, holding her phone in selfie position. Warm bright bokeh background. iPhone selfie aesthetic — natural skin texture, subtle grain, no studio lighting, no logos, no text, no captions. Casual TikTok lifestyle creator vibe.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "high",
+        "status": "done",
+        "outputUrl": "/output/images/gpt2-1778100063538.png",
+        "cost": 0,
+        "label": "Image Gen — Influencer"
+      }
+    },
+    {
+      "id": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "type": "video-gen",
+      "position": {
+        "x": 440,
+        "y": 40
+      },
+      "data": {
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "prompt": "An attractive woman in her mid-20s stands in a bright modern luxury kitchen — white marble countertop, brass fixtures, light oak cabinets, soft morning sunlight from tall windows behind her. Loose silky hair, cream knit sweater, holding her phone in selfie position toward the camera.\n\nShe leans in toward the camera with a conspiratorial half-smirk and a lowered voice, saying: \"If you've ever seen a dark figure standing at the foot of your bed in your sleep — it's not a demon. Your brain is stuck mid-REM, and what it means is wild.\"\n\nShe raises her phone next to her face, screen facing the camera, displaying the app interface shown in @Element1, then nods knowingly.\n\nCamera: static, locked-off, selfie medium close-up, iPhone front-camera aesthetic. Vertical 9:16, natural skin tones, slight grain. Sound: clear casual female voice, intimate and slightly conspiratorial tone, faint kitchen room tone, no music.",
+        "duration": 10,
+        "audio": true,
+        "status": "done",
+        "outputUrl": "/output/videos/kling-image-1778101399367.mp4",
+        "cost": 1.6800000000000002,
+        "elapsed": 269.129
+      }
+    },
+    {
+      "id": "b86c4cea-2e58-4a4e-bd8f-3c6b36f4d2c0",
+      "type": "output",
+      "position": {
+        "x": 2040,
+        "y": 104.58921787636001
+      },
+      "data": {
+        "label": "Output — Kling"
+      }
+    },
+    {
+      "id": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "type": "captions",
+      "position": {
+        "x": 1240,
+        "y": 40
+      },
+      "data": {
+        "preset": "hormozi",
+        "fontSize": 140,
+        "marginV": 400,
+        "status": "done",
+        "stage": "pending",
+        "progress": null,
+        "outputUrl": "/output/videos/captioned-1778108317085.mp4",
+        "cost": 0.01,
+        "label": "Captions (CapCut style)"
+      }
+    },
+    {
+      "id": "0dcee2e9-00af-4b3d-a088-d5b6157a40f2",
+      "type": "flux-image",
+      "position": {
+        "x": 40,
+        "y": 414
+      },
+      "data": {
+        "prompt": "Photorealistic horror image, vertical 9:16. A dark shadowy human figure standing motionless at the foot of an empty bed, dim moonlight filtering through gauzy curtains creating long shadows on the floor. The figure is barely silhouetted, faceless, ominous, slightly blurred edges as if not fully real. Eerie atmosphere, cold blue-grey tint, sleep paralysis demon aesthetic. A24 horror film grade, shallow depth of field, intimate POV from inside the bed. No text, no logos, no captions.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "status": "done",
+        "outputUrl": "/output/images/gpt2-1778106709876.png",
+        "cost": 0.04,
+        "label": "Image Gen — Monster"
+      }
+    },
+    {
+      "id": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "type": "image-overlay",
+      "position": {
+        "x": 840,
+        "y": 40
+      },
+      "data": {
+        "start": 1,
+        "end": 2.5,
+        "position": "polaroid",
+        "fadeMs": 200,
+        "opacity": 1,
+        "status": "done",
+        "stage": "pending",
+        "outputUrl": "/output/videos/overlay-1778107073398.mp4",
+        "cost": 0,
+        "progress": null,
+        "label": "Monster Jump-Scare"
+      }
+    },
+    {
+      "id": "07b5371a-269a-4581-9a47-faa365df5495",
+      "type": "end-card",
+      "position": {
+        "x": 1640,
+        "y": 40
+      },
+      "data": {
+        "duration": 3,
+        "cta": "Try Dream Free",
+        "subtitle": "Decode every dream",
+        "brand": "Dream",
+        "status": "done",
+        "label": "End Card — Dream",
+        "stage": "pending",
+        "outputUrl": "/output/videos/endcard-1778108326028.mp4",
+        "cost": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "d29e4764-1961-453d-b865-e007467217f8",
+      "source": "6ac292d1-b5ed-447c-ade9-b25ef450133f",
+      "sourceHandle": "image",
+      "target": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "c267b4df-ecfd-4fce-8c89-9f1cab5e2530",
+      "source": "7d3218cb-a009-4004-8a32-28370725aae6",
+      "sourceHandle": "image",
+      "target": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "targetHandle": "image_url_2"
+    },
+    {
+      "id": "811d8699-19e4-4ebd-9d17-62669b88e3b3",
+      "source": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "sourceHandle": "video",
+      "target": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "targetHandle": "video"
+    },
+    {
+      "id": "e5138d0c-16f8-4de8-b3ad-4422a7498a25",
+      "source": "0dcee2e9-00af-4b3d-a088-d5b6157a40f2",
+      "sourceHandle": "image",
+      "target": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "targetHandle": "image"
+    },
+    {
+      "id": "034172de-003e-4c01-9986-1e3bdaf35487",
+      "source": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "sourceHandle": "video",
+      "target": "07b5371a-269a-4581-9a47-faa365df5495",
+      "targetHandle": "video"
+    },
+    {
+      "id": "548427fa-760d-4430-84fa-137bdedaf2d5",
+      "source": "07b5371a-269a-4581-9a47-faa365df5495",
+      "sourceHandle": "video",
+      "target": "b86c4cea-2e58-4a4e-bd8f-3c6b36f4d2c0",
+      "targetHandle": "video"
+    },
+    {
+      "id": "68fd8d28-3da8-4239-900c-bbcfe23e8d25",
+      "source": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "sourceHandle": "video",
+      "target": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "targetHandle": "video"
+    }
+  ],
+  "meta": {
+    "updatedAt": 1778109667710,
+    "totalCost": 1.73
+  }
+}

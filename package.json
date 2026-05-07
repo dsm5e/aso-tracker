@@ -1,0 +1,20 @@
+{
+  "name": "aso-studio-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "aso-keywords",
+    "aso-screenshots",
+    "aso-video"
+  ],
+  "scripts": {
+    "dev": "concurrently -n keywords,screenshots,video -c magenta,cyan,green \"npm:dev:keywords\" \"npm:dev:screenshots\" \"npm:dev:video\"",
+    "dev:keywords": "npm --workspace aso-keywords run dev",
+    "dev:screenshots": "npm --workspace aso-screenshots run dev",
+    "dev:video": "npm --workspace aso-video run dev",
+    "open": "open http://localhost:5173"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

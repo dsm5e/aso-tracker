@@ -1,0 +1,69 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build output
+dist
+dist-ssr
+*.local
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.sw?
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+.tsbuildinfo
+
+# ===== USER DATA — NEVER COMMIT =====
+# All private data lives in ~/.aso-studio/ (outside the repo).
+# These leftover legacy paths are kept ignored for safety in case anyone
+# still has data in the old in-repo locations.
+
+# aso-keywords legacy paths
+aso-keywords/config/apps.json
+aso-keywords/config/keywords/*.json
+!aso-keywords/config/keywords/*.example.json
+!aso-keywords/config/keywords/README.md
+aso-keywords/data/
+
+# aso-screenshots
+aso-screenshots/data/
+aso-screenshots/pdf/
+aso-screenshots/exports/
+aso-screenshots/server/lib/presets/imported/
+
+# aso-video — generated mp4/png/audio assets can balloon to 100s of MB per
+# session; never commit. Curated starter pack lives in `aso-video/workflows/`
+# and `aso-video/influencer/` and ARE tracked.
+aso-video/output/
+aso-video/uploads/
+aso-video/.tmp/
+
+# Vite cache
+**/.vite/
+**/.vite-temp/
+
+# Databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Migrated raw data
+*.jsonl

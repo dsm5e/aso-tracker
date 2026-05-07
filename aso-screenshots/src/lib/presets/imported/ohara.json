@@ -1,0 +1,121 @@
+{
+  "id": "ohara",
+  "name": "Ohara",
+  "kind": "real",
+  "description": "Imported from Template-Sahara.butterkit (renamed Ohara \u2014 playful Sahara variant).",
+  "recommendedFor": "lifestyle / outdoors",
+  "background": {
+    "type": "image",
+    "css": "#E5C8A0",
+    "parametric": "mountains"
+  },
+  "text": {
+    "font": "Jost",
+    "weight": 900,
+    "color": "rgba(255,255,255,1.000)",
+    "align": "center",
+    "uppercase": false
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "decorationsHint": "Ohara aesthetic \u2014 calm dunes, warm pastel sky, soft horizon, match the imported background mood.",
+  "device": {
+    "asset": "iphone",
+    "scale": 1
+  },
+  "samples": [
+    {
+      "verb": "Save favorites",
+      "descriptor": "Access from anywhere",
+      "device": {
+        "offsetY": -35
+      },
+      "text": {
+        "yFraction": 0.78,
+        "titlePx": 150,
+        "subPx": 82
+      }
+    },
+    {
+      "verb": "Offline maps",
+      "descriptor": "No internet, no problem",
+      "device": {
+        "offsetY": 22
+      },
+      "text": {
+        "yFraction": 0.05,
+        "titlePx": 150,
+        "subPx": 82
+      }
+    },
+    {
+      "verb": "\"My go-to\"",
+      "descriptor": "Real App Store review",
+      "device": {
+        "offsetX": 690,
+        "offsetY": 405,
+        "rotateZ": -37,
+        "scale": 1.18
+      },
+      "text": {
+        "yFraction": 0.78,
+        "titlePx": 150,
+        "subPx": 82
+      },
+      "groupId": "cross-1"
+    },
+    {
+      "verb": "",
+      "descriptor": "",
+      "device": {
+        "offsetX": -600,
+        "offsetY": 405,
+        "rotateZ": -37,
+        "scale": 1.18
+      },
+      "text": {
+        "yFraction": 0.78
+      },
+      "groupId": "cross-1"
+    },
+    {
+      "verb": "Highlights",
+      "descriptor": "Track big moments",
+      "device": {
+        "offsetY": -35
+      },
+      "text": {
+        "yFraction": 0.78,
+        "titlePx": 150,
+        "subPx": 82
+      }
+    },
+    {
+      "verb": "Share location",
+      "descriptor": "Built-in beacon",
+      "device": {
+        "offsetY": 22
+      },
+      "text": {
+        "yFraction": 0.05,
+        "titlePx": 150,
+        "subPx": 82
+      }
+    },
+    {
+      "verb": "Memories",
+      "descriptor": "Keep your favorites",
+      "device": {
+        "offsetY": 16,
+        "scale": 1.006
+      },
+      "text": {
+        "yFraction": 0.05,
+        "titlePx": 150,
+        "subPx": 82
+      }
+    }
+  ],
+  "suggestedAccent": "#A87648"
+}

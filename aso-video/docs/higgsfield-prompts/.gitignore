@@ -1,0 +1,38 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env
+.env.local
+
+# OS
+Thumbs.db
+Desktop.ini
+.Spotlight-V100
+.Trashes
+
+# Claude Code
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Logs / temp
+*.log
+*.bak
+*.tmp

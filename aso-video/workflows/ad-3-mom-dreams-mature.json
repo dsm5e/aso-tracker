@@ -1,0 +1,325 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "7d3218cb-a009-4004-8a32-28370725aae6",
+      "type": "reference-image",
+      "position": {
+        "x": 40,
+        "y": 858
+      },
+      "data": {
+        "url": "/output/uploads/a9aad356-f97e-4058-8ead-954e64ab55e2.png",
+        "label": "App Screenshot"
+      }
+    },
+    {
+      "id": "6ac292d1-b5ed-447c-ade9-b25ef450133f",
+      "type": "flux-image",
+      "position": {
+        "x": 40,
+        "y": 280
+      },
+      "data": {
+        "prompt": "Vertical 9:16 iPhone front-camera selfie. A natural-beauty woman in her late 40s, 47-50 years old, soft warm smile with subtle laugh lines around her eyes, naturally beautiful without heavy makeup, wavy shoulder-length brown hair with elegant silver strands embraced. Wearing an oatmeal cream wool cardigan over a soft white tee, thin gold chain necklace, small simple gold stud earrings. Sitting on a soft armchair in a cozy living room, soft morning sunlight from a window to her right, indoor plants softly out of focus, a wooden bookshelf and a warm-toned mug of tea beside her. Calm knowing expression, direct warm eye contact with the camera, gentle half-smile, holding her phone in selfie position. iPhone selfie aesthetic — natural skin texture, subtle grain, no studio lighting, no logos, no text. Mature lifestyle creator vibe, warm trustworthy mother-figure energy.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "status": "done",
+        "outputUrl": "/output/images/gpt2-1778116265809.png",
+        "cost": 0.04,
+        "label": "Image Gen — Character (Mature)",
+        "usage": "character"
+      }
+    },
+    {
+      "id": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "type": "video-gen",
+      "position": {
+        "x": 440,
+        "y": 697
+      },
+      "data": {
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "prompt": "",
+        "duration": 10,
+        "audio": true,
+        "status": "idle",
+        "outputUrl": null,
+        "cost": null,
+        "elapsed": null,
+        "multiShot": true,
+        "shots": [
+          {
+            "prompt": "CUT TO TIGHT CLOSE-UP. Same woman, framing now pulls in to face and upper shoulders only, much more intimate. She leans slightly closer to the camera with a thoughtful, warm expression. She speaks softly with clear lip movement: \"I always thought it was grief that wouldn't go away. But I just learned — dreams about people we've lost aren't about THEM. They're about which part of us we left when they did.\" Slight gentle pause mid-sentence. Camera: tight close-up, locked-off, intimate mature framing.",
+            "duration": 5
+          },
+          {
+            "prompt": "CUT TO WIDE SELFIE FRAME. Same mature woman, framing pulled back wider showing more of the cozy living room. She raises her phone next to her face with screen facing the camera (showing a dream journal app interface). Soft warm half-smile, gentle nod, says with clear lip movement: \"I asked an AI to interpret one of mine. I was crying in five minutes. Try it tonight.\" Camera: wider selfie framing, phone screen visible. Same warm lighting.",
+            "duration": 5
+          }
+        ],
+        "shotType": "customize",
+        "label": "Kling B — Shots 2+3 (mom)",
+        "error": null,
+        "progress": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "b86c4cea-2e58-4a4e-bd8f-3c6b36f4d2c0",
+      "type": "output",
+      "position": {
+        "x": 840,
+        "y": 40
+      },
+      "data": {
+        "label": "Output — Kling",
+        "status": "idle",
+        "outputUrl": null,
+        "error": null,
+        "progress": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "type": "captions",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "data": {
+        "preset": "hormozi",
+        "fontSize": 140,
+        "marginV": 400,
+        "status": "idle",
+        "stage": null,
+        "progress": null,
+        "outputUrl": null,
+        "cost": null,
+        "label": "Captions (CapCut style)",
+        "error": null
+      }
+    },
+    {
+      "id": "0dcee2e9-00af-4b3d-a088-d5b6157a40f2",
+      "type": "flux-image",
+      "position": {
+        "x": 1640,
+        "y": 330
+      },
+      "data": {
+        "prompt": "Vintage sepia-toned photograph of an older woman in her late 50s, smiling warmly at the camera, photo from late 1980s style, slightly faded and warm sepia-toned. She wears a simple knit sweater, hair styled in a 1980s soft perm, gentle kind eyes, soft natural light. Sentimental nostalgic mood. Photorealistic photo of a photo, slight grain texture, looks like a treasured family photograph held lovingly. Vertical 9:16 portrait crop. No text, no logos, no captions, no modern elements.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "status": "idle",
+        "outputUrl": null,
+        "cost": null,
+        "label": "Image Gen — Sepia Mom Photo",
+        "usage": "asset",
+        "error": null,
+        "progress": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "type": "image-overlay",
+      "position": {
+        "x": 1640,
+        "y": 40
+      },
+      "data": {
+        "start": 5.5,
+        "end": 7,
+        "position": "card",
+        "fadeMs": 350,
+        "opacity": 1,
+        "status": "idle",
+        "stage": null,
+        "outputUrl": null,
+        "cost": 0,
+        "progress": null,
+        "label": "Sepia Mom Overlay",
+        "error": null
+      }
+    },
+    {
+      "id": "07b5371a-269a-4581-9a47-faa365df5495",
+      "type": "end-card",
+      "position": {
+        "x": 440,
+        "y": 40
+      },
+      "data": {
+        "duration": 3,
+        "cta": "Try Dream Free",
+        "subtitle": "Make sense of what your dreams are saying",
+        "brand": "Dream",
+        "status": "idle",
+        "label": "End Card — Dream",
+        "stage": null,
+        "outputUrl": null,
+        "cost": 0,
+        "error": null,
+        "progress": null
+      }
+    },
+    {
+      "id": "787ccef3-0463-4e2d-acbb-873e26a4ce9f",
+      "type": "video-gen",
+      "position": {
+        "x": 440,
+        "y": 328
+      },
+      "data": {
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "prompt": "MEDIUM SELFIE SHOT. A woman in her late 40s sits on a soft armchair in a cozy living room, soft morning sunlight from her right window, oatmeal wool cardigan, thin gold chain. Chest-up framing, calm relaxed posture, holding phone in selfie position. She speaks directly to the camera with clear lip movement and gentle, knowing facial expression: \"I keep dreaming about my mom who passed away eight years ago. Same dream, almost every month.\" Camera: locked-off iPhone selfie, warm trustworthy tone. Sound: clear mature female voice, intimate and gentle, faint room tone, no music.",
+        "duration": 5,
+        "audio": true,
+        "status": "idle",
+        "multiShot": false,
+        "label": "Kling A — Shot 1 (single, mom)",
+        "outputUrl": null,
+        "cost": null,
+        "elapsed": null,
+        "error": null,
+        "progress": null,
+        "stage": null,
+        "shots": []
+      }
+    },
+    {
+      "id": "a47a8a25-6846-4d00-9e3f-1c81d25749a1",
+      "type": "stitch",
+      "position": {
+        "x": 840,
+        "y": 198
+      },
+      "data": {
+        "status": "idle",
+        "label": "Stitch — A + B",
+        "stage": null,
+        "outputUrl": null,
+        "cost": 0,
+        "error": null,
+        "progress": null
+      }
+    },
+    {
+      "id": "9efa6ce3-e1b1-4d64-86ef-d026c82540f4",
+      "type": "transcribe",
+      "position": {
+        "x": 1240,
+        "y": 40
+      },
+      "data": {
+        "status": "idle",
+        "label": "Transcribe — peek timings",
+        "stage": null,
+        "outputUrl": null,
+        "words": null,
+        "cached": null,
+        "cost": null,
+        "error": null,
+        "progress": null
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "d29e4764-1961-453d-b865-e007467217f8",
+      "source": "6ac292d1-b5ed-447c-ade9-b25ef450133f",
+      "sourceHandle": "image",
+      "target": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "c267b4df-ecfd-4fce-8c89-9f1cab5e2530",
+      "source": "7d3218cb-a009-4004-8a32-28370725aae6",
+      "sourceHandle": "image",
+      "target": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "targetHandle": "image_url_2"
+    },
+    {
+      "id": "e5138d0c-16f8-4de8-b3ad-4422a7498a25",
+      "source": "0dcee2e9-00af-4b3d-a088-d5b6157a40f2",
+      "sourceHandle": "image",
+      "target": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "targetHandle": "image"
+    },
+    {
+      "id": "034172de-003e-4c01-9986-1e3bdaf35487",
+      "source": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "sourceHandle": "video",
+      "target": "07b5371a-269a-4581-9a47-faa365df5495",
+      "targetHandle": "video"
+    },
+    {
+      "id": "548427fa-760d-4430-84fa-137bdedaf2d5",
+      "source": "07b5371a-269a-4581-9a47-faa365df5495",
+      "sourceHandle": "video",
+      "target": "b86c4cea-2e58-4a4e-bd8f-3c6b36f4d2c0",
+      "targetHandle": "video"
+    },
+    {
+      "id": "72c832dd-1b42-4a87-8f02-369bd3a8c5f9",
+      "source": "6ac292d1-b5ed-447c-ade9-b25ef450133f",
+      "sourceHandle": "image",
+      "target": "787ccef3-0463-4e2d-acbb-873e26a4ce9f",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "a7cf5e41-bd55-4a65-83a5-ede22cb677dd",
+      "source": "7d3218cb-a009-4004-8a32-28370725aae6",
+      "sourceHandle": "image",
+      "target": "787ccef3-0463-4e2d-acbb-873e26a4ce9f",
+      "targetHandle": "image_url_2"
+    },
+    {
+      "id": "4a5d6957-9ceb-45b8-be6a-f421c2a26e35",
+      "source": "787ccef3-0463-4e2d-acbb-873e26a4ce9f",
+      "sourceHandle": "video",
+      "target": "a47a8a25-6846-4d00-9e3f-1c81d25749a1",
+      "targetHandle": "video_a"
+    },
+    {
+      "id": "cf6e895f-3f92-459d-a8d2-9e1cfe334d17",
+      "source": "d8cedc99-f442-4f5e-abf4-2a678f406b9f",
+      "sourceHandle": "video",
+      "target": "a47a8a25-6846-4d00-9e3f-1c81d25749a1",
+      "targetHandle": "video_b"
+    },
+    {
+      "id": "9d9abbee-f5f0-4600-825d-9846c1711734",
+      "source": "a47a8a25-6846-4d00-9e3f-1c81d25749a1",
+      "sourceHandle": "video",
+      "target": "9efa6ce3-e1b1-4d64-86ef-d026c82540f4",
+      "targetHandle": "video"
+    },
+    {
+      "id": "2d0a484d-b929-4536-8ea6-4f9fa1918363",
+      "source": "9efa6ce3-e1b1-4d64-86ef-d026c82540f4",
+      "sourceHandle": "video",
+      "target": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "targetHandle": "video"
+    },
+    {
+      "id": "785c0837-40e3-4801-887c-0cbe3adca329",
+      "source": "3f920ea4-ab74-45e3-9b87-f0934a3f396e",
+      "sourceHandle": "video",
+      "target": "43828eb5-64df-45f5-b259-0d216f1067a1",
+      "targetHandle": "video"
+    }
+  ],
+  "meta": {
+    "updatedAt": 1778116284136,
+    "totalCost": 0.04
+  }
+}

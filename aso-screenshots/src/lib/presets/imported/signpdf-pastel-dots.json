@@ -1,0 +1,97 @@
+{
+  "id": "signpdf-pastel-dots",
+  "name": "Pastel Dots",
+  "kind": "real",
+  "description": "Pastel dotted backdrop with pink pill, big rounded indigo headline, phone clipped at bottom. Adapted from a Sign PDF reference set.",
+  "recommendedFor": "utility / productivity / privacy-first apps",
+  "background": {
+    "type": "solid",
+    "css": "#EEE9FB",
+    "parametric": "dots"
+  },
+  "text": {
+    "font": "Nunito",
+    "weight": 900,
+    "color": "#2825B7",
+    "align": "center",
+    "uppercase": false
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "suggestedAccent": "#E04A6F",
+  "decorationsHint": "soft pastel polka-dot canvas, hand-drawn pink curls / arrows / halo circles around the device, bold rounded indigo type, candy-pink pill badge.",
+  "heroPrompt": "Design a high-converting App Store hero screenshot for {appName}. Goal: instantly communicate the main benefit in under 3 seconds.\n\nApp: {themeHint}.\n\nVibe: pastel polka-dot canvas (same hue as input), candy-pink accents, hand-drawn doodles around the device — curls, halos, sparkles, tiny arrows. Modern iOS marketing design — bold, premium, clean. Sharp lighting, soft shadows, lots of whitespace, strong visual hierarchy. Phone at a slight angle for depth (not flat). Glow / focus on the device. Make it instantly scannable at thumbnail size.\n\nComposition: arrange every element with intentional spatial layout — anchor each ingredient in its own zone (corner, side, around the device), DON'T stack them vertically in a column. Use the whole canvas with breathing room. Phone is the focal point, decorations and ingredients are accents. Borrow shapes / colours / icons from elements visible inside the phone's app UI so the surrounding canvas feels like an extension of the app's visual language, not random stock graphics.\n\n{extraPromptBlock}\n\nLayout: the TOP 25% of the canvas is reserved for a headline overlaid afterwards — keep it clean dotted background, no baked text, no decorations there. The remaining 75% (from ~25% downward to the very bottom) is for the phone and decorations — use ALL of that vertical space with breathing room. Do NOT cluster everything in the upper-middle and leave the bottom empty; the composition should fill the canvas edge-to-edge.\n\nAvoid: clutter, multiple focal points, boring flat backgrounds.\nQuality: ultra-sharp, realistic lighting, premium App Store top-grossing-app feel.\n\nIMPORTANT: Treat the inner phone screen as a fixed image. Keep its content exactly as in the input scaffold — do NOT redraw labels, buttons, list rows, status bar, icons, or any text inside the device frame. You may re-perspective the whole screen image to match the new phone angle, but pixel content stays.",
+  "device": {
+    "asset": "iphone",
+    "scale": 1.05,
+    "offsetY": 1100
+  },
+  "samples": [
+    {
+      "verb": "Draw your signature.",
+      "descriptor": "Sign PDFs with finger or Apple Pencil.",
+      "pill": "ESIGNATURE READY",
+      "text": {
+        "yFraction": 0.05,
+        "titlePx": 200,
+        "subPx": 80
+      },
+      "device": {
+        "offsetX": -75,
+        "offsetY": -485,
+        "rotateZ": 9
+      },
+      "pillBg": "#E04A6F",
+      "pillFg": "#FFFFFF"
+    },
+    {
+      "verb": "Scan paper to PDF.",
+      "descriptor": "Auto edge detection. Searchable PDFs.",
+      "pill": "SCANNER BUILT-IN",
+      "text": {
+        "yFraction": 0.05,
+        "titlePx": 200,
+        "subPx": 80
+      },
+      "device": {
+        "offsetY": -885,
+        "scale": 0.75
+      },
+      "pillBg": "#E04A6F",
+      "pillFg": "#FFFFFF"
+    },
+    {
+      "verb": "Annotate & fill forms.",
+      "descriptor": "Highlight, comment, fill — right on the page.",
+      "pill": "EDIT · ANNOTATE · HIGHLIGHT",
+      "text": {
+        "yFraction": 0.05,
+        "titlePx": 140,
+        "subPx": 62
+      },
+      "device": {
+        "offsetX": -10,
+        "offsetY": -885,
+        "scale": 0.85
+      },
+      "pillBg": "#E04A6F",
+      "pillFg": "#FFFFFF"
+    },
+    {
+      "verb": "100% on-device.",
+      "descriptor": "Offline signing. Zero cloud. No tracking.",
+      "pill": "PRIVACY-FIRST",
+      "text": {
+        "yFraction": 0.05,
+        "titlePx": 200,
+        "subPx": 80
+      },
+      "device": {
+        "offsetY": -625
+      },
+      "pillBg": "#E04A6F",
+      "pillFg": "#FFFFFF"
+    }
+  ]
+}

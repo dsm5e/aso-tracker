@@ -1,0 +1,57 @@
+{
+  "id": "bold-brand-solid",
+  "name": "Bold Brand Solid",
+  "kind": "real",
+  "description": "Plain bold brand-color background, white headline, no tilt. Placeholder while we build new templates.",
+  "recommendedFor": "utility / tools",
+  "background": {
+    "type": "solid",
+    "css": "#3B82F6"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 900,
+    "color": "#FFFFFF",
+    "uppercase": true,
+    "align": "center"
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "decorationsHint": "minimal — keep background absolutely clean, no decorations, no patterns, no particles. Confident utility aesthetic.",
+  "samples": [
+    {
+      "verb": "TRACK",
+      "descriptor": "EVERY DAY",
+      "device": {
+        "scale": 0.9
+      },
+      "text": {}
+    },
+    {
+      "verb": "CAPTURE",
+      "descriptor": "IN SECONDS",
+      "device": {
+        "scale": 0.9
+      },
+      "text": {}
+    },
+    {
+      "verb": "ORGANISE",
+      "descriptor": "WITH EASE",
+      "device": {
+        "scale": 0.9
+      },
+      "text": {}
+    },
+    {
+      "verb": "TRACK",
+      "descriptor": "EVERY DAY",
+      "device": {
+        "offsetY": -80,
+        "scale": 0.9
+      },
+      "text": {}
+    }
+  ]
+}

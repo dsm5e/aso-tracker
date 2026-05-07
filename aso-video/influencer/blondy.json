@@ -1,0 +1,9 @@
+{
+  "name": "blondy",
+  "prompt": "Vertical 9:16 iPhone front-camera selfie. An attractive blonde woman in her mid-20s, polished influencer aesthetic \u2014 natural makeup with subtle gloss, glowing healthy skin, long honey-blonde hair tousled and slightly messy. Wearing a fitted white V-neck ribbed tank top, gold chain necklace resting at collar, hint of natural feminine silhouette. Sitting cross-legged on a bed with white sheets, soft morning sunlight from a window to her right, cozy bedroom in the background \u2014 slightly out of focus warm tones, hint of a plant and a candle. Confident half-smile, direct eye contact with the camera, holding her phone in selfie position. iPhone selfie aesthetic \u2014 natural skin texture, subtle grain. Casual TikTok creator vibe, no studio lighting, no logos, no text.",
+  "model": "gpt-image-2",
+  "aspectRatio": "9:16",
+  "quality": "medium",
+  "imageUrl": "/influencer/blondy.jpg",
+  "savedAt": 1778111318020
+}

@@ -1,0 +1,134 @@
+/* ASO Screenshot Studio — design tokens
+   Modern dark editor (Linear/Figma/Raycast hybrid).
+   All chrome derives from these tokens. */
+
+:root {
+  /* Surfaces — graphite stack */
+  --bg-0: #0a0a0c;          /* app shell */
+  --bg-1: #101013;          /* sidebars / topbar */
+  --bg-2: #15161a;          /* panels / cards */
+  --bg-3: #1c1d22;          /* hover surface */
+  --bg-4: #25262d;          /* active / pressed */
+  --bg-canvas: #1a1b1f;     /* preview canvas backdrop */
+
+  /* Borders */
+  --line-1: rgba(255, 255, 255, 0.06);
+  --line-2: rgba(255, 255, 255, 0.10);
+  --line-3: rgba(255, 255, 255, 0.16);
+  --line-strong: rgba(255, 255, 255, 0.24);
+
+  /* Text */
+  --fg-0: #f4f4f5;          /* primary */
+  --fg-1: #c8c9cf;          /* secondary */
+  --fg-2: #8b8d96;          /* tertiary / labels */
+  --fg-3: #5e6068;          /* muted / placeholder */
+  --fg-4: #3d3f46;          /* disabled */
+
+  /* Accent — Figma blue (selected via question) */
+  --accent: #3b82f6;
+  --accent-hover: #5a99fa;
+  --accent-active: #2c6fe0;
+  --accent-soft: rgba(59, 130, 246, 0.14);
+  --accent-ring: rgba(59, 130, 246, 0.40);
+  --accent-fg: #ffffff;
+
+  /* Status */
+  --success: #3ddc97;
+  --warn: #f5b041;
+  --danger: #ff5d5d;
+  --ai: #b08bff;             /* AI/magic actions */
+  --ai-soft: rgba(176, 139, 255, 0.14);
+
+  /* Radii */
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 8px;
+  --r-4: 10px;
+  --r-5: 14px;
+  --r-pill: 999px;
+
+  /* Spacing scale */
+  --s-1: 4px;
+  --s-2: 6px;
+  --s-3: 8px;
+  --s-4: 12px;
+  --s-5: 16px;
+  --s-6: 20px;
+  --s-7: 24px;
+  --s-8: 32px;
+  --s-9: 40px;
+  --s-10: 56px;
+
+  /* Typography */
+  --font-sans: "Inter", ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Shadows */
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-3: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 18px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+
+  /* Density (compact / comfortable) — overridden via [data-density] */
+  --row-h: 28px;
+  --row-pad-y: 6px;
+  --section-gap: 14px;
+
+  /* Topbar — synced with ASO Tracker (padding 18 + button 36 + padding 18 = 72)
+     so switching between the two apps via BrandSwitcher doesn't shift layout. */
+  --topbar-h: 72px;
+  --sidebar-w: 320px;
+  --inspector-w: 280px;
+}
+
+[data-density="compact"] {
+  --row-h: 24px;
+  --row-pad-y: 4px;
+  --section-gap: 10px;
+}
+
+[data-density="comfortable"] {
+  --row-h: 32px;
+  --row-pad-y: 8px;
+  --section-gap: 18px;
+}
+
+/* Accent palette swap — driven by Tweak */
+[data-accent="violet"] {
+  --accent: #7c5cff; --accent-hover: #9377ff; --accent-active: #6748e6;
+  --accent-soft: rgba(124, 92, 255, 0.16); --accent-ring: rgba(124, 92, 255, 0.40);
+}
+[data-accent="orange"] {
+  --accent: #ff6b35; --accent-hover: #ff8556; --accent-active: #e0552b;
+  --accent-soft: rgba(255, 107, 53, 0.16); --accent-ring: rgba(255, 107, 53, 0.40);
+}
+[data-accent="green"] {
+  --accent: #3ddc97; --accent-hover: #5ee5a8; --accent-active: #2cc380;
+  --accent-soft: rgba(61, 220, 151, 0.14); --accent-ring: rgba(61, 220, 151, 0.40);
+  --accent-fg: #052b1c;
+}
+[data-accent="blue"] {
+  --accent: #3b82f6; --accent-hover: #5a99fa; --accent-active: #2c6fe0;
+  --accent-soft: rgba(59, 130, 246, 0.14); --accent-ring: rgba(59, 130, 246, 0.40);
+}
+[data-accent="white"] {
+  --accent: #f5f5f5; --accent-hover: #ffffff; --accent-active: #d8d8d8;
+  --accent-soft: rgba(255, 255, 255, 0.10); --accent-ring: rgba(255, 255, 255, 0.30);
+  --accent-fg: #0a0a0c;
+}
+
+/* Aesthetic flavor — Linear / Figma / Raycast / Hybrid */
+[data-flavor="linear"] {
+  --bg-0: #08090b; --bg-1: #0c0d10; --bg-2: #131419; --bg-3: #1a1b21;
+  --line-1: rgba(255,255,255,0.05); --line-2: rgba(255,255,255,0.08);
+}
+[data-flavor="raycast"] {
+  --bg-0: #050507; --bg-1: #0b0b0e; --bg-2: #131318; --bg-3: #1c1c22;
+  --r-2: 8px; --r-3: 10px; --r-4: 12px; --r-5: 16px;
+}
+[data-flavor="figma"] {
+  --bg-0: #1e1e1e; --bg-1: #2c2c2c; --bg-2: #383838; --bg-3: #444444;
+  --bg-canvas: #2c2c2c;
+  --line-1: rgba(255,255,255,0.08); --line-2: rgba(255,255,255,0.12);
+}
