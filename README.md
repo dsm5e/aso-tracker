@@ -4,7 +4,7 @@
 
 Stop paying \$500/mo to Sensor Tower / AppTweak / SplitMetrics. ASO Studio runs on your machine, uses public APIs where possible, and stores everything locally.
 
-<video src="https://github.com/dsm5e/aso-tracker/raw/main/docs/demo.mp4" controls width="100%"></video>
+![ASO Studio demo](docs/demo.gif)
 
 ## What's inside
 
@@ -118,9 +118,9 @@ Three UGC ad creatives generated end-to-end by the video sub-tool — script →
 
 <table>
   <tr>
-    <td><video src="https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-1.mp4" controls width="100%"></video></td>
-    <td><video src="https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-2.mp4" controls width="100%"></video></td>
-    <td><video src="https://github.com/dsm5e/aso-tracker/raw/main/docs/video/example-3.mp4" controls width="100%"></video></td>
+    <td><img src="docs/video/example-1.gif" width="100%"></td>
+    <td><img src="docs/video/example-2.gif" width="100%"></td>
+    <td><img src="docs/video/example-3.gif" width="100%"></td>
   </tr>
 </table>
 
