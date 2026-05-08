@@ -270,23 +270,57 @@ function GraphEditor() {
   const graphRef = useRef<GraphPayload | null>(null);
 
   // Hydrate + subscribe to SSE.
+  // External-reload pipeline: when a workflow JSON is edited on disk (e.g. by
+  // Claude), the server fires `external-reload` immediately followed by a
+  // refreshed `graph` event. We snapshot the previous graph on the hint, diff
+  // it against the next graph, and flash the changed/added nodes for ~1.4s
+  // so the operator can see exactly what was touched.
+  const externalDiffPendingRef = useRef<{ prev: GraphPayload | null } | null>(null);
+  const [flashingIds, setFlashingIds] = useState<Set<string>>(new Set());
   useEffect(() => {
     let mounted = true;
     fetchGraph().then((g) => { if (mounted) { setGraph(g); graphRef.current = g; } });
     listWorkflows().then((w) => mounted && setWorkflows(w));
     listInfluencers().then((i) => mounted && setInfluencers(i));
-    // Only apply graph updates when content actually changed — suppresses
-    // no-op re-renders triggered by SSE heartbeats / fal.ai progress pings
-    // that don't affect any visible field. Stops the canvas from flickering.
     const applyGraph = (g: GraphPayload) => {
       setLastSseAt(Date.now());
       const prev = graphRef.current ? JSON.stringify(graphRef.current) : '';
       const next = JSON.stringify(g);
       if (prev === next) return;
+
+      // If an external file edit just happened, compute a diff of changed
+      // node IDs against the snapshot taken at the hint and trigger flashes.
+      const pending = externalDiffPendingRef.current;
+      if (pending) {
+        externalDiffPendingRef.current = null;
+        const prevById = new Map((pending.prev?.nodes ?? []).map((n) => [n.id, n]));
+        const changed = new Set<string>();
+        for (const n of g.nodes) {
+          const before = prevById.get(n.id);
+          if (!before) { changed.add(n.id); continue; }
+          if (
+            before.position.x !== n.position.x ||
+            before.position.y !== n.position.y ||
+            JSON.stringify(before.data) !== JSON.stringify(n.data)
+          ) changed.add(n.id);
+        }
+        if (changed.size > 0) {
+          setFlashingIds(changed);
+          setTimeout(() => {
+            if (!mounted) return;
+            setFlashingIds(new Set());
+          }, 1500);
+        }
+      }
+
       graphRef.current = g;
       setGraph(g);
     };
-    const dispose = subscribe(applyGraph);
+    const onExternalReload = () => {
+      // Stash the current graph so the next SSE payload can be diffed against it.
+      externalDiffPendingRef.current = { prev: graphRef.current };
+    };
+    const dispose = subscribe(applyGraph, onExternalReload);
     const uninstall = installBridge(() => graphRef.current);
     return () => { mounted = false; dispose(); uninstall(); };
   }, []);
@@ -343,7 +377,8 @@ function GraphEditor() {
   const [rfEdges, setRfEdges] = useState<Edge[]>([]);
   const draggingIdsRef = useRef<Set<string>>(new Set());
 
-  // Sync server graph → local rf state.
+  // Sync server graph → local rf state. Re-runs when flashingIds changes so
+  // the flash className gets attached/removed on the freshly synced nodes.
   useEffect(() => {
     if (!graph) return;
     // Force group nodes to render BEHIND everything else by giving them
@@ -404,10 +439,11 @@ function GraphEditor() {
         // Group nodes render below everything else.
         const zIndex = n.type === 'group' ? -1 : undefined;
 
+        const flashClass = flashingIds.has(n.id) ? 'node-flash' : undefined;
         if (dragging.has(n.id) && local) {
-          return { ...local, data, type: n.type };
+          return { ...local, data, type: n.type, className: flashClass };
         }
-        return { id: n.id, type: n.type, position: n.position, data, ...preserved, ...(zIndex !== undefined ? { zIndex } : {}) };
+        return { id: n.id, type: n.type, position: n.position, data, ...preserved, ...(zIndex !== undefined ? { zIndex } : {}), className: flashClass };
       });
     });
     setRfEdges(
@@ -426,7 +462,7 @@ function GraphEditor() {
         };
       }),
     );
-  }, [graph]);
+  }, [graph, flashingIds]);
 
   // React Flow change handlers — apply locally for instant feedback, then commit to server.
   const onNodesChange = useCallback((changes: NodeChange[]) => {
@@ -755,9 +791,11 @@ function GraphEditor() {
         edgesFocusable
         nodesDraggable
         deleteKeyCode={['Backspace', 'Delete']}
-        style={{ background: '#0a0a0a' }}
+        minZoom={0.05}
+        maxZoom={2.5}
+        style={{ background: '#111418' }}
       >
-        <Background color="#1f1f1f" gap={20} />
+        <Background variant={'dots' as never} color="#3b3f47" gap={24} size={1.4} />
         <Controls style={{ background: '#171717', border: '1px solid #2a2a2a' }} />
         <MiniMap
           nodeColor={(n) => {
@@ -855,6 +893,23 @@ export function App() {
           box-shadow: none !important;
           padding: 0 !important;
           border-radius: 12px !important;
+          /* Smoothly tween position when an external file edit moves a node. */
+          transition: transform 380ms cubic-bezier(.2,.8,.2,1);
+        }
+        /* User-driven drag/resize must NOT animate (snaps weirdly). */
+        .react-flow__node.dragging,
+        .react-flow__node.selected.dragging {
+          transition: none !important;
+        }
+        /* External-edit highlight: 2-pulse glowing outline on changed nodes. */
+        @keyframes asov-flash {
+          0%   { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0.85), 0 0 0 0 rgba(255, 200, 0, 0); outline: 2px solid rgba(255, 200, 0, 0.95); }
+          50%  { box-shadow: 0 0 0 14px rgba(255, 200, 0, 0), 0 0 28px 8px rgba(255, 200, 0, 0.55); outline: 2px solid rgba(255, 200, 0, 0.55); }
+          100% { box-shadow: 0 0 0 0 rgba(255, 200, 0, 0); outline: 2px solid transparent; }
+        }
+        .react-flow__node.node-flash {
+          animation: asov-flash 1.4s ease-out 1;
+          border-radius: 14px !important;
         }
       `}</style>
       <style>{`

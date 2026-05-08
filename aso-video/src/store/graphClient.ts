@@ -131,7 +131,10 @@ export async function deleteInfluencer(name: string) {
  * Falls back to a fresh REST fetch on every reconnect so we don't miss
  * updates that happened while disconnected. Returns disposer.
  */
-export function subscribe(onGraph: (g: GraphPayload) => void): () => void {
+export function subscribe(
+  onGraph: (g: GraphPayload) => void,
+  onExternalReload?: (info: { name: string; ts: number }) => void,
+): () => void {
   let es: EventSource | null = null;
   let attempt = 0;
   let stopped = false;
@@ -142,6 +145,15 @@ export function subscribe(onGraph: (g: GraphPayload) => void): () => void {
     es.addEventListener('graph', (ev) => {
       attempt = 0; // reset backoff once a real message arrives
       try { onGraph(JSON.parse((ev as MessageEvent).data) as GraphPayload); } catch {}
+    });
+    // External-reload hint fires when a workflow JSON is edited on disk
+    // (e.g. Claude). Arrives BEFORE the next `graph` event so the consumer
+    // can stash the previous snapshot and animate the diff.
+    es.addEventListener('external-reload', (ev) => {
+      try {
+        const info = JSON.parse((ev as MessageEvent).data) as { name: string; ts: number };
+        onExternalReload?.(info);
+      } catch {}
     });
     es.onmessage = (ev) => {
       attempt = 0;

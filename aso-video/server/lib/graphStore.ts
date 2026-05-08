@@ -9,6 +9,7 @@ import {
   renameSync,
   chmodSync,
   unlinkSync,
+  watch as fsWatch,
 } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
@@ -56,6 +57,7 @@ export interface Graph {
 const ROOT = join(homedir(), '.aso-studio', 'video');
 const STATE_FILE = join(ROOT, 'graph.json');
 const WORKFLOWS_DIR = join(ROOT, 'workflows');
+const ACTIVE_NAME_FILE = join(ROOT, 'active-workflow');
 
 mkdirSync(ROOT, { recursive: true });
 mkdirSync(WORKFLOWS_DIR, { recursive: true });
@@ -157,6 +159,15 @@ function broadcast(): void {
     } catch {
       sseClients.delete(r);
     }
+  }
+}
+
+/** Hint clients that the next graph payload is from an external file edit (not their own action). */
+function broadcastExternalReload(name: string): void {
+  const payload = `event: external-reload\ndata: ${JSON.stringify({ name, ts: Date.now() })}\n\n`;
+  for (const r of sseClients) {
+    try { r.write(payload); }
+    catch { sseClients.delete(r); }
   }
 }
 
@@ -302,7 +313,31 @@ export function loadWorkflow(name: string): Graph {
   const file = existsSync(userFile) ? userFile : seedFile;
   if (!existsSync(file)) throw new Error(`workflow not found: ${name}`);
   const next = JSON.parse(readFileSync(file, 'utf8')) as Graph;
+  currentWorkflowName = name;
+  persistActiveName();
   return replaceGraph(next);
+}
+
+/** Tracks the most-recently-loaded workflow name so the file watcher can hot-reload it. */
+let currentWorkflowName: string | null = null;
+// Persisted across server restarts so the watcher survives `tsx watch` reloads
+// and Claude-driven edits keep working without the user having to click Load again.
+try {
+  if (existsSync(ACTIVE_NAME_FILE)) {
+    const v = readFileSync(ACTIVE_NAME_FILE, 'utf8').trim();
+    if (v && /^[A-Za-z0-9_-]{1,64}$/.test(v)) currentWorkflowName = v;
+  }
+} catch {}
+
+function persistActiveName(): void {
+  try {
+    if (currentWorkflowName) writeFileSync(ACTIVE_NAME_FILE, currentWorkflowName);
+    else if (existsSync(ACTIVE_NAME_FILE)) unlinkSync(ACTIVE_NAME_FILE);
+  } catch {}
+}
+
+export function getCurrentWorkflowName(): string | null {
+  return currentWorkflowName;
 }
 
 /**
@@ -469,4 +504,51 @@ export function broadcastNow(): void {
 export function _resetForTests(): void {
   graph = emptyGraph();
   try { unlinkSync(STATE_FILE); } catch {}
+}
+
+// ─── File watcher: hot-reload current workflow when its JSON is edited externally ─────
+// (e.g. Claude editing the workflow file directly). Debounced 200 ms because text
+// editors often write multiple times in quick succession. Atomic-rename writes
+// fire `rename` events on the dirname, so we re-stat each tick.
+const RELOAD_DEBOUNCE_MS = 200;
+const reloadTimers = new Map<string, NodeJS.Timeout>();
+
+function scheduleReload(changedName: string): void {
+  if (currentWorkflowName !== changedName) return;
+  const existing = reloadTimers.get(changedName);
+  if (existing) clearTimeout(existing);
+  const t = setTimeout(() => {
+    reloadTimers.delete(changedName);
+    try {
+      // Re-load straight from disk and broadcast — clients will diff against
+      // their previous snapshot and animate the changes.
+      const userFile = join(WORKFLOWS_DIR, `${changedName}.json`);
+      const seedFile = join(SEED_WORKFLOWS_DIR, `${changedName}.json`);
+      const file = existsSync(userFile) ? userFile : seedFile;
+      if (!existsSync(file)) return;
+      const raw = readFileSync(file, 'utf8');
+      if (!raw.trim()) return;
+      const next = JSON.parse(raw) as Graph;
+      // Hint goes BEFORE the graph payload so clients can stash the previous
+      // snapshot and label the upcoming graph as external.
+      broadcastExternalReload(changedName);
+      replaceGraph(next);
+      console.log(`[graph] hot-reloaded workflow "${changedName}" from disk`);
+    } catch (e) {
+      console.warn(`[graph] hot-reload failed for "${changedName}":`, (e as Error).message);
+    }
+  }, RELOAD_DEBOUNCE_MS);
+}
+
+for (const dir of [WORKFLOWS_DIR, SEED_WORKFLOWS_DIR]) {
+  try {
+    if (!existsSync(dir)) continue;
+    fsWatch(dir, { persistent: false }, (_event, filename) => {
+      if (!filename || !filename.endsWith('.json')) return;
+      const name = filename.replace(/\.json$/, '');
+      scheduleReload(name);
+    });
+  } catch (e) {
+    console.warn(`[graph] could not watch ${dir}:`, (e as Error).message);
+  }
 }
