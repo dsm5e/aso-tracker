@@ -1,73 +1,64 @@
 {
   "version": 1,
   "name": "ad-4-hatman",
-  "description": "Hatman / sleep paralysis — continuous selfie POV (1 image, 2 Kling motion variations) + 1 real iPhone screen recording. Implied threat, never showing Hatman. Hooks based on r/Dreams verbatim.",
+  "description": "Hatman / sleep paralysis — single 10s Kling multi-shot from one POV image: calm whisper + scare + camera-pan reveal of hatman in the SAME doorway visible in frame from start. Plus 5s real iPhone screen recording. Hooks based on r/Dreams verbatim.",
   "nodes": [
     {
       "id": "img-pov",
       "type": "flux-image",
       "position": { "x": 40, "y": 40 },
       "data": {
-        "prompt": "Vertical 9:16 hyperrealistic iPhone front-camera selfie. A stunning young woman, mid-20s — head-turning natural beauty, the kind of face you'd see on a viral UGC TikTok creator with hundreds of thousands of followers — is lying ON HER SIDE in bed at night, head resting on a soft white pillow, cheek gently pressed into it. She holds her iPhone in one hand a few inches in front of her face and looks sideways into the camera. The composition is intimate, close, like she's whispering a secret to a friend at 3 AM.\n\nFACE — striking real beauty, model-coded but natural: \n- Soft heart-shaped face with high cheekbones and a delicate, slightly tapered jawline\n- Large almond-shaped doe eyes, hazel-green with golden flecks, slightly upturned outer corners (foxy/cat-eye shape), surrounded by long thick natural eyelashes\n- Naturally arched, slim, dark eyebrows\n- A perfect straight, slightly upturned button nose\n- Full plush lips with a clearly defined cupid's bow, in a natural rose-pink tone (no lipstick), slightly parted as if mid-whisper\n- Smooth porcelain-glow skin with subtle olive undertones, visible natural pores up close, a faint dust of freckles across her nose-bridge and upper cheekbones, one tiny dark beauty mark just above her upper lip on the left side\n- A few baby hairs at her temple catching the phone light\n- A faint blush of pink high on her cheekbone — natural color, not makeup\nHer eyes are wide, slightly scared, pupils dilated from the dark, gaze locked directly into the camera lens. Beautiful but vulnerable.\n\nHAIR: long, glossy, dark-chestnut waves with subtle warm-caramel highlights, fanned out softly across the pillow. A few loose tendrils falling across her cheek and into the corner of her mouth — slightly tousled bed-hair, flattering, healthy looking. Soft natural shine.\n\nWARDROBE: thin cream cotton t-shirt or oversized soft-grey hoodie visible at the collarbone — no jewelry, no makeup, no nail polish. Bare collarbone, soft skin.\n\nLIGHTING: the only light source is the phone screen itself, casting cool blue-white light across her cheek, jawline, the tip of her nose and her lips. The rest of the bedroom plunges into deep shadow. The pillow under her cheek catches a soft halo of phone-glow. Faint warm hallway light barely visible far behind her head through an open doorway.\n\nCAMERA: vertical 9:16, iPhone 15 Pro front-camera aesthetic, slight low-light noise, shallow depth of field with the pillow texture slightly blurred at the edges, micro-motion blur from her unsteady hand holding the phone. Subtle iPhone night-mode grain across the whole frame, but face stays sharp.\n\nNO logos, no text, no captions, no watermarks. Authentic 3 AM personal recording vibe — looks like a real phone selfie, not a studio shot. Stunning, intimate, slightly scared.",
+        "prompt": "Vertical 9:16 hyperrealistic iPhone front-camera selfie. A strikingly beautiful young woman in her early 20s — naturally pretty, soft delicate features, model-tier bone structure but in a real, untouched-up way — is lying ON HER SIDE in bed at night, head resting on a soft white pillow, cheek pressed gently against the pillow. She holds her iPhone in one hand a few inches in front of her face, looking sideways into the camera. The composition is intimate, close, like she's whispering a secret to a friend at 3 AM.\n\nFRAMING: she occupies the LEFT half of the frame. Behind her head, in the UPPER-RIGHT corner of the frame, a partially-visible OPEN BEDROOM DOORWAY is clearly in shot — empty doorway, dark hallway beyond, faint warm tungsten hallway light spilling through and outlining the door frame. The doorway must be visible from the very first frame.\n\nLIGHTING: the only light source is the phone screen itself, casting cool blue-white light across her cheek, jawline, the tip of her nose and her lips. The rest of the bedroom plunges into deep shadow. The pillow under her cheek catches a soft halo of phone-glow. Warm tungsten hallway light visible through the open doorway in the upper-right corner.\n\nFACE — extreme photorealism, beautiful but real: smooth porcelain skin with visible natural pores across her cheek and nose, a delicate scattering of light freckles across her nose-bridge and upper cheek, long natural eyelashes, slightly arched eyebrows, full natural lips with a soft pink tone (no lipstick), tiny natural imperfections — one small freckle near her jawline, the faintest dark circle under her eye from being woken up. Half-parted lips as if mid-whisper. Her eyes are wide, slightly scared, pupils dilated from the dark, gaze locked directly into the camera lens. Beautiful but vulnerable.\n\nHAIR: long, soft, dark-blonde or warm-brown bed-hair fanned out across the pillow, a few strands falling across her cheek and into the corner of her mouth, slightly tousled but flattering — not greasy, just natural sleep-hair.\n\nWARDROBE: thin cream cotton t-shirt or oversized hoodie visible at the collarbone, no jewelry, no makeup.\n\nCAMERA: vertical 9:16, iPhone 15 Pro front-camera aesthetic, slight low-light noise, shallow depth of field with the pillow texture slightly blurred at the edges, micro-motion blur from her unsteady hand holding the phone. Subtle iPhone night-mode grain across the whole frame, but face stays sharp.\n\nNO logos, no text, no captions, no watermarks. Authentic 3 AM personal recording vibe — looks like a real phone selfie, not a studio shot. Beautiful, intimate, slightly scared. Doorway visible upper-right.",
         "aspectRatio": "9:16",
         "model": "gpt-image-2",
         "quality": "high",
-        "label": "POV selfie — phone-lit face (used for BOTH Kling clips)"
+        "label": "POV selfie — phone-lit face + doorway in corner"
       }
     },
     {
-      "id": "vid-clip1",
+      "id": "vid-multi",
       "type": "video-gen",
-      "position": { "x": 440, "y": 40 },
+      "position": { "x": 480, "y": 40 },
       "data": {
         "model": "kling",
         "mode": "image",
         "resolution": "auto",
-        "duration": 5,
+        "duration": 10,
         "audio": true,
-        "prompt": "POV iPhone selfie video — same beautiful young woman lying ON HER SIDE in bed at night, cheek pressed against the pillow, phone held a few inches in front of her face, screen-glow lighting her from the side. Calm, steady, intimate.\n\nMOTION: very minimal — natural micro-shake from her unsteady hand holding the phone, occasional slow blink, lips parting and closing softly as she whispers, a single strand of hair shifting slightly on the pillow. Eyes locked on the camera lens. She looks vulnerable and slightly scared, but stays still.\n\nVOICE (close-mic intimate scared whisper, lips barely moving): \"ok hear me out... so I had sleep paralysis last night and there was a man in a hat standing in the doorway.\"\n\nSound: very close-mic intimate whisper, faint bedroom room tone, no music, no other ambient noise. Vertical 9:16, iPhone night-mode grain, low-light noise across the frame, but her face stays sharp. Authentic phone selfie aesthetic.",
-        "label": "Clip 1 (0:00-0:05) — Hook, calm whisper"
-      }
-    },
-    {
-      "id": "vid-clip2",
-      "type": "video-gen",
-      "position": { "x": 440, "y": 480 },
-      "data": {
-        "model": "kling",
-        "mode": "image",
-        "resolution": "auto",
-        "duration": 5,
-        "audio": true,
-        "prompt": "POV iPhone selfie video — same beautiful young woman in the SAME position, lying on her side in bed, cheek on pillow, phone held in front of her face. Direct continuation of the previous clip, no scene change.\n\nMOTION ARC across 5 seconds:\n0-2s: she keeps whispering calmly, lips moving softly, micro-shake of phone, slow blinks.\n2.5s: SUDDEN reaction — her eyes snap sharply, gaze darts away from the camera lens, looking past the phone toward something behind it (over her own shoulder, deeper into the dark room). Her mouth freezes mid-word, lips still parted. Her breath catches audibly.\n3s: small involuntary jolt — phone tilts/shakes for half a second as her hand reacts. Camera frame wobbles briefly.\n3.5-5s: phone settles back, but her eyes stay locked off-camera (looking past it), face frozen in fear, mouth still parted, no breath, no blinking. She is paralysed staring at something we never see.\n\nVOICE (close-mic intimate scared whisper, then breaks off):\nFirst 2s: \"I just googled it. apparently this guy shows up to people all over the world. like the sa—\"\n2.5s: cuts off abruptly mid-word, sharp tiny breath in.\n2.5-5s: silence except very faint shaky breathing, no words, just pure tension.\n\nSound: intimate whisper that abruptly cuts to held breath and silence, faint bedroom room tone throughout, no music. Vertical 9:16, iPhone night-mode grain, face stays sharp.",
-        "label": "Clip 2 (0:05-0:10) — Reaction, mid-sentence break"
+        "multiShot": true,
+        "shotType": "customize",
+        "shots": [
+          {
+            "prompt": "POV iPhone selfie — beautiful young woman lying on her side, cheek on white pillow, phone held in front of her face, screen-glow lighting her. Empty open doorway visible behind her in the upper-right corner of the frame, dim warm hallway light. She whispers calmly, intimately to camera, lips moving softly: 'ok hear me out... so I had sleep paralysis last night and there was a man in a hat standing in the doorway.' She moves naturally — slow blinks, slight head shifts on pillow, hair strand drifting on cheek, subtle phone-hand micro-shake. Camera stays close on her face, mostly framing the LEFT half of the frame on her, with the doorway visible behind. Sound: very close-mic intimate whisper, faint bedroom room tone, no music. Vertical 9:16, iPhone night-mode grain.",
+            "duration": 5
+          },
+          {
+            "prompt": "Direct continuation — same young woman, same pillow, same selfie POV. She continues whispering 'I just googled it. apparently this guy shows up to people all over the world. like the sa—' Then SUDDENLY stops mid-word. Her eyes snap sharply, gaze darts past the camera up and to her right (toward the doorway). Sharp tiny breath in. Her hand jolts and the phone wobbles for half a second. Then the camera SMOOTHLY ROTATES AND PIVOTS away from her face, following her terrified gaze, panning across the dim bedroom toward the open doorway in the corner. As the camera arrives at the doorway, what was empty seconds ago now reveals: a tall thin silhouette of a man wearing a wide-brimmed fedora hat — completely faceless, motionless, slightly blurred at the edges as if not fully real, lit faintly from behind by warm tungsten hallway light. The hatman stands still in the doorframe. Camera holds on him, slight handheld shake, intimate breath audible. Sound: whisper cuts to held breath and silence, very faint shaky breathing, no music, no other ambient noise. Vertical 9:16, iPhone night-mode grain, low-light noise. The doorway and bedroom geometry stay consistent with the opening shot — same room, same doorway, just now the man is there.",
+            "duration": 5
+          }
+        ],
+        "label": "Single 10s clip — multi-shot: whisper → scare → pan to hatman"
       }
     },
     {
       "id": "ref-screen-rec",
       "type": "reference-video",
-      "position": { "x": 440, "y": 920 },
+      "position": { "x": 480, "y": 580 },
       "data": {
         "url": "",
         "label": "📼 Upload iPhone screen recording (Dream app, 5s, voiceover synced)"
       }
     },
     {
-      "id": "stitch-1-2",
-      "type": "stitch",
-      "position": { "x": 840, "y": 240 },
-      "data": { "label": "Stitch — Clip 1 + Clip 2 (continuous POV)" }
-    },
-    {
       "id": "stitch-final",
       "type": "stitch",
-      "position": { "x": 1240, "y": 480 },
-      "data": { "label": "Stitch — (1+2) + Screen recording (hard cut)" }
+      "position": { "x": 940, "y": 280 },
+      "data": { "label": "Stitch — Kling clip + Screen recording (hard cut)" }
     },
     {
       "id": "captions",
       "type": "captions",
-      "position": { "x": 1900, "y": 200 },
+      "position": { "x": 1340, "y": 280 },
       "data": {
         "preset": "hormozi",
         "fontSize": 140,
@@ -78,7 +69,7 @@
     {
       "id": "endcard",
       "type": "end-card",
-      "position": { "x": 2400, "y": 200 },
+      "position": { "x": 1740, "y": 280 },
       "data": {
         "duration": 2,
         "cta": "Decode Your Dream",
@@ -90,25 +81,22 @@
     {
       "id": "out",
       "type": "output",
-      "position": { "x": 2440, "y": 480 },
+      "position": { "x": 2140, "y": 280 },
       "data": { "label": "Output — Hatman Ad (15s)" }
     }
   ],
   "edges": [
-    { "id": "e1", "source": "img-pov", "sourceHandle": "image", "target": "vid-clip1", "targetHandle": "image_url" },
-    { "id": "e2", "source": "img-pov", "sourceHandle": "image", "target": "vid-clip2", "targetHandle": "image_url" },
-    { "id": "e3", "source": "vid-clip1", "sourceHandle": "video", "target": "stitch-1-2", "targetHandle": "video_a" },
-    { "id": "e4", "source": "vid-clip2", "sourceHandle": "video", "target": "stitch-1-2", "targetHandle": "video_b" },
-    { "id": "e5", "source": "stitch-1-2", "sourceHandle": "video", "target": "stitch-final", "targetHandle": "video_a" },
-    { "id": "e6", "source": "ref-screen-rec", "sourceHandle": "video", "target": "stitch-final", "targetHandle": "video_b" },
-    { "id": "e7", "source": "stitch-final", "sourceHandle": "video", "target": "captions", "targetHandle": "video" },
-    { "id": "e8", "source": "captions", "sourceHandle": "video", "target": "endcard", "targetHandle": "video" },
-    { "id": "e9", "source": "endcard", "sourceHandle": "video", "target": "out", "targetHandle": "video" }
+    { "id": "e1", "source": "img-pov", "sourceHandle": "image", "target": "vid-multi", "targetHandle": "image_url" },
+    { "id": "e2", "source": "vid-multi", "sourceHandle": "video", "target": "stitch-final", "targetHandle": "video_a" },
+    { "id": "e3", "source": "ref-screen-rec", "sourceHandle": "video", "target": "stitch-final", "targetHandle": "video_b" },
+    { "id": "e4", "source": "stitch-final", "sourceHandle": "video", "target": "captions", "targetHandle": "video" },
+    { "id": "e5", "source": "captions", "sourceHandle": "video", "target": "endcard", "targetHandle": "video" },
+    { "id": "e6", "source": "endcard", "sourceHandle": "video", "target": "out", "targetHandle": "video" }
   ],
   "meta": {
-    "createdAt": 1746676800000,
+    "createdAt": 1746680000000,
     "scriptSource": "Dream — Ad Scripts 2026-05-08 (Reddit-verbatim).md",
-    "format": "Continuous selfie POV: 1 image, 2 Kling × 5s (calm whisper + reaction break) + 1 real iPhone screen recording = 15s total",
-    "totalCostEstimate": 0.90
+    "format": "Single 10s Kling multi-shot (whisper → scare → camera-pan to hatman in doorway) + 5s real iPhone screen recording = 15s total",
+    "totalCostEstimate": 1.0
   }
 }

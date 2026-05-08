@@ -1,21 +1,14 @@
+// fal-jobs.ts owns fal client config + the resilient queue + poller, so we
+// import nothing fal-related here; we just hand it modelPath + input.
 import { Router } from 'express';
-import { fal } from '@fal-ai/client';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { getKey } from '../lib/keys.js';
-import { falSubscribeWithProgress } from '../lib/fal-progress.js';
+import { submitFalJob, adoptFalJob } from '../lib/fal-jobs.js';
 import { toFalUrl } from '../lib/fal-upload.js';
 
 const router = Router();
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const VIDEO_DIR = join(ROOT, 'output', 'videos');
-
-let configured = false;
-function configure() {
-  if (configured) return;
-  fal.config({ credentials: getKey('FAL_API_KEY') });
-  configured = true;
-}
 
 function absoluteUrl(image_url: string, req: any): string {
   if (image_url.startsWith('http://') || image_url.startsWith('https://')) return image_url;
@@ -65,7 +58,6 @@ router.post('/api/video/kling', async (req, res) => {
   const t0 = Date.now();
 
   try {
-    configure();
     mkdirSync(VIDEO_DIR, { recursive: true });
 
     const input: any = {
@@ -98,34 +90,49 @@ router.post('/api/video/kling', async (req, res) => {
       modelPath = T2V_MODEL;
     }
 
-    const result = await falSubscribeWithProgress(modelPath, input, { nodeId: node_id });
-    const data = (result as { data?: any }).data ?? result;
-    const videoUrl = data.video?.url ?? data.video_url ?? data.url;
-    if (!videoUrl) throw new Error('no video url in kling response');
+    if (!node_id) {
+      return res.status(400).json({ ok: false, error: 'node_id required (resilient queue uses it for tracking + recovery)' });
+    }
 
-    const r = await fetch(videoUrl);
-    if (!r.ok) throw new Error(`video fetch failed: ${r.status}`);
-    const buf = Buffer.from(await r.arrayBuffer());
-    const ts = Date.now();
-    const filename = `kling-${m}-${ts}.mp4`;
-    const path = join(VIDEO_DIR, filename);
-    writeFileSync(path, buf);
+    // Submit to fal queue + persistent tracker. The tracker captures the
+    // request_id, polls in the background, and even survives a server
+    // restart — the job is rehydrated from disk and continues to be polled
+    // until COMPLETED, at which point onComplete fires and we save the mp4.
+    let savedFilename = '';
+    let savedPath = '';
+    let returnedCost: number = totalDur * (aud ? 0.168 : 0.112);
+    await submitFalJob<{ data?: unknown }>(modelPath, input, {
+      nodeId: node_id,
+      onComplete: async (result) => {
+        const data = (result as { data?: any }).data ?? result;
+        const videoUrl = data.video?.url ?? data.video_url ?? data.url;
+        if (!videoUrl) throw new Error('no video url in kling response');
 
-    const estimated = totalDur * (aud ? 0.168 : 0.112);
-    const actual = data.metrics?.cost ?? data.cost;
-    const cost = typeof actual === 'number' ? actual : estimated;
+        const r = await fetch(videoUrl);
+        if (!r.ok) throw new Error(`video fetch failed: ${r.status}`);
+        const buf = Buffer.from(await r.arrayBuffer());
+        const ts = Date.now();
+        savedFilename = `kling-${m}-${ts}.mp4`;
+        savedPath = join(VIDEO_DIR, savedFilename);
+        writeFileSync(savedPath, buf);
+
+        const estimated = totalDur * (aud ? 0.168 : 0.112);
+        const actual = (data as { metrics?: { cost?: number }; cost?: number }).metrics?.cost ?? (data as { cost?: number }).cost;
+        returnedCost = typeof actual === 'number' ? actual : estimated;
+      },
+    });
+
     const elapsed = (Date.now() - t0) / 1000;
-
     res.json({
       ok: true,
-      url: `/output/videos/${filename}`,
-      path,
+      url: `/output/videos/${savedFilename}`,
+      path: savedPath,
       model: 'kling-v3-pro',
       mode: m,
       duration: totalDur,
       shots: shots?.length ?? 1,
       audio: aud,
-      cost,
+      cost: returnedCost,
       elapsed_seconds: elapsed,
     });
   } catch (e) {
@@ -137,6 +144,55 @@ router.post('/api/video/kling', async (req, res) => {
     });
     const detail = err.body ? JSON.stringify(err.body) : err.message;
     res.status(500).json({ ok: false, error: detail });
+  }
+});
+
+// Recovery — attach to a previously submitted fal request_id and pull the
+// result down. Useful when fal.ai shows the job as completed in their
+// dashboard but our state lost track (network blip / server restart that
+// missed the rehydrate window / wrong node mapping).
+router.post('/api/video/kling/recover', async (req, res) => {
+  const { node_id, request_id, mode } = req.body ?? {};
+  if (!node_id || !request_id) {
+    return res.status(400).json({ ok: false, error: 'node_id + request_id required' });
+  }
+  const m = mode === 'text' ? 'text' : 'image';
+  const modelPath = m === 'image' ? I2V_MODEL : T2V_MODEL;
+  const t0 = Date.now();
+  try {
+    mkdirSync(VIDEO_DIR, { recursive: true });
+    let savedFilename = '';
+    let savedPath = '';
+    let returnedCost: number | undefined;
+    await adoptFalJob<{ data?: unknown }>(modelPath, request_id, {
+      nodeId: node_id,
+      onComplete: async (result) => {
+        const data = (result as { data?: any }).data ?? result;
+        const videoUrl = data.video?.url ?? data.video_url ?? data.url;
+        if (!videoUrl) throw new Error('no video url in kling response');
+        const r = await fetch(videoUrl);
+        if (!r.ok) throw new Error(`video fetch failed: ${r.status}`);
+        const buf = Buffer.from(await r.arrayBuffer());
+        const ts = Date.now();
+        savedFilename = `kling-recover-${ts}.mp4`;
+        savedPath = join(VIDEO_DIR, savedFilename);
+        writeFileSync(savedPath, buf);
+        const actual = (data as { metrics?: { cost?: number }; cost?: number }).metrics?.cost ?? (data as { cost?: number }).cost;
+        returnedCost = typeof actual === 'number' ? actual : undefined;
+      },
+    });
+    res.json({
+      ok: true,
+      url: `/output/videos/${savedFilename}`,
+      path: savedPath,
+      recovered_request_id: request_id,
+      cost: returnedCost,
+      elapsed_seconds: (Date.now() - t0) / 1000,
+    });
+  } catch (e) {
+    const err = e as Error & { body?: unknown; status?: number };
+    console.error('[kling.recover] error:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
   }
 });
 

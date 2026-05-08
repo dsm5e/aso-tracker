@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { NodeShell, inputStyle, labelStyle, patchData, triggerRun, stopProp } from './common';
 import { openLightbox } from '../components/Lightbox';
+import { HistoryPicker } from '../components/HistoryPicker';
+import { API } from '../store/graphClient';
 
 type Model = 'kling' | 'seedance' | 'happy-horse';
 // 'auto' = resolution determined by input (Kling has no resolution param).
@@ -25,6 +28,10 @@ interface Data {
   progress?: number;
   stage?: string;
   label?: string;
+  // Set by the fal-jobs tracker when a request is in flight or completed.
+  // Surfaced in the UI for "I see this in fal dashboard" recovery flows.
+  falRequestId?: string;
+  falModelPath?: string;
 }
 
 // Per fal.ai (verified 2026-05-06):
@@ -76,9 +83,9 @@ function MultiShotEditor({ id, shots }: { id: string; shots: { prompt: string; d
   const add = () => patchData(id, { shots: [...shots, { prompt: '', duration: 5 }] });
   const remove = (i: number) => patchData(id, { shots: shots.filter((_, j) => j !== i) });
   return (
-    <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}>
       {shots.map((s, i) => (
-        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 8, background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: 6 }}>
+        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 8, background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: 6, flex: 1, minHeight: 120 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ ...labelStyle, flex: 1 }}>Shot {i + 1}</span>
             <input
@@ -100,7 +107,7 @@ function MultiShotEditor({ id, shots }: { id: string; shots: { prompt: string; d
             value={s.prompt}
             onChange={(e) => update(i, { prompt: e.target.value })}
             placeholder={`shot ${i + 1} prompt — what happens here…`}
-            style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }}
+            style={{ ...inputStyle, minHeight: 50, flex: 1, resize: 'none' }}
           />
         </div>
       ))}
@@ -114,6 +121,58 @@ function MultiShotEditor({ id, shots }: { id: string; shots: { prompt: string; d
           total {total}s {total > 15 && '(over Kling 15s cap)'}
         </span>
       </div>
+    </div>
+  );
+}
+
+function RecoverFalJob({ nodeId, mode, suggestedRequestId }: { nodeId: string; mode: 'image' | 'text'; suggestedRequestId?: string }) {
+  const [open, setOpen] = useState(false);
+  const [reqId, setReqId] = useState(suggestedRequestId ?? '');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const recover = async () => {
+    if (!reqId.trim()) return;
+    setBusy(true); setMsg('attaching to fal job…');
+    try {
+      const r = await fetch(`${API}/video/kling/recover`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ node_id: nodeId, request_id: reqId.trim(), mode }),
+      });
+      const j = await r.json();
+      if (j.ok) setMsg(`✓ recovered (cost ~$${(j.cost ?? 0).toFixed(3)})`);
+      else setMsg(`error: ${j.error}`);
+    } catch (e) {
+      setMsg(`error: ${(e as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!open) {
+    return (
+      <button
+        className="nodrag"
+        onClick={() => setOpen(true)}
+        title="Attach to a fal.ai request_id from the dashboard and pull the result"
+        style={{ background: '#171717', color: '#9CA3AF', border: '1px dashed #2a2a2a', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', textAlign: 'left' }}
+      >🔌 Recover existing fal job…</button>
+    );
+  }
+  return (
+    <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, padding: 6, background: '#0e0e0e', border: '1px dashed #2a2a2a', borderRadius: 6 }}>
+      <span style={{ color: '#9CA3AF', fontSize: 10 }}>Paste fal.ai request_id to pull the existing result:</span>
+      <input
+        type="text"
+        value={reqId}
+        onChange={(e) => setReqId(e.target.value)}
+        placeholder="00000000-0000-0000-0000-000000000000"
+        style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '4px 6px', fontSize: 11, fontFamily: 'monospace' }}
+      />
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={recover} disabled={busy} style={{ flex: 1, background: '#3B82F6', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? '…' : 'Recover'}</button>
+        <button onClick={() => setOpen(false)} style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>×</button>
+      </div>
+      {msg && <span style={{ color: msg.startsWith('✓') ? '#22C55E' : '#EF4444', fontSize: 10 }}>{msg}</span>}
     </div>
   );
 }
@@ -149,6 +208,10 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
       onRun={() => triggerRun(id)}
       runLabel={`Generate (~$${est.toFixed(2)})`}
     >
+      <HistoryPicker
+        kind="video"
+        onPick={(url) => patchData(id, { status: 'done', outputUrl: url, error: undefined })}
+      />
       <div className="nodrag" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         <div>
           <span style={labelStyle}>Model</span>
@@ -242,6 +305,22 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
         </div>
       )}
       {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {/* Surface the fal request_id so the operator can cross-reference in
+          the fal dashboard and recover the result if state was lost. */}
+      {data.falRequestId && (
+        <div className="nodrag" style={{ fontSize: 10, color: '#9CA3AF', wordBreak: 'break-all', display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ opacity: 0.7 }}>fal:</span>
+          <code style={{ background: '#0e0e0e', padding: '2px 4px', borderRadius: 3, fontSize: 10, flex: 1 }}>{data.falRequestId}</code>
+          <button
+            onClick={() => navigator.clipboard?.writeText(data.falRequestId!)}
+            title="copy"
+            style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 3, padding: '1px 6px', fontSize: 10, cursor: 'pointer' }}
+          >📋</button>
+        </div>
+      )}
+      {(data.status === 'error' || (data.status === 'idle' && data.falRequestId)) && (
+        <RecoverFalJob nodeId={id} mode={data.mode} suggestedRequestId={data.falRequestId} />
+      )}
       {data.status === 'done' && data.outputUrl && (
         <>
           <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 6, background: '#000' }} />

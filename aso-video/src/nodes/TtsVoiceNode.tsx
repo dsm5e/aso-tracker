@@ -29,13 +29,13 @@ export function TtsVoiceNode({ id, data }: { id: string; data: Data }) {
       onRun={() => triggerRun(id)}
       runLabel="Generate"
     >
-      <div className="nodrag">
+      <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <span style={labelStyle}>Text</span>
         <textarea
           value={data.text ?? ''}
           onChange={(e) => patchData(id, { text: e.target.value })}
           placeholder="say something…"
-          style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
+          style={{ ...inputStyle, minHeight: 60, flex: 1, resize: 'none' }}
         />
       </div>
       <div className="nodrag">

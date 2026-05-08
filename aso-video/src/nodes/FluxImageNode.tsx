@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { NodeShell, inputStyle, labelStyle, patchData, triggerRun, stopProp } from './common';
 import { openLightbox } from '../components/Lightbox';
+import { HistoryPicker } from '../components/HistoryPicker';
 import { API } from '../store/graphClient';
 
 type Model = 'gpt-image-2' | 'flux-1.1-pro';
@@ -92,6 +93,10 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
       onRun={() => triggerRun(id)}
       runLabel={`Generate (${estimateCost(model, quality)})`}
     >
+      <HistoryPicker
+        kind="image"
+        onPick={(url) => patchData(id, { status: 'done', outputUrl: url, error: undefined })}
+      />
       <div className="nodrag" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         <div>
           <span style={labelStyle}>Type</span>
