@@ -147,6 +147,11 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
         overflow: 'hidden',
         fontFamily: 'system-ui, sans-serif',
         fontSize: 12,
+        // Flex column so the body can grow to fill the resized card height.
+        // Without this, content sat at the top with empty space at the bottom
+        // when the user resized vertically.
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {blocked && (
@@ -233,7 +238,10 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
       </div>
 
       {open && (
-        <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        // Body fills remaining vertical space below the header. Long prompts
+        // / lists stay scrollable inside the resized card; children marked
+        // `data-grow` (e.g. prompt textareas) flex-grow inside.
+        <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflow: 'auto' }}>
           {children}
           {status === 'loading' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

@@ -231,13 +231,13 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
       {data.multiShot ? (
         <MultiShotEditor id={id} shots={data.shots ?? []} />
       ) : (
-        <div className="nodrag">
+        <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
           <span style={labelStyle}>Prompt</span>
           <textarea
             value={data.prompt ?? ''}
             onChange={(e) => patchData(id, { prompt: e.target.value })}
             placeholder="describe the motion…"
-            style={{ ...inputStyle, minHeight: 50, resize: 'vertical' }}
+            style={{ ...inputStyle, minHeight: 50, flex: 1, resize: 'none' }}
           />
         </div>
       )}

@@ -121,13 +121,13 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
           </select>
         </div>
       </div>
-      <div className="nodrag">
+      <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
         <span style={labelStyle}>Prompt</span>
         <textarea
           value={data.prompt ?? ''}
           onChange={(e) => patchData(id, { prompt: e.target.value })}
           placeholder="describe the image…"
-          style={{ ...inputStyle, minHeight: 60, resize: 'vertical' }}
+          style={{ ...inputStyle, minHeight: 60, flex: 1, resize: 'none' }}
         />
       </div>
       <div className="nodrag">
