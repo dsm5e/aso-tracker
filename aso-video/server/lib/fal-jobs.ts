@@ -103,9 +103,14 @@ export async function submitFalJob<T = unknown>(
   configure();
   const { nodeId, onComplete } = opts;
 
-  // Tear down any existing waiter for this node — only one in-flight job per node.
-  const oldWaiter = waiters.get(nodeId);
-  if (oldWaiter) oldWaiter.reject(new Error('superseded by new submission'));
+  // If a job is already in flight for this node, refuse — earlier we
+  // overwrote it, which orphaned the running fal job (still ran, still
+  // billed, but our state lost the request_id). Operator must explicitly
+  // Stop / Regenerate to cancel it first.
+  if (inflight.has(nodeId)) {
+    const existing = inflight.get(nodeId)!;
+    throw new Error(`a fal job is already in flight for this node (request_id ${existing.requestId}). Stop it first or use Regenerate.`);
+  }
 
   console.log(`[fal-jobs] submit ${modelPath} (input keys: ${Object.keys(input).join(',')})`);
   let submission: { request_id: string };

@@ -190,6 +190,25 @@ router.post('/api/video/kling/recover', async (req, res) => {
         returnedCost = typeof actual === 'number' ? actual : undefined;
       },
     });
+    // Recovery flow doesn't go through graph.runNode, so we have to commit
+    // status: done + outputUrl onto the node ourselves — otherwise the UI
+    // stays stuck on "Interrupted by server restart" even though the file
+    // is on disk.
+    try {
+      const { updateNode } = await import('../lib/graphStore.js');
+      updateNode(node_id, {
+        data: {
+          status: 'done',
+          outputUrl: `/output/videos/${savedFilename}`,
+          cost: returnedCost ?? 0.84,
+          error: undefined,
+          stage: undefined,
+          progress: undefined,
+        },
+      });
+    } catch (e) {
+      console.warn('[kling.recover] node update failed:', (e as Error).message);
+    }
     res.json({
       ok: true,
       url: `/output/videos/${savedFilename}`,

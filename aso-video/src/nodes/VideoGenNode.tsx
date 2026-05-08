@@ -125,6 +125,42 @@ function MultiShotEditor({ id, shots }: { id: string; shots: { prompt: string; d
   );
 }
 
+// Four lifecycle stages we can derive from fal's queue state. The exact
+// per-stage timings (warm-start / execute) come from the final result, but
+// while a job is in flight we can map status to a step.
+const FAL_STAGES: Array<{ key: string; label: string; matches: (s?: string) => boolean }> = [
+  { key: 'submitted', label: 'Submitted', matches: () => true }, // always true once we have a request_id
+  { key: 'queued', label: 'Queued', matches: (s) => !!s && /queue/i.test(s) },
+  { key: 'generating', label: 'Generating', matches: (s) => !!s && /generat|progress|warm|execut/i.test(s) },
+  { key: 'done', label: 'Done', matches: (s) => s === 'done' },
+];
+
+function StageTimeline({ stage, progress }: { stage?: string; progress?: number }) {
+  // Determine the highest-index stage that "matches" — once we hit that,
+  // all earlier stages are also "passed".
+  let activeIdx = 0;
+  for (let i = FAL_STAGES.length - 1; i >= 0; i--) {
+    if (FAL_STAGES[i].matches(stage)) { activeIdx = i; break; }
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: '#9CA3AF' }}>
+      {FAL_STAGES.map((s, i) => {
+        const past = i < activeIdx;
+        const active = i === activeIdx;
+        const dotColor = past ? '#22C55E' : (active ? '#F97316' : '#3a3a3a');
+        return (
+          <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
+            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: dotColor, boxShadow: active ? `0 0 4px ${dotColor}` : 'none', animation: active ? 'asov-pulse 1.2s ease-in-out infinite' : undefined, flex: '0 0 auto' }} />
+            <span style={{ color: active ? '#FBBF24' : (past ? '#22C55E' : '#6b7280'), fontWeight: active ? 600 : 400, whiteSpace: 'nowrap' }}>{s.label}</span>
+            {i < FAL_STAGES.length - 1 && <span style={{ flex: 1, height: 1, background: past ? '#22C55E' : '#3a3a3a', minWidth: 6 }} />}
+          </div>
+        );
+      })}
+      {typeof progress === 'number' && <span style={{ color: '#FBBF24', fontSize: 10, marginLeft: 4 }}>{Math.round(progress * 100)}%</span>}
+    </div>
+  );
+}
+
 function InflightControls({ nodeId, stage, progress }: { nodeId: string; stage?: string; progress?: number }) {
   const [busy, setBusy] = useState(false);
   const cancel = async () => {
@@ -147,16 +183,13 @@ function InflightControls({ nodeId, stage, progress }: { nodeId: string; stage?:
         body: JSON.stringify({ node_id: nodeId }),
       });
       // Tiny delay to let cancel propagate to graph state, then re-trigger run.
-      await new Promise((r) => setTimeout(r, 250));
+      await new Promise((r) => setTimeout(r, 400));
       triggerRun(nodeId);
     } finally { setBusy(false); }
   };
   return (
-    <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 6, background: '#1f1410', border: '1px solid #422' , borderRadius: 6 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#FBBF24' }}>
-        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: '#F97316', boxShadow: '0 0 6px #F97316', animation: 'asov-pulse 1.4s ease-in-out infinite' }} />
-        <span style={{ flex: 1, fontWeight: 600 }}>{stage ? `fal · ${stage}` : 'fal · running'}{typeof progress === 'number' ? ` · ${Math.round(progress * 100)}%` : ''}</span>
-      </div>
+    <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 8, background: '#1f1410', border: '1px solid #422', borderRadius: 6 }}>
+      <StageTimeline stage={stage} progress={progress} />
       <div style={{ display: 'flex', gap: 6 }}>
         <button onClick={cancel} disabled={busy} title="Cancel the fal job — stops compute, no cost for unfinished work" style={{ flex: 1, background: '#171717', color: '#FCA5A5', border: '1px solid #422', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>⏹ Stop</button>
         <button onClick={regenerate} disabled={busy} title="Cancel and immediately resubmit with current settings" style={{ flex: 1, background: '#3B82F6', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>↻ Regenerate</button>

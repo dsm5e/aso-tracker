@@ -90,7 +90,11 @@ function recoverStuckNodes(): void {
   let touched = 0;
   for (const n of graph.nodes) {
     const d = n.data as Record<string, unknown>;
-    if (d.status === 'loading') {
+    // Spare nodes that have a live fal request — the fal-jobs poller
+    // rehydrates from disk and will keep polling that request_id, so
+    // marking the node as "error" here is wrong (it'd lie to the UI
+    // while the resilient channel quietly resumes).
+    if (d.status === 'loading' && !d.falRequestId) {
       d.status = 'error';
       d.error = 'Interrupted by server restart — click Generate to retry';
       d.progress = undefined;
