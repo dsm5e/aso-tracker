@@ -67,6 +67,34 @@ npm run render
 | **V2** | Editor UI (timeline, scene editor, prompt-driven scene generation) |
 | **V3** | TikTok upload via Marketing API + scheduling |
 
+## Live canvas editing with Claude
+
+The graph editor watches workflow JSON files (`aso-video/workflows/*.json` +
+`~/.aso-studio/video/workflows/*.json`) for external edits. When Claude (or
+any other tool) edits the file of the currently-loaded workflow, the server
+hot-reloads it, fires an `external-reload` SSE hint, and broadcasts the
+fresh graph. The browser:
+
+- diffs the new graph against the previous snapshot
+- flashes changed/added nodes with a 1.4s pulsing yellow outline
+- tweens position changes via a 380ms transform transition
+
+This means Claude can edit the canvas in realtime while you watch — change
+prompts, move nodes, add/remove edges, swap node types — and you see the
+changes light up exactly where they happened. The active workflow name is
+persisted to `~/.aso-studio/video/active-workflow` so the watcher survives
+`tsx watch` restarts.
+
+To use it:
+1. Click **Load Workflow** once for the workflow you're editing (sets the
+   active name on disk).
+2. Ask Claude to edit `aso-video/workflows/<name>.json` — changes appear
+   live in the browser, with animated highlights on the touched nodes.
+
+Heads up: the watcher fires on every file write, so a debounce of 200ms is
+applied. Atomic-rename writes from text editors are coalesced into a single
+reload tick.
+
 ## Structure
 
 ```
