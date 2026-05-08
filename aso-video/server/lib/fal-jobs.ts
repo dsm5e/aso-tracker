@@ -43,7 +43,9 @@ mkdirSync(ROOT, { recursive: true });
 let configured = false;
 function configure() {
   if (configured) return;
-  fal.config({ credentials: getKey('FAL_API_KEY') });
+  const key = getKey('FAL_API_KEY');
+  console.log(`[fal-jobs] configuring fal client with key ${key.slice(0, 8)}…`);
+  fal.config({ credentials: key });
   configured = true;
 }
 
@@ -97,6 +99,7 @@ export async function submitFalJob<T = unknown>(
   input: Record<string, unknown>,
   opts: { nodeId: string; onComplete: (result: T) => Promise<void> },
 ): Promise<T> {
+  console.log(`[fal-jobs] submitFalJob ENTER node=${opts.nodeId} model=${modelPath}`);
   configure();
   const { nodeId, onComplete } = opts;
 
@@ -104,9 +107,18 @@ export async function submitFalJob<T = unknown>(
   const oldWaiter = waiters.get(nodeId);
   if (oldWaiter) oldWaiter.reject(new Error('superseded by new submission'));
 
-  const submission = await fal.queue.submit(modelPath, { input }) as { request_id: string };
+  console.log(`[fal-jobs] submit ${modelPath} (input keys: ${Object.keys(input).join(',')})`);
+  let submission: { request_id: string };
+  try {
+    submission = await fal.queue.submit(modelPath, { input }) as { request_id: string };
+  } catch (e) {
+    const err = e as Error & { body?: unknown; status?: number };
+    console.error(`[fal-jobs] submit failed: status=${err.status} body=${JSON.stringify(err.body)} message=${err.message}`);
+    throw err;
+  }
   const requestId = submission.request_id;
   if (!requestId) throw new Error('fal queue.submit did not return request_id');
+  console.log(`[fal-jobs] submitted ${modelPath} → ${requestId}`);
 
   const job: FalJob = { nodeId, modelPath, requestId, startedAt: Date.now() };
   inflight.set(nodeId, job);
@@ -166,6 +178,39 @@ export function cancelTracking(nodeId: string): void {
   waiters.delete(nodeId);
   onCompleteHandlers.delete(nodeId);
   persist();
+}
+
+/**
+ * Cancel an in-flight fal job for a node — calls fal.queue.cancel to stop
+ * compute (so we don't keep paying), rejects the waiter so the route 500s,
+ * clears tracker. No-op if there's nothing tracked.
+ */
+export async function cancelFalJob(nodeId: string): Promise<{ cancelled: boolean; requestId?: string; error?: string }> {
+  configure();
+  const job = inflight.get(nodeId);
+  if (!job) return { cancelled: false, error: 'no in-flight job tracked for this node' };
+  let cancelOk = false;
+  try {
+    await fal.queue.cancel(job.modelPath, { requestId: job.requestId });
+    cancelOk = true;
+  } catch (e) {
+    const err = e as Error & { body?: { detail?: unknown }; status?: number };
+    // ALREADY_COMPLETED is fine — request already done, just stop tracking.
+    const detail = err.body?.detail as string | undefined;
+    const text = typeof detail === 'string' ? detail : err.message;
+    if (typeof text === 'string' && /completed|finished|not_in_queue|cannot_cancel/i.test(text)) {
+      cancelOk = true;
+    } else {
+      console.warn(`[fal-jobs] cancel failed for ${job.requestId}: ${text}`);
+    }
+  }
+  const waiter = waiters.get(nodeId);
+  if (waiter) waiter.reject(new Error('cancelled by user'));
+  try {
+    updateNode(nodeId, { data: { status: 'idle', stage: undefined, progress: undefined, error: cancelOk ? undefined : 'cancel may have failed', falRequestId: undefined } });
+  } catch {}
+  cancelTracking(nodeId);
+  return { cancelled: cancelOk, requestId: job.requestId };
 }
 
 const POLL_INTERVAL_MS = 6_000;

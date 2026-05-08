@@ -3,7 +3,7 @@
 import { Router } from 'express';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { submitFalJob, adoptFalJob } from '../lib/fal-jobs.js';
+import { submitFalJob, adoptFalJob, cancelFalJob } from '../lib/fal-jobs.js';
 import { toFalUrl } from '../lib/fal-upload.js';
 
 const router = Router();
@@ -145,6 +145,15 @@ router.post('/api/video/kling', async (req, res) => {
     const detail = err.body ? JSON.stringify(err.body) : err.message;
     res.status(500).json({ ok: false, error: detail });
   }
+});
+
+// Cancel — stop an in-flight fal job for a node so we don't pay for compute
+// we no longer want. Used by the "⏹ Stop" / "↻ Regenerate" buttons in the UI.
+router.post('/api/video/kling/cancel', async (req, res) => {
+  const { node_id } = req.body ?? {};
+  if (!node_id) return res.status(400).json({ ok: false, error: 'node_id required' });
+  const result = await cancelFalJob(node_id);
+  res.json({ ok: result.cancelled, ...result });
 });
 
 // Recovery — attach to a previously submitted fal request_id and pull the

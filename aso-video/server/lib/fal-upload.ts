@@ -5,8 +5,20 @@
 import { fal } from '@fal-ai/client';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve, join, extname } from 'node:path';
+import { getKey } from './keys.js';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
+
+// Self-contained config — fal is a singleton and the SAME instance is used
+// across every module that imports it, but `fal.config()` has to be called
+// at least once per process. Doing it here means callers can use toFalUrl()
+// without remembering to configure the client first.
+let configured = false;
+function ensureConfigured(): void {
+  if (configured) return;
+  fal.config({ credentials: getKey('FAL_API_KEY') });
+  configured = true;
+}
 
 const MIME: Record<string, string> = {
   '.png': 'image/png',
@@ -38,6 +50,7 @@ export async function toFalUrl(url: string): Promise<string> {
   const path = localPath(url);
   if (!path) return url;
   if (!existsSync(path)) throw new Error(`local file not found: ${path}`);
+  ensureConfigured();
 
   const buf = readFileSync(path);
   const ext = extname(path).toLowerCase();

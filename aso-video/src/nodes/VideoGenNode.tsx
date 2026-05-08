@@ -125,6 +125,46 @@ function MultiShotEditor({ id, shots }: { id: string; shots: { prompt: string; d
   );
 }
 
+function InflightControls({ nodeId, stage, progress }: { nodeId: string; stage?: string; progress?: number }) {
+  const [busy, setBusy] = useState(false);
+  const cancel = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fetch(`${API}/video/kling/cancel`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ node_id: nodeId }),
+      });
+    } finally { setBusy(false); }
+  };
+  const regenerate = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await fetch(`${API}/video/kling/cancel`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ node_id: nodeId }),
+      });
+      // Tiny delay to let cancel propagate to graph state, then re-trigger run.
+      await new Promise((r) => setTimeout(r, 250));
+      triggerRun(nodeId);
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 6, background: '#1f1410', border: '1px solid #422' , borderRadius: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#FBBF24' }}>
+        <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: '#F97316', boxShadow: '0 0 6px #F97316', animation: 'asov-pulse 1.4s ease-in-out infinite' }} />
+        <span style={{ flex: 1, fontWeight: 600 }}>{stage ? `fal · ${stage}` : 'fal · running'}{typeof progress === 'number' ? ` · ${Math.round(progress * 100)}%` : ''}</span>
+      </div>
+      <div style={{ display: 'flex', gap: 6 }}>
+        <button onClick={cancel} disabled={busy} title="Cancel the fal job — stops compute, no cost for unfinished work" style={{ flex: 1, background: '#171717', color: '#FCA5A5', border: '1px solid #422', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>⏹ Stop</button>
+        <button onClick={regenerate} disabled={busy} title="Cancel and immediately resubmit with current settings" style={{ flex: 1, background: '#3B82F6', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>↻ Regenerate</button>
+      </div>
+    </div>
+  );
+}
+
 function RecoverFalJob({ nodeId, mode, suggestedRequestId }: { nodeId: string; mode: 'image' | 'text'; suggestedRequestId?: string }) {
   const [open, setOpen] = useState(false);
   const [reqId, setReqId] = useState(suggestedRequestId ?? '');
@@ -305,6 +345,12 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
         </div>
       )}
       {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {/* In-flight controls — Stop / Regenerate when a fal job is running.
+          Without this the Generate button would just submit a second parallel
+          job and we'd pay for both. */}
+      {data.status === 'loading' && (
+        <InflightControls nodeId={id} stage={data.stage} progress={data.progress} />
+      )}
       {/* Surface the fal request_id so the operator can cross-reference in
           the fal dashboard and recover the result if state was lost. */}
       {data.falRequestId && (
