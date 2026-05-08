@@ -74,14 +74,57 @@ function rehydrate(): void {
     for (const j of arr) {
       if (j && j.nodeId && j.requestId && j.modelPath) {
         inflight.set(j.nodeId, j);
+        // Register a default handler so the file actually gets saved + the
+        // node updated, even though the original route's handler closure is
+        // gone with the dead process. Without this the poller would see
+        // COMPLETED, find no handler, and the file would never land on disk
+        // even though we paid for the render at fal.
+        onCompleteHandlers.set(j.nodeId, makeDefaultVideoHandler(j));
       }
     }
     if (inflight.size > 0) {
-      console.log(`[fal-jobs] rehydrated ${inflight.size} in-flight job(s) from disk`);
+      console.log(`[fal-jobs] rehydrated ${inflight.size} in-flight job(s) from disk (default handlers attached)`);
     }
   } catch (e) {
     console.warn('[fal-jobs] rehydrate failed:', (e as Error).message);
   }
+}
+
+function makeDefaultVideoHandler(job: FalJob): (result: unknown) => Promise<void> {
+  return async (result: unknown) => {
+    const { mkdirSync, writeFileSync } = await import('node:fs');
+    const { resolve, join } = await import('node:path');
+    const ROOT = resolve(import.meta.dirname, '..', '..');
+    const VIDEO_DIR = join(ROOT, 'output', 'videos');
+    mkdirSync(VIDEO_DIR, { recursive: true });
+
+    const data = (result as { data?: any }).data ?? result;
+    const videoUrl = data.video?.url ?? data.video_url ?? data.url;
+    if (!videoUrl) {
+      console.warn(`[fal-jobs] rehydrated handler: no video url in result for ${job.nodeId}`);
+      return;
+    }
+    const buf = await fetchWithRetry(videoUrl, 4);
+    const ts = Date.now();
+    const filename = `kling-rehydrated-${ts}.mp4`;
+    const path = join(VIDEO_DIR, filename);
+    writeFileSync(path, buf);
+    console.log(`[fal-jobs] rehydrated handler saved ${filename} for ${job.nodeId}`);
+    try {
+      updateNode(job.nodeId, {
+        data: {
+          status: 'done',
+          outputUrl: `/output/videos/${filename}`,
+          cost: (data as { metrics?: { cost?: number }; cost?: number }).metrics?.cost ?? (data as { cost?: number }).cost ?? 0.84,
+          error: undefined,
+          stage: undefined,
+          progress: undefined,
+        },
+      });
+    } catch (e) {
+      console.warn(`[fal-jobs] rehydrated handler updateNode failed: ${(e as Error).message}`);
+    }
+  };
 }
 rehydrate();
 
@@ -220,8 +263,47 @@ export async function cancelFalJob(nodeId: string): Promise<{ cancelled: boolean
 
 const POLL_INTERVAL_MS = 6_000;
 const HARD_TIMEOUT_MS = 1_200_000; // 20 min absolute ceiling
+// Set of nodeIds currently being polled — when fal.queue.result + video
+// download takes longer than POLL_INTERVAL_MS the next interval tick would
+// re-poll the same job in parallel, fetch the result twice, and run the
+// handler twice. We mark a job as in-progress at the top of pollOne and
+// clear it at the bottom; concurrent ticks just skip.
+const polling = new Set<string>();
+
+/**
+ * Fetch a URL into a Buffer, retrying on transient errors (fal CDN sometimes
+ * returns 5xx or drops the connection mid-stream). Backoff: 0.5s, 1s, 2s, 4s.
+ * Total budget for 4 retries: ~7.5s before giving up.
+ */
+async function fetchWithRetry(url: string, attempts: number): Promise<Buffer> {
+  let lastErr: Error | null = null;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(`video fetch ${r.status}: ${r.statusText}`);
+      return Buffer.from(await r.arrayBuffer());
+    } catch (e) {
+      lastErr = e as Error;
+      const delay = 500 * Math.pow(2, i);
+      console.warn(`[fal-jobs] fetch attempt ${i + 1}/${attempts} failed: ${(e as Error).message}; retry in ${delay}ms`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  throw lastErr ?? new Error('fetch failed after retries');
+}
+export { fetchWithRetry };
 
 async function pollOne(job: FalJob): Promise<void> {
+  if (polling.has(job.nodeId)) return; // a previous tick is still working
+  polling.add(job.nodeId);
+  try {
+    await pollOneImpl(job);
+  } finally {
+    polling.delete(job.nodeId);
+  }
+}
+
+async function pollOneImpl(job: FalJob): Promise<void> {
   configure();
   const age = Date.now() - job.startedAt;
   if (age > HARD_TIMEOUT_MS) {
@@ -245,24 +327,37 @@ async function pollOne(job: FalJob): Promise<void> {
   } catch {}
 
   if (status.status === 'COMPLETED') {
+    console.log(`[fal-jobs] ${job.nodeId} COMPLETED, fetching result for ${job.requestId}`);
     let result: unknown;
     try {
       result = await fal.queue.result(job.modelPath, { requestId: job.requestId });
+      console.log(`[fal-jobs] result keys: ${Object.keys(result as object).join(',')}`);
     } catch (e) {
+      console.error(`[fal-jobs] queue.result failed:`, (e as Error).message);
       finishWithError(job.nodeId, e as Error);
       return;
     }
     const handler = onCompleteHandlers.get(job.nodeId);
     if (handler) {
+      console.log(`[fal-jobs] running onComplete handler for ${job.nodeId}`);
       try {
         await handler(result);
+        console.log(`[fal-jobs] onComplete handler done for ${job.nodeId}`);
       } catch (e) {
+        console.error(`[fal-jobs] onComplete handler threw for ${job.nodeId}:`, (e as Error).message);
         finishWithError(job.nodeId, e as Error);
         return;
       }
+    } else {
+      console.warn(`[fal-jobs] no onComplete handler registered for ${job.nodeId}!`);
     }
     const waiter = waiters.get(job.nodeId);
-    if (waiter) waiter.resolve(result);
+    if (waiter) {
+      console.log(`[fal-jobs] resolving waiter for ${job.nodeId}`);
+      waiter.resolve(result);
+    } else {
+      console.warn(`[fal-jobs] no waiter registered for ${job.nodeId}`);
+    }
     cancelTracking(job.nodeId);
   }
   // FAILED status surfaces via .error in the response body; check.

@@ -3,7 +3,7 @@
 import { Router } from 'express';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { submitFalJob, adoptFalJob, cancelFalJob } from '../lib/fal-jobs.js';
+import { submitFalJob, adoptFalJob, cancelFalJob, fetchWithRetry } from '../lib/fal-jobs.js';
 import { toFalUrl } from '../lib/fal-upload.js';
 
 const router = Router();
@@ -108,9 +108,7 @@ router.post('/api/video/kling', async (req, res) => {
         const videoUrl = data.video?.url ?? data.video_url ?? data.url;
         if (!videoUrl) throw new Error('no video url in kling response');
 
-        const r = await fetch(videoUrl);
-        if (!r.ok) throw new Error(`video fetch failed: ${r.status}`);
-        const buf = Buffer.from(await r.arrayBuffer());
+        const buf = await fetchWithRetry(videoUrl, 4);
         const ts = Date.now();
         savedFilename = `kling-${m}-${ts}.mp4`;
         savedPath = join(VIDEO_DIR, savedFilename);
@@ -119,6 +117,28 @@ router.post('/api/video/kling', async (req, res) => {
         const estimated = totalDur * (aud ? 0.168 : 0.112);
         const actual = (data as { metrics?: { cost?: number }; cost?: number }).metrics?.cost ?? (data as { cost?: number }).cost;
         returnedCost = typeof actual === 'number' ? actual : estimated;
+
+        // Update the node directly so the UI lands on `done` even if the
+        // internal fetch from graph.runNode timed out. (Kling 4-5 min runs
+        // routinely outlive Node's default fetch timeout, after which
+        // runNode would mark the node as 'error: fetch failed' even though
+        // the file is being saved fine in the background.)
+        try {
+          const { updateNode } = await import('../lib/graphStore.js');
+          updateNode(node_id, {
+            data: {
+              status: 'done',
+              outputUrl: `/output/videos/${savedFilename}`,
+              cost: returnedCost,
+              elapsed: (Date.now() - t0) / 1000,
+              error: undefined,
+              stage: undefined,
+              progress: undefined,
+            },
+          });
+        } catch (e) {
+          console.warn('[kling] node update from onComplete failed:', (e as Error).message);
+        }
       },
     });
 
@@ -179,9 +199,7 @@ router.post('/api/video/kling/recover', async (req, res) => {
         const data = (result as { data?: any }).data ?? result;
         const videoUrl = data.video?.url ?? data.video_url ?? data.url;
         if (!videoUrl) throw new Error('no video url in kling response');
-        const r = await fetch(videoUrl);
-        if (!r.ok) throw new Error(`video fetch failed: ${r.status}`);
-        const buf = Buffer.from(await r.arrayBuffer());
+        const buf = await fetchWithRetry(videoUrl, 4);
         const ts = Date.now();
         savedFilename = `kling-recover-${ts}.mp4`;
         savedPath = join(VIDEO_DIR, savedFilename);
