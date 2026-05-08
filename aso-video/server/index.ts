@@ -17,6 +17,7 @@ import splitScreen from './routes/split-screen.js';
 import imageOverlay from './routes/image-overlay.js';
 import endCard from './routes/end-card.js';
 import stitch from './routes/stitch.js';
+import videoOverlay from './routes/video-overlay.js';
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
@@ -76,6 +77,11 @@ app.use(endCard);
 
 // Stitch — concat two videos end-to-end (split-render workaround).
 app.use(stitch);
+
+// Video Overlay — composite overlay video on top of base video at a time
+// range; base audio is preserved (overlay muted) so we don't get competing
+// voices. Used for "screen recording appears mid-talking-head" pattern.
+app.use(videoOverlay);
 
 // POST /api/render — kicks off CLI render of the DreamAd composition.
 app.post('/api/render', (_req, res) => {

@@ -28,6 +28,7 @@ export type NodeType =
   | 'image-overlay'
   | 'end-card'
   | 'stitch'
+  | 'video-overlay'
   | 'transcribe'
   | 'group'
   | 'output';

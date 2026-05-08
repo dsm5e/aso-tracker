@@ -41,6 +41,7 @@ const VALID_TYPES = new Set<NodeType>([
   'image-overlay',
   'end-card',
   'stitch',
+  'video-overlay',
   'transcribe',
   'group',
   'output',
@@ -256,6 +257,34 @@ async function runNode(id: string): Promise<GraphNode> {
       });
       const data = (await r.json()) as { ok?: boolean; error?: string; url?: string };
       if (!data.ok) throw new Error(data.error ?? 'stitch failed');
+      return updateNode(id, { data: { status: 'done', outputUrl: data.url, cost: 0 } })!;
+    }
+
+    if (node.type === 'video-overlay') {
+      const d = node.data as { start?: number; duration?: number; keepBaseAudio?: boolean; position?: string; fadeMs?: number };
+      const upBase = upstreamFor(id, 'base');
+      const upOverlay = upstreamFor(id, 'overlay');
+      if (!upBase) throw new Error('video-overlay: connect a video to BASE input');
+      if (!upOverlay) throw new Error('video-overlay: connect a video to OVERLAY input');
+      const base = (upBase.data as { outputUrl?: string; url?: string }).outputUrl ?? (upBase.data as { url?: string }).url;
+      const overlay = (upOverlay.data as { outputUrl?: string; url?: string }).outputUrl ?? (upOverlay.data as { url?: string }).url;
+      if (!base) throw new Error('video-overlay: base has no video — run upstream first');
+      if (!overlay) throw new Error('video-overlay: overlay has no video — upload one first');
+      const r = await fetch(`${INTERNAL_BASE}/api/compose/video-overlay`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          baseUrl: base,
+          overlayUrl: overlay,
+          start: d.start ?? 5,
+          duration: d.duration,
+          keepBaseAudio: d.keepBaseAudio !== false,
+          position: d.position ?? 'phone-screenshot',
+          fadeMs: d.fadeMs ?? 200,
+        }),
+      });
+      const data = (await r.json()) as { ok?: boolean; error?: string; url?: string };
+      if (!data.ok) throw new Error(data.error ?? 'video-overlay failed');
       return updateNode(id, { data: { status: 'done', outputUrl: data.url, cost: 0 } })!;
     }
 

@@ -48,6 +48,7 @@ import { SplitScreenNode } from './nodes/SplitScreenNode';
 import { ImageOverlayNode } from './nodes/ImageOverlayNode';
 import { EndCardNode } from './nodes/EndCardNode';
 import { StitchNode } from './nodes/StitchNode';
+import { VideoOverlayNode } from './nodes/VideoOverlayNode';
 import { TranscribeNode } from './nodes/TranscribeNode';
 import { GroupNode } from './nodes/GroupNode';
 import { OutputNode } from './nodes/OutputNode';
@@ -79,6 +80,7 @@ const NODE_MENU_SECTIONS: { title: string; items: NodeMenuItem[] }[] = [
       { type: 'split-screen', label: '🟰 Split Screen', hint: 'stack talking head over b-roll vertically' },
       { type: 'captions', label: '💬 Captions (CapCut style)', hint: 'whisper STT + burn ASS subtitles' },
       { type: 'stitch', label: '🔗 Stitch', hint: 'concatenate two videos end-to-end (A then B)' },
+      { type: 'video-overlay', label: '🎯 Video Overlay', hint: 'composite overlay video on top of base, base audio kept' },
       { type: 'transcribe', label: '👁 Transcribe (STT peek)', hint: 'whisper word timings, pass-through video' },
       { type: 'end-card', label: '🌙 End Card (Dream branded)', hint: 'animated Remotion outro concatenated to tail' },
     ],
@@ -560,6 +562,7 @@ function GraphEditor() {
     'image-overlay': ImageOverlayNode as never,
     'end-card': EndCardNode as never,
     stitch: StitchNode as never,
+    'video-overlay': VideoOverlayNode as never,
     transcribe: TranscribeNode as never,
     group: GroupNode as never,
     output: OutputNode as never,
@@ -839,7 +842,7 @@ function GraphEditor() {
         // Keep timing + position style — overlays will be re-aligned with new transcript.
       } else if (n.type === 'end-card') {
         // Brand/cta/subtitle remain (template values).
-      } else if (n.type === 'stitch' || n.type === 'split-screen') {
+      } else if (n.type === 'stitch' || n.type === 'split-screen' || n.type === 'video-overlay') {
         // No content fields — runtime clear is enough.
       }
 
@@ -1107,6 +1110,7 @@ function GraphEditor() {
               'image-overlay': '#A855F7',
               'end-card': '#B4A0E5',
               stitch: '#14B8A6',
+              'video-overlay': '#0EA5E9',
               transcribe: '#38BDF8',
               group: '#A855F7',
               output: '#6B7280',

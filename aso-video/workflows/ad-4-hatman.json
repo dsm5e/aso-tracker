@@ -50,10 +50,14 @@
       }
     },
     {
-      "id": "stitch-final",
-      "type": "stitch",
+      "id": "video-overlay-final",
+      "type": "video-overlay",
       "position": { "x": 940, "y": 280 },
-      "data": { "label": "Stitch — Kling clip + Screen recording (hard cut)" }
+      "data": {
+        "start": 5,
+        "keepBaseAudio": true,
+        "label": "Overlay — Screen rec on Kling at 5s (Kling audio kept)"
+      }
     },
     {
       "id": "captions",
@@ -87,9 +91,9 @@
   ],
   "edges": [
     { "id": "e1", "source": "img-pov", "sourceHandle": "image", "target": "vid-multi", "targetHandle": "image_url" },
-    { "id": "e2", "source": "vid-multi", "sourceHandle": "video", "target": "stitch-final", "targetHandle": "video_a" },
-    { "id": "e3", "source": "ref-screen-rec", "sourceHandle": "video", "target": "stitch-final", "targetHandle": "video_b" },
-    { "id": "e4", "source": "stitch-final", "sourceHandle": "video", "target": "captions", "targetHandle": "video" },
+    { "id": "e2", "source": "vid-multi", "sourceHandle": "video", "target": "video-overlay-final", "targetHandle": "base" },
+    { "id": "e3", "source": "ref-screen-rec", "sourceHandle": "video", "target": "video-overlay-final", "targetHandle": "overlay" },
+    { "id": "e4", "source": "video-overlay-final", "sourceHandle": "video", "target": "captions", "targetHandle": "video" },
     { "id": "e5", "source": "captions", "sourceHandle": "video", "target": "endcard", "targetHandle": "video" },
     { "id": "e6", "source": "endcard", "sourceHandle": "video", "target": "out", "targetHandle": "video" }
   ],
