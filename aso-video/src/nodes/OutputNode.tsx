@@ -1,6 +1,6 @@
 import { NodeShell, labelStyle } from './common';
 import { openLightbox } from '../components/Lightbox';
-import { MockupFrame } from '../components/TikTokMockup';
+import { MockupFrame, MockupProvider, useMockupToggle } from '../components/TikTokMockup';
 
 interface Data {
   label?: string;
@@ -12,6 +12,9 @@ interface Data {
 
 export function OutputNode({ id, data }: { id: string; data: Data }) {
   const upstreamUrl = data.upstreamUrl;
+  // The toggle persists in localStorage so it survives reloads — same hook
+  // we used to use from the toolbar, just relocated to live with the preview.
+  const [mockup, setMockup] = useMockupToggle();
   return (
     <NodeShell
       id={id}
@@ -21,12 +24,28 @@ export function OutputNode({ id, data }: { id: string; data: Data }) {
     >
       {upstreamUrl ? (
         <>
+          <label
+            className="nodrag"
+            title="Overlay TikTok UI chrome on the preview — visual only, not baked into mp4"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#a3a3a3', cursor: 'pointer', marginBottom: 6 }}
+          >
+            <input
+              type="checkbox"
+              checked={mockup}
+              onChange={(e) => setMockup(e.target.checked)}
+              style={{ margin: 0 }}
+            />
+            📱 TikTok mockup
+          </label>
           {/* `key` forces remount when src changes — otherwise <video> keeps showing the previously loaded media.
               MockupFrame overlays TikTok chrome (profile rail, caption bar, etc.) for visual preview only —
-              not rendered into the actual mp4. */}
-          <MockupFrame>
-            <video key={upstreamUrl} src={upstreamUrl} controls style={{ width: '100%', height: 'auto', borderRadius: 6, background: '#000', display: 'block' }} />
-          </MockupFrame>
+              not rendered into the actual mp4. The Provider scopes the toggle to this node so
+              other Output nodes (rare but possible) can have their own mockup state. */}
+          <MockupProvider enabled={mockup}>
+            <MockupFrame>
+              <video key={upstreamUrl} src={upstreamUrl} controls style={{ width: '100%', height: 'auto', borderRadius: 6, background: '#000', display: 'block' }} />
+            </MockupFrame>
+          </MockupProvider>
           <button
             className="nodrag"
             onClick={() => openLightbox({ kind: 'video', src: upstreamUrl })}

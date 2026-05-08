@@ -171,6 +171,12 @@ function broadcastExternalReload(name: string): void {
   }
 }
 
+/** Public — used by routes that mutate the graph on Claude/agent's behalf to
+ * trigger the same animated diff as a file edit would. */
+export function broadcastExternalReloadPublic(name: string): void {
+  broadcastExternalReload(name);
+}
+
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
 export function getGraph(): Graph {

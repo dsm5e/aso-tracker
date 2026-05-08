@@ -10,6 +10,7 @@ import {
   deleteEdge,
   addSseClient,
   removeSseClient,
+  broadcastExternalReloadPublic,
   upstreamFor,
   upstreamsByPrefix,
   autoLayout,
@@ -57,8 +58,26 @@ router.get('/api/graph', (_req, res) => {
   res.json(getGraph());
 });
 
+// Agent-driven edits flag: any mutation route may be marked `?external=1` or
+// `X-Agent-Edit: 1` so the SSE clients diff the resulting graph and animate the
+// changes (flash on add/change, ghost-fade on remove). UI-driven actions don't
+// pass the flag → no animation, just instant update like before.
+function isAgentEdit(req: import('express').Request): boolean {
+  return req.query.external === '1' || req.headers['x-agent-edit'] === '1';
+}
+function fireAgentHint(req: import('express').Request, name = 'agent-edit'): void {
+  if (isAgentEdit(req)) broadcastExternalReloadPublic(name);
+}
+
 router.put('/api/graph', (req, res) => {
   try {
+    if (req.body && req.body.__external) {
+      // Legacy body flag — keep working but strip before persisting.
+      delete req.body.__external;
+      broadcastExternalReloadPublic('agent-edit');
+    } else {
+      fireAgentHint(req);
+    }
     const next = replaceGraph(req.body);
     res.json(next);
   } catch (e) {
@@ -72,17 +91,20 @@ router.post('/api/graph/nodes', (req, res) => {
   if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
     return res.status(400).json({ error: 'position {x,y} required' });
   }
+  fireAgentHint(req);
   const node = createNode({ type, position, data });
   res.json(node);
 });
 
 router.patch('/api/graph/nodes/:id', (req, res) => {
+  fireAgentHint(req);
   const updated = updateNode(req.params.id, req.body ?? {});
   if (!updated) return res.status(404).json({ error: 'node not found' });
   res.json(updated);
 });
 
 router.delete('/api/graph/nodes/:id', (req, res) => {
+  fireAgentHint(req);
   const ok = deleteNode(req.params.id);
   if (!ok) return res.status(404).json({ error: 'node not found' });
   res.json({ ok: true });
@@ -93,11 +115,13 @@ router.post('/api/graph/edges', (req, res) => {
   if (!source || !target || !sourceHandle || !targetHandle) {
     return res.status(400).json({ error: 'source/target/handles required' });
   }
+  fireAgentHint(req);
   const edge = createEdge({ source, sourceHandle, target, targetHandle });
   res.json(edge);
 });
 
 router.delete('/api/graph/edges/:id', (req, res) => {
+  fireAgentHint(req);
   const ok = deleteEdge(req.params.id);
   if (!ok) return res.status(404).json({ error: 'edge not found' });
   res.json({ ok: true });
@@ -131,6 +155,7 @@ router.post('/api/graph/load-workflow', (req, res) => {
   const { name } = req.body ?? {};
   if (!name || typeof name !== 'string') return res.status(400).json({ error: 'name required' });
   try {
+    fireAgentHint(req, name);
     const g = loadWorkflow(name);
     res.json(g);
   } catch (e) {
