@@ -9,16 +9,19 @@ export const EC_HEIGHT = 1920;
 export const EC_DURATION_FRAMES = 90; // 3 seconds
 
 // Per-brand palette + assets. Selected by the `brand` prop (case-insensitive).
-// Default = Dream (purple cosmic). MedScan = clinical cyan on deep navy.
+// Default = Dream (purple cosmic). MedScan = clinical sage-green on near-black,
+// mirroring the iOS LaunchScreen (scan-line sweep + pulse rings + serif "MedScan").
 interface BrandTheme {
   bg: string;          // base background
   cardGlow: string;    // main radial glow rgba
   cardGlow2: string;   // secondary glow rgba
   accent: string;      // main accent (icon shadow, subtitle, CTA fill)
+  accentDim: string;   // darker accent for gradient pairs
   subtitleColor: string;
-  motif: 'stars' | 'grid';
+  motif: 'stars' | 'scan';
   iconFile: string;    // staticFile() path
   iconShadow: string;
+  brandFont: string;   // font-family for the brand wordmark
 }
 
 const THEMES: Record<string, BrandTheme> = {
@@ -27,20 +30,25 @@ const THEMES: Record<string, BrandTheme> = {
     cardGlow: 'rgba(180,160,229,0.22)',
     cardGlow2: 'rgba(196,181,253,0.10)',
     accent: '#B4A0E5',
+    accentDim: '#6B5B95',
     subtitleColor: '#B4A0E5',
     motif: 'stars',
     iconFile: 'dream-icon.png',
     iconShadow: '0 40px 90px rgba(180,160,229,0.45), 0 0 60px rgba(180,160,229,0.35)',
+    brandFont: 'Helvetica Neue, Helvetica, Arial, sans-serif',
   },
   medscan: {
-    bg: '#020812',
-    cardGlow: 'rgba(0,200,230,0.18)',
-    cardGlow2: 'rgba(0,150,200,0.10)',
-    accent: '#00D4E6',
-    subtitleColor: '#7DD3E0',
-    motif: 'grid',
+    // Mirrors MedScan iOS LaunchScreen — near-black bg, sage-green accent #8FB099.
+    bg: '#0F0F0F',
+    cardGlow: 'rgba(143,176,153,0.10)',
+    cardGlow2: 'rgba(107,143,113,0.07)',
+    accent: '#8FB099',
+    accentDim: '#6B8F71',
+    subtitleColor: 'rgba(143,176,153,0.65)',
+    motif: 'scan',
     iconFile: 'medscan-icon.png',
-    iconShadow: '0 40px 90px rgba(0,212,230,0.40), 0 0 80px rgba(0,212,230,0.35)',
+    iconShadow: '0 40px 90px rgba(143,176,153,0.30), 0 0 80px rgba(143,176,153,0.20)',
+    brandFont: 'Georgia, "Times New Roman", serif',
   },
 };
 
@@ -95,7 +103,7 @@ export const EndCard: React.FC<Props> = ({
   });
 
   return (
-    <AbsoluteFill style={{ background: theme.bg, overflow: 'hidden', fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif' }}>
+    <AbsoluteFill style={{ background: theme.bg, overflow: 'hidden', fontFamily: theme.brandFont }}>
       {/* Drifting radial glow */}
       <div style={{
         position: 'absolute', inset: 0,
@@ -107,7 +115,7 @@ export const EndCard: React.FC<Props> = ({
         background: `radial-gradient(circle at 30% 80%, ${theme.cardGlow2}, transparent 50%)`,
       }} />
 
-      {/* Motif: stars (Dream) or DICOM grid lines (MedScan) */}
+      {/* Motif: stars (Dream) or scan-line sweep + pulse rings (MedScan) */}
       {theme.motif === 'stars' && stars.map((s, i) => (
         <div key={i} style={{
           position: 'absolute', left: s.x, top: s.y,
@@ -117,19 +125,46 @@ export const EndCard: React.FC<Props> = ({
           boxShadow: s.r >= 2 ? '0 0 4px rgba(255,255,255,0.6)' : 'none',
         }} />
       ))}
-      {theme.motif === 'grid' && (
-        <div style={{
-          position: 'absolute', inset: 0,
-          backgroundImage: `
-            linear-gradient(${theme.accent}22 1px, transparent 1px),
-            linear-gradient(90deg, ${theme.accent}22 1px, transparent 1px)
-          `,
-          backgroundSize: '80px 80px',
-          opacity: 0.5,
-          maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
-          WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
-        }} />
-      )}
+      {theme.motif === 'scan' && (() => {
+        // Scan line sweep — gradient band travels top → bottom once during the
+        // first ~1.3s, then fades. Matches MedScan LaunchScreen.swift cadence.
+        const sweepProgress = Math.min(1, frame / (fps * 1.3));
+        const sweepY = -200 + sweepProgress * (EC_HEIGHT + 400);
+        const sweepOpacity = frame < fps * 1.45
+          ? Math.min(1, frame / 5)
+          : Math.max(0, 1 - (frame - fps * 1.45) / (fps * 0.25));
+        // Pulse rings — two staggered concentric strokes, ease-out fade.
+        const pulse1 = (frame - 18) / (fps * 1.05);
+        const pulse2 = (frame - 26) / (fps * 1.1);
+        const ring = (p: number, baseSize: number, baseOpacity: number) => p < 0 || p > 1 ? null : (
+          <div style={{
+            position: 'absolute', left: '50%', top: '50%',
+            width: baseSize, height: baseSize, marginLeft: -baseSize / 2, marginTop: -baseSize / 2,
+            borderRadius: '50%',
+            border: `1.5px solid ${theme.accent}`,
+            opacity: baseOpacity * (1 - p),
+            transform: `scale(${1 + p * 0.75})`,
+          }} />
+        );
+        return (
+          <>
+            {/* Horizontal scan-line band */}
+            <div style={{
+              position: 'absolute', left: 0, right: 0,
+              top: sweepY, height: 80,
+              background: `linear-gradient(to bottom, transparent, ${theme.accent}14, ${theme.accent}38, ${theme.accent}14, transparent)`,
+              filter: 'blur(4px)',
+              opacity: sweepOpacity,
+            }} />
+            {/* Pulse rings (positioned roughly where the icon sits — content
+                center, ~y=900 in 1920 height). Adjust offset if icon moves. */}
+            <div style={{ position: 'absolute', left: '50%', top: '50%', marginTop: -180 }}>
+              {ring(pulse1, 200, 0.55)}
+              {ring(pulse2, 240, 0.35)}
+            </div>
+          </>
+        );
+      })()}
 
       {/* Centered content */}
       <div style={{
@@ -149,16 +184,24 @@ export const EndCard: React.FC<Props> = ({
         />
 
         <h1 style={{
-          fontSize: 140, fontWeight: 800, color: '#fff', margin: 0,
-          letterSpacing: -3,
+          fontSize: 140,
+          fontWeight: theme.motif === 'scan' ? 400 : 800,
+          color: theme.motif === 'scan' ? '#F5F5F5' : '#fff',
+          fontFamily: theme.brandFont,
+          margin: 0,
+          letterSpacing: theme.motif === 'scan' ? -1 : -3,
           opacity: headO,
           transform: `translateY(${headY}px)`,
           lineHeight: 1,
         }}>{brand}</h1>
 
         <p style={{
-          fontSize: 50, color: theme.subtitleColor, margin: '24px 0 0 0',
-          fontWeight: 500, letterSpacing: -0.5,
+          fontSize: theme.motif === 'scan' ? 36 : 50,
+          color: theme.subtitleColor,
+          margin: '24px 0 0 0',
+          fontWeight: theme.motif === 'scan' ? 500 : 500,
+          letterSpacing: theme.motif === 'scan' ? 4 : -0.5,
+          textTransform: theme.motif === 'scan' ? 'uppercase' : 'none',
           opacity: subO,
           transform: `translateY(${subY}px)`,
         }}>{subtitle}</p>
