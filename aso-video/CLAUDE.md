@@ -268,15 +268,21 @@ shot if you want continuity.
 
 ### Dialogue: speak it like a director, not a copywriter
 
-- ✅ *"She speaks with clear lip movement: 'POV: it's 11 PM …'"* — tells Kling
-  to synchronise mouth shapes.
+- ✅ **"She speaks with clear (visible) lip movement: '…'"** — load-bearing
+  phrase. Without it, Kling defaults to voice-over (audio plays but no mouth
+  animation). Verified 2026-05-13: shot 1 used `"says: '…'"` → got VO not
+  lip-sync; changing to `"speaks with clear visible lip movement"` fixed it.
 - ✅ Quote the dialogue inside the prompt — Kling generates voice that follows
   it (when `audio: true`).
-- ✅ Add tone descriptors: *"intimate, lightly ironic"*, *"confident, satisfied"*.
+- ✅ Add tone descriptors: *"intimate, lightly ironic"*, *"confident, satisfied"*,
+  *"slightly raspy from a long shift"*.
 - ❌ Don't list multiple speakers without temporal markers. Use `Immediately,`
   or `Pause` between exchanges if needed.
 - ❌ Don't write entire dialogue blocks as one run-on sentence — break with
   punctuation, Kling syncs better.
+- For voice-over shots (back-camera POV, etc.) use **"Voice-over, [tone]: '…'"**
+  — explicit VO marker prevents Kling from trying to animate lips on an
+  unseen subject.
 
 ### Common 422 failure modes
 
