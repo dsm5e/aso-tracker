@@ -8,13 +8,40 @@ export const EC_WIDTH = 1080;
 export const EC_HEIGHT = 1920;
 export const EC_DURATION_FRAMES = 90; // 3 seconds
 
-// Brand palette (mirrors dream.nomly.space tailwind config)
-const C = {
-  bg: '#0D0D1A',
-  card: '#1A1A2E',
-  purple: '#B4A0E5',
-  purpleDeep: '#6B5B95',
-  accent: '#C4B5FD',
+// Per-brand palette + assets. Selected by the `brand` prop (case-insensitive).
+// Default = Dream (purple cosmic). MedScan = clinical cyan on deep navy.
+interface BrandTheme {
+  bg: string;          // base background
+  cardGlow: string;    // main radial glow rgba
+  cardGlow2: string;   // secondary glow rgba
+  accent: string;      // main accent (icon shadow, subtitle, CTA fill)
+  subtitleColor: string;
+  motif: 'stars' | 'grid';
+  iconFile: string;    // staticFile() path
+  iconShadow: string;
+}
+
+const THEMES: Record<string, BrandTheme> = {
+  dream: {
+    bg: '#0D0D1A',
+    cardGlow: 'rgba(180,160,229,0.22)',
+    cardGlow2: 'rgba(196,181,253,0.10)',
+    accent: '#B4A0E5',
+    subtitleColor: '#B4A0E5',
+    motif: 'stars',
+    iconFile: 'dream-icon.png',
+    iconShadow: '0 40px 90px rgba(180,160,229,0.45), 0 0 60px rgba(180,160,229,0.35)',
+  },
+  medscan: {
+    bg: '#020812',
+    cardGlow: 'rgba(0,200,230,0.18)',
+    cardGlow2: 'rgba(0,150,200,0.10)',
+    accent: '#00D4E6',
+    subtitleColor: '#7DD3E0',
+    motif: 'grid',
+    iconFile: 'medscan-icon.png',
+    iconShadow: '0 40px 90px rgba(0,212,230,0.40), 0 0 80px rgba(0,212,230,0.35)',
+  },
 };
 
 interface Props {
@@ -28,6 +55,7 @@ export const EndCard: React.FC<Props> = ({
   subtitle = 'Decode every dream',
   brand = 'Dream',
 }) => {
+  const theme = THEMES[brand.toLowerCase()] ?? THEMES.dream;
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -67,20 +95,20 @@ export const EndCard: React.FC<Props> = ({
   });
 
   return (
-    <AbsoluteFill style={{ background: C.bg, overflow: 'hidden', fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif' }}>
+    <AbsoluteFill style={{ background: theme.bg, overflow: 'hidden', fontFamily: 'Helvetica Neue, Helvetica, Arial, sans-serif' }}>
       {/* Drifting radial glow */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: `radial-gradient(circle at ${glowX}% ${glowY}%, rgba(180,160,229,0.22), transparent 55%)`,
+        background: `radial-gradient(circle at ${glowX}% ${glowY}%, ${theme.cardGlow}, transparent 55%)`,
       }} />
       {/* Soft second glow at lower-left */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: `radial-gradient(circle at 30% 80%, rgba(196,181,253,0.10), transparent 50%)`,
+        background: `radial-gradient(circle at 30% 80%, ${theme.cardGlow2}, transparent 50%)`,
       }} />
 
-      {/* Stars */}
-      {stars.map((s, i) => (
+      {/* Motif: stars (Dream) or DICOM grid lines (MedScan) */}
+      {theme.motif === 'stars' && stars.map((s, i) => (
         <div key={i} style={{
           position: 'absolute', left: s.x, top: s.y,
           width: s.r, height: s.r, borderRadius: s.r,
@@ -89,6 +117,19 @@ export const EndCard: React.FC<Props> = ({
           boxShadow: s.r >= 2 ? '0 0 4px rgba(255,255,255,0.6)' : 'none',
         }} />
       ))}
+      {theme.motif === 'grid' && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: `
+            linear-gradient(${theme.accent}22 1px, transparent 1px),
+            linear-gradient(90deg, ${theme.accent}22 1px, transparent 1px)
+          `,
+          backgroundSize: '80px 80px',
+          opacity: 0.5,
+          maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+          WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+        }} />
+      )}
 
       {/* Centered content */}
       <div style={{
@@ -97,12 +138,12 @@ export const EndCard: React.FC<Props> = ({
         padding: '0 80px', textAlign: 'center',
       }}>
         <Img
-          src={staticFile('dream-icon.png')}
+          src={staticFile(theme.iconFile)}
           style={{
             width: 300, height: 300, borderRadius: 72,
             opacity: iconOpacity,
             transform: `scale(${iconScale * pulse})`,
-            boxShadow: `0 40px 90px rgba(180,160,229,0.45), 0 0 60px rgba(180,160,229,0.35)`,
+            boxShadow: theme.iconShadow,
             marginBottom: 70,
           }}
         />
@@ -116,7 +157,7 @@ export const EndCard: React.FC<Props> = ({
         }}>{brand}</h1>
 
         <p style={{
-          fontSize: 50, color: C.purple, margin: '24px 0 0 0',
+          fontSize: 50, color: theme.subtitleColor, margin: '24px 0 0 0',
           fontWeight: 500, letterSpacing: -0.5,
           opacity: subO,
           transform: `translateY(${subY}px)`,
@@ -125,13 +166,13 @@ export const EndCard: React.FC<Props> = ({
         <div style={{
           marginTop: 110,
           padding: '36px 90px',
-          background: C.purple,
-          color: C.bg,
+          background: theme.accent,
+          color: theme.bg,
           borderRadius: 200,
           fontSize: 56, fontWeight: 800,
           opacity: ctaO,
           transform: `scale(${ctaScale})`,
-          boxShadow: '0 24px 70px rgba(180,160,229,0.55)',
+          boxShadow: `0 24px 70px ${theme.cardGlow}`,
           letterSpacing: -0.4,
         }}>{cta} →</div>
 

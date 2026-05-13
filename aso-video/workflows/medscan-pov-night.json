@@ -82,7 +82,7 @@
       },
       "data": {
         "preset": "hormozi",
-        "fontSize": 140,
+        "fontSize": 110,
         "marginV": 380,
         "status": "idle",
         "stage": null,
@@ -160,8 +160,8 @@
         "y": 1200
       },
       "data": {
-        "url": "/output/videos/kling-shots-2-3-trimmed.mp4",
-        "label": "Kling shots 2+3 (trimmed, 10s)",
+        "url": "/output/videos/kling-shots-2-3-trim-1778657971.mp4",
+        "label": "Kling shots 2+3 (trimmed 9.5s, +0.5s cut)",
         "usage": "asset"
       }
     },

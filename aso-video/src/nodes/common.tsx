@@ -331,6 +331,11 @@ export async function patchData(id: string, data: Record<string, unknown>) {
 //
 // Also clears the stale `outputUrl` so downstream nodes can't accidentally
 // reuse the previous run's file while this one is mid-flight.
+//
+// If the server returns an error (e.g. "Upstream X hasn't been run yet"),
+// roll back the optimistic loading state and surface the error message as
+// both a toast AND on the node itself, so the canvas doesn't pretend the
+// node is still running forever.
 export async function triggerRun(id: string) {
   await patchNode(id, {
     data: {
@@ -341,5 +346,60 @@ export async function triggerRun(id: string) {
       outputUrl: null,
     },
   });
-  await runNode(id);
+  try {
+    const result = await runNode(id);
+    if (result && typeof result === 'object' && 'error' in result && result.error) {
+      const msg = String(result.error);
+      // Roll back optimistic loading; preserve the message on the node and
+      // alert the user immediately so they know WHY nothing happened.
+      await patchNode(id, {
+        data: { status: 'idle', error: msg, stage: null, progress: undefined },
+      });
+      showRunError(msg);
+    }
+  } catch (e) {
+    const msg = (e as Error).message || 'run failed';
+    await patchNode(id, {
+      data: { status: 'idle', error: msg, stage: null, progress: undefined },
+    });
+    showRunError(msg);
+  }
+}
+
+// Lightweight toast — single bottom-of-screen banner that fades after 6s.
+// Avoids pulling in a toast library for one alert pattern. The element is
+// re-used across calls so rapid-fire errors stack visually.
+function showRunError(msg: string): void {
+  const id = '__aso_video_run_err__';
+  let host = document.getElementById(id) as HTMLDivElement | null;
+  if (!host) {
+    host = document.createElement('div');
+    host.id = id;
+    Object.assign(host.style, {
+      position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+      zIndex: '99999', display: 'flex', flexDirection: 'column-reverse', gap: '8px',
+      pointerEvents: 'none', maxWidth: 'min(640px, 92vw)',
+    } as CSSStyleDeclaration);
+    document.body.appendChild(host);
+  }
+  const item = document.createElement('div');
+  item.textContent = `⚠ ${msg}`;
+  Object.assign(item.style, {
+    background: '#3b0a0a', border: '1px solid #7a1f1f', color: '#fecaca',
+    padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
+    boxShadow: '0 8px 24px rgba(0,0,0,0.4)', maxWidth: '100%',
+    wordBreak: 'break-word', whiteSpace: 'pre-wrap',
+    transition: 'opacity 320ms ease, transform 320ms ease',
+    opacity: '0', transform: 'translateY(8px)',
+  } as CSSStyleDeclaration);
+  host.appendChild(item);
+  requestAnimationFrame(() => {
+    item.style.opacity = '1';
+    item.style.transform = 'translateY(0)';
+  });
+  setTimeout(() => {
+    item.style.opacity = '0';
+    item.style.transform = 'translateY(8px)';
+    setTimeout(() => item.remove(), 360);
+  }, 6000);
 }
