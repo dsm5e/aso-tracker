@@ -285,6 +285,13 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
         kind="video"
         onPick={(url) => patchData(id, { status: 'done', outputUrl: url, error: undefined })}
       />
+      <div className="nodrag">
+        <span style={labelStyle}>Mode</span>
+        <select className="nodrag" onMouseDown={stopProp} value={data.mode} onChange={(e) => patchData(id, { mode: e.target.value })} style={inputStyle}>
+          <option value="image">image</option>
+          <option value="text">text</option>
+        </select>
+      </div>
       <div className="nodrag" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
         <div>
           <span style={labelStyle}>Model</span>
@@ -305,24 +312,29 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
           </select>
         </div>
         <div>
-          <span style={labelStyle}>Mode</span>
-          <select className="nodrag" onMouseDown={stopProp} value={data.mode} onChange={(e) => patchData(id, { mode: e.target.value })} style={inputStyle}>
-            <option value="image">image</option>
-            <option value="text">text</option>
-          </select>
-        </div>
-        <div>
           <span style={labelStyle}>Resolution</span>
           <select className="nodrag" onMouseDown={stopProp} value={data.resolution} onChange={(e) => patchData(id, { resolution: e.target.value })} style={inputStyle}>
             {supported.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
-        <div>
-          <span style={labelStyle}>Duration</span>
-          <select className="nodrag" onMouseDown={stopProp} value={data.duration} onChange={(e) => patchData(id, { duration: Number(e.target.value) })} style={inputStyle}>
-            {[3, 5, 10, 15].map((d) => <option key={d} value={d}>{d}s</option>)}
-          </select>
-        </div>
+        {/* Top-level duration is meaningless in multi-shot mode — backend uses sum of shot durations.
+            Hide it to stop misleading the user. */}
+        {!data.multiShot && (
+          <div>
+            <span style={labelStyle}>Duration</span>
+            <select className="nodrag" onMouseDown={stopProp} value={data.duration} onChange={(e) => patchData(id, { duration: Number(e.target.value) })} style={inputStyle}>
+              {[3, 5, 10, 15].map((d) => <option key={d} value={d}>{d}s</option>)}
+            </select>
+          </div>
+        )}
+        {data.multiShot && (
+          <div>
+            <span style={labelStyle}>Total (computed)</span>
+            <div style={{ ...inputStyle, color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>
+              {totalDuration(data)}s
+            </div>
+          </div>
+        )}
       </div>
       <label className="nodrag" style={{ fontSize: 11, display: 'flex', gap: 6, alignItems: 'center' }}>
         <input type="checkbox" checked={data.audio} onChange={(e) => patchData(id, { audio: e.target.checked })} />

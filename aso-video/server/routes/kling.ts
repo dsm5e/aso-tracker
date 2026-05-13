@@ -157,11 +157,13 @@ router.post('/api/video/kling', async (req, res) => {
     });
   } catch (e) {
     const err = e as Error & { body?: unknown; status?: number };
-    console.error('[kling] fal error:', {
+    // JSON.stringify so nested `detail` array surfaces in the log (Node's
+    // default console.log collapses deep objects into `[Object]`).
+    console.error('[kling] fal error:', JSON.stringify({
       message: err.message,
       status: err.status,
       body: err.body,
-    });
+    }, null, 2));
     const detail = err.body ? JSON.stringify(err.body) : err.message;
     res.status(500).json({ ok: false, error: detail });
   }

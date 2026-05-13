@@ -208,6 +208,124 @@ curl -X POST http://localhost:5191/api/graph/save-workflow \
 | Yellow flash didn't trigger after Edit | File watcher debounce / not the active workflow | Verify `cat ~/.aso-studio/video/active-workflow` matches the file you edited |
 | `iTunes 502` (unrelated, in the keywords app) | Rate limit | Out of scope here — see `aso-keywords/CLAUDE.md` if relevant |
 
+## Kling v3 Pro — prompting playbook
+
+The `video-gen` node with `model: 'kling'` is our workhorse. Kling is opinionated
+about prompts; getting them wrong gives 422 errors or boring footage.
+
+### Hard limits (verified 2026-05-13)
+
+- **Duration enum:** `3..15` seconds (any integer). Kling rejects non-integer
+  or out-of-range values with `Unprocessable Entity`.
+- **Multi-prompt mode:** **512 chars max per shot prompt** — this is the most
+  common failure mode. The error reads `"Prompt must not exceed 512
+  characters."` in the 422 `detail[N].msg`. Single-shot prompts are allowed
+  to be longer.
+- **Multi-prompt shots:** up to 4 per render (Kling supports "storyboards of
+  up to six shots" per their docs, but fal's wrapper caps at 4). Each shot is
+  a hard cut by default.
+- **Total duration:** sum of shot durations must stay ≤ 15s.
+- **`shot_type`:** `customize` (follow durations literally) or `intelligent`
+  (Kling decides cuts). We default to `customize`.
+
+### Reference images: `image_url` + `image_url_2..N`
+
+- `image_url` → start frame (implicitly `@Element1` in prompt references? — fal
+  docs are ambiguous; in practice the start frame is the visual anchor for the
+  character/scene).
+- `image_url_2`, `image_url_3`, … → `elements[]` (KlingV3ComboElementInput).
+  Reference them in prompts as `@Element2`, `@Element3` — e.g. *"the iPad
+  screen displays the medical interface from @Element2"*. This lets Kling
+  render real UI on a phone/iPad screen instead of compositing post hoc.
+- Multi-prompt + elements ARE compatible.
+
+### The 5-part prompt formula
+
+Per fal's official guide and the Kling 2.1/3.0 prompt structure:
+
+> **Subject** (with description) + **Action / movement** + **Scene** +
+> **Camera language** + **Lighting / atmosphere**
+
+In multi-shot mode, write each shot as a self-contained beat — don't assume
+Kling carries context across shots. Repeat the subject's appearance every
+shot if you want continuity.
+
+### Camera vocabulary Kling understands well
+
+- Shot framing: `medium selfie shot`, `tight close-up`, `wide selfie frame`,
+  `profile shot`, `macro close-up`, `POV`, `over-the-shoulder`,
+  `shot-reverse-shot`.
+- Camera motion: `locked-off`, `handheld with natural hand-jitter`,
+  `tracking shot`, `following`, `panning`, `dolly in/out`, `tilt up/down`,
+  `pulls back`, `pushes in`. *Explicit motion verbs are the difference between
+  contemplative drift and energetic clip.*
+- Transitions between shots in multi-prompt: `HARD CUT to …`, `JUMP CUT`,
+  `MATCH CUT` (rarely supported, prefer hard cuts).
+- Hand-held authenticity: *"natural human hand-jitter, breathing motion,
+  occasional slight tilt, never static or locked-off"* — produces real iPhone
+  selfie feel.
+
+### Dialogue: speak it like a director, not a copywriter
+
+- ✅ *"She speaks with clear lip movement: 'POV: it's 11 PM …'"* — tells Kling
+  to synchronise mouth shapes.
+- ✅ Quote the dialogue inside the prompt — Kling generates voice that follows
+  it (when `audio: true`).
+- ✅ Add tone descriptors: *"intimate, lightly ironic"*, *"confident, satisfied"*.
+- ❌ Don't list multiple speakers without temporal markers. Use `Immediately,`
+  or `Pause` between exchanges if needed.
+- ❌ Don't write entire dialogue blocks as one run-on sentence — break with
+  punctuation, Kling syncs better.
+
+### Common 422 failure modes
+
+| Error message (from `detail[].msg`) | Cause | Fix |
+|---|---|---|
+| `Prompt must not exceed 512 characters.` | Per-shot prompt > 512 chars in multi-prompt | Compress to ~450-500 chars per shot; cut redundant atmospheric adjectives, deduplicate setting between shots |
+| `duration must be between 3 and 15` | Top-level duration or shot duration out of range | Clamp 3-15. In multi-shot, sum of shots must also be ≤15 |
+| `image_url is required` | mode=image without any connected `image_url` upstream | Connect a `reference-image` or `flux-image` to the `image_url` handle |
+| `Value error, multi_prompt …` | Malformed shot object (missing prompt/duration) | Each shot needs `{prompt: string, duration: int}` |
+
+### Working example — medscan-pov-night
+
+Reference our shipped workflow `workflows/medscan-pov-night.json` for a
+multi-shot Kling render with 2 reference images:
+- Front selfie hook (handheld) → back-camera POV with `@Element2` MedScan UI
+  on iPad screen → front selfie punchline (handheld).
+- Each shot ≤ 510 chars.
+- 13s total (3+3+7), audio-on, image-to-video with character + UI refs.
+
+### Compression checklist (when you hit 512)
+
+1. **Dedupe between shots** — describe scene fully in Shot 1, in Shot 2/3 just
+   say "same sofa, same lighting" instead of re-listing every detail.
+2. **Drop adjective stacking** — "soft warm ambient golden glow from a
+   designer floor lamp" → "warm lamp glow".
+3. **Cut redundant qualifiers** — "Vertical 9:16, iPhone front-camera
+   aesthetic, natural skin texture with visible pores" → "9:16, skin pores".
+4. **Trim lighting verbosity** — Kling infers a lot from one good keyword.
+   "evening", "neon", "moonlit", "harsh fluorescent" carry their own load.
+5. **Keep the dialogue verbatim** — it's load-bearing, don't trim VO.
+6. **Combine camera + motion** — "Handheld iPhone selfie. Natural hand-shake,
+   breathing motion, never locked-off." covers most of what you need.
+
+### Negative prompts
+
+Not exposed in our UI yet, but Kling supports them. Common ones to suppress
+artifacts:
+- `sliding feet, extra fingers, morphing hands, distorted face`
+- `text, logos, watermark, captions, subtitles`
+- `studio lighting, smooth gimbal, professional dolly` (when going for
+  handheld selfie feel)
+
+### Sources
+
+- [fal.ai — Kling 3.0 Prompting Guide](https://blog.fal.ai/kling-3-0-prompting-guide/) — official
+- [Kling 2.1 Master Prompt Guide — GeeLark](https://www.geelark.com/blog/kling-2-1-master-prompt-guide/) — 5-part formula
+- [Kling 3.0 Prompts — VEED](https://www.veed.io/learn/kling-3-0-prompts) — practical motion examples
+- [Atlas Cloud — 10 Advanced Kling 3.0 Prompts](https://www.atlascloud.ai/blog/guides/mastering-kling-3.0-10-advanced-ai-video-prompts-for-realistic-human-motion) — human motion realism
+- [Kling Image-to-Video Guide — Vicsee](https://vicsee.com/blog/kling-3-prompts) — i2v specific
+
 ## What's NOT exposed to Claude (yet)
 
 - Direct uploads to `output/uploads/` — must be done via filesystem copy or the
