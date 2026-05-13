@@ -230,13 +230,14 @@ about prompts; getting them wrong gives 422 errors or boring footage.
 
 ### Reference images: `image_url` + `image_url_2..N`
 
-- `image_url` → start frame (implicitly `@Element1` in prompt references? — fal
-  docs are ambiguous; in practice the start frame is the visual anchor for the
-  character/scene).
+- `image_url` → `start_image_url` on the fal request — the visual anchor for
+  the character/scene. **It is NOT counted as `@Element1`** in prompt refs.
 - `image_url_2`, `image_url_3`, … → `elements[]` (KlingV3ComboElementInput).
-  Reference them in prompts as `@Element2`, `@Element3` — e.g. *"the iPad
-  screen displays the medical interface from @Element2"*. This lets Kling
-  render real UI on a phone/iPad screen instead of compositing post hoc.
+  These start the `@Element1` numbering: `image_url_2 = @Element1`,
+  `image_url_3 = @Element2`, etc. Reference them in prompts like *"the iPad
+  screen displays the interface from @Element1"*.
+- Failure mode: prompt says `@Element2` but only 1 element provided → fal
+  returns `"Invalid reference index 2 for element. Only N elements provided."`
 - Multi-prompt + elements ARE compatible.
 
 ### The 5-part prompt formula
