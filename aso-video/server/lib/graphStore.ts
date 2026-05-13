@@ -324,9 +324,14 @@ export function loadWorkflow(name: string): Graph {
   const file = existsSync(userFile) ? userFile : seedFile;
   if (!existsSync(file)) throw new Error(`workflow not found: ${name}`);
   const next = JSON.parse(readFileSync(file, 'utf8')) as Graph;
+  // If reloading the workflow that's currently active (e.g. Claude calling
+  // load-workflow to refresh after a file edit), preserve runtime state for
+  // matching node IDs so completed renders don't get wiped. When switching
+  // to a DIFFERENT workflow, node IDs won't match so merge is a no-op anyway.
+  const merged = currentWorkflowName === name ? mergeRuntimeState(next, graph) : next;
   currentWorkflowName = name;
   persistActiveName();
-  return replaceGraph(next);
+  return replaceGraph(merged);
 }
 
 /** Tracks the most-recently-loaded workflow name so the file watcher can hot-reload it. */
@@ -524,6 +529,40 @@ export function _resetForTests(): void {
 const RELOAD_DEBOUNCE_MS = 200;
 const reloadTimers = new Map<string, NodeJS.Timeout>();
 
+// Runtime fields a node accumulates from a successful run. When the workflow
+// JSON is hot-reloaded from disk (e.g. Claude edited the file), we want to
+// preserve these so the user doesn't lose completed renders. Disk only
+// stores the prompt/structure — runtime state lives in memory until persisted.
+const RUNTIME_FIELDS = ['status', 'outputUrl', 'cost', 'elapsed', 'error', 'progress', 'stage', 'falRequestId', 'falModelPath'] as const;
+
+/**
+ * Merge runtime fields from the current in-memory graph into a graph loaded
+ * from disk. For each node that exists in BOTH (matched by id), copy the
+ * runtime fields from memory onto the disk version. This way Claude can edit
+ * prompts/positions/edges without nuking completed `outputUrl`s.
+ *
+ * Nodes only on disk: kept as-is (new nodes Claude just added).
+ * Nodes only in memory: dropped (Claude removed them from the file).
+ */
+function mergeRuntimeState(diskGraph: Graph, memoryGraph: Graph): Graph {
+  const memoryById = new Map(memoryGraph.nodes.map((n) => [n.id, n]));
+  for (const diskNode of diskGraph.nodes) {
+    const memNode = memoryById.get(diskNode.id);
+    if (!memNode) continue;
+    const memData = memNode.data as Record<string, unknown>;
+    const diskData = diskNode.data as Record<string, unknown>;
+    for (const field of RUNTIME_FIELDS) {
+      const v = memData[field];
+      // Only carry over non-null/defined values — preserves the "Claude
+      // explicitly cleared this output" intent if they really wanted to.
+      if (v !== undefined && v !== null) {
+        diskData[field] = v;
+      }
+    }
+  }
+  return diskGraph;
+}
+
 function scheduleReload(changedName: string): void {
   if (currentWorkflowName !== changedName) return;
   const existing = reloadTimers.get(changedName);
@@ -540,11 +579,15 @@ function scheduleReload(changedName: string): void {
       const raw = readFileSync(file, 'utf8');
       if (!raw.trim()) return;
       const next = JSON.parse(raw) as Graph;
+      // Merge runtime state: disk wins for structure/prompts, memory wins
+      // for status/outputUrl/cost/etc. Prevents Claude's file edits from
+      // wiping out completed renders.
+      const merged = mergeRuntimeState(next, graph);
       // Hint goes BEFORE the graph payload so clients can stash the previous
       // snapshot and label the upcoming graph as external.
       broadcastExternalReload(changedName);
-      replaceGraph(next);
-      console.log(`[graph] hot-reloaded workflow "${changedName}" from disk`);
+      replaceGraph(merged);
+      console.log(`[graph] hot-reloaded workflow "${changedName}" from disk (runtime state merged)`);
     } catch (e) {
       console.warn(`[graph] hot-reload failed for "${changedName}":`, (e as Error).message);
     }

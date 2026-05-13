@@ -47,10 +47,10 @@
         "prompt": "",
         "duration": 13,
         "audio": true,
-        "status": "idle",
-        "outputUrl": null,
-        "cost": null,
-        "elapsed": null,
+        "status": "done",
+        "outputUrl": "/output/videos/kling-image-1778656716770.mp4",
+        "cost": 2.184,
+        "elapsed": 320.895,
         "multiShot": true,
         "shots": [
           {
@@ -78,7 +78,7 @@
       "type": "captions",
       "position": {
         "x": 1080,
-        "y": 460
+        "y": 1050
       },
       "data": {
         "preset": "hormozi",
@@ -98,7 +98,7 @@
       "type": "end-card",
       "position": {
         "x": 1600,
-        "y": 460
+        "y": 1050
       },
       "data": {
         "duration": 2,
@@ -119,10 +119,67 @@
       "type": "output",
       "position": {
         "x": 2080,
-        "y": 460
+        "y": 1050
       },
       "data": {
         "label": "Final MP4 — MedScan POV Night"
+      }
+    },
+    {
+      "id": "kling-test-shot1",
+      "type": "video-gen",
+      "position": {
+        "x": 560,
+        "y": 900
+      },
+      "data": {
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "prompt": "She is mid-sentence, mouth open, speaking aloud directly into the camera with clear visible articulation, each word's mouth shape distinct. Handheld iPhone selfie. Woman 28, honey-blonde wavy hair tousled, royal blue scrubs top button undone, silver glasses on head. Plush grey velvet sofa, NYC night skyline behind, warm lamp glow. Eye contact, warm intimate playful tone slightly raspy. Dialogue: 'It's 11 PM and a patient just texted me a CT on WhatsApp.' Lips move with every syllable. Hand-shake. 9:16.",
+        "duration": 3,
+        "audio": true,
+        "status": "done",
+        "outputUrl": "/output/videos/kling-image-1778657471241.mp4",
+        "cost": 0.504,
+        "elapsed": null,
+        "multiShot": false,
+        "shots": [],
+        "shotType": "customize",
+        "label": "🧪 Test — Shot 1 only ($0.50)",
+        "error": null,
+        "progress": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "ref-shots-2-3",
+      "type": "reference-video",
+      "position": {
+        "x": 560,
+        "y": 1200
+      },
+      "data": {
+        "url": "/output/videos/kling-shots-2-3-trimmed.mp4",
+        "label": "Kling shots 2+3 (trimmed, 10s)",
+        "usage": "asset"
+      }
+    },
+    {
+      "id": "stitch-final",
+      "type": "stitch",
+      "position": {
+        "x": 1080,
+        "y": 1050
+      },
+      "data": {
+        "label": "Stitch — Shot 1 + Shots 2+3",
+        "status": "idle",
+        "outputUrl": null,
+        "error": null,
+        "progress": null,
+        "stage": null,
+        "cost": 0
       }
     }
   ],
@@ -142,13 +199,6 @@
       "targetHandle": "image_url_2"
     },
     {
-      "id": "e3",
-      "source": "kling-multishot",
-      "sourceHandle": "video",
-      "target": "captions",
-      "targetHandle": "video"
-    },
-    {
       "id": "e4",
       "source": "captions",
       "sourceHandle": "video",
@@ -160,6 +210,34 @@
       "source": "end-card",
       "sourceHandle": "video",
       "target": "output-final",
+      "targetHandle": "video"
+    },
+    {
+      "id": "e-flux-test",
+      "source": "flux-character",
+      "sourceHandle": "image",
+      "target": "kling-test-shot1",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "e-test-stitch",
+      "source": "kling-test-shot1",
+      "sourceHandle": "video",
+      "target": "stitch-final",
+      "targetHandle": "video_a"
+    },
+    {
+      "id": "e-trimmed-stitch",
+      "source": "ref-shots-2-3",
+      "sourceHandle": "video",
+      "target": "stitch-final",
+      "targetHandle": "video_b"
+    },
+    {
+      "id": "e-stitch-captions",
+      "source": "stitch-final",
+      "sourceHandle": "video",
+      "target": "captions",
       "targetHandle": "video"
     }
   ]
