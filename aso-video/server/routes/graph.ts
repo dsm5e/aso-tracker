@@ -21,6 +21,7 @@ import {
   loadWorkflow,
   deleteWorkflow,
   seedDefaultWorkflowIfMissing,
+  getCurrentWorkflowName,
   type NodeType,
   type GraphNode,
 } from '../lib/graphStore.js';
@@ -139,6 +140,13 @@ router.get('/api/graph/stream', (req, res) => {
 
 router.get('/api/graph/workflows', (_req, res) => {
   res.json({ workflows: listWorkflows() });
+});
+
+// Returns the name of the workflow the server is currently watching for
+// hot-reloads. Useful for Claude / external tools to verify they're about to
+// edit the file the user actually has open in the browser.
+router.get('/api/graph/workflows/active', (_req, res) => {
+  res.json({ name: getCurrentWorkflowName() });
 });
 
 router.post('/api/graph/save-workflow', (req, res) => {

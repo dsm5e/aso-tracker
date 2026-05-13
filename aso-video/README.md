@@ -5,6 +5,9 @@ scenes, TikTok-style TTS voiceover, and word-level karaoke captions driven by
 fal.ai Whisper. Future phases swap gradients for fal.ai Kling clips and add a
 proper editor UI.
 
+> **For Claude / agents driving this editor:** see [`CLAUDE.md`](./CLAUDE.md)
+> for the full automation API, node-data shapes, and live-edit workflow.
+
 ## Run
 
 From the monorepo root (`aso-studio/`):

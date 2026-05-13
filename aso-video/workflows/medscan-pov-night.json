@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "ref-medscan-ui",
+      "type": "reference-image",
+      "position": { "x": 40, "y": 40 },
+      "data": {
+        "url": "/output/uploads/896c5602-b41a-46d1-80d5-581ce46c24b3.png",
+        "label": "MedScan UI — CBCT 4-panel + 10.9mm ruler",
+        "usage": "asset"
+      }
+    },
+    {
+      "id": "flux-character",
+      "type": "flux-image",
+      "position": { "x": 40, "y": 460 },
+      "data": {
+        "prompt": "Vertical 9:16 iPhone front-camera selfie. A naturally beautiful woman in her late 20s, around 27-28 years old, sharp intelligent eyes, soft natural makeup with nude lip and subtle smoky eye, glowing healthy skin. Long honey-blonde hair with loose waves, slightly tousled — late-shift look. Wearing royal blue medical scrubs top, the top button undone revealing her collarbones and a thin gold chain with a small pendant resting between them — subtle hint of femininity, tasteful and professional, no cleavage. Silver-framed reading glasses pushed up into her hair. Slim black analog watch on her left wrist. Sitting at a modern minimalist kitchen island, soft warm evening light from a window to her left, slight blur of indoor plants behind her, a coffee mug visible to her side. Phone held in selfie position close to her face. Calm focused expression with a slight knowing half-smile, direct confident eye contact with the camera — the look of someone who reads CT scans for a living and just got off a long shift. iPhone selfie aesthetic — natural skin texture, subtle grain, no studio lighting, no logos, no captions. Magnetic, intelligent, subtly feminine, professional.",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "status": "idle",
+        "outputUrl": null,
+        "cost": null,
+        "label": "Image Gen — Radiologist (Magnetic Professional)",
+        "usage": "character"
+      }
+    },
+    {
+      "id": "kling-multishot",
+      "type": "video-gen",
+      "position": { "x": 560, "y": 460 },
+      "data": {
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "prompt": "",
+        "duration": 12,
+        "audio": true,
+        "status": "idle",
+        "outputUrl": null,
+        "cost": null,
+        "elapsed": null,
+        "multiShot": true,
+        "shots": [
+          {
+            "prompt": "FRONT-CAMERA SELFIE. A woman in her late 20s sits at a modern minimalist kitchen island in soft warm evening light. She wears royal blue medical scrubs with the top button undone, honey-blonde wavy hair slightly tousled, silver-framed glasses pushed up into her hair, slim gold chain at her collarbones. She holds her phone in selfie position. She looks directly at the camera with a knowing half-smile and slight late-shift tiredness, speaking with clear lip movement: \"POV: it's 11 PM. A patient just sent their CT to my WhatsApp.\" Tone: conversational, lightly ironic, intimate. Camera: locked-off, iPhone front-camera aesthetic, vertical 9:16, natural skin texture, subtle grain. Sound: clear female voice mid-twenties, faint kitchen room tone, no music.",
+            "duration": 3
+          },
+          {
+            "prompt": "HARD CUT to BACK-CAMERA POINT-OF-VIEW. Camera now looks downward — top-down POV at her own lap. She is sitting with an iPad resting on her thighs (royal blue scrubs pants visible at the edges of frame). The iPad screen is in the middle of the frame, screen face fully visible — a placeholder bright medical interface (the actual MedScan UI will be composited in post). Her well-manicured finger enters from the bottom-right and taps the screen once with slight frustration. She speaks the line in voice-over: \"And no, I'm not driving to the clinic. I drop it into MedScan.\" Camera: locked overhead top-down, vertical 9:16, same warm kitchen evening lighting, slight motion blur on the finger tap. Sound: voice-over of same woman, faint room tone.",
+            "duration": 3
+          },
+          {
+            "prompt": "HARD CUT BACK to FRONT-CAMERA SELFIE. Same woman, same kitchen, same scrubs and lighting. Framing pulled slightly tighter to her face and upper shoulders — more intimate. She gives a confident slight smile, direct eye contact with camera, speaks the punchline with clear lip movement: \"Three seconds. Slices, MPR, measurements — all on the iPad.\" Slight head nod on \"all on the iPad\" for emphasis. Tone: confident, satisfied, the moment of relief after solving the problem. Camera: locked-off iPhone selfie, vertical 9:16. Sound: clear female voice, intimate and confident.",
+            "duration": 6
+          }
+        ],
+        "shotType": "customize",
+        "label": "Kling Multi-shot — Front · Back · Front",
+        "error": null,
+        "progress": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "ipad-overlay",
+      "type": "image-overlay",
+      "position": { "x": 1080, "y": 40 },
+      "data": {
+        "start": 3.0,
+        "end": 6.0,
+        "position": "phone",
+        "fadeMs": 80,
+        "opacity": 1,
+        "status": "idle",
+        "stage": null,
+        "outputUrl": null,
+        "cost": 0,
+        "progress": null,
+        "label": "MedScan UI overlay on iPad",
+        "error": null
+      }
+    },
+    {
+      "id": "end-card",
+      "type": "end-card",
+      "position": { "x": 1080, "y": 360 },
+      "data": {
+        "duration": 2,
+        "cta": "Get on App Store",
+        "subtitle": "DICOM that fits in your white coat",
+        "brand": "MedScan",
+        "status": "idle",
+        "label": "End Card — MedScan",
+        "stage": null,
+        "outputUrl": null,
+        "cost": 0,
+        "error": null,
+        "progress": null
+      }
+    },
+    {
+      "id": "stitch-final",
+      "type": "stitch",
+      "position": { "x": 1600, "y": 200 },
+      "data": {
+        "label": "Stitch — Kling + End Card",
+        "status": "idle",
+        "outputUrl": null,
+        "cost": 0,
+        "error": null,
+        "progress": null,
+        "stage": null
+      }
+    },
+    {
+      "id": "captions",
+      "type": "captions",
+      "position": { "x": 2080, "y": 200 },
+      "data": {
+        "preset": "hormozi",
+        "fontSize": 140,
+        "marginV": 380,
+        "status": "idle",
+        "stage": null,
+        "progress": null,
+        "outputUrl": null,
+        "cost": 0.01,
+        "label": "Captions (Hormozi)",
+        "error": null
+      }
+    },
+    {
+      "id": "output-final",
+      "type": "output",
+      "position": { "x": 2560, "y": 200 },
+      "data": {
+        "label": "Final MP4 — MedScan POV Night",
+        "status": "idle",
+        "outputUrl": null,
+        "error": null,
+        "progress": null,
+        "stage": null
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-flux-kling",
+      "source": "flux-character",
+      "target": "kling-multishot",
+      "sourceHandle": "image",
+      "targetHandle": "reference"
+    },
+    {
+      "id": "e-kling-overlay",
+      "source": "kling-multishot",
+      "target": "ipad-overlay",
+      "sourceHandle": "video",
+      "targetHandle": "base"
+    },
+    {
+      "id": "e-ref-overlay",
+      "source": "ref-medscan-ui",
+      "target": "ipad-overlay",
+      "sourceHandle": "image",
+      "targetHandle": "overlay"
+    },
+    {
+      "id": "e-overlay-stitch",
+      "source": "ipad-overlay",
+      "target": "stitch-final",
+      "sourceHandle": "video",
+      "targetHandle": "input-0"
+    },
+    {
+      "id": "e-endcard-stitch",
+      "source": "end-card",
+      "target": "stitch-final",
+      "sourceHandle": "video",
+      "targetHandle": "input-1"
+    },
+    {
+      "id": "e-stitch-captions",
+      "source": "stitch-final",
+      "target": "captions",
+      "sourceHandle": "video",
+      "targetHandle": "input"
+    },
+    {
+      "id": "e-captions-output",
+      "source": "captions",
+      "target": "output-final",
+      "sourceHandle": "video",
+      "targetHandle": "input"
+    }
+  ]
+}
