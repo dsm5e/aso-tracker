@@ -1,23 +1,45 @@
 # ASO Studio
 
-> Self-hosted open-source App Store toolkit for indie iOS developers — **keyword tracking, screenshot generation, video pipelines, and PPO experiments**, all in one place. Pair it with [Claude Code](https://claude.com/claude-code) and you get an AI co-pilot that actually understands your App Store.
+> Self-hosted open-source App Store toolkit for indie iOS developers — **keyword tracking, screenshot generation, video pipelines, PPO experiments, and Apple Search Ads optimization**, all in one place. Pair it with [Claude Code](https://claude.com/claude-code) and you get an AI co-pilot that actually understands your App Store.
 
-Stop paying \$500/mo to Sensor Tower / AppTweak / SplitMetrics. ASO Studio runs on your machine, uses public APIs where possible, and stores everything locally.
+Stop paying \$500–999/mo to Sensor Tower / AppTweak / SplitMetrics / SearchAds.com. ASO Studio runs on your machine, uses public APIs where possible, and stores everything locally.
 
 ![ASO Studio demo](docs/demo.gif)
 
 ## What's inside
 
-ASO Studio is a monorepo of three connected tools, accessible from a single dashboard:
+ASO Studio is a monorepo of **four** connected tools sharing one origin (`localhost:5173`) with a top-left app switcher:
 
-| Tool | What it does |
-|---|---|
-| **Keywords** | Per-keyword, per-locale rank tracking across 50+ countries. Snapshot engine, week-over-week deltas, competitor intelligence. |
-| **Screenshots** | App Store screenshot generator with AI hero enhancement (fal.ai gpt-image-2). Templates, scaffolds, headline overlays, locale translations. |
-| **PPO Experiments** | Multi-strategy A/B treatment generator for App Store Product Page Optimization. Upload source screens once, generate per-strategy variants with different visual concepts, export ZIPs ready for ASC PPO. |
-| **Video** *(beta)* | UGC video pipeline for ad creative — script → voiceover → b-roll → captions. |
+| Tool | Path | What it does |
+|---|---|---|
+| **Keywords** | `/` | Per-keyword, per-locale rank tracking across 50+ countries. Snapshot engine, week-over-week deltas, competitor intelligence. |
+| **Screenshots / PPO** | `/studio/` | App Store screenshot generator with AI hero enhancement (fal.ai gpt-image-2). Templates, scaffolds, headline overlays, locale translations. Multi-strategy A/B treatment generator for ASC PPO. |
+| **Video** *(beta)* | `/video/` | UGC video pipeline for ad creative — script → voiceover → b-roll → captions. |
+| **ASA Ads** *(new)* | `/asa/` | Apple Search Ads optimization — ROI projection, per-keyword bid intelligence, search-term cleanup, ASC trial cross-match, Telegram alerts. Self-hosted alternative to SearchAds.com. |
 
 All four sub-tools share one Settings page and one local key vault.
+
+### 💸 ASA Ads — Apple Search Ads optimization
+
+<div align="center">
+
+<video src="https://github.com/dsm5e/aso-tracker/raw/main/asa-ads/docs/demo.mp4" controls width="720"></video>
+
+</div>
+
+What it does for your ASA campaigns:
+
+- **ROI projection** — *"spend $1000 on this keyword/campaign → expect N installs, M trials, $X revenue, Y% ROI"*. Honest about data quality: `WAIT · need 3 more days` instead of fake numbers.
+- **Bid intelligence** — per-keyword recommendations with high/medium/low confidence. Bulk apply or one-click `−10% / +10% / → recommended`.
+- **Spend impact preview** — every bid change opens a modal showing projected daily/weekly/monthly spend delta + ROI verdict before you confirm.
+- **Search terms cleanup** — auto-suggests negatives (terms with taps but no installs) and discovery candidates (terms that converted but aren't in your keyword list).
+- **Geo heatmap + hero chart** — see which countries are winners at a glance.
+- **Background sync** — start sync, navigate to another tool, come back to see the progress bar still ticking.
+- **Telegram alerts** — 🔥 Burn, 💸 High CPI, ⚠️ Stalled, 📈 Spend spike.
+- **Multi-app** — separate ROI/settings/recommendations per app.
+- **Settings auto-suggestion** — `trial_to_paid_rate` computed from real ASC events (`Crossgrade from Introductory Offer` + `Billing Retry`).
+
+Full details: [`asa-ads/README.md`](asa-ads/README.md) (incl. how to drive it from an LLM via REST + SQLite).
 
 ## Why use it with Claude Code
 
@@ -33,6 +55,7 @@ What Claude can do for you (with these MCPs + this studio):
 - 🤖 **Generate App Store screenshots end-to-end** — pick a preset, write headlines per locale, generate AI hero images, export PNGs for ASC.
 - 🤖 **Run PPO experiments** — design 3 treatment concepts (palette / signature element / 3D break-out / story arc), generate 5-15 screens per concept, export ZIPs, create the ASC PPO experiment via API.
 - 🤖 **Launch Apple Search Ads campaigns** — generate keyword lists from competitor research, set bids based on traffic/difficulty scores, create campaigns + ad groups + budget orders programmatically.
+- 🤖 **Run ASA Ads day-to-day** — the ASA Ads sub-tool itself is agent-friendly (REST + SQLite). See [`asa-ads/README.md`](asa-ads/README.md#how-llm-agents-use-this) for the full API surface and example workflows: audit campaigns, find waste, apply bid recommendations in bulk, monitor live via SSE.
 - 🤖 **Track campaign performance** — pull daily reports, surface wasted spend, suggest pause/scale/raise/lower-bid actions.
 
 ## Quickstart
@@ -40,10 +63,19 @@ What Claude can do for you (with these MCPs + this studio):
 ```bash
 git clone https://github.com/dsm5e/aso-tracker.git aso-studio
 cd aso-studio
-npm install
-npm run dev
+npm install          # registers all 4 workspaces
+npm run dev          # launches all 4 tools in parallel
 # open http://localhost:5173
 ```
+
+All 4 tools share the same origin via the Keywords vite proxy:
+
+| Tool | URL | Vite | API |
+|---|---|---|---|
+| Keywords | http://localhost:5173/ | 5173 | 5174 |
+| Screenshots | http://localhost:5173/studio/ | 5180 | 5181 |
+| Video | http://localhost:5173/video/ | 5190 | 5191 |
+| ASA Ads | http://localhost:5173/asa/ | 5193 | 5194 |
 
 First-time setup:
 1. **Settings** (gear icon, top-right) — paste API keys you have. `FAL_API_KEY` is needed for AI image generation, `OPENAI_API_KEY` for translations.
