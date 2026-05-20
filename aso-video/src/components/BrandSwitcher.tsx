@@ -6,7 +6,7 @@ const TRACKER_ORIGIN =
   typeof window !== 'undefined' && window.location.port === '5190' ? 'http://localhost:5173' : '';
 
 type Item = {
-  id: 'aso' | 'shot' | 'vid';
+  id: 'aso' | 'shot' | 'vid' | 'asa';
   label: string;
   hint: string;
   href: string;
@@ -17,12 +17,14 @@ const ITEMS: Item[] = [
   { id: 'aso',  label: 'ASO',         hint: 'Keywords & rankings', href: `${TRACKER_ORIGIN}/`,        glyph: '◇' },
   { id: 'shot', label: 'Screenshots', hint: 'App Store visuals',   href: `${TRACKER_ORIGIN}/studio/`, glyph: '▤' },
   { id: 'vid',  label: 'Video',       hint: 'Ad video pipeline',   href: `${TRACKER_ORIGIN}/video/`,  glyph: '▶' },
+  { id: 'asa',  label: 'ASA Ads',     hint: 'Search Ads ROI',      href: `${TRACKER_ORIGIN}/asa/`,    glyph: '$' },
 ];
 
 const COLORS: Record<Item['id'], string> = {
   aso: 'linear-gradient(135deg, #FF8C42, #F25C1F)',
   shot: 'linear-gradient(135deg, #7C3AED, #A78BFA)',
   vid: 'linear-gradient(135deg, #14B8A6, #5EEAD4)',
+  asa: 'linear-gradient(135deg, #FFB000, #B87D00)',
 };
 
 export function BrandSwitcher({ current = 'vid' as Item['id'] }: { current?: Item['id'] }) {

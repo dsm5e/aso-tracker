@@ -80,6 +80,32 @@ export default defineConfig({
         changeOrigin: true,
         ws: true, // HMR socket
       },
+      // ASA Ads app reverse-proxied so all 4 tools live under one origin (5173).
+      // /asa          → asa-ads vite dev server  (HTML, JS, CSS, HMR over WS)
+      // /asa-api      → asa-ads express server   (rewritten to /api/* upstream)
+      // /asa-sse      → asa-ads SSE stream
+      '/asa-api': {
+        target: 'http://localhost:5194',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/asa-api/, '/api'),
+      },
+      '/asa-sse': {
+        target: 'http://localhost:5194',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/asa-sse/, '/sse'),
+        selfHandleResponse: false,
+        timeout: 0,
+        proxyTimeout: 0,
+        configure: (proxy) => {
+          proxy.on('proxyReq', (proxyReq) => proxyReq.setHeader('Accept-Encoding', 'identity'));
+          proxy.on('proxyRes', (proxyRes) => { delete proxyRes.headers['content-encoding']; });
+        },
+      },
+      '/asa': {
+        target: 'http://localhost:5193',
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
 });

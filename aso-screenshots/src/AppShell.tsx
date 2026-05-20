@@ -39,6 +39,7 @@ const SWITCHER_ITEMS: SwitcherItem[] = [
   { id: 'aso',  label: 'ASO',         hint: 'Keywords & rankings', href: `${TRACKER_ORIGIN}/`,         glyph: '◇' },
   { id: 'shot', label: 'Screenshots', hint: 'App Store visuals',   href: `${TRACKER_ORIGIN}/studio/`,  glyph: '▤' },
   { id: 'vid',  label: 'Video',       hint: 'Ad video pipeline',   href: `${TRACKER_ORIGIN}/video/`,   glyph: '▶' },
+  { id: 'asa',  label: 'ASA Ads',     hint: 'Search Ads ROI',      href: `${TRACKER_ORIGIN}/asa/`,     glyph: '$' },
 ];
 
 function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {

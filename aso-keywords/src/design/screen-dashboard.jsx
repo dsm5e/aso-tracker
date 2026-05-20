@@ -191,6 +191,7 @@ const BrandSwitcher = ({ current }) => {
     { id: 'aso',  label: 'ASO',         hint: 'Keywords & rankings', href: '/' },
     { id: 'shot', label: 'Screenshots', hint: 'App Store visuals',   href: '/studio/' },
     { id: 'vid',  label: 'Video',       hint: 'Ad video pipeline',   href: '/video/' },
+    { id: 'asa',  label: 'ASA Ads',     hint: 'Search Ads ROI',      href: '/asa/' },
   ];
   const active = items.find((i) => i.id === current) ?? items[0];
 
@@ -258,12 +259,14 @@ const BrandSwitcher = ({ current }) => {
                     ? 'linear-gradient(135deg, #FF8C42, #F25C1F)'
                     : it.id === 'shot'
                     ? 'linear-gradient(135deg, #7C3AED, #A78BFA)'
-                    : 'linear-gradient(135deg, #14B8A6, #5EEAD4)',
+                    : it.id === 'vid'
+                    ? 'linear-gradient(135deg, #14B8A6, #5EEAD4)'
+                    : 'linear-gradient(135deg, #FFB000, #B87D00)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: '#fff', fontSize: 12, fontWeight: 700,
                   flex: 'none',
                   lineHeight: 1,
-                }}>{it.id === 'aso' ? '◇' : it.id === 'shot' ? '▤' : '▶'}</span>
+                }}>{it.id === 'aso' ? '◇' : it.id === 'shot' ? '▤' : it.id === 'vid' ? '▶' : '$'}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{it.label}</span>
                   <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>{it.hint}</span>
