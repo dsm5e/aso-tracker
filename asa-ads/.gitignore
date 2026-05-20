@@ -1,0 +1,10 @@
+node_modules
+dist
+.DS_Store
+*.log
+data/*.db
+data/*.db-*
+.env
+.env.local
+*.p8
+.vite

@@ -1,0 +1,38 @@
+{
+  "name": "asa-ads",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Self-hosted Apple Search Ads optimization dashboard. Bid intelligence, search terms cleanup, ASC trial cross-match.",
+  "scripts": {
+    "dev": "concurrently -n vite,api -c magenta,cyan \"npm:dev:vite\" \"npm:dev:api\"",
+    "dev:vite": "vite",
+    "dev:api": "tsx watch server/index.ts",
+    "build": "tsc -b && vite build",
+    "start": "tsx server/index.ts",
+    "sync": "tsx cli/sync.ts",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "jose": "^5.9.6",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.2",
+    "undici": "^7.16.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.12.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
+    "tsx": "^4.21.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.0.9"
+  }
+}
