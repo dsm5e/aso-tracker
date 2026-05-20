@@ -64,6 +64,8 @@ export interface KeywordWithMetrics {
   match_type: string;
   bid: number;
   status: string;
+  campaign_status: string;
+  campaign_serving_status: string | null;
   impressions: number;
   taps: number;
   installs: number;
@@ -79,6 +81,7 @@ export function listKeywordsWithMetrics(daysBack = 14, campaignId?: number): Key
   return db.prepare(`
     SELECT k.id, k.campaign_id, k.ad_group_id, c.name AS campaign_name, c.country,
            k.text, k.match_type, k.bid, k.status,
+           c.status AS campaign_status, c.serving_status AS campaign_serving_status,
            COALESCE(SUM(d.impressions), 0) AS impressions,
            COALESCE(SUM(d.taps), 0) AS taps,
            COALESCE(SUM(d.installs), 0) AS installs,

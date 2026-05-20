@@ -17,6 +17,7 @@ export default function Keywords({ reloadKey }: Props) {
   const [days, setDays] = useState(7);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "paused">("all");
   const [busy, setBusy] = useState<Set<number>>(new Set());
   const [flashed, setFlashed] = useState<Set<number>>(new Set());
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -49,13 +50,25 @@ export default function Keywords({ reloadKey }: Props) {
   }
 
   const recMap = useMemo(() => new Map(recs.map((r) => [r.keyword_id, r])), [recs]);
+  const counts = useMemo(() => ({
+    active: rows.filter((r) => r.status === "ACTIVE").length,
+    paused: rows.filter((r) => r.status === "PAUSED").length,
+    orphan: rows.filter((r) => r.status === "ACTIVE" && r.campaign_serving_status && r.campaign_serving_status !== "RUNNING").length,
+  }), [rows]);
   const filtered = useMemo(() => {
-    const fl = rows.filter((r) =>
-      !filter ||
-      r.text.toLowerCase().includes(filter.toLowerCase()) ||
-      r.campaign_name.toLowerCase().includes(filter.toLowerCase()),
-    );
+    const fl = rows.filter((r) => {
+      if (statusFilter === "active" && r.status !== "ACTIVE") return false;
+      if (statusFilter === "paused" && r.status !== "PAUSED") return false;
+      return !filter ||
+        r.text.toLowerCase().includes(filter.toLowerCase()) ||
+        r.campaign_name.toLowerCase().includes(filter.toLowerCase());
+    });
     fl.sort((a, b) => {
+      // Surface ACTIVE before PAUSED when metrics tie at 0 (PAUSED keywords sink to bottom regardless of sort key).
+      if (statusFilter === "all" && a.status !== b.status) {
+        if (a.status === "ACTIVE" && b.status !== "ACTIVE") return -1;
+        if (b.status === "ACTIVE" && a.status !== "ACTIVE") return 1;
+      }
       switch (sortBy) {
         case "spend": return b.spend - a.spend;
         case "installs": return b.installs - a.installs;
@@ -64,7 +77,7 @@ export default function Keywords({ reloadKey }: Props) {
       }
     });
     return fl;
-  }, [rows, filter, sortBy]);
+  }, [rows, filter, sortBy, statusFilter]);
   const kwMap = useMemo(() => new Map(rows.map((k) => [k.id, k])), [rows]);
 
   function flashRow(kid: number): void {
@@ -182,6 +195,14 @@ export default function Keywords({ reloadKey }: Props) {
         <h2>Keywords</h2>
         <div className="controls">
           <input type="text" placeholder="Filter" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <div className="btn-group" title="Filter by keyword status">
+            <button className={`compact ${statusFilter === "all" ? "primary" : ""}`} onClick={() => setStatusFilter("all")}>All {rows.length}</button>
+            <button className={`compact ${statusFilter === "active" ? "primary" : ""}`} onClick={() => setStatusFilter("active")}>Active {counts.active}</button>
+            <button className={`compact ${statusFilter === "paused" ? "primary" : ""}`} onClick={() => setStatusFilter("paused")}>Paused {counts.paused}</button>
+          </div>
+          {counts.orphan > 0 && (
+            <span className="badge warn" title="Active keywords whose campaign is not RUNNING — they spend $0 even though the keyword is ACTIVE">⚠ {counts.orphan} orphan</span>
+          )}
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
             <option value="spend">↓ Spend</option>
             <option value="installs">↓ Installs</option>
@@ -291,7 +312,12 @@ export default function Keywords({ reloadKey }: Props) {
                   </td>
                   <td className="muted" style={{ fontSize: 11 }}>{k.campaign_name}</td>
                   <td><span className="badge">{k.match_type}</span></td>
-                  <td><span className={`badge ${k.status === "ACTIVE" ? "ok" : "warn"}`}>{k.status.toLowerCase()}</span></td>
+                  <td>
+                    <span className={`badge ${k.status === "ACTIVE" ? "ok" : "warn"}`}>{k.status.toLowerCase()}</span>
+                    {k.status === "ACTIVE" && k.campaign_serving_status && k.campaign_serving_status !== "RUNNING" && (
+                      <span className="badge warn" title={`Campaign serving: ${k.campaign_serving_status}`} style={{ marginLeft: 4 }}>⚠ camp</span>
+                    )}
+                  </td>
                   <td className="num">{fmtBid(k.bid)}</td>
                   <td className="num">{k.impressions}</td>
                   <td className="num">{k.taps}</td>

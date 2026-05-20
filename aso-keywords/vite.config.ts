@@ -1,8 +1,26 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+// Sub-apps mount under a base path (/asa/, /studio/, /video/). Visiting without the
+// trailing slash trips Vite's "did you mean /asa/" error. Redirect once so users
+// who click /asa land on /asa/ cleanly.
+const subpathRedirect = {
+  name: 'subpath-trailing-slash-redirect',
+  configureServer(server: { middlewares: { use: (fn: (req: { url?: string }, res: { statusCode: number; setHeader: (k: string, v: string) => void; end: () => void }, next: () => void) => void) => void } }) {
+    server.middlewares.use((req, res, next) => {
+      if (req.url === '/asa' || req.url === '/studio' || req.url === '/video') {
+        res.statusCode = 302;
+        res.setHeader('Location', `${req.url}/`);
+        res.end();
+        return;
+      }
+      next();
+    });
+  },
+};
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), subpathRedirect],
   server: {
     proxy: {
       '/api': {

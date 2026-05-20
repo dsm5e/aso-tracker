@@ -9,6 +9,7 @@ export interface Campaign {
 export interface Keyword {
   id: number; campaign_id: number; ad_group_id: number; campaign_name: string; country: string;
   text: string; match_type: string; bid: number; status: string;
+  campaign_status: string; campaign_serving_status: string | null;
   impressions: number; taps: number; installs: number; spend: number; cpt: number;
 }
 
