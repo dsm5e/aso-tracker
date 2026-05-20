@@ -21,11 +21,7 @@ All four sub-tools share one Settings page and one local key vault.
 
 ### 💸 ASA Ads — Apple Search Ads optimization
 
-<div align="center">
-
-<video src="https://github.com/dsm5e/aso-tracker/raw/main/asa-ads/docs/demo.mp4" controls width="720"></video>
-
-</div>
+![ASA Ads demo](asa-ads/docs/demo.gif)
 
 What it does for your ASA campaigns:
 

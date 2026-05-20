@@ -4,7 +4,7 @@ Self-hosted Apple Search Ads optimization dashboard with ROI projection, bid int
 
 > **Status:** v0.2 (May 2026). Bloomberg-terminal aesthetic, fully real-time, designed to be driven by humans **or** an LLM agent.
 
-https://github.com/dsm5e/aso-tracker/raw/main/asa-ads/docs/demo.mp4
+![ASA Ads demo](docs/demo.gif)
 
 ## What it does
 
