@@ -94,10 +94,31 @@ export default function RoiDrawer({ campaignId, campaignName, onClose }: Props) 
               </tbody>
             </table>
 
+            {proj.paid_so_far > 0 && (
+              <>
+                <div className="divider">
+                  Measured so far{" "}
+                  {proj.revenue_source === "real"
+                    ? <span className="badge ok">REAL · AdServices</span>
+                    : <span className="badge cyan">building…</span>}
+                </div>
+                <table style={{ marginBottom: 18 }}>
+                  <tbody>
+                    <tr><td className="muted">Paid (attributed)</td><td className="num">{proj.paid_so_far}</td></tr>
+                    <tr><td className="muted">Revenue so far</td><td className="num good">{fmtUsd(proj.revenue_so_far)}</td></tr>
+                    <tr><td className="muted">ROAS so far</td><td className={`num ${proj.roas_so_far >= 1 ? "good" : "bad"}`}>{proj.roas_so_far.toFixed(2)}×</td></tr>
+                  </tbody>
+                </table>
+              </>
+            )}
+
             <div style={{ fontSize: 11, color: "var(--bone-mute)", lineHeight: 1.6, padding: "10px 12px", border: "1px solid var(--line-soft)", background: "var(--bg-1)" }}>
               <strong style={{ color: "var(--bone-dim)" }}>Source:</strong> {proj.trial_rate_source}
               <br />
-              <strong style={{ color: "var(--bone-dim)" }}>Assumes:</strong> trial→paid 30%, LTV $30. Без SKAN — оценка приблизительная.
+              <strong style={{ color: "var(--bone-dim)" }}>Assumes:</strong>{" "}
+              {proj.revenue_source === "real"
+                ? "LTV $30 на REAL conversion (AdServices-атрибуция × Adapty revenue) — детерминистично, не оценка."
+                : "trial→paid 30%, LTV $30 — оценка по country-average (нет ASA-атрибуции для этого ключа)."}
             </div>
           </>
         )}

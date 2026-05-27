@@ -54,6 +54,13 @@ export interface Projection {
   projected_cpa_paid: number;
   verdict: { kind: "scale" | "hold" | "cut" | "unknown"; label: string; reason: string };
   next_step?: string;
+  /** "real" = driven by deterministic AdServices attribution; "estimated" = country-average. */
+  revenue_source: "real" | "estimated";
+  /** Measured so far from ASA-attributed users (not projected). */
+  paid_so_far: number;
+  revenue_so_far: number;
+  /** Realized revenue ÷ spend so far — the direct "am I in the green" number. */
+  roas_so_far: number;
 }
 
 // When served directly at :5193 → /api hits ASA backend on :5194 via vite proxy.

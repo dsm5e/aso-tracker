@@ -24,6 +24,12 @@ export interface AppConfig {
   asc: AscConfig;
   port: number;
   dataDir: string;
+  /** asaRevenueByKeyword Cloud Function URL — real per-keyword ASA revenue
+   * (deterministic AdServices attribution × Adapty revenue). Optional: when
+   * unset the ROI engine stays on the country-average estimate. */
+  asaRevenueFnUrl?: string;
+  /** Optional shared secret if the function is locked with ASA_PULL_TOKEN. */
+  asaRevenuePullToken?: string;
 }
 
 function need(name: string): string {
@@ -56,5 +62,8 @@ export function loadConfig(): AppConfig {
     },
     port: Number(process.env.PORT ?? 5181),
     dataDir: process.env.DATA_DIR ?? "./data",
+    asaRevenueFnUrl: process.env.ASA_REVENUE_FN_URL
+      ?? "https://us-central1-dream-journal-by-nomle.cloudfunctions.net/asaRevenueByKeyword",
+    asaRevenuePullToken: process.env.ASA_PULL_TOKEN,
   };
 }

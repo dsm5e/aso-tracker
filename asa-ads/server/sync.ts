@@ -1,6 +1,7 @@
 import { getDb } from "./db.ts";
 import type { AsaClient, RawCampaign, RawAdGroup, RawKeyword, RawCampaignReport, RawKeywordReport, RawSearchTermReport, ReportTotals } from "./asa-client.ts";
 import type { AscClient } from "./asc-client.ts";
+import { fetchKeywordRevenue } from "./revenue-client.ts";
 import { broadcast } from "./sse.ts";
 
 function now(): string { return new Date().toISOString(); }
@@ -232,6 +233,38 @@ export async function syncAscEvents(asc: AscClient, dates: string[]): Promise<vo
   }
 }
 
+/**
+ * Pull real per-keyword ASA revenue (deterministic AdServices attribution ×
+ * Adapty revenue) from the asaRevenueByKeyword Cloud Function and replace the
+ * asa_kw_revenue snapshot. Soft-fails (returns 0) so a flaky function never
+ * breaks the rest of the sync — the ROI engine just keeps the estimate.
+ */
+export async function syncAsaRevenue(fnUrl: string, app: string, pullToken?: string): Promise<number> {
+  const db = getDb();
+  let rows;
+  try {
+    rows = await fetchKeywordRevenue(fnUrl, app, pullToken);
+  } catch (e) {
+    console.warn(`ASA revenue pull: ${(e as Error).message}`);
+    return 0;
+  }
+  const upsert = db.prepare(`
+    INSERT INTO asa_kw_revenue (campaign_id, keyword_id, country, trials, paid, revenue_usd, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(campaign_id, keyword_id) DO UPDATE SET
+      country=excluded.country, trials=excluded.trials, paid=excluded.paid,
+      revenue_usd=excluded.revenue_usd, updated_at=excluded.updated_at
+  `);
+  const ts = now();
+  db.transaction(() => {
+    for (const r of rows) {
+      if (!r.keywordId) continue;
+      upsert.run(r.campaignId, r.keywordId, r.country, r.trials, r.paid, r.revenueUsd, ts);
+    }
+  })();
+  return rows.length;
+}
+
 export function listDates(start: string, end: string): string[] {
   const out: string[] = [];
   const s = new Date(start);
@@ -285,7 +318,7 @@ function setPhase(phase: string, label: string, progress: number, started: strin
   broadcast("sync:phase", { phase, label, progress });
 }
 
-export async function fullSync(asa: AsaClient, asc: AscClient, days = 14): Promise<{ campaigns: number; adGroups: number; keywords: number }> {
+export async function fullSync(asa: AsaClient, asc: AscClient, days = 14, revenue?: { fnUrl?: string; app: string; pullToken?: string }): Promise<{ campaigns: number; adGroups: number; keywords: number }> {
   const db = getDb();
   const startedAt = now();
   const log = db.prepare(`INSERT INTO sync_log (kind, started_at) VALUES (?, ?)`).run("full", startedAt);
@@ -305,6 +338,11 @@ export async function fullSync(asa: AsaClient, asc: AscClient, days = 14): Promi
 
     setPhase("asc", `Pulling ${days} days of ASC subscription events`, 0.8, startedAt);
     await syncAscEvents(asc, listDates(startDate, endDate));
+
+    if (revenue?.fnUrl) {
+      setPhase("revenue", "Pulling real per-keyword ASA revenue (AdServices attribution)", 0.9, startedAt);
+      await syncAsaRevenue(revenue.fnUrl, revenue.app, revenue.pullToken);
+    }
 
     setPhase("done", "Complete", 1.0, startedAt);
     db.prepare(`UPDATE sync_log SET finished_at = ?, ok = 1 WHERE id = ?`).run(now(), log.lastInsertRowid);

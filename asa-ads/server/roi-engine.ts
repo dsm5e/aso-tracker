@@ -31,6 +31,12 @@ export const DEFAULT_ROI: RoiConfig = {
   minDaysForSignal: 3,
 };
 
+/** Min attributed paid users (per keyword/campaign) before real ASA
+ * attribution OVERRIDES the country-average forward projection. Below this we
+ * still surface realized revenue/ROAS (it's a measured fact), we just don't
+ * extrapolate a conversion rate from a 1-2 paid sample. */
+const REAL_MIN_PAID = 3;
+
 function effectiveConfig(appId?: number, override?: Partial<RoiConfig>): RoiConfig {
   const s = loadSettings(appId);
   return {
@@ -78,6 +84,15 @@ export interface Projection {
 
   /** If insufficient — what would unlock more confidence. */
   next_step?: string;
+
+  /** "real" = projection driven by deterministic AdServices attribution;
+   * "estimated" = country-average fallback (no attribution data yet). */
+  revenue_source: "real" | "estimated";
+  /** Measured so far from ASA-attributed users (NOT projected). */
+  paid_so_far: number;
+  revenue_so_far: number;
+  /** Realized revenue ÷ spend so far — the direct "am I in the green" number. */
+  roas_so_far: number;
 }
 
 interface CampaignStats {
@@ -131,6 +146,28 @@ function loadKeywordStats(keywordId: number, daysBack: number): (CampaignStats &
     WHERE k.id = ?
   `).get(start, keywordId) as (CampaignStats & { keyword_id: number; text: string; bid: number }) | undefined;
   return row ?? null;
+}
+
+/** Real (measured) ASA outcome from deterministic AdServices attribution,
+ * joined with Adapty revenue — populated by the asa_kw_revenue sync. Absent
+ * when there's no attribution data yet for this keyword/campaign. */
+export interface RealRevenue { trials: number; paid: number; revenue_usd: number; }
+
+function loadRealRevenueForKeyword(keywordId: number): RealRevenue | undefined {
+  const r = getDb().prepare(
+    `SELECT trials, paid, revenue_usd FROM asa_kw_revenue WHERE keyword_id = ?`
+  ).get(keywordId) as { trials: number; paid: number; revenue_usd: number } | undefined;
+  return r ? { trials: r.trials, paid: r.paid, revenue_usd: r.revenue_usd } : undefined;
+}
+
+function loadRealRevenueForCampaign(campaignId: number): RealRevenue | undefined {
+  const r = getDb().prepare(
+    `SELECT COALESCE(SUM(trials),0) AS trials, COALESCE(SUM(paid),0) AS paid,
+            COALESCE(SUM(revenue_usd),0) AS revenue_usd
+     FROM asa_kw_revenue WHERE campaign_id = ?`
+  ).get(campaignId) as { trials: number; paid: number; revenue_usd: number } | undefined;
+  if (!r || (r.paid === 0 && r.revenue_usd === 0 && r.trials === 0)) return undefined;
+  return { trials: r.trials, paid: r.paid, revenue_usd: r.revenue_usd };
 }
 
 interface TrialRateEstimate {
@@ -314,18 +351,46 @@ function projectFrom(
   trialRate: TrialRateEstimate,
   proposedSpend: number,
   cfg: RoiConfig,
+  real?: RealRevenue,
 ): Projection {
-  const confidence = assessConfidence(stats, cfg);
+  let confidence = assessConfidence(stats, cfg);
   const cpi = stats.installs > 0 ? stats.spend / stats.installs : 0;
 
-  // If we have no installs yet, project using $1.50 fallback CPI for tier-2 / $1.00 for tier-1 etc.
-  // Use historical CPT to estimate taps → installs from a 25% IR (industry default).
+  // No installs yet → estimate taps → installs from a 25% IR (industry default).
   const effectiveCpi = cpi > 0 ? cpi : (stats.taps > 0 ? (stats.spend / stats.taps) / 0.25 : 0);
-
   const projInstalls = effectiveCpi > 0 ? proposedSpend / effectiveCpi : 0;
-  const projTrials = projInstalls * trialRate.rate;
-  const projPaid = projTrials * cfg.trialToPaid;
-  const projRevenue = projPaid * cfg.ltv;
+
+  // Forward projection — country-average estimate by default.
+  let trialRateOut = trialRate.rate;
+  let trialSource = trialRate.source;
+  let projTrials = projInstalls * trialRate.rate;
+  let projPaid = projTrials * cfg.trialToPaid;
+  let projRevenue = projPaid * cfg.ltv;
+  let revenueSource: "real" | "estimated" = "estimated";
+
+  // Realized so far from ASA-attributed users — a measured fact, not a
+  // projection. This is the direct "am I in the green" number.
+  const paidSoFar = real?.paid ?? 0;
+  const revenueSoFar = real?.revenue_usd ?? 0;
+  const roasSoFar = stats.spend > 0 ? revenueSoFar / stats.spend : 0;
+
+  // Deterministic AdServices attribution OVERRIDES the country-average estimate
+  // once there are enough attributed paid users to trust the rate. Valuation
+  // stays at LTV (forward-looking, incl. future renewals); the conversion rate
+  // is now REAL, so the projection + verdict are measured, not guessed.
+  if (real && real.paid >= REAL_MIN_PAID && stats.installs > 0) {
+    const realInstallToPaid = real.paid / stats.installs;
+    projPaid = projInstalls * realInstallToPaid;
+    projRevenue = projPaid * cfg.ltv;
+    if (real.trials > 0) {
+      trialRateOut = real.trials / stats.installs;
+      projTrials = projInstalls * trialRateOut;
+    }
+    trialSource = `real ASA attribution (${real.paid} paid / ${stats.installs} installs)`;
+    revenueSource = "real";
+    confidence = "high";
+  }
+
   const projRoi = proposedSpend > 0 ? (projRevenue - proposedSpend) / proposedSpend : 0;
   const projCpaTrial = projTrials > 0 ? proposedSpend / projTrials : 0;
   const projCpaPaid = projPaid > 0 ? proposedSpend / projPaid : 0;
@@ -343,8 +408,8 @@ function projectFrom(
     installs_so_far: stats.installs,
     days_running: stats.days_active,
     cpi,
-    install_to_trial_rate: trialRate.rate,
-    trial_rate_source: trialRate.source,
+    install_to_trial_rate: trialRateOut,
+    trial_rate_source: trialSource,
     proposed_spend: proposedSpend,
     projected_installs: Math.round(projInstalls * 10) / 10,
     projected_trials: Math.round(projTrials * 10) / 10,
@@ -355,6 +420,10 @@ function projectFrom(
     projected_cpa_paid: Math.round(projCpaPaid * 100) / 100,
     verdict,
     next_step,
+    revenue_source: revenueSource,
+    paid_so_far: paidSoFar,
+    revenue_so_far: Math.round(revenueSoFar * 100) / 100,
+    roas_so_far: Math.round(roasSoFar * 1000) / 1000,
   };
 }
 
@@ -362,14 +431,16 @@ export function projectCampaign(campaignId: number, proposedSpend = 1000, daysBa
   const stats = loadCampaignStats(campaignId, daysBack);
   if (!stats) return null;
   const trialRate = estimateTrialRate(stats.app_id, stats.country, daysBack);
-  return projectFrom(stats, trialRate, proposedSpend, effectiveConfig(stats.app_id, cfgOverride));
+  const real = loadRealRevenueForCampaign(campaignId);
+  return projectFrom(stats, trialRate, proposedSpend, effectiveConfig(stats.app_id, cfgOverride), real);
 }
 
 export function projectKeyword(keywordId: number, proposedSpend = 100, daysBack = 14, cfgOverride?: Partial<RoiConfig>): Projection | null {
   const stats = loadKeywordStats(keywordId, daysBack);
   if (!stats) return null;
   const trialRate = estimateTrialRate(stats.app_id, stats.country, daysBack);
-  return projectFrom(stats, trialRate, proposedSpend, effectiveConfig(stats.app_id, cfgOverride));
+  const real = loadRealRevenueForKeyword(keywordId);
+  return projectFrom(stats, trialRate, proposedSpend, effectiveConfig(stats.app_id, cfgOverride), real);
 }
 
 /** Quick verdict (no projection) — used in tables to show row-level color/label. */

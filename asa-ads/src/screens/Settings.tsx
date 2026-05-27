@@ -40,7 +40,7 @@ const LABELS: LabelDef[] = [
       <>
         <p style={{ margin: "0 0 8px" }}><strong>LTV = Lifetime Value.</strong> Сколько денег принесёт один платящий юзер за всё время, пока не отпишется.</p>
         <p style={{ margin: "0 0 8px" }}>Используется в формуле: <code style={{ color: "var(--cyan)" }}>projected_paid × LTV = projected_revenue</code></p>
-        <p style={{ margin: "0 0 0", color: "var(--yellow)", fontSize: 11 }}>⚠ Для точного значения нужна интеграция с Adapty или sync SUBSCRIBER report из ASC. Сейчас оценочное.</p>
+        <p style={{ margin: "0 0 0", color: "var(--bone-dim)", fontSize: 11 }}>Реальная выручка per-keyword тянется из AdServices-атрибуции × Adapty revenue (поле «ROAS so far»). LTV здесь — множитель forward-проекции будущих renewals; realized ROAS детерминистичен, без Adapty paid integration.</p>
       </>
     ),
   },

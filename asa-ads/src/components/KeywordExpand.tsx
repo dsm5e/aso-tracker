@@ -107,6 +107,12 @@ export default function KeywordExpand({ keyword }: Props) {
                 <tr><td className="muted">Proj. paid</td><td className="num">{proj.projected_paid.toFixed(1)}</td></tr>
                 <tr><td className="muted">Est. revenue</td><td className="num good">{fmtUsd(proj.projected_revenue)}</td></tr>
                 <tr><td className="muted">ROI</td><td className={`num ${proj.projected_roi > 0.5 ? "good" : proj.projected_roi > 0 ? "" : "bad"}`}>{(proj.projected_roi * 100).toFixed(0)}%</td></tr>
+                {proj.paid_so_far > 0 && (
+                  <tr>
+                    <td className="muted">ROAS so far {proj.revenue_source === "real" ? <span className="badge ok">real</span> : <span className="badge cyan">building</span>}</td>
+                    <td className={`num ${proj.roas_so_far >= 1 ? "good" : "bad"}`}>{proj.roas_so_far.toFixed(2)}× <span className="muted" style={{ fontSize: 10 }}>({proj.paid_so_far} paid)</span></td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </>

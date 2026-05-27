@@ -215,7 +215,7 @@ app.post("/api/sync", (req, res) => {
   broadcast("sync:start", { days });
   // Fire and forget — sync continues in background even if client navigates away.
   // Progress tracked in currentSync (in-memory) + sync_log table.
-  fullSync(asa, asc, days)
+  fullSync(asa, asc, days, { fnUrl: cfg.asaRevenueFnUrl, app: "medscan", pullToken: cfg.asaRevenuePullToken })
     .then((r) => broadcast("sync:done", r))
     .catch((e) => broadcast("sync:error", { error: (e as Error).message }));
   res.json({ ok: true, started: true });

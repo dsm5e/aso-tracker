@@ -129,6 +129,24 @@ function migrate(d: Database.Database): void {
       PRIMARY KEY (app_id, date, country, product, event_type)
     );
 
+    -- Real per-keyword ASA revenue from deterministic AdServices attribution
+    -- (asaRevenueByKeyword Cloud Function: AdServices keyword → Adapty revenue).
+    -- Keys map 1:1 onto asa_keywords.id / asa_campaigns.id. Snapshot table —
+    -- the sync replaces it each run. Lets the ROI engine use REAL paid/revenue
+    -- per keyword instead of the country-average estimate (no SKAN, no Adapty
+    -- paid integration — works at any volume).
+    CREATE TABLE IF NOT EXISTS asa_kw_revenue (
+      campaign_id INTEGER NOT NULL,
+      keyword_id INTEGER NOT NULL,
+      country TEXT,
+      trials INTEGER NOT NULL DEFAULT 0,
+      paid INTEGER NOT NULL DEFAULT 0,
+      revenue_usd REAL NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (campaign_id, keyword_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_kwrev_campaign ON asa_kw_revenue(campaign_id);
+
     CREATE TABLE IF NOT EXISTS actions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       type TEXT NOT NULL,
