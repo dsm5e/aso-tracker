@@ -1,0 +1,19 @@
+/* Realtime agent-edit highlight. Applied (via the `aso-flash` class) to any
+   element whose id is in the highlight store — set by applyServerState when an
+   agent/external push changes it. Purple = "AI/agent touched this". */
+@keyframes aso-flash {
+  0%, 12% {
+    outline-color: var(--ai, #a78bfa);
+    box-shadow: 0 0 0 3px var(--ai, #a78bfa), 0 0 18px 3px var(--ai, #a78bfa);
+  }
+  100% {
+    outline-color: transparent;
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+.aso-flash {
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+  border-radius: 8px;
+  animation: aso-flash 1.8s ease-out;
+}

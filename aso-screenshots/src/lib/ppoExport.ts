@@ -53,14 +53,20 @@ async function fetchAsBlob(url: string, device: 'iphone' | 'ipad' = 'iphone'): P
 /** Collect (position, url) pairs for every screen in the strategy that has a
  *  successful render. Position follows the strategy's prompt insertion order
  *  (== the order the user sees in the dashboard). */
-function collectRendered(strategy: PPOStrategy): Array<{ index: number; url: string }> {
+function collectRendered(
+  strategy: PPOStrategy,
+  sources?: Array<{ id: string; device?: 'iphone' | 'ipad' }>,
+  deviceFilter?: 'iphone' | 'ipad',
+): Array<{ index: number; url: string; screenId: string }> {
+  const devOf = (sid: string) => sources?.find((s) => s.id === sid)?.device ?? 'iphone';
   const ordered = Object.keys(strategy.prompts);
-  const out: Array<{ index: number; url: string }> = [];
+  const out: Array<{ index: number; url: string; screenId: string }> = [];
   let i = 1;
   for (const screenId of ordered) {
+    if (deviceFilter && devOf(screenId) !== deviceFilter) continue;
     const gen = strategy.generations[screenId];
     if (gen?.aiImageUrl && gen.generateState === 'done') {
-      out.push({ index: i, url: gen.aiImageUrl });
+      out.push({ index: i, url: gen.aiImageUrl, screenId });
       i += 1;
     }
   }
@@ -81,6 +87,7 @@ export type ExportProgressFn = (p: ExportProgress) => void;
 export async function exportStrategy(
   strategyId: string,
   onProgress?: ExportProgressFn,
+  deviceFilter?: 'iphone' | 'ipad',
 ): Promise<void> {
   const state = useStudio.getState();
   const ppo = state.ppo;
@@ -88,43 +95,54 @@ export async function exportStrategy(
   const strategy = ppo.strategies.find((s) => s.id === strategyId);
   if (!strategy) return;
 
-  const items = collectRendered(strategy);
-  if (items.length === 0) {
+  // Single device → flat 1.png..N.png. "Both" (no filter) → split by device with
+  // per-device numbering (iphone-1.png / ipad-1.png) so the sets never collide.
+  const files: Array<{ name: string; url: string; screenId: string }> = [];
+  if (deviceFilter) {
+    for (const r of collectRendered(strategy, ppo.sourceScreens, deviceFilter))
+      files.push({ name: `${r.index}.png`, url: r.url, screenId: r.screenId });
+  } else {
+    for (const dev of ['iphone', 'ipad'] as const)
+      for (const r of collectRendered(strategy, ppo.sourceScreens, dev))
+        files.push({ name: `${dev}-${r.index}.png`, url: r.url, screenId: r.screenId });
+  }
+  if (files.length === 0) {
     alert('No rendered screens yet — generate at least one first.');
     return;
   }
 
   let fetched = 0;
   let failed = 0;
-  const device = ppo.device ?? 'iphone';
-  onProgress?.({ phase: 'fetching', done: 0, total: items.length });
+  const devOf = (sid: string) => ppo.sourceScreens.find((s) => s.id === sid)?.device ?? 'iphone';
+  onProgress?.({ phase: 'fetching', done: 0, total: files.length });
 
   const zip = new JSZip();
-  const fetchPromises = items.map(async ({ index, url }) => {
+  const fetchPromises = files.map(async ({ name, url, screenId }) => {
     try {
-      const blob = await fetchAsBlob(url, device);
-      zip.file(`${index}.png`, blob);
+      const blob = await fetchAsBlob(url, devOf(screenId));
+      zip.file(name, blob);
     } catch (e) {
       failed += 1;
-      console.warn(`[ppo-export] skip ${index}.png:`, (e as Error).message);
+      console.warn(`[ppo-export] skip ${name}:`, (e as Error).message);
     } finally {
       fetched += 1;
-      onProgress?.({ phase: 'fetching', done: fetched, total: items.length });
+      onProgress?.({ phase: 'fetching', done: fetched, total: files.length });
     }
   });
   await Promise.all(fetchPromises);
 
-  if (failed === items.length) {
-    alert(`All ${items.length} image fetches failed — open Network tab to inspect.`);
-    onProgress?.({ phase: 'done', done: 0, total: items.length });
+  if (failed === files.length) {
+    alert(`All ${files.length} image fetches failed — open Network tab to inspect.`);
+    onProgress?.({ phase: 'done', done: 0, total: files.length });
     return;
   }
 
-  onProgress?.({ phase: 'zipping', done: items.length, total: items.length });
+  onProgress?.({ phase: 'zipping', done: files.length, total: files.length });
   const appSlug = slug(state.appName || 'app');
   const stratSlug = slug(strategy.title || 'strategy');
+  const devSuffix = deviceFilter ? `-${deviceFilter}` : '-all';
   const blob = await zip.generateAsync({ type: 'blob' });
-  triggerDownload(blob, `${appSlug}-${stratSlug}.zip`);
+  triggerDownload(blob, `${appSlug}-${stratSlug}${devSuffix}.zip`);
   onProgress?.({ phase: 'done', done: items.length, total: items.length });
 }
 
@@ -135,16 +153,17 @@ export async function exportAllStrategies(onProgress?: ExportProgressFn): Promis
   const ppo = state.ppo;
   if (!ppo || ppo.strategies.length === 0) return;
 
-  type Job = { folderName: string; index: number; url: string };
+  type Job = { folderName: string; device: 'iphone' | 'ipad'; index: number; url: string; screenId: string };
   const jobs: Job[] = [];
   for (const strategy of ppo.strategies) {
-    const items = collectRendered(strategy);
-    if (items.length === 0) {
-      console.log(`[ppo-export] skipping "${strategy.title}" — no renders`);
-      continue;
+    const stratSlug = slug(strategy.title);
+    let any = false;
+    // Split each strategy into iphone/ + ipad/ subfolders, renumbered per device.
+    for (const dev of ['iphone', 'ipad'] as const) {
+      const items = collectRendered(strategy, ppo.sourceScreens, dev);
+      for (const it of items) { jobs.push({ folderName: `${stratSlug}/${dev}`, device: dev, ...it }); any = true; }
     }
-    const folderName = slug(strategy.title);
-    for (const it of items) jobs.push({ folderName, ...it });
+    if (!any) console.log(`[ppo-export] skipping "${strategy.title}" — no renders`);
   }
   if (jobs.length === 0) {
     alert('No strategies have rendered screens yet.');
@@ -153,15 +172,15 @@ export async function exportAllStrategies(onProgress?: ExportProgressFn): Promis
 
   let fetched = 0;
   let failed = 0;
-  const device = ppo.device ?? 'iphone';
+  const devOf = (sid: string) => ppo.sourceScreens.find((s) => s.id === sid)?.device ?? 'iphone';
   onProgress?.({ phase: 'fetching', done: 0, total: jobs.length });
 
   const zip = new JSZip();
   const fetchPromises = jobs.map(async (job) => {
     try {
-      const blob = await fetchAsBlob(job.url, device);
+      const blob = await fetchAsBlob(job.url, devOf(job.screenId));
       const folder = zip.folder(job.folderName);
-      folder?.file(`${job.index}.png`, blob);
+      folder?.file(`${job.device}-${job.index}.png`, blob);
     } catch (e) {
       failed += 1;
       console.warn(`[ppo-export] ${job.folderName}/${job.index}.png skipped:`, (e as Error).message);

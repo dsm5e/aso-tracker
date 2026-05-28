@@ -9,6 +9,43 @@
 
 import { useStudio, type Screenshot } from '../state/studio';
 import { loadScreenshotBlob } from './screenshotStore';
+import { useHighlight } from '../state/highlight';
+
+/** Which element ids changed between two states — drives the realtime flash. */
+function diffChangedIds(
+  prevShots: Screenshot[],
+  prevPpo: unknown,
+  nextShots: Screenshot[],
+  nextPpo: unknown,
+): string[] {
+  const ids: string[] = [];
+  const prevById = new Map(prevShots.map((s) => [s.id, s]));
+  const sig = (s: Screenshot) =>
+    JSON.stringify([s.headline, s.sourceUrl, s.kind, (s as { device?: string }).device,
+      s.deviceX, s.deviceY, s.deviceScale, s.tiltDeg, s.action]);
+  for (const s of nextShots) {
+    const p = prevById.get(s.id);
+    if (!p || sig(p) !== sig(s)) ids.push(s.id);
+  }
+  type Strat = { id: string; prompts?: Record<string, string>; generations?: Record<string, unknown> };
+  const pp = prevPpo as { strategies?: Strat[] } | undefined;
+  const np = nextPpo as { strategies?: Strat[] } | undefined;
+  if (np?.strategies) {
+    const prevStrat = new Map((pp?.strategies ?? []).map((s) => [s.id, s]));
+    for (const st of np.strategies) {
+      const ps = prevStrat.get(st.id);
+      if (!ps) { ids.push(st.id); continue; }
+      for (const sid of Object.keys(st.prompts ?? {})) {
+        if ((ps.prompts ?? {})[sid] !== (st.prompts ?? {})[sid]) ids.push(`${st.id}:${sid}`);
+      }
+      for (const sid of Object.keys(st.generations ?? {})) {
+        if (JSON.stringify((ps.generations ?? {})[sid]) !== JSON.stringify((st.generations ?? {})[sid]))
+          ids.push(`${st.id}:${sid}`);
+      }
+    }
+  }
+  return ids;
+}
 
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
 const POST_DEBOUNCE_MS = 300;
@@ -90,12 +127,32 @@ function applyServerState(raw: string) {
   // because the SSE with the result lands after setViewMode('enhanced') fires).
   delete parsed.viewMode;
   delete parsed.previewDevice;
+  // ppo.device is a client-only VIEW filter (which device's screens are shown).
+  // During generation the server keeps pushing progress with a possibly-stale
+  // device → preserve the local choice so toggling iPhone/iPad doesn't jerk back.
+  if (parsed.ppo && typeof parsed.ppo === 'object') {
+    const localDevice = useStudio.getState().ppo?.device;
+    if (localDevice) (parsed.ppo as { device?: 'iphone' | 'ipad' }).device = localDevice;
+  }
+  // Snapshot BEFORE applying so we can flash exactly what this push changed.
+  const wasSynced = serverSyncedOnce;
+  const prevShots = useStudio.getState().screenshots ?? [];
+  const prevPpo = useStudio.getState().ppo;
   applyingFromServer = true;
   try {
     useStudio.setState(parsed as never, false);
   } finally {
     applyingFromServer = false;
     serverSyncedOnce = true;
+  }
+  // Realtime highlight of agent/external edits — skip the first canonical sync
+  // (it would flash everything). Best-effort: never let it break apply.
+  if (wasSynced) {
+    try {
+      const ns = useStudio.getState();
+      const changed = diffChangedIds(prevShots, prevPpo, ns.screenshots ?? [], ns.ppo);
+      if (changed.length) useHighlight.getState().flash(changed);
+    } catch { /* highlight is decorative */ }
   }
   // Re-run IDB rehydration after each server state push — the server state
   // nulled out blob: URLs above; now restore them from IndexedDB.

@@ -18,6 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, Link2, Link2Off, Plus, Smartphone, Sparkles, Tablet, Trash2, Wand2 } from 'lucide-react';
 import { Button, Pill } from '../shared';
 import { useStudio, type Screenshot } from '../../state/studio';
+import { useHighlight } from '../../state/highlight';
 
 export function ScreenshotSidebar() {
   const {
@@ -385,6 +386,7 @@ function SortableRow({
     id: ss.id,
   });
 
+  const flashing = useHighlight((s) => s.ids.has(ss.id));
   const isHero = ss.kind === 'action';
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -408,7 +410,7 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       onClick={onSelect}
-      className={`list-row ${active ? 'active' : ''}`}
+      className={`list-row ${active ? 'active' : ''} ${flashing ? 'aso-flash' : ''}`}
       role="button"
       title={
         isHero

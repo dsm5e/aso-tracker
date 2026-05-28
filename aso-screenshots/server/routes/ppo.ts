@@ -219,8 +219,15 @@ export async function ppoGenerate(req: Request, res: Response): Promise<void> {
     return;
   }
   const { strategyId, screenId } = body;
-  const prompt = body.prompt;
   const device = body.device ?? 'iphone';
+  // System device directive — always prepended so the correct frame is enforced
+  // for the target device regardless of the per-tile prompt text. (iPad sources
+  // kept rendering as phones when a prompt didn't explicitly say so.)
+  const deviceDirective =
+    device === 'ipad'
+      ? 'IMPORTANT — render the app screenshot inside a realistic Apple iPad (tablet) device frame, portrait, ~3:4 aspect ratio. It is a TABLET, NOT a phone — do not draw a narrow phone. '
+      : 'Render the app screenshot inside a realistic iPhone device frame, tall ~9:19.5 aspect ratio. ';
+  const prompt = deviceDirective + body.prompt;
 
   // Optimistic state — UI will show spinner immediately.
   persistPPOResult(strategyId, screenId, {

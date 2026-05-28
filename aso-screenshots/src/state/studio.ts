@@ -259,7 +259,7 @@ interface StudioState {
   /** Replace the entire PPO experiment (used by /api/studio-state/push). */
   ppoSetExperiment: (exp: PPOExperiment | undefined) => void;
   /** Append source screens. previewUrl is required; rest derived. */
-  ppoAddSourceScreens: (screens: Array<{ previewUrl: string; serverPath?: string; byteSize?: number; filename?: string }>) => void;
+  ppoAddSourceScreens: (screens: Array<{ previewUrl: string; serverPath?: string; byteSize?: number; filename?: string; device?: 'iphone' | 'ipad' }>) => void;
   ppoRemoveSourceScreen: (id: string) => void;
   ppoReorderSourceScreens: (orderedIds: string[]) => void;
   /** Add a strategy with given title (or auto-numbered "Strategy N"). Returns id. */
@@ -394,6 +394,9 @@ const projectInitial = {
 export interface PPOSourceScreen {
   /** Stable id — uuid-ish. */
   id: string;
+  /** Which device this source belongs to. Drives the PPO device filter (pool +
+   *  strategy tiles), generation size, and export dims. Defaults to 'iphone'. */
+  device?: 'iphone' | 'ipad';
   /** Filename used for export (e.g. "1.png"). Auto-assigned in upload order. */
   filename: string;
   /** Local preview URL (data:/blob:) — for thumbnails in UI. */
@@ -865,6 +868,7 @@ export const useStudio = create<StudioState>()(
           const newScreens: PPOSourceScreen[] = screens.map((s, i) => ({
             id: newId(),
             filename: s.filename ?? `${startIndex + i + 1}.png`,
+            device: s.device,
             previewUrl: s.previewUrl,
             serverPath: s.serverPath,
             byteSize: s.byteSize,

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useStudio } from '../state/studio';
+import { useHighlight } from '../state/highlight';
+import { useGenSelect, isGenSelected } from '../state/genSelect';
 import type { PPOSourceScreen, PPOGeneration } from '../state/studio';
 import { Button, Card } from '../components/shared';
 import { Plus, Layers, Trash2, X, UploadCloud, ChevronDown, ChevronRight, Wand2, Download, Loader2, Save } from 'lucide-react';
@@ -161,7 +163,10 @@ export function PPOScreen() {
     e.target.value = ''; // reset so same file can be re-picked
   };
 
-  const sourceScreens = ppo?.sourceScreens ?? [];
+  // Device toggle is a FILTER: pool + strategy tiles show only the selected
+  // device's screens, so one project holds both iPhone + iPad without dupes.
+  const allSourceScreens = ppo?.sourceScreens ?? [];
+  const sourceScreens = allSourceScreens.filter((s) => (s.device ?? 'iphone') === device);
   const strategies = ppo?.strategies ?? [];
   const collapsedIds = ppo?.collapsedStrategyIds ?? [];
 
@@ -496,11 +501,15 @@ function StrategyCard({
   const ppoRemoveStrategy = useStudio((s) => s.ppoRemoveStrategy);
   const ppoSetPrompt = useStudio((s) => s.ppoSetPrompt);
   const ppoRemoveScreenFromStrategy = useStudio((s) => s.ppoRemoveScreenFromStrategy);
+  const ppoSetDevice = useStudio((s) => s.ppoSetDevice);
+  const genSelExplicit = useGenSelect((s) => s.explicit);
 
   const [showAddPicker, setShowAddPicker] = useState(false);
 
   const strategy = ppo?.strategies.find((s) => s.id === strategyId);
-  const sourceScreens = ppo?.sourceScreens ?? [];
+  const device = ppo?.device ?? 'iphone';
+  // Only this device's screens are shown / generated in the strategy grid.
+  const sourceScreens = (ppo?.sourceScreens ?? []).filter((s) => (s.device ?? 'iphone') === device);
   if (!strategy) return null;
 
   // Only screens that are EXPLICITLY part of this strategy (i.e. have a key in
@@ -512,14 +521,32 @@ function StrategyCard({
     .map((id) => sourceById.get(id))
     .filter((s): s is PPOSourceScreen => Boolean(s));
   const screensNotInStrategy = sourceScreens.filter((src) => !(src.id in strategy.prompts));
-  const promptCount = Object.values(strategy.prompts).filter((p) => p.trim().length > 0).length;
-  const renderedCount = Object.values(strategy.generations).filter((g) => g.generateState === 'done').length;
-  const generatingCount = Object.values(strategy.generations).filter((g) => g.generateState === 'generating').length;
+  // Scope counts to the VISIBLE device (screensInStrategy is device-filtered) so
+  // the badges + the Generate label match what's shown and what Generate runs.
+  const promptCount = screensInStrategy.filter((s) => (strategy.prompts[s.id] ?? '').trim().length > 0).length;
+  const renderedCount = screensInStrategy.filter((s) => strategy.generations[s.id]?.generateState === 'done').length;
+  const generatingCount = screensInStrategy.filter((s) => strategy.generations[s.id]?.generateState === 'generating').length;
+  // Screens checked to (re)generate — default to the not-yet-done ones so a
+  // freshly rendered tile auto-deselects and bulk-generate skips it.
+  const selectedIds = screensInStrategy
+    .filter((s) => (strategy.prompts[s.id] ?? '').trim().length > 0
+      && isGenSelected(genSelExplicit, `${strategy.id}:${s.id}`, strategy.generations[s.id]?.generateState !== 'done'))
+    .map((s) => s.id);
+  // All-device selection — feeds the "Both" button (iPhone + iPad in one pass,
+  // each generated at its own size since generateOne reads source.device).
+  const bothSelectedIds = (ppo?.sourceScreens ?? [])
+    .filter((s) => s.id in strategy.prompts
+      && (strategy.prompts[s.id] ?? '').trim().length > 0
+      && isGenSelected(genSelExplicit, `${strategy.id}:${s.id}`, strategy.generations[s.id]?.generateState !== 'done'))
+    .map((s) => s.id);
+  // Rendered across BOTH devices — count for the per-strategy "Both ZIP" export.
+  const renderedBothCount = (ppo?.sourceScreens ?? [])
+    .filter((s) => s.id in strategy.prompts && strategy.generations[s.id]?.generateState === 'done').length;
   const isBatchInFlight = generatingCount > 0;
   const [exportProg, setExportProg] = useState<ExportProgress | null>(null);
   const isExporting = exportProg !== null && exportProg.phase !== 'done';
   const exportLabel = !exportProg || exportProg.phase === 'done'
-    ? `Export ZIP${renderedCount > 0 ? ` (${renderedCount})` : ''}`
+    ? `Export ${device === 'ipad' ? 'iPad' : 'iPhone'} ZIP${renderedCount > 0 ? ` (${renderedCount})` : ''}`
     : exportProg.phase === 'fetching'
     ? `Fetching ${exportProg.done}/${exportProg.total}…`
     : 'Zipping…';
@@ -610,6 +637,25 @@ function StrategyCard({
                   {screensInStrategy.length} screen{screensInStrategy.length === 1 ? '' : 's'} in this strategy.
                   Drop one with the X — or add another from the source pool below.
                 </div>
+                {/* Per-strategy device switch — drives the global PPO filter so the
+                    grid + Generate target iPhone or iPad without scrolling to the top. */}
+                <div style={{ display: 'flex', gap: 2, padding: 2, borderRadius: 'var(--r-1)', border: '1px solid var(--line-1)', background: 'var(--bg-1)' }}>
+                  {(['iphone', 'ipad'] as const).map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => ppoSetDevice(d)}
+                      style={{
+                        padding: '4px 10px', borderRadius: 'var(--r-1)', border: 'none',
+                        background: device === d ? 'var(--accent)' : 'transparent',
+                        color: device === d ? '#fff' : 'var(--fg-2)',
+                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                      }}
+                    >
+                      {d === 'iphone' ? '📱 iPhone' : '🟦 iPad'}
+                    </button>
+                  ))}
+                </div>
                 <Button
                   variant="primary"
                   size="sm"
@@ -620,9 +666,9 @@ function StrategyCard({
                       <Wand2 size={14} />
                     )
                   }
-                  disabled={promptCount === 0 || isBatchInFlight}
+                  disabled={selectedIds.length === 0 || isBatchInFlight}
                   onClick={() => {
-                    void generateStrategy(strategy.id);
+                    void generateStrategy(strategy.id, 2, device, new Set(selectedIds));
                   }}
                   title={
                     isBatchInFlight ? `Generating ${generatingCount} screen(s)…` :
@@ -630,7 +676,19 @@ function StrategyCard({
                     'Generate AI renders for every screen with a prompt'
                   }
                 >
-                  {isBatchInFlight ? `Generating ${generatingCount}…` : `Generate${promptCount > 0 ? ` (${promptCount})` : ''}`}
+                  {isBatchInFlight ? `Generating ${generatingCount}…` : `Generate ${device === 'ipad' ? 'iPad' : 'iPhone'}${selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}`}
+                </Button>
+                <Button
+                  variant="ai"
+                  size="sm"
+                  leftIcon={<Wand2 size={14} />}
+                  disabled={bothSelectedIds.length === 0 || isBatchInFlight}
+                  onClick={() => {
+                    void generateStrategy(strategy.id, 2, undefined, new Set(bothSelectedIds));
+                  }}
+                  title="Generate the selected screens for BOTH iPhone and iPad in one pass — each at its own size"
+                >
+                  Both ({bothSelectedIds.length})
                 </Button>
                 <Button
                   variant="ghost"
@@ -644,7 +702,7 @@ function StrategyCard({
                   }
                   disabled={renderedCount === 0 || isExporting}
                   onClick={() => {
-                    void exportStrategy(strategy.id, (p) => setExportProg(p))
+                    void exportStrategy(strategy.id, (p) => setExportProg(p), device)
                       .finally(() => {
                         // Clear after a short pause so the user sees "Done"
                         setTimeout(() => setExportProg(null), 1200);
@@ -653,6 +711,21 @@ function StrategyCard({
                   title={renderedCount === 0 ? 'Generate at least one screen first' : `Download ${renderedCount} rendered screens as a ZIP — drop into ASC PPO treatment`}
                 >
                   {exportLabel}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  leftIcon={<Download size={14} />}
+                  disabled={renderedBothCount === 0 || isExporting}
+                  onClick={() => {
+                    void exportStrategy(strategy.id, (p) => setExportProg(p))
+                      .finally(() => {
+                        setTimeout(() => setExportProg(null), 1200);
+                      });
+                  }}
+                  title="Export BOTH iPhone + iPad of THIS strategy in one ZIP — files split into iphone-… / ipad-…"
+                >
+                  Both ZIP{renderedBothCount > 0 ? ` (${renderedBothCount})` : ''}
                 </Button>
               </div>
               <div
@@ -674,6 +747,7 @@ function StrategyCard({
                     }}
                   >
                     <PPOTile
+                      strategyId={strategy.id}
                       source={src}
                       prompt={strategy.prompts[src.id] ?? ''}
                       generation={strategy.generations[src.id]}
@@ -779,6 +853,7 @@ function StrategyCard({
 }
 
 function PPOTile({
+  strategyId,
   source,
   prompt,
   generation,
@@ -786,6 +861,7 @@ function PPOTile({
   onRegenerate,
   onRemove,
 }: {
+  strategyId: string;
   source: PPOSourceScreen;
   prompt: string;
   generation: PPOGeneration | undefined;
@@ -796,7 +872,10 @@ function PPOTile({
   // Device is experiment-level — read from store so the tile matches whatever
   // the parent screen has selected (iPhone 9:19.5 vs iPad ~3:4 aspect).
   const device = useStudio((s) => s.ppo?.device ?? 'iphone');
-  const tileAspect = device === 'ipad' ? '3 / 4' : '9 / 19.5';
+  const flashing = useHighlight((s) => s.ids.has(`${strategyId}:${source.id}`));
+  const genSelExplicit = useGenSelect((s) => s.explicit);
+  const toggleSel = useGenSelect((s) => s.toggle);
+  const tileAspect = (source.device ?? device) === 'ipad' ? '3 / 4' : '9 / 19.5';
   const state = generation?.generateState ?? 'idle';
   // AI renders are 1290×2796 PNGs (~2-4MB each). Loading 20 of them raw kills
   // perf — funnel through our proxy at w=400 JPEG so tiles paint fast. Export
@@ -809,6 +888,9 @@ function PPOTile({
   const isGenerating = state === 'generating';
   const isError = state === 'error';
   const hasResult = state === 'done' && generation?.aiImageUrl;
+  const selKey = `${strategyId}:${source.id}`;
+  const selDefault = (generation?.generateState ?? 'idle') !== 'done';
+  const selected = isGenSelected(genSelExplicit, selKey, selDefault);
 
   // Elapsed-second counter while generating — gpt-image-2 takes ~25-35s and
   // a static "Generating…" text feels frozen. Reset whenever state changes.
@@ -827,6 +909,7 @@ function PPOTile({
 
   return (
     <div
+      className={flashing ? 'aso-flash' : ''}
       style={{
         border: '1px solid var(--line-1)',
         borderRadius: 'var(--r-2)',
@@ -970,6 +1053,10 @@ function PPOTile({
             outline: 'none',
           }}
         />
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: selected ? 'var(--fg-1)' : 'var(--fg-3)', cursor: 'pointer', userSelect: 'none' }}>
+          <input type="checkbox" checked={selected} onChange={() => toggleSel(selKey, selDefault)} style={{ accentColor: 'var(--accent)' }} />
+          {selected ? 'Will generate in batch' : hasResult ? 'Done — skipped in batch' : 'Skipped in batch'}
+        </label>
         <button
           type="button"
           disabled={prompt.trim().length === 0 || isGenerating}

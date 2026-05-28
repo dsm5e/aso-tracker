@@ -23,8 +23,6 @@ export function EditorScreen() {
     updateScreenshot,
     viewMode,
     setViewMode,
-    previewDevice,
-    setPreviewDevice,
   } = useStudio();
 
   const canvasWrapRef = useRef<HTMLDivElement>(null);
@@ -220,20 +218,8 @@ export function EditorScreen() {
             value={viewMode}
             onChange={setViewMode}
           />
-          <SegmentedControl
-            items={[
-              { value: 'iphone', label: 'iPhone' },
-              {
-                value: 'ipad',
-                label: 'iPad',
-                disabled: !screenshots.some((s) => s.device === 'ipad'),
-              },
-            ]}
-            value={previewDevice}
-            onChange={(v) => setPreviewDevice(v as 'iphone' | 'ipad')}
-          />
           <span className="tabular muted" style={{ fontSize: 11 }}>
-            {active ? (previewDevice === 'ipad' ? '2048 × 2732' : '1290 × 2796') : ''}
+            {active ? ((active.device ?? 'iphone') === 'ipad' ? '2048 × 2732' : '1290 × 2796') : ''}
           </span>
           <span style={{ flex: 1 }} />
           <Button
@@ -374,7 +360,7 @@ export function EditorScreen() {
             </div>
           )}
 
-          {active && fit && <MockupCanvas screenshot={active} device={previewDevice} fitWidth={fit.w} fitHeight={fit.h} />}
+          {active && fit && <MockupCanvas screenshot={active} device={active.device ?? 'iphone'} fitWidth={fit.w} fitHeight={fit.h} />}
 
           {/* Loader overlay during AI enhancement — covers the canvas with a pulsing
               backdrop so the user knows something's happening. */}

@@ -57,9 +57,10 @@ export async function generateOne(
     errorMessage: undefined,
   });
 
-  // Device is experiment-level — read from store at call time so per-tile
-  // generation uses whatever the user has selected right now.
-  const device = useStudio.getState().ppo?.device ?? 'iphone';
+  // Per-screen device — each source carries its own (iPhone 9:19.5 vs iPad 3:4),
+  // so a mixed-device project generates every tile at the correct size. Falls
+  // back to the experiment device, then iphone.
+  const device = source.device ?? useStudio.getState().ppo?.device ?? 'iphone';
   const result = await callPPOGenerate({
     strategyId,
     screenId: source.id,
@@ -95,7 +96,12 @@ export async function generateOne(
 
 /** Run generation for every screen in a strategy that has a non-empty prompt.
  *  Concurrency limited so we don't slam fal — gpt-image-2 takes 20-30s per call. */
-export async function generateStrategy(strategyId: string, concurrency = 2): Promise<void> {
+export async function generateStrategy(
+  strategyId: string,
+  concurrency = 2,
+  deviceFilter?: 'iphone' | 'ipad',
+  onlyIds?: Set<string>,
+): Promise<void> {
   const state = useStudio.getState();
   const ppo = state.ppo;
   if (!ppo) return;
@@ -108,6 +114,11 @@ export async function generateStrategy(strategyId: string, concurrency = 2): Pro
     const source = sources.find((s) => s.id === screenId);
     const prompt = strategy.prompts[screenId];
     if (!source || !prompt.trim()) continue;
+    // When a device filter is set (the visible tab), only generate that device's
+    // screens — so "Generate" runs the iPhone batch, then iPad after toggling.
+    if (deviceFilter && (source.device ?? 'iphone') !== deviceFilter) continue;
+    // When a selection allowlist is set, only generate the checked screens.
+    if (onlyIds && !onlyIds.has(screenId)) continue;
     queue.push({ source, prompt });
   }
 

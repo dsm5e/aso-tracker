@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, FolderOpen, AlertCircle, Loader2, StopCircle, FolderSearch, RefreshCw } from 'lucide-react';
+import { CheckCircle2, FolderOpen, AlertCircle, Loader2, StopCircle, FolderSearch, RefreshCw, FlaskConical } from 'lucide-react';
 import { Button, Card, Input } from '../components/shared';
 import { useStudio } from '../state/studio';
 import { renderAll, pickOutputFolder, type RenderFailure } from '../lib/exportRender';
@@ -22,6 +22,13 @@ export function ExportScreen() {
 
   const filenamePattern = useStudio((s) => s.filenamePattern);
   const setExport = useStudio((s) => s.setExport);
+
+  // PPO hand-off — seed a Product Page Optimization session from this project's
+  // shots so the variant prompts can be filled without re-uploading.
+  const ppoSetExperiment = useStudio((s) => s.ppoSetExperiment);
+  const ppoAddSourceScreens = useStudio((s) => s.ppoAddSourceScreens);
+  const ppoSetDevice = useStudio((s) => s.ppoSetDevice);
+  const ppoAddStrategy = useStudio((s) => s.ppoAddStrategy);
 
   const [archived, setArchived] = useState(false);
   const [renderState, setRenderState] = useState<{ done: number; total: number; current: string } | null>(null);
@@ -115,6 +122,24 @@ export function ExportScreen() {
   };
 
   const onExport = () => runRender();
+
+  /** Seed a PPO A/B session from this project's screenshots (raw app shots =
+   *  the clean input each strategy restyles), then jump to the PPO screen. */
+  const onMakePPO = (device: 'iphone' | 'ipad') => {
+    const shots = screenshots.filter((s) => (s.device ?? 'iphone') === device && s.sourceUrl);
+    if (shots.length === 0) {
+      alert(`No ${device} screenshots with an image to seed PPO. Add sources first.`);
+      return;
+    }
+    const cur = useStudio.getState().ppo;
+    if (cur && cur.sourceScreens.length > 0 &&
+        !window.confirm('Replace the current PPO session with this project’s screenshots?')) return;
+    ppoSetExperiment(undefined);                       // fresh session
+    ppoAddSourceScreens(shots.map((s) => ({ previewUrl: s.sourceUrl as string, filename: s.filename })));
+    ppoSetDevice(device);
+    ppoAddStrategy('Variant A');                       // one strategy ready for prompts
+    nav('/ppo');
+  };
   const onRetryFailed = () => {
     if (!renderResult || renderResult.failures.length === 0) return;
     const jobs = renderResult.failures.map((f) => ({
@@ -285,16 +310,28 @@ export function ExportScreen() {
             Stop
           </Button>
         ) : (
-          <Button
-            variant="primary"
-            size="lg"
-            leftIcon={<FolderOpen size={14} />}
-            onClick={onExport}
-            disabled={blockingIssues.length > 0}
-            title={blockingIssues.length ? `Fix: ${blockingIssues.join(' · ')}` : `Render ${totalToRender} PNGs — iPhone slots → images/ (1290×2796), iPad slots → images-ipad/ (2048×2732)`}
-          >
-            Export
-          </Button>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Button
+              variant="ai"
+              size="lg"
+              leftIcon={<FlaskConical size={14} />}
+              onClick={() => onMakePPO('iphone')}
+              disabled={slotCount === 0}
+              title="Seed a PPO A/B experiment from this project's iPhone screenshots, then fill variant prompts. (iPad: switch device on the PPO screen and run again.)"
+            >
+              Also make PPO →
+            </Button>
+            <Button
+              variant="primary"
+              size="lg"
+              leftIcon={<FolderOpen size={14} />}
+              onClick={onExport}
+              disabled={blockingIssues.length > 0}
+              title={blockingIssues.length ? `Fix: ${blockingIssues.join(' · ')}` : `Render ${totalToRender} PNGs — iPhone slots → images/ (1290×2796), iPad slots → images-ipad/ (2048×2732)`}
+            >
+              Export
+            </Button>
+          </div>
         )}
       </div>
     </div>

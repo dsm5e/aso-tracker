@@ -9,6 +9,7 @@ import { useStudio } from './state/studio';
 import { startStudioStateSync } from './lib/stateSync';
 import './styles/tokens.css';
 import './styles/app.css';
+import './styles/highlight.css';
 
 loadPresetFonts();
 
