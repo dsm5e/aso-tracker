@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStudio } from '../state/studio';
 import { useHighlight } from '../state/highlight';
 import { useGenSelect, isGenSelected } from '../state/genSelect';
 import type { PPOSourceScreen, PPOGeneration } from '../state/studio';
 import { Button, Card } from '../components/shared';
-import { Plus, Layers, Trash2, X, UploadCloud, ChevronDown, ChevronRight, Wand2, Download, Loader2, Save } from 'lucide-react';
+import { Plus, Layers, Trash2, X, UploadCloud, ChevronDown, ChevronRight, Wand2, Download, Loader2, Save, Shapes, ArrowRight } from 'lucide-react';
 import { generateOne, generateStrategy } from '../lib/ppoGenerate';
 import { exportStrategy, exportAllStrategies, type ExportProgress } from '../lib/ppoExport';
 
@@ -85,6 +86,8 @@ export function PPOScreen() {
   const ppoSetDevice = useStudio((s) => s.ppoSetDevice);
   const ppoSaveSession = useStudio((s) => s.ppoSaveSession);
   const loadedFromPPOSessionId = useStudio((s) => s.loadedFromPPOSessionId);
+  const nav = useNavigate();
+  const iconVariantCount = useStudio((s) => s.iconLab?.variants.length ?? 0);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   // Device target for the whole experiment. Affects gen size, tile aspect,
   // and export upscale. Defaults to iphone for legacy sessions without it.
@@ -429,21 +432,61 @@ export function PPOScreen() {
           </Card.Section>
         </Card>
 
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 'var(--r-2)',
-            background: 'var(--bg-2)',
-            border: '1px dashed var(--line-2)',
-            fontSize: 12,
-            color: 'var(--fg-2)',
-            lineHeight: 1.6,
-          }}
-        >
-          <strong>Phases 1–3 shipped.</strong> Source pool + strategy CRUD + per-screen prompt grid
-          live. Next: batch generation via gpt-image-2 (Phase 4) and per-strategy ZIP export (Phase 5).
-          Spec lives in <code>aso-screenshots/PPO_PLAN.md</code>.
-        </div>
+        {/* App icon A/B testing — a separate, dedicated tool. Screenshots and
+            icons are different ASC surfaces (icons must ship in the binary), so
+            the icon flow gets its own full screen rather than crowding the
+            per-strategy grid above. */}
+        <Card>
+          <Card.Section title="App Icon A/B Testing">
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 20,
+                flexWrap: 'wrap',
+              }}
+            >
+              <div
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: 18,
+                  flex: 'none',
+                  background: 'linear-gradient(135deg, #7C3AED, #A78BFA)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  boxShadow: '0 8px 24px -8px rgba(124,58,237,0.6)',
+                }}
+              >
+                <Shapes size={34} />
+              </div>
+              <div style={{ flex: 1, minWidth: 260 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-0)', marginBottom: 4 }}>
+                  Generate icon variants for an icon experiment
+                </div>
+                <p style={{ margin: 0, fontSize: 13, color: 'var(--fg-2)', lineHeight: 1.6 }}>
+                  Render 1024×1024 app-icon variants from a base image and a prompt. Icons can't be
+                  uploaded ad-hoc like screenshots — they ship inside the app binary as alternate
+                  icons, then get selected as PPO treatments. This opens a dedicated screen.
+                  {iconVariantCount > 0 && (
+                    <> · <strong>{iconVariantCount}</strong> variant{iconVariantCount === 1 ? '' : 's'} so far.</>
+                  )}
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="lg"
+                leftIcon={<Shapes size={16} />}
+                rightIcon={<ArrowRight size={16} />}
+                onClick={() => nav('/icon-generator')}
+              >
+                Icon Generator
+              </Button>
+            </div>
+          </Card.Section>
+        </Card>
       </div>
       {/* Floating Save — only show once a session has source screens. The button
           updates the existing entry if a session was loaded, otherwise creates

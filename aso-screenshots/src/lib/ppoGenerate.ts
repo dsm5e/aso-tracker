@@ -10,12 +10,17 @@ import type { PPOSourceScreen } from '../state/studio';
 // with the rest of the codebase. Vite proxy rewrites `/studio-api/*` → `:5181/api/*`.
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
 
+/** Sentinel strategyId the server maps to iconLab.variants[screenId] instead of
+ *  a PPO strategy. Keep in sync with ICON_LAB_ID in server/routes/ppo.ts. */
+const ICON_LAB_ID = '__iconlab__';
+
 async function callPPOGenerate(payload: {
   strategyId: string;
   screenId: string;
   prompt: string;
   inputDataUri: string;
   device?: 'iphone' | 'ipad';
+  kind?: 'screen' | 'icon';
 }): Promise<{ aiImageUrl?: string; error?: string }> {
   try {
     const r = await fetch(`${API_BASE}/ppo/generate`, {
@@ -141,4 +146,56 @@ export async function generateAllStrategies(concurrency = 2): Promise<void> {
   const ppo = useStudio.getState().ppo;
   if (!ppo) return;
   await Promise.all(ppo.strategies.map((s) => generateStrategy(s.id, concurrency)));
+}
+
+/** Generate the icon variant for one Icon Generator entry. Edits the variant's
+ *  manually-uploaded base image into a 1024×1024 square iOS app icon. Routed
+ *  through the same fal poller via the ICON_LAB_ID sentinel. */
+export async function generateIcon(variantId: string): Promise<void> {
+  const state = useStudio.getState();
+  const variant = state.iconLab?.variants.find((v) => v.id === variantId);
+  if (!variant) return;
+  const prompt = (variant.prompt ?? '').trim();
+  if (!prompt) {
+    console.warn('[icon] empty prompt, skipping');
+    return;
+  }
+  if (!variant.baseUrl) {
+    console.warn('[icon] no base image, cannot generate');
+    return;
+  }
+
+  const setGen = state.iconLabSetGeneration;
+  setGen(variantId, { generateState: 'generating', lastPrompt: prompt, errorMessage: undefined });
+
+  const result = await callPPOGenerate({
+    strategyId: ICON_LAB_ID,
+    screenId: variantId,
+    prompt,
+    inputDataUri: variant.baseUrl,
+    kind: 'icon',
+  });
+
+  // The server is async: it returns 202 { requestId } and a background poller
+  // writes the finished image back to state.json (delivered via SSE), flipping
+  // generateState → 'done'. So a missing aiImageUrl here is EXPECTED, not an
+  // error — only flip to 'error' when the submission itself failed. Leave the
+  // 'generating' state in place otherwise; SSE completes it.
+  if (result.error) {
+    setGen(variantId, { generateState: 'error', errorMessage: result.error });
+    return;
+  }
+  if (result.aiImageUrl) {
+    // Rare synchronous path — record it immediately.
+    const prevHistory = useStudio.getState().iconLab?.variants.find((v) => v.id === variantId)
+      ?.generation.aiHistory ?? [];
+    setGen(variantId, {
+      aiImageUrl: result.aiImageUrl,
+      generateState: 'done',
+      errorMessage: undefined,
+      aiHistory: [...prevHistory, result.aiImageUrl].slice(-8),
+    });
+  }
+  // Job submitted to fal → count the spend (gpt-image-2 medium ≈ $0.05/call).
+  state.bumpAiSpent(0.05);
 }

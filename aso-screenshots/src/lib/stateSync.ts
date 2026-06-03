@@ -82,6 +82,24 @@ function schedulePost() {
   postTimer = window.setTimeout(postState, POST_DEBOUNCE_MS);
 }
 
+/** Immediately persist the current store to the server, bypassing the 300ms
+ *  debounce, and broadcast it to every open tab. Use after a destructive reset
+ *  (archive / start-new) so a reload can't resurrect the stale active draft —
+ *  the debounced post might not fire before navigation/unload. */
+export async function pushStateNow(): Promise<void> {
+  if (postTimer != null) { clearTimeout(postTimer); postTimer = null; }
+  const data = projectableState(useStudio.getState());
+  try {
+    await fetch(`${API_BASE}/studio-state/push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch (e) {
+    console.warn('[state-sync] pushStateNow failed', e);
+  }
+}
+
 async function rehydrateBlobs() {
   const { screenshots, updateScreenshot } = useStudio.getState();
   for (const s of screenshots) {

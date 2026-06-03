@@ -410,6 +410,7 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       onClick={onSelect}
+      data-agent-target={ss.id}
       className={`list-row ${active ? 'active' : ''} ${flashing ? 'aso-flash' : ''}`}
       role="button"
       title={
@@ -480,7 +481,7 @@ function SortableRow({
             whiteSpace: 'nowrap',
           }}
         >
-          {ss.headline.verb || ss.filename || 'Untitled'}
+          {(ss.headline.verb || '').replace(/\*/g, '') || ss.filename || 'Untitled'}
         </span>
         <span
           style={{
@@ -491,7 +492,7 @@ function SortableRow({
             whiteSpace: 'nowrap',
           }}
         >
-          {ss.headline.descriptor || 'no descriptor'}
+          {(ss.headline.descriptor || '').replace(/\*/g, '') || 'no descriptor'}
         </span>
       </div>
       {ss.enhanceState === 'done' && (

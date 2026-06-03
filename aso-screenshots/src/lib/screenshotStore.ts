@@ -54,3 +54,21 @@ export async function listScreenshotBlobIds(): Promise<string[]> {
   const keys = await tx<IDBValidKey[]>('readonly', (s) => s.getAllKeys());
   return keys.map((k) => String(k));
 }
+
+/* ── Full-bleed background images ──────────────────────────────────────────
+   Stored in the same object store under a suffixed key so a slot can have BOTH
+   an inner screenshot (sourceUrl) and a background image. */
+const BG_SUFFIX = '__bg';
+
+export async function saveScreenshotBgBlob(id: string, blob: Blob, filename: string): Promise<void> {
+  await tx<IDBValidKey>('readwrite', (s) => s.put({ blob, filename, savedAt: Date.now() }, id + BG_SUFFIX));
+}
+
+export async function loadScreenshotBgBlob(id: string): Promise<{ blob: Blob; filename: string } | null> {
+  const rec = await tx<{ blob: Blob; filename: string } | undefined>('readonly', (s) => s.get(id + BG_SUFFIX));
+  return rec ?? null;
+}
+
+export async function deleteScreenshotBgBlob(id: string): Promise<void> {
+  await tx<undefined>('readwrite', (s) => s.delete(id + BG_SUFFIX));
+}

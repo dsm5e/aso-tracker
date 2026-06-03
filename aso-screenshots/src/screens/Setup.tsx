@@ -1,5 +1,6 @@
+import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Smartphone, Tablet, Layers, Plus, Trash2, FlaskConical } from 'lucide-react';
+import { Smartphone, Tablet, Layers, Plus, Trash2, FlaskConical, Shapes, ArrowRight } from 'lucide-react';
 import { Button, Card, Input } from '../components/shared';
 import { useStudio, type Devices, type ArchivedProject, type ArchivedPPOExperiment } from '../state/studio';
 
@@ -23,6 +24,7 @@ export function SetupScreen() {
   const ppoLoadSession = useStudio((s) => s.ppoLoadSession);
   const ppoDeleteSession = useStudio((s) => s.ppoDeleteSession);
   const screenshots = useStudio((s) => s.screenshots);
+  const iconVariantCount = useStudio((s) => s.iconLab?.variants.length ?? 0);
 
   const hasActiveWork = !!appName || !!outputFolder || screenshots.length > 0;
 
@@ -123,16 +125,30 @@ export function SetupScreen() {
           </Card.Section>
         </Card>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-          <Button
-            variant="ghost"
-            size="md"
-            leftIcon={<FlaskConical size={16} />}
-            onClick={() => nav('/ppo')}
-            title="Multi-strategy A/B experiments — upload source screens once, generate N treatments via different AI prompts"
-          >
-            Product Page Opt
-          </Button>
+        {/* A/B testing tools — each is its own surface in App Store Connect, so
+            each gets its own entry section rather than a cramped button row. */}
+        <ToolCard
+          title="Product Page Optimization"
+          gradient="linear-gradient(135deg, #14B8A6, #5EEAD4)"
+          icon={<FlaskConical size={34} />}
+          heading="Run multi-strategy screenshot A/B tests"
+          description="Upload source screens once, generate N treatments via different AI prompts, and export each ready for an App Store Connect PPO experiment."
+          countLabel={archivedPPOExperiments.length > 0 ? `${archivedPPOExperiments.length} saved session${archivedPPOExperiments.length === 1 ? '' : 's'}` : undefined}
+          cta="Product Page Opt"
+          onClick={() => nav('/ppo')}
+        />
+        <ToolCard
+          title="Icon Generator"
+          gradient="linear-gradient(135deg, #7C3AED, #A78BFA)"
+          icon={<Shapes size={34} />}
+          heading="Generate 1024 app-icon variants"
+          description="Render square iOS icon variants from a base image + prompt. Icons ship inside the app binary as alternate icons, then get selected as PPO icon treatments."
+          countLabel={iconVariantCount > 0 ? `${iconVariantCount} variant${iconVariantCount === 1 ? '' : 's'}` : undefined}
+          cta="Icon Generator"
+          onClick={() => nav('/icon-generator')}
+        />
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
           <Button variant="primary" size="lg" onClick={() => nav('/catalog')}>
             Continue → Style
           </Button>
@@ -165,6 +181,65 @@ export function SetupScreen() {
         )}
       </div>
     </div>
+  );
+}
+
+/** Entry section for an A/B-testing tool (PPO / Icon Generator). Mirrors the
+ *  layout used on the PPO screen — gradient glyph tile + copy + CTA. */
+function ToolCard({
+  title,
+  gradient,
+  icon,
+  heading,
+  description,
+  countLabel,
+  cta,
+  onClick,
+}: {
+  title: string;
+  gradient: string;
+  icon: ReactNode;
+  heading: string;
+  description: string;
+  countLabel?: string;
+  cta: string;
+  onClick: () => void;
+}) {
+  return (
+    <Card>
+      <Card.Section title={title}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              width: 72,
+              height: 72,
+              borderRadius: 18,
+              flex: 'none',
+              background: gradient,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#fff',
+              boxShadow: '0 8px 24px -8px rgba(0,0,0,0.4)',
+            }}
+          >
+            {icon}
+          </div>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-0)', marginBottom: 4 }}>
+              {heading}
+            </div>
+            <p style={{ margin: 0, fontSize: 13, color: 'var(--fg-2)', lineHeight: 1.6 }}>
+              {description}
+              {countLabel && <> · <strong>{countLabel}</strong></>}
+            </p>
+          </div>
+          <Button variant="primary" size="lg" rightIcon={<ArrowRight size={16} />} onClick={onClick}>
+            {cta}
+          </Button>
+        </div>
+      </Card.Section>
+    </Card>
   );
 }
 

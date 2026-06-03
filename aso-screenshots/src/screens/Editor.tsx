@@ -6,6 +6,7 @@ import { Inspector } from '../components/studio/Inspector';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
 import { ScreenshotSidebar } from '../components/studio/ScreenshotSidebar';
 import { useStudio } from '../state/studio';
+import { useHighlight } from '../state/highlight';
 import { useEnhance } from '../lib/useEnhance';
 import { useKeyGate } from '../state/keyGate';
 import { getPreset } from '../lib/presets';
@@ -24,6 +25,10 @@ export function EditorScreen() {
     viewMode,
     setViewMode,
   } = useStudio();
+
+  // Pulse the main canvas when an agent edit touches the active slot (matches
+  // the sidebar-row flash so the user sees the change land on the big preview).
+  const activeFlashing = useHighlight((s) => (activeScreenshotId ? s.ids.has(activeScreenshotId) : false));
 
   const canvasWrapRef = useRef<HTMLDivElement>(null);
   const [fit, setFit] = useState<{ w: number; h: number } | null>(null);
@@ -360,7 +365,16 @@ export function EditorScreen() {
             </div>
           )}
 
-          {active && fit && <MockupCanvas screenshot={active} device={active.device ?? 'iphone'} fitWidth={fit.w} fitHeight={fit.h} />}
+          {active && fit && (
+            <div
+              data-agent-target={active.id}
+              data-agent-canvas=""
+              className={activeFlashing ? 'aso-flash' : ''}
+              style={{ borderRadius: 8 }}
+            >
+              <MockupCanvas screenshot={active} device={active.device ?? 'iphone'} fitWidth={fit.w} fitHeight={fit.h} />
+            </div>
+          )}
 
           {/* Loader overlay during AI enhancement — covers the canvas with a pulsing
               backdrop so the user knows something's happening. */}

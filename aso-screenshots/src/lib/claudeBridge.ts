@@ -21,7 +21,23 @@
 
 import { useStudio, type Screenshot, type ActionData, type HeroIngredients } from '../state/studio';
 import { PRESETS, getPreset } from './presets';
-import { saveScreenshotBlob } from './screenshotStore';
+import { saveScreenshotBlob, saveScreenshotBgBlob, deleteScreenshotBgBlob } from './screenshotStore';
+import { useHighlight } from '../state/highlight';
+import { pushStateNow } from './stateSync';
+
+/** Visually announce an agent edit: pulse the affected slot(s) (yellow/purple
+ *  `aso-flash`) AND jump the editor canvas to the first one, so the user sees
+ *  every action happen live — same idea as aso-video's flashing nodes. */
+function flashAndSelect(ids: string[], select = true): void {
+  if (!ids.length) return;
+  try {
+    useHighlight.getState().flash(ids);
+    const st = useStudio.getState() as unknown as { setActiveScreenshot?: (id: string) => void };
+    if (select && typeof st.setActiveScreenshot === 'function') st.setActiveScreenshot(ids[0]);
+  } catch {
+    /* never let UX feedback break a write */
+  }
+}
 
 export interface ClaudeSlotSnapshot {
   /** Stable id used by applyPlan / applyHeadlines. */
@@ -206,6 +222,7 @@ function applyPlan(plan: Plan): {
 
   let slotsUpdated = 0;
   const unmatched: number[] = [];
+  const touched: string[] = [];
 
   for (const u of plan.slots ?? []) {
     const target =
@@ -289,9 +306,11 @@ function applyPlan(plan: Plan): {
     if (Object.keys(patch).length) {
       st.updateScreenshot(target.id, patch);
       slotsUpdated++;
+      touched.push(target.id);
     }
   }
 
+  flashAndSelect(touched);
   return { appUpdated, slotsUpdated, unmatchedIndices: unmatched };
 }
 
@@ -320,10 +339,80 @@ async function uploadScreenshot(
     st.updateScreenshot(target.id, { sourceUrl: url, filename });
     // Persist so blob survives reload (zustand only stores metadata).
     await saveScreenshotBlob(target.id, blob, filename);
+    flashAndSelect([target.id]);
     return { ok: true, sourceUrl: url };
   } catch (e) {
     return { ok: false, error: (e as Error).message };
   }
+}
+
+/** Set a full-bleed background IMAGE on a slot (photographic cover frame, e.g.
+ *  first/last screenshot). Accepts data URI / blob: / http(s) URL. Persisted to
+ *  IDB so it survives reload. */
+async function setBackgroundImage(
+  slotIdOrIndex: string | number,
+  src: string,
+  filename = 'background.png',
+): Promise<{ ok: boolean; error?: string; bgImageUrl?: string }> {
+  const st = useStudio.getState();
+  const target =
+    typeof slotIdOrIndex === 'string'
+      ? st.screenshots.find((s) => s.id === slotIdOrIndex)
+      : st.screenshots[slotIdOrIndex];
+  if (!target) return { ok: false, error: 'slot not found' };
+  try {
+    const blob = await fetchToBlob(src);
+    const url = URL.createObjectURL(blob);
+    st.updateScreenshot(target.id, { bgImageUrl: url });
+    await saveScreenshotBgBlob(target.id, blob, filename);
+    flashAndSelect([target.id]);
+    return { ok: true, bgImageUrl: url };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
+/** Remove a slot's full-bleed background image (falls back to preset/override bg). */
+function clearBackgroundImage(slotIdOrIndex: string | number): { ok: boolean; error?: string } {
+  const st = useStudio.getState();
+  const target =
+    typeof slotIdOrIndex === 'string'
+      ? st.screenshots.find((s) => s.id === slotIdOrIndex)
+      : st.screenshots[slotIdOrIndex];
+  if (!target) return { ok: false, error: 'slot not found' };
+  st.updateScreenshot(target.id, { bgImageUrl: null });
+  void deleteScreenshotBgBlob(target.id);
+  flashAndSelect([target.id]);
+  return { ok: true };
+}
+
+/** Set the small bottom microcopy line on a slot (e.g. "+ invite your partner
+ *  — free"). Pass '' to clear. Words wrapped in *asterisks* render in the
+ *  headline accent color. */
+function setFooter(slotIdOrIndex: string | number, text: string): { ok: boolean; error?: string } {
+  const st = useStudio.getState();
+  const target =
+    typeof slotIdOrIndex === 'string'
+      ? st.screenshots.find((s) => s.id === slotIdOrIndex)
+      : st.screenshots[slotIdOrIndex];
+  if (!target) return { ok: false, error: 'slot not found' };
+  st.updateScreenshot(target.id, { footer: text });
+  flashAndSelect([target.id]);
+  return { ok: true };
+}
+
+/** Set the accent color used for *asterisk-wrapped* words in this slot's
+ *  headline + footer. Pass null to fall back to the preset's suggestedAccent. */
+function setHeadlineAccent(slotIdOrIndex: string | number, color: string | null): { ok: boolean; error?: string } {
+  const st = useStudio.getState();
+  const target =
+    typeof slotIdOrIndex === 'string'
+      ? st.screenshots.find((s) => s.id === slotIdOrIndex)
+      : st.screenshots[slotIdOrIndex];
+  if (!target) return { ok: false, error: 'slot not found' };
+  st.updateScreenshot(target.id, { headlineAccent: color ?? undefined });
+  flashAndSelect([target.id]);
+  return { ok: true };
 }
 
 /** Set the project-level app icon (used by the "App icon" hero ingredient). */
@@ -343,11 +432,59 @@ async function setAppIcon(src: string | null): Promise<{ ok: boolean; error?: st
   }
 }
 
+/** Drive the wizard step (Setup → Style → Editor → AI Polish → Locales →
+ *  Export) in every open tab, so the user watches me move through the flow.
+ *  Pass a route like '/catalog' or '/editor'. */
+function goTo(route: string): { ok: boolean } {
+  (useStudio.setState as (p: Record<string, unknown>) => void)({ agentNav: route });
+  void pushStateNow();
+  return { ok: true };
+}
+
+/** Start a FRESH project with a chosen device scheme — the clean way for an
+ *  agent to begin. Optionally archives the current draft into Recent first
+ *  (so finished work isn't lost), then resets everything and applies the new
+ *  app metadata + device targets. Forces an immediate server push so a reload
+ *  can't resurrect the old active draft. */
+function startProject(opts: {
+  devices?: 'iphone' | 'ipad' | 'both';
+  appName?: string;
+  appColor?: string;
+  outputFolder?: string;
+  /** When true and the current draft has slots, archive it to Recent before resetting. */
+  archiveCurrent?: boolean;
+} = {}): { ok: boolean; archivedId?: string } {
+  const st = useStudio.getState();
+  let archivedId: string | undefined;
+  if (opts.archiveCurrent && st.screenshots.length > 0) {
+    archivedId = st.archiveCurrentProject(); // also resets to projectInitial
+  } else {
+    st.startNewProject();
+  }
+  const proj: Record<string, unknown> = {};
+  if (opts.devices !== undefined) proj.devices = opts.devices;
+  if (opts.appName !== undefined) proj.appName = opts.appName;
+  if (opts.appColor !== undefined) proj.appColor = opts.appColor;
+  if (opts.outputFolder !== undefined) proj.outputFolder = opts.outputFolder;
+  if (Object.keys(proj).length) useStudio.getState().setProject(proj as never);
+  void pushStateNow();
+  return { ok: true, archivedId };
+}
+
+/** Finish the current project: archive a copy into Recent AND reset the active
+ *  draft, then force-persist so it only lives in Recent (no lingering draft). */
+function archiveAndReset(): { ok: boolean; archivedId: string } {
+  const id = useStudio.getState().archiveCurrentProject();
+  void pushStateNow();
+  return { ok: true, archivedId: id };
+}
+
 function pickPreset(id: string): { ok: boolean; error?: string } {
   if (!PRESETS.some((p) => p.id === id)) {
     return { ok: false, error: `Unknown preset id "${id}"` };
   }
   useStudio.getState().pickPreset(id);
+  flashAndSelect(useStudio.getState().screenshots.map((s) => s.id));
   return { ok: true };
 }
 
@@ -376,6 +513,7 @@ function patchSlot(id: string, patch: Partial<Screenshot>): { ok: boolean; error
   const st = useStudio.getState();
   if (!st.screenshots.some((s) => s.id === id)) return { ok: false, error: 'slot not found' };
   st.updateScreenshot(id, patch);
+  flashAndSelect([id]);
   return { ok: true };
 }
 
@@ -394,12 +532,27 @@ export const claudeStudioApi = {
   getSelectedPresetId,
   /** WRITE — single bulk call. Most agents only need this. */
   applyPlan,
+  /** WRITE — drive the wizard step in every tab (e.g. '/catalog', '/editor'). */
+  goTo,
+  /** WRITE — start a fresh project with a device scheme (iphone/ipad/both);
+   *  optionally archive the current draft first. */
+  startProject,
+  /** WRITE — finish: archive current project to Recent + reset active draft. */
+  archiveAndReset,
   /** WRITE — pick a preset (use this when getState().presetId is null). */
   pickPreset,
   /** WRITE — set the project-level app icon (data URI or any URL the browser can fetch). */
   setAppIcon,
   /** WRITE — upload a screenshot into a specific slot (data URI / blob URL / http URL). */
   uploadScreenshot,
+  /** WRITE — set a full-bleed background image on a slot (cover frame). */
+  setBackgroundImage,
+  /** WRITE — clear a slot's background image. */
+  clearBackgroundImage,
+  /** WRITE — small bottom microcopy line on a slot (e.g. "+ invite your partner"). */
+  setFooter,
+  /** WRITE — accent color for *asterisk-wrapped* words in headline + footer. */
+  setHeadlineAccent,
   /** READ — full Zustand state as plain JSON (no methods). Heavier than getState(). */
   dump,
   /** WRITE — surgical patch on one screenshot by id. */

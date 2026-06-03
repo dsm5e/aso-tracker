@@ -4,6 +4,7 @@ import { CheckCircle2, FolderOpen, AlertCircle, Loader2, StopCircle, FolderSearc
 import { Button, Card, Input } from '../components/shared';
 import { useStudio } from '../state/studio';
 import { renderAll, pickOutputFolder, type RenderFailure } from '../lib/exportRender';
+import { pushStateNow } from '../lib/stateSync';
 
 /**
  * Phase 7 placeholder + project archive flow. Real PNG render via Playwright
@@ -109,6 +110,7 @@ export function ExportScreen() {
     const summary = `${res.rendered} PNG${res.rendered === 1 ? '' : 's'} saved to ${outputFolder}/${appSlug}/images/ (iPhone) and /images-ipad/ (iPad).`;
     if (window.confirm(`${summary}\n\nЗавершить проект и сохранить в Recent?`)) {
       archiveCurrentProject();
+      void pushStateNow(); // persist the reset immediately so no stale active draft lingers
       setArchived(true);
       setTimeout(() => nav('/setup'), 1500);
     }
@@ -117,6 +119,7 @@ export function ExportScreen() {
   const onFinishNow = () => {
     if (!renderResult || renderResult.rendered === 0) return;
     archiveCurrentProject();
+    void pushStateNow(); // persist the reset immediately so no stale active draft lingers
     setArchived(true);
     setTimeout(() => nav('/setup'), 1500);
   };

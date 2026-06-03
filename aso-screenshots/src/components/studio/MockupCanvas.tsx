@@ -16,9 +16,25 @@ const CANVAS_DIMS = {
 /** Renders text at `initialPx`, then shrinks the font until the block fits
  *  within ~3 lines (maxH = initialPx × 3.2). Words wrap naturally first;
  *  font reduction kicks in only when wrapping alone isn't enough. */
-function FitTitle({ text, initialPx, style }: { text: string; initialPx: number; style?: CSSProperties }) {
+/** Render a headline string, coloring any *asterisk-wrapped* run with the
+ *  accent color (amma / HiMommy formula: one emotional word recolored). */
+function renderAccented(text: string, accentColor?: string) {
+  if (!accentColor || !text.includes('*')) return text;
+  // Split on *...* keeping the captured group; odd indices are accented.
+  return text.split(/\*([^*]+)\*/g).map((seg, i) =>
+    i % 2 === 1 ? (
+      <span key={i} style={{ color: accentColor }}>{seg}</span>
+    ) : (
+      seg
+    )
+  );
+}
+
+function FitTitle({ text, initialPx, style, accentColor }: { text: string; initialPx: number; style?: CSSProperties; accentColor?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const sizeRef = useRef(initialPx);
+  // Plain text (markers stripped) drives the fit measurement / effect deps.
+  const plain = text.replace(/\*/g, '');
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -33,11 +49,11 @@ function FitTitle({ text, initialPx, style }: { text: string; initialPx: number;
       el.style.fontSize = `${size}px`;
     }
     sizeRef.current = size;
-  }, [text, initialPx]);
+  }, [plain, initialPx]);
 
   return (
     <div ref={ref} style={{ ...style, fontSize: sizeRef.current }}>
-      {text}
+      {renderAccented(text, accentColor)}
     </div>
   );
 }
@@ -100,7 +116,7 @@ interface Props {
 export function MockupCanvas({ screenshot: ss, device = 'iphone', fitWidth, fitHeight, showDropZone = true, viewModeOverride, localeMeta, editable, deviceBaseTitlePx, deviceBaseSubPx, showTextBoundary }: Props) {
   const CANVAS_W = CANVAS_DIMS[device].w;
   const CANVAS_H = CANVAS_DIMS[device].h;
-  const { updateScreenshot, appColor, viewMode: globalViewMode } = useStudio();
+  const { updateScreenshot, appColor, appIconUrl, viewMode: globalViewMode } = useStudio();
   const viewMode = viewModeOverride ?? globalViewMode;
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -255,6 +271,27 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', fitWidth, fitH
           position: 'relative',
         }}
       >
+        {/* Full-bleed background image — bottom-most layer (under parametric bg,
+            AI hero, device and text). Used for photographic cover frames
+            (e.g. first/last App Store screenshots). Set via the agent bridge. */}
+        {ss.bgImageUrl && (
+          <img
+            key={ss.bgImageUrl}
+            src={ss.bgImageUrl}
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+              zIndex: 0,
+              pointerEvents: 'none',
+            }}
+          />
+        )}
         {parametricPalette && (
           <MountainBackground palette={parametricPalette} width={CANVAS_W} height={CANVAS_H} />
         )}
@@ -383,6 +420,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', fitWidth, fitH
           <FitTitle
             text={verbDisplay}
             initialPx={titlePx}
+            accentColor={ss.headlineAccent ?? preset?.suggestedAccent}
             style={{
               fontWeight: textWeight,
               lineHeight: 1.02,
@@ -405,10 +443,54 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', fitWidth, fitH
                 wordBreak: 'normal',
               }}
             >
-              {descDisplay}
+              {renderAccented(descDisplay, ss.headlineAccent ?? preset?.suggestedAccent)}
             </div>
           )}
+          {ss.showAppIcon && appIconUrl && (
+            <img
+              src={appIconUrl}
+              alt=""
+              style={{
+                display: 'block',
+                width: Math.round(titlePx * 2.3),
+                height: Math.round(titlePx * 2.3),
+                borderRadius: Math.round(titlePx * 2.3 * 0.225),
+                marginTop: Math.round(titlePx * 0.5),
+                // Honor headline alignment: left-aligned headline → icon on the left.
+                marginLeft: textAlign === 'center' ? 'auto' : 0,
+                marginRight: textAlign === 'center' ? 'auto' : (textAlign === 'right' ? 0 : 'auto'),
+                boxShadow: '0 8px 28px rgba(0,0,0,0.12)',
+              }}
+            />
+          )}
         </div>
+
+        {/* Footer microcopy — small line pinned to the bottom of the canvas.
+            Drawn as its own overlay so it survives AI enhance (text layered on
+            top) and stays out of the headline block. Competitor formula. */}
+        {ss.footer && (
+          <div
+            data-capture-omit="text-overlay"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: Math.round(CANVAS_H * 0.035),
+              padding: '0 60px',
+              textAlign,
+              fontFamily: `"${textFont}", Inter, sans-serif`,
+              color: textColor,
+              fontWeight: 600,
+              fontSize: Math.round((subPx || 100) * 0.62),
+              opacity: 0.72,
+              letterSpacing: '-0.005em',
+              direction: textDir,
+              pointerEvents: 'none',
+            }}
+          >
+            {renderAccented(ss.footer, ss.headlineAccent ?? preset?.suggestedAccent)}
+          </div>
+        )}
 
         {/* Social proof больше не рендерится HTML-ом на scaffold — теперь это
             ингредиент в Inspector → AI запекает его в финальный enhance render. */}

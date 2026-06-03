@@ -143,6 +143,25 @@ export function buildHeroPrompt(b: HeroGenerateBody): string {
     .join('\n\n');
 }
 
+/** Cover / full-bleed hero (hideDevice) — a calm, CONSERVATIVE enhance of the
+ *  photographic background the user already placed. No phone, no added objects:
+ *  we only refine what's there. This is the sensible DEFAULT for action slots
+ *  with hideDevice and no custom prompt, so "Generate" just polishes the hero
+ *  without inventing random decorations. */
+export function buildCoverEnhancePrompt(b: HeroGenerateBody): string {
+  const zone = b.headlineZone ?? 'top';
+  const pct = b.headlinePct ?? 25;
+  return [
+    `Gently enhance this full-bleed App Store cover for "${b.appName}". It is a single photographic background image with a short headline overlaid afterwards — there is NO phone in this frame.`,
+    b.themeHint ? `App theme: ${b.themeHint}.` : '',
+    `Keep the existing subject, composition, framing and colour palette EXACTLY as in the input (dominant hue ${b.effectiveBackground} — do not shift it). This is a subtle photo polish, not a redesign.`,
+    `Allowed: refine lighting and softness, add gentle depth and smooth bokeh, clean up noise, harmonise the gradient, a faint tasteful glow. Calm, premium, minimal.`,
+    `STRICTLY DO NOT add any new objects, characters, people, hands, props, icons, shapes, particles, sparkles, text or decorations. No new elements whatsoever — only improve what is already there.`,
+    `Keep the ${zone} ${pct}% of the canvas clean and uncluttered for the overlaid headline (no baked text there).`,
+    `Quality: ultra-sharp, natural realistic lighting, soft and elegant.`,
+  ].filter(Boolean).join('\n\n');
+}
+
 /** Regular-slot polish — minimal, subtle. The scaffold layout, palette, phone
  *  position and inner UI all stay; we only upgrade the iPhone shell to
  *  photoreal and add at most ONE small feature callout to highlight a key UI
@@ -224,7 +243,11 @@ export async function heroGenerate(req: Request, res: Response) {
     );
     let prompt = customPromptRaw
       ? interpolated
-      : body.kind === 'polish' ? buildPolishPrompt(body) : buildHeroPrompt(body);
+      : body.kind === 'polish'
+        ? buildPolishPrompt(body)
+        : body.hideDevice
+          ? buildCoverEnhancePrompt(body) // full-bleed cover hero → subtle photo polish, no added objects
+          : buildHeroPrompt(body);
 
     // Safety net for the custom-prompt branch: if the user edited the textarea
     // and accidentally stripped {extraPromptBlock}, ingredients would silently

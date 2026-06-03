@@ -12,6 +12,11 @@ import { getKey } from '../lib/keys.js';
  *  AND a server restart (queue.submit returns a request_id we can resume). */
 const STATE_FILE = join(homedir(), '.aso-studio', 'state.json');
 const FAL_ENDPOINT = 'openai/gpt-image-2/edit' as const;
+/** Sentinel strategyId routing a generation to iconLab.variants[screenId]
+ *  (screenId carries the variant id) instead of a PPO strategy — lets the Icon
+ *  Generator reuse the whole poller / resume / persist machinery with no
+ *  parallel code path. */
+const ICON_LAB_ID = '__iconlab__';
 const POLL_INTERVAL_MS = 4000;
 const MAX_POLL_MS = 5 * 60 * 1000; // 5 minutes — fal usually finishes in 25-35s
 
@@ -38,14 +43,21 @@ function persistPPOResult(strategyId: string, screenId: string, patch: PPOGenera
           generations?: Record<string, Record<string, unknown>>;
         }>;
       };
+      iconLab?: {
+        variants?: Array<{ id: string; generation?: Record<string, unknown> }>;
+      };
     };
-    const strategy = state.ppo?.strategies?.find((s) => s.id === strategyId);
-    if (!strategy) {
-      console.warn('[ppo] persist: strategy not found', strategyId);
+    // Icon Generator path — screenId is the variant id, write to its generation.
+    const isIcon = strategyId === ICON_LAB_ID;
+    const variant = isIcon ? state.iconLab?.variants?.find((v) => v.id === screenId) : undefined;
+    const strategy = isIcon ? undefined : state.ppo?.strategies?.find((s) => s.id === strategyId);
+    if (isIcon ? !variant : !strategy) {
+      console.warn('[ppo] persist: target not found', strategyId, screenId);
       return;
     }
-    const gens = strategy.generations ?? {};
-    const prev = (gens[screenId] as Record<string, unknown> | undefined) ?? {};
+    const prev: Record<string, unknown> = isIcon
+      ? (variant!.generation ?? {})
+      : ((strategy!.generations ?? {})[screenId] as Record<string, unknown> | undefined) ?? {};
     const next: Record<string, unknown> = { ...prev };
     if (patch.aiImageUrl !== undefined) next.aiImageUrl = patch.aiImageUrl;
     if (patch.lastPrompt !== undefined) next.lastPrompt = patch.lastPrompt;
@@ -67,8 +79,13 @@ function persistPPOResult(strategyId: string, screenId: string, patch: PPOGenera
       const prevHist = (prev.aiHistory as string[] | undefined) ?? [];
       next.aiHistory = [...prevHist, patch.appendHistoryUrl].slice(-8);
     }
-    gens[screenId] = next;
-    strategy.generations = gens;
+    if (isIcon) {
+      variant!.generation = next;
+    } else {
+      const gens = strategy!.generations ?? {};
+      gens[screenId] = next;
+      strategy!.generations = gens;
+    }
     writeFileSync(STATE_FILE, JSON.stringify(state));
   } catch (e) {
     console.warn('[ppo] persist failed:', (e as Error).message);
@@ -213,18 +230,22 @@ export async function ppoGenerate(req: Request, res: Response): Promise<void> {
     prompt?: string;
     inputDataUri?: string;
     device?: 'iphone' | 'ipad';
+    kind?: 'screen' | 'icon';
   };
   if (!body.strategyId || !body.screenId || !body.prompt || !body.inputDataUri) {
     res.status(400).json({ error: 'strategyId, screenId, prompt, inputDataUri required' });
     return;
   }
   const { strategyId, screenId } = body;
+  const isIcon = body.kind === 'icon';
   const device = body.device ?? 'iphone';
-  // System device directive — always prepended so the correct frame is enforced
-  // for the target device regardless of the per-tile prompt text. (iPad sources
-  // kept rendering as phones when a prompt didn't explicitly say so.)
-  const deviceDirective =
-    device === 'ipad'
+  // System directive — always prepended so the output shape is enforced
+  // regardless of the per-tile prompt text. Icon → square iOS app icon; screen
+  // → the correct device frame. (iPad sources kept rendering as phones when a
+  // prompt didn't explicitly say so.)
+  const deviceDirective = isIcon
+    ? 'Produce a 1024×1024 SQUARE iOS app icon. Fill the entire square edge-to-edge (full-bleed) — iOS applies the rounded-corner mask itself, so do NOT draw rounded corners, a circle, padding, drop shadow, or any transparency. No text unless the prompt explicitly asks for it. Keep the subject centered and crisp. '
+    : device === 'ipad'
       ? 'IMPORTANT — render the app screenshot inside a realistic Apple iPad (tablet) device frame, portrait, ~3:4 aspect ratio. It is a TABLET, NOT a phone — do not draw a narrow phone. '
       : 'Render the app screenshot inside a realistic iPhone device frame, tall ~9:19.5 aspect ratio. ';
   const prompt = deviceDirective + body.prompt;
@@ -268,7 +289,11 @@ export async function ppoGenerate(req: Request, res: Response): Promise<void> {
   const falInput = {
     prompt,
     image_urls: [sourceUrl],
-    image_size: device === 'ipad' ? { width: 768, height: 1024 } : { width: 768, height: 1664 },
+    image_size: isIcon
+      ? { width: 1024, height: 1024 }
+      : device === 'ipad'
+        ? { width: 768, height: 1024 }
+        : { width: 768, height: 1664 },
     quality: 'medium',
     output_format: 'png',
     num_images: 1,
@@ -340,6 +365,7 @@ export async function ppoProxyImage(req: Request, res: Response): Promise<void> 
   const ASC_DIMS: Record<string, { width: number; height: number }> = {
     'appstore-iphone': { width: 1290, height: 2796 },
     'appstore-ipad': { width: 2064, height: 2752 },
+    'appstore-icon': { width: 1024, height: 1024 },
   };
   const ascTarget = ASC_DIMS[exportSize] ?? null;
 
@@ -395,21 +421,15 @@ export async function ppoResumeAll(): Promise<void> {
   } catch {
     return;
   }
+  type Gen = {
+    generateState?: string;
+    requestId?: string;
+    requestEndpoint?: string;
+    requestStartedAt?: string;
+  };
   let state: {
-    ppo?: {
-      strategies?: Array<{
-        id: string;
-        generations?: Record<
-          string,
-          {
-            generateState?: string;
-            requestId?: string;
-            requestEndpoint?: string;
-            requestStartedAt?: string;
-          }
-        >;
-      }>;
-    };
+    ppo?: { strategies?: Array<{ id: string; generations?: Record<string, Gen> }> };
+    iconLab?: { variants?: Array<{ id: string; generation?: Gen }> };
   };
   try {
     state = JSON.parse(raw);
@@ -417,7 +437,8 @@ export async function ppoResumeAll(): Promise<void> {
     return;
   }
   const strategies = state.ppo?.strategies ?? [];
-  if (strategies.length === 0) return;
+  const iconVariants = state.iconLab?.variants ?? [];
+  if (strategies.length === 0 && iconVariants.length === 0) return;
 
   let key: string;
   try {
@@ -430,25 +451,28 @@ export async function ppoResumeAll(): Promise<void> {
 
   let resumed = 0;
   let stranded = 0;
+  // Shared resume logic for one (strategyId, screenId) → generation slot.
+  const resumeOne = (strategyId: string, screenId: string, g: Gen | undefined): void => {
+    if (!g || g.generateState !== 'generating') return;
+    if (g.requestId && g.requestEndpoint) {
+      const startedAtMs = g.requestStartedAt ? Date.parse(g.requestStartedAt) : Date.now();
+      void pollPPORequest(strategyId, screenId, g.requestEndpoint, g.requestId, startedAtMs);
+      resumed += 1;
+    } else {
+      // Pre-submit crash — no requestId stored, can't recover. Mark stranded.
+      persistPPOResult(strategyId, screenId, {
+        generateState: 'error',
+        errorMessage: 'interrupted before fal submission — click Generate again',
+      });
+      stranded += 1;
+    }
+  };
   for (const strategy of strategies) {
     const gens = strategy.generations ?? {};
-    for (const screenId of Object.keys(gens)) {
-      const g = gens[screenId];
-      if (g.generateState !== 'generating') continue;
-      if (g.requestId && g.requestEndpoint) {
-        const startedAtMs = g.requestStartedAt ? Date.parse(g.requestStartedAt) : Date.now();
-        void pollPPORequest(strategy.id, screenId, g.requestEndpoint, g.requestId, startedAtMs);
-        resumed += 1;
-      } else {
-        // Pre-submit crash — no requestId stored, can't recover. Mark stranded.
-        persistPPOResult(strategy.id, screenId, {
-          generateState: 'error',
-          errorMessage: 'interrupted before fal submission — click Generate again',
-        });
-        stranded += 1;
-      }
-    }
+    for (const screenId of Object.keys(gens)) resumeOne(strategy.id, screenId, gens[screenId]);
   }
+  // Icon Generator variants — routed via the ICON_LAB_ID sentinel strategyId.
+  for (const v of iconVariants) resumeOne(ICON_LAB_ID, v.id, v.generation);
   if (resumed > 0 || stranded > 0) {
     console.log(`[ppo] boot recovery: resumed=${resumed} stranded=${stranded}`);
   }

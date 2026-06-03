@@ -4,7 +4,7 @@ import { App } from './App';
 import './lib/clog'; // installs window error/rejection forwarders → /api/client-log
 import './lib/claudeBridge'; // exposes window.asoStudio for Claude Code agents
 import { loadPresetFonts } from './lib/fontLoader';
-import { loadScreenshotBlob } from './lib/screenshotStore';
+import { loadScreenshotBlob, loadScreenshotBgBlob } from './lib/screenshotStore';
 import { useStudio } from './state/studio';
 import { startStudioStateSync } from './lib/stateSync';
 import './styles/tokens.css';
@@ -32,6 +32,16 @@ async function rehydrateScreenshotBlobs() {
       }
     } catch {
       if (s.sourceUrl?.startsWith('blob:')) updateScreenshot(s.id, { sourceUrl: null });
+    }
+    // Same for the full-bleed background image (separate IDB key).
+    try {
+      if (!s.bgImageUrl || s.bgImageUrl.startsWith('blob:')) {
+        const bg = await loadScreenshotBgBlob(s.id);
+        if (bg) updateScreenshot(s.id, { bgImageUrl: URL.createObjectURL(bg.blob) });
+        else if (s.bgImageUrl?.startsWith('blob:')) updateScreenshot(s.id, { bgImageUrl: null });
+      }
+    } catch {
+      if (s.bgImageUrl?.startsWith('blob:')) updateScreenshot(s.id, { bgImageUrl: null });
     }
   }
 }

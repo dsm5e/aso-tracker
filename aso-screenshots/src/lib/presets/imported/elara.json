@@ -1,0 +1,32 @@
+{
+  "id": "elara",
+  "name": "Elara Blush",
+  "kind": "real",
+  "description": "Soft blush background, warm dark headline aligned left, calm premium pregnancy aesthetic. First/last slots are full-bleed photographic covers.",
+  "recommendedFor": "pregnancy / wellness / lifestyle",
+  "background": {
+    "type": "solid",
+    "css": "#FEEBE7"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 800,
+    "color": "#2C2C2C",
+    "uppercase": false,
+    "align": "left"
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "decorationsHint": "minimal, soft, warm — keep the blush background clean; gentle living animation, no clinical UI, no 3D.",
+  "samples": [
+    { "verb": "The most beautiful way to be pregnant", "descriptor": "Follow your baby, week by week", "device": { "scale": 0.95 }, "text": { "yFraction": 0.06, "titlePx": 132, "subPx": 60 } },
+    { "verb": "Dad lives it with you", "descriptor": "Joins with a code — no sign-up", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
+    { "verb": "50+ weekly ways to spoil you", "descriptor": "Flowers, a massage, a date night", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
+    { "verb": "Leave a wish, he makes it real", "descriptor": "Your shared wishlist", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
+    { "verb": "Meet your baby, week by week", "descriptor": "As big as a peach today", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
+    { "verb": "A calm daily ritual", "descriptor": "Journal, mood & belly photos", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
+    { "verb": "Everything you need, right here", "descriptor": "Kicks, contractions & Health", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
+    { "verb": "Your most beautiful months — together", "descriptor": "", "device": { "scale": 0.95 }, "text": { "yFraction": 0.06, "titlePx": 132, "subPx": 60 } }
+  ]
+}

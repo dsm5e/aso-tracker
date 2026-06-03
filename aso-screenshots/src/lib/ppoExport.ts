@@ -143,7 +143,7 @@ export async function exportStrategy(
   const devSuffix = deviceFilter ? `-${deviceFilter}` : '-all';
   const blob = await zip.generateAsync({ type: 'blob' });
   triggerDownload(blob, `${appSlug}-${stratSlug}${devSuffix}.zip`);
-  onProgress?.({ phase: 'done', done: items.length, total: items.length });
+  onProgress?.({ phase: 'done', done: files.length, total: files.length });
 }
 
 /** Build a master ZIP with a subfolder per strategy. Strategies with zero
@@ -203,4 +203,85 @@ export async function exportAllStrategies(onProgress?: ExportProgressFn): Promis
   triggerDownload(blob, `${appSlug}-ppo-treatments.zip`);
   onProgress?.({ phase: 'done', done: jobs.length - failed, total: jobs.length });
   console.log(`[ppo-export] master zip: ${jobs.length - failed} files (${failed} failed)`);
+}
+
+// MARK: - Icon Generator exports
+
+/** Download a single rendered icon variant as a 1024×1024 PNG. Goes through the
+ *  server proxy with exportSize=appstore-icon so the fal output is normalised to
+ *  exactly 1024×1024 (what an iOS app icon asset expects). */
+export async function downloadIcon(variantId: string, onProgress?: ExportProgressFn): Promise<void> {
+  const state = useStudio.getState();
+  const variant = state.iconLab?.variants.find((v) => v.id === variantId);
+  const url = variant?.generation.aiImageUrl;
+  if (!variant || !url || variant.generation.generateState !== 'done') {
+    alert('Generate the icon first.');
+    return;
+  }
+  onProgress?.({ phase: 'fetching', done: 0, total: 1 });
+  try {
+    const proxyUrl = `${API_BASE}/ppo/proxy-image?url=${encodeURIComponent(url)}&exportSize=appstore-icon`;
+    const r = await fetch(proxyUrl);
+    if (!r.ok) throw new Error(`proxy ${r.status}`);
+    const blob = await r.blob();
+    onProgress?.({ phase: 'zipping', done: 1, total: 1 });
+    const appSlug = slug(state.appName || 'app');
+    triggerDownload(blob, `${appSlug}-icon-${slug(variant.title)}.png`);
+  } catch (e) {
+    alert(`Icon download failed: ${(e as Error).message}`);
+  } finally {
+    onProgress?.({ phase: 'done', done: 1, total: 1 });
+  }
+}
+
+/** Build a ZIP of every rendered icon variant (1024×1024 PNGs). */
+export async function exportAllIcons(onProgress?: ExportProgressFn): Promise<void> {
+  const state = useStudio.getState();
+  const variants = (state.iconLab?.variants ?? []).filter(
+    (v) => v.generation.generateState === 'done' && v.generation.aiImageUrl,
+  );
+  if (variants.length === 0) {
+    alert('No rendered icons yet — generate at least one first.');
+    return;
+  }
+
+  let fetched = 0;
+  let failed = 0;
+  onProgress?.({ phase: 'fetching', done: 0, total: variants.length });
+  const zip = new JSZip();
+  // Dedupe filenames if two variants share a title.
+  const used = new Set<string>();
+  await Promise.all(
+    variants.map(async (v) => {
+      try {
+        const proxyUrl = `${API_BASE}/ppo/proxy-image?url=${encodeURIComponent(v.generation.aiImageUrl!)}&exportSize=appstore-icon`;
+        const r = await fetch(proxyUrl);
+        if (!r.ok) throw new Error(`proxy ${r.status}`);
+        const blob = await r.blob();
+        let name = `${slug(v.title)}.png`;
+        let n = 2;
+        while (used.has(name)) name = `${slug(v.title)}-${n++}.png`;
+        used.add(name);
+        zip.file(name, blob);
+      } catch (e) {
+        failed += 1;
+        console.warn(`[icon-export] skip "${v.title}":`, (e as Error).message);
+      } finally {
+        fetched += 1;
+        onProgress?.({ phase: 'fetching', done: fetched, total: variants.length });
+      }
+    }),
+  );
+
+  if (failed === variants.length) {
+    alert(`All ${variants.length} icon fetches failed — check console / server log.`);
+    onProgress?.({ phase: 'done', done: 0, total: variants.length });
+    return;
+  }
+
+  onProgress?.({ phase: 'zipping', done: variants.length, total: variants.length });
+  const appSlug = slug(state.appName || 'app');
+  const blob = await zip.generateAsync({ type: 'blob' });
+  triggerDownload(blob, `${appSlug}-icons.zip`);
+  onProgress?.({ phase: 'done', done: variants.length - failed, total: variants.length });
 }

@@ -80,7 +80,22 @@ export interface Screenshot {
   presetId: string;
   /** Override the preset's default background (solid color or gradient CSS). null = use preset. */
   backgroundOverride: string | null;
+  /** Full-bleed background IMAGE (object URL / data URI), rendered cover behind
+   *  device + text. null/undefined = none. Persisted to IDB like sourceUrl
+   *  (set via window.asoStudio.setBackgroundImage). */
+  bgImageUrl?: string | null;
   headline: Headline;
+  /** Small microcopy line pinned to the BOTTOM of the canvas (e.g.
+   *  "+ invite your partner — free"). Competitor formula = footer microcopy.
+   *  Empty/undefined = none. */
+  footer?: string;
+  /** Color for an accent word in the headline verb. Words wrapped in
+   *  *asterisks* render in this color (amma/HiMommy formula). Falls back to
+   *  the preset's suggestedAccent when unset. */
+  headlineAccent?: string;
+  /** Render the project app icon (rounded square) directly under the headline,
+   *  aligned with the text. Used on cover frames to brand the hero. */
+  showAppIcon?: boolean;
   font: string;
   fontSize: number;
   tiltDeg: number;
@@ -160,6 +175,12 @@ interface StudioState {
   devices: Devices;
   outputFolder: string;
 
+  /** Agent-driven wizard navigation. When set (via the bridge `goTo` + a state
+   *  push), the AgentNavigator routes every open tab to this path, then clears
+   *  it — lets me drive Setup → Style → Editor → … so the user watches the
+   *  steps switch. Ephemeral. */
+  agentNav: string | null;
+
   // Catalog
   selectedPresetId: string | null;
   catalogFilter: 'all' | 'real' | 'abstract';
@@ -209,6 +230,10 @@ interface StudioState {
    *  Source screens are shared across all strategies; each strategy has its
    *  own per-screen prompt + AI-generated result. See PPO_PLAN.md. */
   ppo?: PPOExperiment;
+
+  /** Icon Generator — standalone A/B app-icon lab (own screen). Independent of
+   *  PPO strategies; each variant is a base image edited into a 1024 icon. */
+  iconLab?: IconLab;
 
   // Mutations
   setProject: (patch: Partial<Pick<StudioState, 'appName' | 'appColor' | 'appIconUrl' | 'devices' | 'outputFolder'>>) => void;
@@ -287,6 +312,23 @@ interface StudioState {
   ppoLoadSession: (id: string) => void;
   /** Drop a saved PPO session. */
   ppoDeleteSession: (id: string) => void;
+
+  // MARK: Icon Generator actions
+  /** Initialize an empty icon lab if not present. Idempotent. */
+  iconLabInit: () => void;
+  /** Add a new icon variant; returns its id. */
+  iconLabAddVariant: (title?: string) => string;
+  /** Remove an icon variant. */
+  iconLabRemoveVariant: (id: string) => void;
+  /** Update a variant's title. */
+  iconLabUpdateVariant: (id: string, patch: Partial<Pick<IconVariant, 'title'>>) => void;
+  /** Set/clear the manually-uploaded base image for a variant. */
+  iconLabSetBase: (id: string, baseUrl: string | undefined) => void;
+  /** Set the prompt that edits the base into the variant icon. */
+  iconLabSetPrompt: (id: string, prompt: string) => void;
+  /** Patch a variant's generation result. */
+  iconLabSetGeneration: (id: string, gen: Partial<PPOGeneration>) => void;
+
   /** Remove an archived project from the list. */
   deleteProject: (id: string) => void;
   /** Duplicate all iPhone slots as iPad slots, switching devices to 'both'. */
@@ -349,6 +391,7 @@ const initial = {
   appIconUrl: null as string | null,
   devices: 'iphone' as Devices,
   outputFolder: '',
+  agentNav: null as string | null,
   selectedPresetId: null,
   catalogFilter: 'all' as const,
   screenshots: [] as Screenshot[],
@@ -387,6 +430,7 @@ const projectInitial = {
   multiSelect: [] as string[],
   loadedFromProjectId: undefined as string | undefined,
   ppo: undefined as PPOExperiment | undefined,
+  iconLab: undefined as IconLab | undefined,
 };
 
 // MARK: - PPO (Product Page Optimization) types
@@ -434,6 +478,29 @@ export interface PPOStrategy {
   prompts: Record<string, string>;
   /** screenId → generation result for THIS strategy on THAT screen. */
   generations: Record<string, PPOGeneration>;
+}
+
+// MARK: - Icon Generator (standalone A/B app-icon lab)
+
+/** One icon A/B variant — a manually-uploaded base image edited by a prompt
+ *  into a 1024×1024 square icon. Lives on its own screen (Icon Generator),
+ *  independent of PPO strategies.
+ *  Note: ASC requires icon variants to ship INSIDE the app binary (alternate
+ *  app icons in the asset catalog) before they can be selected in a PPO icon
+ *  test — this tool just produces the 1024 PNG to add to Xcode. */
+export interface IconVariant {
+  id: string;
+  title: string;
+  /** Manually-uploaded base image (scaled data URL preview). */
+  baseUrl?: string;
+  /** Prompt that edits baseUrl into the variant icon. */
+  prompt: string;
+  /** Generation result (square 1024×1024). */
+  generation: PPOGeneration;
+}
+
+export interface IconLab {
+  variants: IconVariant[];
 }
 
 export interface PPOExperiment {
@@ -1063,6 +1130,58 @@ export const useStudio = create<StudioState>()(
           loadedFromPPOSessionId:
             state.loadedFromPPOSessionId === id ? undefined : state.loadedFromPPOSessionId,
         })),
+
+      // MARK: Icon Generator actions
+      iconLabInit: () =>
+        set((state) => (state.iconLab ? state : { iconLab: { variants: [] } })),
+      iconLabAddVariant: (title) => {
+        const id = newId();
+        set((state) => {
+          const existing = state.iconLab ?? { variants: [] };
+          const fallbackTitle = `Variant ${existing.variants.length + 1}`;
+          const variant: IconVariant = {
+            id,
+            title: title?.trim() || fallbackTitle,
+            prompt: '',
+            generation: { generateState: 'idle' },
+          };
+          return { iconLab: { ...existing, variants: [...existing.variants, variant] } };
+        });
+        return id;
+      },
+      iconLabRemoveVariant: (id) =>
+        set((state) => {
+          if (!state.iconLab) return state;
+          return { iconLab: { ...state.iconLab, variants: state.iconLab.variants.filter((v) => v.id !== id) } };
+        }),
+      iconLabUpdateVariant: (id, patch) =>
+        set((state) => {
+          if (!state.iconLab) return state;
+          const variants = state.iconLab.variants.map((v) => (v.id === id ? { ...v, ...patch } : v));
+          return { iconLab: { ...state.iconLab, variants } };
+        }),
+      iconLabSetBase: (id, baseUrl) =>
+        set((state) => {
+          if (!state.iconLab) return state;
+          const variants = state.iconLab.variants.map((v) => (v.id === id ? { ...v, baseUrl } : v));
+          return { iconLab: { ...state.iconLab, variants } };
+        }),
+      iconLabSetPrompt: (id, prompt) =>
+        set((state) => {
+          if (!state.iconLab) return state;
+          const variants = state.iconLab.variants.map((v) => (v.id === id ? { ...v, prompt } : v));
+          return { iconLab: { ...state.iconLab, variants } };
+        }),
+      iconLabSetGeneration: (id, gen) =>
+        set((state) => {
+          if (!state.iconLab) return state;
+          const variants = state.iconLab.variants.map((v) => {
+            if (v.id !== id) return v;
+            const prev = v.generation ?? { generateState: 'idle' as const };
+            return { ...v, generation: { ...prev, ...gen } };
+          });
+          return { iconLab: { ...state.iconLab, variants } };
+        }),
 
       reset: () => set(initial),
 
