@@ -21,6 +21,7 @@ export interface AppStats {
   weekDelta: { top10: number; top50: number; avg: number; ranked: number };
   winners: Array<{ kw: string; delta: number; from: number; to: number }>;
   losers: Array<{ kw: string; delta: number; from: number; to: number }>;
+  history: { top10: number[]; top50: number[]; unranked: number[]; avg: number[] };
 }
 
 export interface LocaleAvg {

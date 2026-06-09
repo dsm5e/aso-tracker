@@ -21,7 +21,7 @@ app.get('/api/apps', (_req, res) => {
   res.json(getAppsWithStats());
 });
 
-app.post('/api/apps', (req, res) => {
+app.post('/api/apps', async (req, res) => {
   const body = req.body as AppConfig;
   if (!body.id || !body.name || !body.bundle || !body.iTunesId) {
     res.status(400).json({ error: 'id, name, bundle, iTunesId required' });
@@ -31,6 +31,15 @@ app.post('/api/apps', (req, res) => {
   if (apps.some((a) => a.id === body.id)) {
     res.status(409).json({ error: 'app id already exists' });
     return;
+  }
+  // Auto-fetch the real App Store artwork so the icon shows immediately.
+  if (!body.iconUrl) {
+    try {
+      const r = await fetch(`https://itunes.apple.com/lookup?id=${encodeURIComponent(body.iTunesId)}`);
+      const j = (await r.json()) as { results?: Array<{ artworkUrl512?: string; artworkUrl100?: string }> };
+      const art = j.results?.[0];
+      if (art) body.iconUrl = art.artworkUrl512 || art.artworkUrl100?.replace('100x100bb', '512x512bb');
+    } catch {/* ignore — falls back to emoji/gradient */}
   }
   apps.push(body);
   saveApps(apps);

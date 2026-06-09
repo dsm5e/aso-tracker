@@ -21,6 +21,40 @@ export interface AppStats {
   weekDelta: { top10: number; top50: number; avg: number; ranked: number };
   winners: Array<{ kw: string; delta: number; from: number; to: number }>;
   losers: Array<{ kw: string; delta: number; from: number; to: number }>;
+  history: { top10: number[]; top50: number[]; unranked: number[]; avg: number[] };
+}
+
+// Real per-date aggregate history (last 14 snapshot dates) for the Overview
+// sparklines. Empty arrays when the app has no snapshots yet — so the chart
+// renders blank instead of synthetic noise.
+function appHistory(appId: string): AppStats['history'] {
+  const rows = db
+    .prepare(
+      `SELECT s.date AS date, s.position AS position
+         FROM snapshots s
+         JOIN (SELECT date, locale, keyword, MAX(id) AS mid
+                 FROM snapshots WHERE app = ?
+                GROUP BY date, locale, keyword) m ON s.id = m.mid
+        ORDER BY s.date`
+    )
+    .all(appId) as Array<{ date: string; position: number | null }>;
+  const byDate = new Map<string, { t10: number; t50: number; un: number; sum: number; ranked: number }>();
+  for (const r of rows) {
+    let b = byDate.get(r.date);
+    if (!b) { b = { t10: 0, t50: 0, un: 0, sum: 0, ranked: 0 }; byDate.set(r.date, b); }
+    if (r.position && r.position > 0) {
+      b.ranked++; b.sum += r.position;
+      if (r.position <= 10) b.t10++;
+      if (r.position <= 50) b.t50++;
+    } else b.un++;
+  }
+  const dates = Array.from(byDate.keys()).sort().slice(-14);
+  return {
+    top10: dates.map((d) => byDate.get(d)!.t10),
+    top50: dates.map((d) => byDate.get(d)!.t50),
+    unranked: dates.map((d) => byDate.get(d)!.un),
+    avg: dates.map((d) => { const b = byDate.get(d)!; return b.ranked ? +(b.sum / b.ranked).toFixed(1) : 0; }),
+  };
 }
 
 export function getAppsWithStats(): AppStats[] {
@@ -58,6 +92,7 @@ export function getAppsWithStats(): AppStats[] {
         weekDelta: { top10: 0, top50: 0, avg: 0, ranked: 0 },
         winners: [],
         losers: [],
+        history: appHistory(app.id),
       });
       continue;
     }
@@ -169,6 +204,7 @@ export function getAppsWithStats(): AppStats[] {
       },
       winners,
       losers,
+      history: appHistory(app.id),
     });
   }
 
@@ -190,7 +226,6 @@ export interface RankingRow {
 
 export function getRankings(appId: string, localeFilter?: string): RankingRow[] {
   const { d: today } = db.prepare(`SELECT MAX(date) as d FROM snapshots WHERE app = ?`).get(appId) as { d: string | null };
-  if (!today) return [];
 
   const app = loadApps().find((a) => a.id === appId);
   const selfBundle = (app?.bundle || '').toLowerCase();
@@ -220,16 +255,34 @@ export function getRankings(appId: string, localeFilter?: string): RankingRow[] 
   sql += ` ORDER BY s.locale, s.keyword, s.date DESC`;
   const rows = db.prepare(sql).all(...params) as Array<{ locale: string; keyword: string; date: string; position: number | null; top5_json: string }>;
 
-  const ya = new Date(today); ya.setDate(ya.getDate() - 1); const yaStr = ya.toISOString().slice(0,10);
-  const w1 = new Date(today); w1.setDate(w1.getDate() - 7); const w1Str = w1.toISOString().slice(0,10);
-  const w4 = new Date(today); w4.setDate(w4.getDate() - 30); const w4Str = w4.toISOString().slice(0,10);
-
   const bucket = new Map<string, {
     locale: string; keyword: string;
     today: number | null; yesterday: number | null; w1: number | null; w4: number | null;
     top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
     trend: number[];
   }>();
+
+  // Seed with ALL configured keywords so they appear immediately — even before
+  // the first snapshot — with a null position. Snapshot data is overlaid below.
+  const kwMap = loadKeywords(appId);
+  for (const [loc, list] of Object.entries(kwMap)) {
+    if (localeFilter && loc !== localeFilter) continue;
+    for (const kw of list) {
+      const key = `${loc}|${kw}`;
+      if (!bucket.has(key)) {
+        bucket.set(key, {
+          locale: loc, keyword: kw,
+          today: null, yesterday: null, w1: null, w4: null,
+          top5: [], trend: [],
+        });
+      }
+    }
+  }
+
+  const baseDate = today ?? new Date().toISOString().slice(0, 10);
+  const ya = new Date(baseDate); ya.setDate(ya.getDate() - 1); const yaStr = ya.toISOString().slice(0,10);
+  const w1 = new Date(baseDate); w1.setDate(w1.getDate() - 7); const w1Str = w1.toISOString().slice(0,10);
+  const w4 = new Date(baseDate); w4.setDate(w4.getDate() - 30); const w4Str = w4.toISOString().slice(0,10);
 
   for (const r of rows) {
     const key = `${r.locale}|${r.keyword}`;

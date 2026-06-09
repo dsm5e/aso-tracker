@@ -7,6 +7,7 @@ import { APPS as APPS_MOCK, LOCALE_STATS as LOCALE_STATS_MOCK, statusFromAvg } f
 // ----- Metric tile -----
 const MetricTile = ({ label, value, delta, tone = "neutral", spark, suffix = "" }) => {
   const deltaTone = delta == null ? "neutral" : delta > 0 ? (tone === "inverted" ? "neg" : "pos") : (tone === "inverted" ? "pos" : "neg");
+  const hasSpark = Array.isArray(spark) ? spark.length > 1 : !!spark;
   return (
     <div style={{
       flex: 1,
@@ -17,7 +18,7 @@ const MetricTile = ({ label, value, delta, tone = "neutral", spark, suffix = "" 
       minWidth: 0,
     }}>
       <div className="label" style={{ fontSize: 11.5, marginBottom: 8, color: "var(--text-muted)" }}>{label}</div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: spark ? 6 : 0 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: hasSpark ? 6 : 0 }}>
         <span className="hero-num" style={{ fontSize: 30, color: "var(--text)", lineHeight: 1 }}>
           {value}<span style={{ fontSize: 16, color: "var(--text-muted)", marginLeft: 2 }}>{suffix}</span>
         </span>
@@ -27,7 +28,7 @@ const MetricTile = ({ label, value, delta, tone = "neutral", spark, suffix = "" 
           </span>
         )}
       </div>
-      {spark && (
+      {hasSpark && (
         <div style={{ marginTop: 4, color: "var(--text-muted)" }}>
           <Sparkline data={spark} width={120} height={18} tone={deltaTone === "pos" ? "pos" : "neg"} strokeWidth={1.4} />
         </div>
@@ -96,7 +97,7 @@ const MoverChip = ({ item, tone }) => (
 // ----- App card -----
 const AppCard = ({ app, onOpen, onRun, localeStats: localeStatsProp }) => {
   const localeStats = localeStatsProp || LOCALE_STATS_MOCK[app.name] || [];
-  const spark = mkSpark(app.id.length * 7, 30, 50, 14, -0.3);
+  const hist = app.history || { top10: [], top50: [], unranked: [], avg: [] };
 
   return (
     <div className="card" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
@@ -125,10 +126,10 @@ const AppCard = ({ app, onOpen, onRun, localeStats: localeStatsProp }) => {
 
       {/* Metric tiles */}
       <div style={{ display: "flex", gap: 10 }}>
-        <MetricTile label="Top 10" value={app.top10} delta={app.weekDelta.top10} spark={mkSpark(app.id.length + 1, 14, app.top10, 6, 0.2)} />
-        <MetricTile label="Top 50" value={app.top50} delta={app.weekDelta.top50} spark={mkSpark(app.id.length + 2, 14, app.top50, 12, -0.3)} />
-        <MetricTile label="Not ranked" value={app.unranked} delta={-app.weekDelta.ranked} tone="inverted" spark={mkSpark(app.id.length + 3, 14, app.unranked, 10, 0.1)} />
-        <MetricTile label="Avg position" value={app.avgPos.toFixed(1)} delta={app.weekDelta.avg} tone="inverted" spark={mkSpark(app.id.length + 4, 14, app.avgPos, 4, -0.05)} />
+        <MetricTile label="Top 10" value={app.top10} delta={app.weekDelta.top10} spark={hist.top10} />
+        <MetricTile label="Top 50" value={app.top50} delta={app.weekDelta.top50} spark={hist.top50} />
+        <MetricTile label="Not ranked" value={app.unranked} delta={-app.weekDelta.ranked} tone="inverted" spark={hist.unranked} />
+        <MetricTile label="Avg position" value={app.avgPos.toFixed(1)} delta={app.weekDelta.avg} tone="inverted" spark={hist.avg} />
       </div>
 
       {/* Locale strip */}
