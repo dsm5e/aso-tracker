@@ -12,6 +12,24 @@ import { getKey } from '../lib/keys.js';
  *  AND a server restart (queue.submit returns a request_id we can resume). */
 const STATE_FILE = join(homedir(), '.aso-studio', 'state.json');
 const FAL_ENDPOINT = 'openai/gpt-image-2/edit' as const;
+
+/** Surface the REAL fal error. fal's ApiError exposes .status + .body; the body
+ *  (e.g. a 422 { detail: [{ loc:["body","image_urls"], msg:"Failed to load the
+ *  image" }] }) carries the actual reason. e.message alone is just "Internal
+ *  Server Error" / "Unprocessable Entity". */
+function falErrorDetail(e: unknown): string {
+  const msg = e instanceof Error ? e.message : String(e);
+  const status = (e as { status?: number })?.status;
+  const body = (e as { body?: unknown })?.body;
+  let detail = '';
+  try {
+    const det = (body as { detail?: unknown })?.detail;
+    if (Array.isArray(det)) detail = det.map((d) => `${(d as { loc?: unknown[] })?.loc?.join?.('.') ?? ''}: ${(d as { msg?: string })?.msg ?? ''}`.trim()).filter(Boolean).join(' | ');
+    else if (typeof det === 'string') detail = det;
+    else if (body) detail = typeof body === 'string' ? body : JSON.stringify(body);
+  } catch { /* ignore */ }
+  return [status ? `HTTP ${status}` : '', detail || msg].filter(Boolean).join(' — ');
+}
 /** Sentinel strategyId routing a generation to iconLab.variants[screenId]
  *  (screenId carries the variant id) instead of a PPO strategy — lets the Icon
  *  Generator reuse the whole poller / resume / persist machinery with no
@@ -303,13 +321,14 @@ export async function ppoGenerate(req: Request, res: Response): Promise<void> {
   try {
     submission = (await fal.queue.submit(FAL_ENDPOINT, { input: falInput })) as { request_id: string };
   } catch (e) {
-    const msg = (e as Error).message ?? String(e);
-    console.error('[ppo] queue.submit failed:', msg);
+    const detail = falErrorDetail(e);
+    const status = (e as { status?: number })?.status;
+    console.error('[ppo] queue.submit failed:', detail);
     persistPPOResult(strategyId, screenId, {
       generateState: 'error',
-      errorMessage: `submit failed: ${msg}`,
+      errorMessage: `submit failed: ${detail}`,
     });
-    res.status(502).json({ error: 'submit failed', detail: msg });
+    res.status(status && status >= 400 && status < 500 ? status : 502).json({ error: 'submit failed', detail });
     return;
   }
 

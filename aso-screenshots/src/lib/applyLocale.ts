@@ -15,6 +15,7 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
   let tr = loc.translations?.[ss.id];
   let pill = loc.pillTranslations?.[ss.id];
   let adj = loc.slotAdjustments?.[ss.id];
+  let extra = loc.extraTranslations?.[ss.id];
 
   // Fallback: look for another slot with the same verb that has a translation.
   if (!tr && loc.translations && ss.headline.verb) {
@@ -29,6 +30,7 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
       tr = loc.translations[match.id];
       if (!pill) pill = loc.pillTranslations?.[match.id];
       if (!adj) adj = loc.slotAdjustments?.[match.id];
+      if (!extra) extra = loc.extraTranslations?.[match.id];
     }
   }
 
@@ -38,6 +40,10 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
       ? { verb: tr.verb || ss.headline.verb, descriptor: tr.descriptor || ss.headline.descriptor, subhead: ss.headline.subhead }
       : ss.headline,
     pill: pill ?? ss.pill,
+    // Localized footer capsule + V captions (fall back to source when absent).
+    footer: extra?.footer ?? ss.footer,
+    frontLabel: extra?.frontLabel ?? ss.frontLabel,
+    backLabel: extra?.backLabel ?? ss.backLabel,
     textX: (ss.textX ?? 0) + (adj?.textX ?? 0),
     textY: (ss.textY ?? 0) + (adj?.textY ?? 0),
     titlePx: adj?.titlePx ?? ss.titlePx,

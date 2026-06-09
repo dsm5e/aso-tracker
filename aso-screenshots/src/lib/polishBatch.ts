@@ -182,10 +182,15 @@ export async function polishSlot(slotId: string): Promise<string> {
         appIconDataUri: ss.kind === 'action' && action.ingredients?.appIcon && st.appIconUrl
           ? await blobUrlToDataUri(st.appIconUrl).catch(() => null)
           : null,
-        customPrompt: ss.kind === 'action' && action.useCustomPrompt && action.customPrompt?.trim()
+        // Per-screen custom polish prompt — allowed on ANY slot kind so each
+        // feature screen can carry its own bespoke design brief (laurels,
+        // feature-card sections, etc.), not just action/hero slots.
+        customPrompt: action.useCustomPrompt && action.customPrompt?.trim()
           ? action.customPrompt
           : null,
-        hideDevice: ss.kind === 'action' ? !!action.hideDevice : false,
+        // hideDevice is honored on any slot now too — lets a regular slot be
+        // recomposed into a phone-less marketing layout via its custom prompt.
+        hideDevice: !!action.hideDevice,
         polishCallout: !!ss.polishCallout,
         // Server persists the result into state.json under this id — keeps
         // polish progress alive across navigation between Studio and Tracker.

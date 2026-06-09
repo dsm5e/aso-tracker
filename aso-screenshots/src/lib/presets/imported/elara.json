@@ -18,15 +18,109 @@
   "tiltDeg": 0,
   "breakout": "none",
   "isGradient": false,
-  "decorationsHint": "minimal, soft, warm — keep the blush background clean; gentle living animation, no clinical UI, no 3D.",
+  "decorationsHint": "Background: do NOT leave the blush flat — fill it with soft, premium organic shapes drawn from the app's OWN palette: large layered rounded blobs / petal-like waves blending #FEEBE7 -> warm peach -> soft coral #F28C82, big and gently out-of-focus BEHIND the device, plus a few sparse translucent floating circles/bubbles. Calm, warm, premium — never clinical, no 3D, no stock graphics. Put a soft focus glow / halo behind the phone and gently spotlight the SINGLE key UI element of that screen (the fruit-size & fetus, the timer ring, the footprint button, the partner card) so it pops instantly at thumbnail size. Optionally one sparse hand-drawn doodle (sparkle / squiggle) as a warm accent. Keep it uncluttered — exactly one focal accent per frame, lots of breathing room.",
   "samples": [
-    { "verb": "The most beautiful way to be pregnant", "descriptor": "Follow your baby, week by week", "device": { "scale": 0.95 }, "text": { "yFraction": 0.06, "titlePx": 132, "subPx": 60 } },
-    { "verb": "Dad lives it with you", "descriptor": "Joins with a code — no sign-up", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
-    { "verb": "50+ weekly ways to spoil you", "descriptor": "Flowers, a massage, a date night", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
-    { "verb": "Leave a wish, he makes it real", "descriptor": "Your shared wishlist", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
-    { "verb": "Meet your baby, week by week", "descriptor": "As big as a peach today", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
-    { "verb": "A calm daily ritual", "descriptor": "Journal, mood & belly photos", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
-    { "verb": "Everything you need, right here", "descriptor": "Kicks, contractions & Health", "device": { "scale": 0.92, "offsetY": 60 }, "text": { "yFraction": 0.06, "titlePx": 140, "subPx": 60 } },
-    { "verb": "Your most beautiful months — together", "descriptor": "", "device": { "scale": 0.95 }, "text": { "yFraction": 0.06, "titlePx": 132, "subPx": 60 } }
+    {
+      "verb": "The most beautiful way to be pregnant",
+      "descriptor": "Follow your baby, week by week",
+      "device": {
+        "scale": 0.95
+      },
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 132,
+        "subPx": 60
+      }
+    },
+    {
+      "verb": "Dad lives it with you",
+      "descriptor": "Joins with a code — no sign-up",
+      "device": {
+        "scale": 0.92,
+        "offsetY": 60
+      },
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 140,
+        "subPx": 60
+      }
+    },
+    {
+      "verb": "50+ weekly ways to spoil you",
+      "descriptor": "Flowers, a massage, a date night",
+      "device": {
+        "scale": 0.92,
+        "offsetY": 60
+      },
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 140,
+        "subPx": 60
+      }
+    },
+    {
+      "verb": "Leave a wish, he makes it real",
+      "descriptor": "Your shared wishlist",
+      "device": {
+        "scale": 0.92,
+        "offsetY": 60
+      },
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 140,
+        "subPx": 60
+      }
+    },
+    {
+      "verb": "Meet your baby, week by week",
+      "descriptor": "As big as a peach today",
+      "device": {
+        "scale": 0.92,
+        "offsetY": 60
+      },
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 140,
+        "subPx": 60
+      }
+    },
+    {
+      "verb": "A calm daily ritual",
+      "descriptor": "Journal, mood & belly photos",
+      "device": {
+        "scale": 0.92,
+        "offsetY": 60
+      },
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 140,
+        "subPx": 60
+      }
+    },
+    {
+      "verb": "Everything you need, right here",
+      "descriptor": "Kicks, contractions & Health",
+      "device": {
+        "scale": 0.92,
+        "offsetY": 60
+      },
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 140,
+        "subPx": 60
+      }
+    },
+    {
+      "verb": "Your most beautiful months — together",
+      "descriptor": "",
+      "device": {
+        "scale": 0.95
+      },
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 132,
+        "subPx": 60
+      }
+    }
   ]
 }

@@ -670,6 +670,47 @@ export function Inspector({ screenshot: ss }: Props) {
           </div>
         </Card.Section>
 
+        <Card.Section title="Второе устройство (V-мокап)">
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '4px 0 0' }}>
+            <label style={{ padding: '8px 14px', borderRadius: 10, border: '1px dashed var(--line-2)', background: 'var(--bg-2)', cursor: 'pointer', fontSize: 12, color: 'var(--fg-2)' }}>
+              {ss.secondaryUrl ? 'Заменить задний экран' : '+ Добавить второй экран'}
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                hidden
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) set({ secondaryUrl: URL.createObjectURL(f) }); e.currentTarget.value = ''; }}
+              />
+            </label>
+            {ss.secondaryUrl && (
+              <button
+                type="button"
+                onClick={() => set({ secondaryUrl: null })}
+                style={{ padding: 0, border: 0, background: 'transparent', color: 'var(--neg)', fontSize: 11, cursor: 'pointer' }}
+              >
+                Убрать
+              </button>
+            )}
+          </div>
+          {ss.secondaryUrl && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+              <input
+                type="text"
+                placeholder="Подпись переднего (напр. for mom)"
+                value={ss.frontLabel ?? ''}
+                onChange={(e) => set({ frontLabel: e.target.value })}
+                style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line-2)', background: 'var(--bg-2)', color: 'var(--fg-1)', fontSize: 12 }}
+              />
+              <input
+                type="text"
+                placeholder="Подпись заднего (напр. for dad)"
+                value={ss.backLabel ?? ''}
+                onChange={(e) => set({ backLabel: e.target.value })}
+                style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line-2)', background: 'var(--bg-2)', color: 'var(--fg-1)', fontSize: 12 }}
+              />
+            </div>
+          )}
+        </Card.Section>
+
         <Card.Section title="Наклон устройства">
           <div className="field">
             <label className="field-label">

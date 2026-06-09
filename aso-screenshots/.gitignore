@@ -7,3 +7,6 @@ data/*.db-journal
 .env
 .env.local
 .tsbuildinfo
+
+# runtime user uploads — do not commit (binaries)
+public/uploads/

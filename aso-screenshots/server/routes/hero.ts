@@ -156,7 +156,13 @@ export function buildCoverEnhancePrompt(b: HeroGenerateBody): string {
     b.themeHint ? `App theme: ${b.themeHint}.` : '',
     `Keep the existing subject, composition, framing and colour palette EXACTLY as in the input (dominant hue ${b.effectiveBackground} — do not shift it). This is a subtle photo polish, not a redesign.`,
     `Allowed: refine lighting and softness, add gentle depth and smooth bokeh, clean up noise, harmonise the gradient, a faint tasteful glow. Calm, premium, minimal.`,
-    `STRICTLY DO NOT add any new objects, characters, people, hands, props, icons, shapes, particles, sparkles, text or decorations. No new elements whatsoever — only improve what is already there.`,
+    `DO NOT add objects, characters, people, hands, props, sparkles or decorations to the PHOTO itself, and DO NOT add any liquid-glass / frosted-glass material — only improve what is already there.`,
+    // Controlled exception: the ONLY synthetic additions allowed are flat
+    // marketing overlays explicitly named in the App theme above (e.g. laurel
+    // value-prop badges). If the theme names none, add nothing.
+    b.themeHint && /laurel|badge|wreath/i.test(b.themeHint)
+      ? `EXCEPTION — flat overlay graphics: render the laurel value-prop badges described in the App theme above as crisp, flat 2D vector marketing overlays sitting ON TOP of the photo (clearly graphic, not part of the scene). Reproduce exactly the badges and wording named there — nothing more, no extra numbers, no award claims, no stars.`
+      : '',
     `Keep the ${zone} ${pct}% of the canvas clean and uncluttered for the overlaid headline (no baked text there).`,
     `Quality: ultra-sharp, natural realistic lighting, soft and elegant.`,
   ].filter(Boolean).join('\n\n');
@@ -167,6 +173,7 @@ export function buildCoverEnhancePrompt(b: HeroGenerateBody): string {
  *  photoreal and add at most ONE small feature callout to highlight a key UI
  *  element. Used for `kind: 'regular'`. */
 export function buildPolishPrompt(b: HeroGenerateBody): string {
+  const p = b.preset;
   const deviceLabel = b.device === 'ipad' ? 'iPad Pro' : 'iPhone 15/16 Pro';
   return [
     `INPAINTING TASK — pixel-level bezel replacement only. This is NOT a composition task. You are replacing a single layer: the physical device frame (the thin border between the background and the screen glass). Every other pixel in the image must be copied from the input exactly.`,
@@ -188,11 +195,18 @@ VISUAL STYLE: 1.5–2× scale vs on-screen size. Same colours, corner radius, an
 
 CRITICAL: if you cannot add this callout without moving the device, skip the callout entirely and output the polish pass without it.`
       : '',
-    `No new illustrations, mascots, social-proof badges, or 3D props. At most 1-2 soft particle accents in the existing palette.`,
-    `Top of canvas is reserved for a headline overlay — keep it clean background, no baked text.`,
+    // Per-frame decorative accents now live on the FEATURE slots (not the
+    // covers): a soft focus glow/halo behind the device + spotlight on the one
+    // key UI element, plus the preset's brand decoration vibe. Background only —
+    // never on the screen, never moving the device.
+    `BACKGROUND ACCENTS — ADDITIVE, BEHIND THE DEVICE ONLY. Keep the same blush hue (anchor ${b.effectiveBackground}), but you MAY enrich the BACKGROUND around the device with calm brand decoration: a soft out-of-focus glow / halo behind the phone, sparse translucent bubbles, and at most ONE light hand-drawn doodle. Place a soft spotlight glow behind the device so the single most distinctive UI element on the screen pops at thumbnail size. Exactly ONE focal accent — premium and uncluttered. These accents sit BEHIND/AROUND the device and NEVER overlap the screen glass.`,
+    p.decorationsHint ? `Brand decoration vibe (apply to the background only): ${p.decorationsHint}` : '',
+    `No mascots, no social-proof badges, no 3D props, no liquid-glass material. No baked text anywhere.`,
+    `Top of canvas is reserved for a headline overlay — keep it clean background, no baked text there.`,
     // Repeated at the END — strongest position in the prompt — to override any
-    // tendency from the callout block to shift the device.
-    `FINAL OVERRIDE — NON-NEGOTIABLE: Background pixels = copy from input. Screen pixels = copy from input. Device position/size/angle = IDENTICAL to input — zero shift, zero scale change. Only the physical bezel material changes. Any callout is painted ON TOP of the existing composition as a new layer; it never displaces the device. Any earlier instruction that could be read as permission to recompose, shift, or shrink the device is VOID.`,
+    // tendency from the callout / accent blocks to shift the device or repaint
+    // the screen.
+    `FINAL OVERRIDE — NON-NEGOTIABLE: Screen pixels (inside the glass) = copy from input exactly, never redraw any label/row/icon/text. Device position/size/angle = IDENTICAL to input — zero shift, zero scale change. Only the physical bezel material changes and the BACKGROUND around the device gains the calm accents above. Any callout or accent is painted as a new layer that never displaces the device or touches the screen. Any earlier instruction that could be read as permission to recompose, shift, or shrink the device, or to repaint the screen, is VOID.`,
   ]
     .filter(Boolean)
     .join('\n\n');
@@ -358,10 +372,29 @@ export async function heroGenerate(req: Request, res: Response) {
         break;
       } catch (e) {
         const msg = (e as Error).message ?? String(e);
+        const body = (e as { body?: unknown })?.body;
+        const bodyStr = body == null ? '' : (typeof body === 'string' ? body : (() => { try { return JSON.stringify(body); } catch { return ''; } })());
+        // Only retry true NETWORK blips. Do NOT retry fal/OpenAI downstream 5xx
+        // ("Internal Server Error"/"Gateway Timeout") — during a sustained
+        // gpt-image-2 outage the extra attempts just stack up until the upstream
+        // proxy times out with a bare 502, hiding the real downstream error.
         const isTransient = msg.includes('ENOTFOUND') || msg.includes('ECONNRESET') || msg.includes('ECONNREFUSED') || msg.includes('fetch failed');
-        if (isTransient && attempt < MAX_RETRIES) {
-          const delay = attempt * 3000;
-          console.warn(`[hero] transient error (attempt ${attempt}/${MAX_RETRIES}), retrying in ${delay}ms:`, msg);
+        // 422 "Failed to load the image" is usually an upload-propagation race:
+        // fal.storage returned a URL the model worker can't read yet. RE-UPLOAD
+        // the scaffold to get a fresh URL and retry — distinct from a permanent
+        // bad-image validation error.
+        const isImageLoadRace = /failed to load the image/i.test(msg) || /failed to load the image/i.test(bodyStr);
+        if ((isTransient || isImageLoadRace) && attempt < MAX_RETRIES) {
+          const delay = attempt * 2000;
+          if (isImageLoadRace) {
+            console.warn(`[hero] image-load race (attempt ${attempt}/${MAX_RETRIES}), re-uploading scaffold + retrying in ${delay}ms`);
+            try {
+              const freshUrl = await fal.storage.upload(scaffoldFile);
+              falInput.image_urls = iconUrl ? [freshUrl, iconUrl] : [freshUrl];
+            } catch (up) { console.warn('[hero] re-upload failed:', (up as Error).message); }
+          } else {
+            console.warn(`[hero] transient error (attempt ${attempt}/${MAX_RETRIES}), retrying in ${delay}ms:`, msg);
+          }
           await new Promise((r) => setTimeout(r, delay));
         } else {
           throw e;
@@ -407,19 +440,35 @@ export async function heroGenerate(req: Request, res: Response) {
     const stack = e instanceof Error ? (e.stack ?? '') : '';
     const cause = (e as { cause?: unknown })?.cause;
     const causeMsg = cause instanceof Error ? ` | cause: ${cause.message} ${cause.stack ?? ''}` : cause ? ` | cause: ${String(cause)}` : '';
-    const full = `${msg}\n${stack}${causeMsg}`;
+    // fal's ApiError carries the REAL detail on .status + .body (e.g. a 422
+    // "image_urls: Failed to load the image" validation error). e.message alone
+    // is just "Internal Server Error" — surface status + body so the client and
+    // the dev log show what actually went wrong instead of a bare 500.
+    const status = (e as { status?: number })?.status;
+    const body = (e as { body?: unknown })?.body;
+    const bodyStr = body == null ? '' : typeof body === 'string' ? body : (() => { try { return JSON.stringify(body); } catch { return String(body); } })();
+    // Pull the human-readable validation message out of fal's body shape
+    // ({ detail: [{ loc, msg, type }] } or { detail: "..." }) when present.
+    let detailMsg = '';
+    try {
+      const det = (body as { detail?: unknown })?.detail;
+      if (Array.isArray(det)) detailMsg = det.map((d) => `${(d as { loc?: unknown[] })?.loc?.join?.('.') ?? ''}: ${(d as { msg?: string })?.msg ?? ''}`.trim()).filter(Boolean).join(' | ');
+      else if (typeof det === 'string') detailMsg = det;
+    } catch {}
+    const clientMsg = [status ? `HTTP ${status}` : '', detailMsg || msg].filter(Boolean).join(' — ');
+    const full = `${clientMsg}\n${stack}${causeMsg}${bodyStr ? `\n  body: ${bodyStr.slice(0, 800)}` : ''}`;
     console.error('[hero] error caught:', full);
     try {
       const { appendFileSync } = await import('node:fs');
       const ts = new Date().toISOString().slice(11, 23);
-      appendFileSync('/tmp/aso-studio-dev.log', `[${ts}] [server:error] hero: ${full.slice(0, 1000)}\n`);
+      appendFileSync('/tmp/aso-studio-dev.log', `[${ts}] [server:error] hero: ${full.slice(0, 1200)}\n`);
     } catch {}
     if (req.body?.slotId) {
       persistSlotResult(req.body.slotId as string, {
         generateState: 'error',
-        errorMessage: msg,
+        errorMessage: clientMsg,
       });
     }
-    res.status(500).json({ error: full.slice(0, 500) });
+    res.status(status && status >= 400 && status < 500 ? status : 500).json({ error: clientMsg.slice(0, 500), detail: bodyStr.slice(0, 800) });
   }
 }

@@ -36,6 +36,14 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
       st.addLocale({ id: localeCode, code: localeCode, name: spec?.name ?? localeCode, flag: spec?.flag ?? '🏴󠁧󠁢󠁥󠁮󠁧󠁿', rtl: spec?.rtl, fontOverride: spec?.font });
     }
     st.setLocaleTranslations(localeCode, translationsRec);
+    // Footer capsule + V captions — copy originals too.
+    const extraRec: Record<string, { footer?: string; frontLabel?: string; backLabel?: string }> = {};
+    for (const s of slots) {
+      if (s.footer || s.frontLabel || s.backLabel) {
+        extraRec[s.id] = { footer: s.footer, frontLabel: s.frontLabel, backLabel: s.backLabel };
+      }
+    }
+    st.setLocaleExtraTranslations?.(localeCode, extraRec);
     clog('translate', `${localeCode} is source language — copied originals, no API call`);
     return { translated: slots.length, failed: 0 };
   }
@@ -46,6 +54,10 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
     if (s.headline.verb) items.push({ key: `${s.id}:verb`, text: s.headline.verb });
     if (s.headline.descriptor) items.push({ key: `${s.id}:descriptor`, text: s.headline.descriptor });
     if (s.pill) items.push({ key: `${s.id}:pill`, text: s.pill });
+    // Other HTML-overlay strings (translated too; AI-baked image text is not).
+    if (s.footer) items.push({ key: `${s.id}:footer`, text: s.footer });
+    if (s.frontLabel) items.push({ key: `${s.id}:frontLabel`, text: s.frontLabel });
+    if (s.backLabel) items.push({ key: `${s.id}:backLabel`, text: s.backLabel });
   }
   if (items.length === 0) return { translated: 0, failed: 0 };
 
@@ -68,9 +80,15 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
   const data = (await r.json()) as TranslateResponse;
   // Group results back by slot id.
   const perSlot: Record<string, Headline & { pill?: string }> = {};
+  const extraSlot: Record<string, { footer?: string; frontLabel?: string; backLabel?: string }> = {};
   for (const it of data.items) {
     const [slotId, field] = it.key.split(':');
     if (!slotId || !field) continue;
+    if (field === 'footer' || field === 'frontLabel' || field === 'backLabel') {
+      extraSlot[slotId] = extraSlot[slotId] ?? {};
+      extraSlot[slotId][field] = it.translation;
+      continue;
+    }
     perSlot[slotId] = perSlot[slotId] ?? { verb: '', descriptor: '', subhead: '' };
     if (field === 'verb') perSlot[slotId].verb = it.translation;
     else if (field === 'descriptor') perSlot[slotId].descriptor = it.translation;
@@ -102,6 +120,8 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
     translationsRec[slotId] = { verb: val.verb, descriptor: val.descriptor, subhead: '' };
   }
   st.setLocaleTranslations(localeCode, translationsRec);
+  // Footer + V-caption translations (parallel per-locale map).
+  if (Object.keys(extraSlot).length) st.setLocaleExtraTranslations?.(localeCode, extraSlot);
 
   // Pill translations live on a parallel map per-locale — see studio store.
   st.setLocalePillTranslations?.(localeCode, Object.fromEntries(

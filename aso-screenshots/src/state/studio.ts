@@ -75,6 +75,13 @@ export interface Screenshot {
   device?: 'iphone' | 'ipad';
   /** Source PNG URL from simulator (object URL or absolute path) */
   sourceUrl: string | null;
+  /** Optional SECOND device image → renders a two-phone "V" mockup (a back
+   *  phone tilted behind + the primary in front, overlapping — The Bump style).
+   *  Used for dad-connect (QR + dad home) and milestone (timeline + dad tasks). */
+  secondaryUrl?: string | null;
+  /** Upright captions above each phone in the V mockup (e.g. "for mom"/"for dad"). */
+  frontLabel?: string;
+  backLabel?: string;
   /** Enhanced (textless template) PNG URL after AI polish */
   enhancedUrl: string | null;
   presetId: string;
@@ -96,6 +103,9 @@ export interface Screenshot {
   /** Render the project app icon (rounded square) directly under the headline,
    *  aligned with the text. Used on cover frames to brand the hero. */
   showAppIcon?: boolean;
+  /** Frosted "glass" panel behind the headline block (legible text on a photo
+   *  cover). Placeholder for the real liquid-glass baked by AI re-enhance. */
+  textBacking?: boolean;
   font: string;
   fontSize: number;
   tiltDeg: number;
@@ -150,6 +160,10 @@ export interface LocaleEntry {
   translations: Record<string, Headline>;
   /** Pill / badge translations keyed by screenshot id (separate from headline). */
   pillTranslations?: Record<string, string>;
+  /** Other localizable HTML-overlay strings per screenshot id: the footer
+   *  microcopy capsule + the V-mockup device captions. Baked AI-image text is
+   *  NOT here (it lives in the generated PNG). */
+  extraTranslations?: Record<string, { footer?: string; frontLabel?: string; backLabel?: string }>;
   /** Per-slot text adjustments specific to this locale. Lets the user nudge
    *  position / resize the headline for languages where the translation runs
    *  longer (German) or shorter (CJK) than the source. Renderer adds these
@@ -260,6 +274,7 @@ interface StudioState {
   removeLocale: (id: string) => void;
   setLocaleTranslations: (id: string, translations: Record<string, Headline>) => void;
   setLocalePillTranslations: (id: string, pills: Record<string, string>) => void;
+  setLocaleExtraTranslations: (id: string, extra: Record<string, { footer?: string; frontLabel?: string; backLabel?: string }>) => void;
   updateLocaleSlotAdjustment: (
     localeId: string,
     slotId: string,
@@ -839,6 +854,12 @@ export const useStudio = create<StudioState>()(
         set((state) => ({
           locales: state.locales.map((l) =>
             l.id === id ? { ...l, pillTranslations: { ...(l.pillTranslations ?? {}), ...pills } } : l,
+          ),
+        })),
+      setLocaleExtraTranslations: (id, extra) =>
+        set((state) => ({
+          locales: state.locales.map((l) =>
+            l.id === id ? { ...l, extraTranslations: { ...(l.extraTranslations ?? {}), ...extra } } : l,
           ),
         })),
       updateLocaleSlotAdjustment: (localeId, slotId, patch) =>

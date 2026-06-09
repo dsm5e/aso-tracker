@@ -248,6 +248,144 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', fitWidth, fitH
   // independent of `kind`, so Enhance works for any slot, not only action/hero ones.
   const aiHero = viewMode === 'enhanced' ? ss.action?.aiImageUrl ?? null : null;
 
+  // One phone (frame + screenshot) at an absolute canvas position with its own
+  // rotate/scale. Shared by the single-device path and the dual "V" mockup.
+  const renderPhone = (opts: {
+    keyName: string;
+    url: string | null;
+    left: number;
+    top: number;
+    rotate: number;
+    scale: number;
+    z?: number;
+    interactive?: boolean;
+    label?: string;
+  }) => (
+    <div
+      key={opts.keyName}
+      style={{
+        position: 'absolute',
+        left: opts.left,
+        top: opts.top,
+        width: D.width,
+        height: D.height,
+        perspective: '2200px',
+        transformStyle: 'preserve-3d',
+        zIndex: opts.z ?? 1,
+      }}
+    >
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          transform: `rotateX(${tiltX}deg) rotateY(${tiltY}deg) rotate(${opts.rotate}deg) scale(${opts.scale})`,
+          transformOrigin: 'center center',
+          transformStyle: 'preserve-3d',
+          position: 'relative',
+        }}
+      >
+        {/* V-caption ("for mom"/"for dad") is NOT drawn here — it lives in a
+            separate overlay layer (renderVLabel) so it stays a live, translatable
+            text element that survives the AI enhance (data-capture-omit) instead
+            of being baked into the device image. */}
+        <DeviceFrame
+          asset={asset}
+          emptyScreenColor={opts.interactive && dragOver ? 'var(--accent-soft)' : '#000'}
+          onClickScreen={opts.interactive && showDropZone ? onPickFile : undefined}
+          onDragOverScreen={opts.interactive && showDropZone ? (e) => { e.preventDefault(); setDragOver(true); } : undefined}
+          onDragLeaveScreen={opts.interactive ? () => setDragOver(false) : undefined}
+          onDropScreen={opts.interactive && showDropZone ? onDrop : undefined}
+          placeholder={opts.interactive ? (
+            <div style={{ color: '#aaa', display: 'flex', flexDirection: 'column', gap: 24, alignItems: 'center', fontSize: 48 }}>
+              <ImagePlus size={120} />
+              Drop screenshot here
+            </div>
+          ) : undefined}
+        >
+          {opts.url && (
+            <img src={opts.url} alt="" draggable={false} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          )}
+        </DeviceFrame>
+      </div>
+    </div>
+  );
+
+  /** V-caption pill ("for mom" / "for dad") as a STANDALONE overlay, positioned
+   *  with the same wrapper geometry as its phone so it centers on the device and
+   *  tilts with it — but drawn independently of the device so it:
+   *   • stays out of the AI scaffold capture (data-capture-omit) → never baked,
+   *   • survives in the enhanced/export view (on top of the AI render),
+   *   • remains a live, localizable text node.  */
+  const renderVLabel = (opts: {
+    keyName: string;
+    left: number;
+    top: number;
+    rotate: number;
+    scale: number;
+    label?: string;
+    z?: number;
+  }) => {
+    if (!opts.label) return null;
+    return (
+      <div
+        key={`${opts.keyName}-label`}
+        data-capture-omit="v-label"
+        style={{
+          position: 'absolute',
+          left: opts.left,
+          top: opts.top,
+          width: D.width,
+          height: D.height,
+          perspective: '2200px',
+          transformStyle: 'preserve-3d',
+          pointerEvents: 'none',
+          zIndex: (opts.z ?? 1) + 10,
+        }}
+      >
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            transform: `rotateX(${tiltX}deg) rotateY(${tiltY}deg) rotate(${opts.rotate}deg) scale(${opts.scale})`,
+            transformOrigin: 'center center',
+            transformStyle: 'preserve-3d',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: 0,
+              right: 0,
+              marginBottom: 56,
+              textAlign: 'center',
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-block',
+                fontFamily: `"${textFont}", Inter, sans-serif`,
+                fontWeight: 700,
+                fontSize: 56,
+                letterSpacing: '0.01em',
+                color: ss.headlineAccent ?? preset?.suggestedAccent ?? '#2C2C2C',
+                background: 'rgba(255,255,255,0.85)',
+                border: '1px solid rgba(255,255,255,0.6)',
+                borderRadius: 999,
+                padding: '16px 40px',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {opts.label}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div
       style={{
@@ -479,89 +617,105 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', fitWidth, fitH
               padding: '0 60px',
               textAlign,
               fontFamily: `"${textFont}", Inter, sans-serif`,
-              color: textColor,
+              // On the glass pill use the brand accent (coral) for a warmer,
+              // more legible footer; plain footers keep the preset text color.
+              color: ss.textBacking ? (ss.headlineAccent ?? preset?.suggestedAccent ?? textColor) : textColor,
               fontWeight: 600,
               fontSize: Math.round((subPx || 100) * 0.62),
-              opacity: 0.72,
+              opacity: ss.textBacking ? 1 : 0.72,
               letterSpacing: '-0.005em',
               direction: textDir,
               pointerEvents: 'none',
             }}
           >
-            {renderAccented(ss.footer, ss.headlineAccent ?? preset?.suggestedAccent)}
+            {ss.textBacking ? (
+              <span
+                style={{
+                  // Frosted "liquid glass" pill behind the footer microcopy
+                  // (placeholder for the glass baked by AI re-enhance).
+                  display: 'inline-block',
+                  // Keep the microcopy on ONE line so the pill expands
+                  // horizontally to fit the (often longer) localized text
+                  // instead of wrapping and "collapsing" vertically.
+                  whiteSpace: 'nowrap',
+                  maxWidth: '100%',
+                  background: 'rgba(255,255,255,0.22)',
+                  backdropFilter: 'blur(28px)',
+                  WebkitBackdropFilter: 'blur(28px)',
+                  border: '1px solid rgba(255,255,255,0.45)',
+                  borderRadius: 999,
+                  padding: '18px 40px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.55)',
+                }}
+              >
+                {renderAccented(ss.footer, ss.headlineAccent ?? preset?.suggestedAccent)}
+              </span>
+            ) : (
+              renderAccented(ss.footer, ss.headlineAccent ?? preset?.suggestedAccent)
+            )}
           </div>
         )}
 
         {/* Social proof больше не рендерится HTML-ом на scaffold — теперь это
             ингредиент в Inspector → AI запекает его в финальный enhance render. */}
 
-        {/* Device — hide the HTML phone overlay whenever the AI render already
-            contains the photoreal phone. Also hide on action slots when the
-            user explicitly toggled hideDevice. */}
-        {!aiHero && !(ss.kind === 'action' && (ss.action?.hideDevice ?? false)) && (
-          <div
-            style={{
-              position: 'absolute',
-              left: deviceX + dx,
-              top: deviceY + dy,
-              width: D.width,
-              height: D.height,
-              perspective: '2200px',
-              transformStyle: 'preserve-3d',
-            }}
-          >
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                transform: `rotateX(${tiltX}deg) rotateY(${tiltY}deg) rotate(${presetRotZ + tiltDeg}deg) scale(${presetScale * dscale})`,
-                transformOrigin: 'center center',
-                transformStyle: 'preserve-3d',
-                position: 'relative',
-              }}
-            >
-              <DeviceFrame
-                asset={asset}
-                emptyScreenColor={dragOver ? 'var(--accent-soft)' : '#000'}
-                onClickScreen={showDropZone ? onPickFile : undefined}
-                onDragOverScreen={
-                  showDropZone
-                    ? (e) => {
-                        e.preventDefault();
-                        setDragOver(true);
-                      }
-                    : undefined
-                }
-                onDragLeaveScreen={() => setDragOver(false)}
-                onDropScreen={showDropZone ? onDrop : undefined}
-                placeholder={
-                  <div
-                    style={{
-                      color: '#aaa',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: 24,
-                      alignItems: 'center',
-                      fontSize: 48,
-                    }}
-                  >
-                    <ImagePlus size={120} />
-                    Drop screenshot here
-                  </div>
-                }
-              >
-                {ss.sourceUrl && (
-                  <img
-                    src={ss.sourceUrl}
-                    alt={ss.filename}
-                    draggable={false}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                  />
-                )}
-              </DeviceFrame>
-            </div>
-          </div>
-        )}
+        {/* Phone geometry — one source of truth, shared by the device layer and
+            the V-caption overlay so the labels always line up with their phone
+            whether the device is HTML (scaffold) or baked into the AI render. */}
+        {(() => {
+          const phones = ss.secondaryUrl
+            ? [
+                // Dual "V" mockup (The Bump style): back phone tilted behind +
+                // primary in front, overlapping. Offsets fold in the user's
+                // deviceX/Y/scale/tilt so the pair stays tweakable.
+                {
+                  keyName: 'v-back',
+                  url: ss.secondaryUrl,
+                  left: deviceX + dx - 210,
+                  top: deviceY + dy - 130,
+                  rotate: presetRotZ + tiltDeg - 9,
+                  scale: presetScale * dscale * 0.82,
+                  z: 1,
+                  label: ss.backLabel,
+                },
+                {
+                  keyName: 'v-front',
+                  url: ss.sourceUrl,
+                  left: deviceX + dx + 185,
+                  top: deviceY + dy + 130,
+                  rotate: presetRotZ + tiltDeg + 6,
+                  scale: presetScale * dscale * 0.88,
+                  z: 2,
+                  interactive: true,
+                  label: ss.frontLabel,
+                },
+              ]
+            : [
+                {
+                  keyName: 'single',
+                  url: ss.sourceUrl,
+                  left: deviceX + dx,
+                  top: deviceY + dy,
+                  rotate: presetRotZ + tiltDeg,
+                  scale: presetScale * dscale,
+                  z: 1,
+                  interactive: true,
+                  label: ss.frontLabel,
+                },
+              ];
+          const showDevice = !aiHero && !(ss.kind === 'action' && (ss.action?.hideDevice ?? false));
+          return (
+            <>
+              {/* Device layer — hidden once the AI render already contains the
+                  photoreal phone, or on hideDevice action slots. */}
+              {showDevice && phones.map((p) => renderPhone(p))}
+              {/* V-caption overlay — ALWAYS drawn (scaffold + enhanced), kept out
+                  of the AI scaffold capture so "for mom"/"for dad" stay live,
+                  translatable text instead of being baked into the device. */}
+              {phones.map((p) => renderVLabel(p))}
+            </>
+          );
+        })()}
       </div>
 
       <input
