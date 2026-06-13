@@ -6,6 +6,7 @@ import { MockupCanvas } from '../components/studio/MockupCanvas';
 import { useStudio, type Screenshot } from '../state/studio';
 import { polishBatch, polishSlot } from '../lib/polishBatch';
 import { useKeyGate } from '../state/keyGate';
+import { getCanvasDimensions } from '../lib/deviceProfiles';
 
 const PER_RENDER_USD = 0.05;
 
@@ -278,6 +279,8 @@ interface CardProps {
 }
 
 function PolishCard({ slot, checked, disabled, isGenerating, onToggle, onPolish, onDiscard, onCancelStuck, onOpenInEditor, compact, isHero }: CardProps) {
+  const iphoneModel = useStudio((s) => s.iphoneModel);
+  const fullCanvas = getCanvasDimensions(slot.device ?? 'iphone', iphoneModel);
   const status: 'idle' | 'queued' | 'generating' | 'done' | 'error' = isGenerating
     ? 'generating'
     : slot.action?.generateState === 'error'
@@ -370,8 +373,8 @@ function PolishCard({ slot, checked, disabled, isGenerating, onToggle, onPolish,
             position: 'absolute',
             left: -99999,
             top: 0,
-            width: slot.device === 'ipad' ? 2048 : 1290,
-            height: slot.device === 'ipad' ? 2732 : 2796,
+            width: fullCanvas.w,
+            height: fullCanvas.h,
             pointerEvents: 'none',
             visibility: 'hidden',
           }}
@@ -380,8 +383,9 @@ function PolishCard({ slot, checked, disabled, isGenerating, onToggle, onPolish,
           <MockupCanvas
             screenshot={slot}
             device={slot.device ?? 'iphone'}
-            fitWidth={slot.device === 'ipad' ? 2048 : 1290}
-            fitHeight={slot.device === 'ipad' ? 2732 : 2796}
+            iphoneModel={iphoneModel}
+            fitWidth={fullCanvas.w}
+            fitHeight={fullCanvas.h}
             showDropZone={false}
             viewModeOverride="scaffold"
           />

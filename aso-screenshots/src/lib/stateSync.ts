@@ -56,7 +56,7 @@ let postTimer: number | null = null;
 
 /** Skip ephemeral / non-persistable runtime fields when shipping state.
  *  These are derived UI state that shouldn't ride the wire. */
-function projectableState(state: Record<string, unknown>): Record<string, unknown> {
+function projectableState(state: object): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(state)) {
     if (typeof v === 'function') continue;

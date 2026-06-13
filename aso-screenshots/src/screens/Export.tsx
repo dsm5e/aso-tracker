@@ -5,6 +5,7 @@ import { Button, Card, Input } from '../components/shared';
 import { useStudio } from '../state/studio';
 import { renderAll, pickOutputFolder, type RenderFailure } from '../lib/exportRender';
 import { pushStateNow } from '../lib/stateSync';
+import { formatDimensions, getIPhoneProfile } from '../lib/deviceProfiles';
 
 /**
  * Phase 7 placeholder + project archive flow. Real PNG render via Playwright
@@ -20,6 +21,8 @@ export function ExportScreen() {
   const archiveCurrentProject = useStudio((s) => s.archiveCurrentProject);
   const loadedFromProjectId = useStudio((s) => s.loadedFromProjectId);
   const locales = useStudio((s) => s.locales);
+  const iphoneModel = useStudio((s) => s.iphoneModel);
+  const iphoneDimensions = formatDimensions(getIPhoneProfile(iphoneModel).canvas);
 
   const filenamePattern = useStudio((s) => s.filenamePattern);
   const setExport = useStudio((s) => s.setExport);
@@ -330,7 +333,7 @@ export function ExportScreen() {
               leftIcon={<FolderOpen size={14} />}
               onClick={onExport}
               disabled={blockingIssues.length > 0}
-              title={blockingIssues.length ? `Fix: ${blockingIssues.join(' · ')}` : `Render ${totalToRender} PNGs — iPhone slots → images/ (1290×2796), iPad slots → images-ipad/ (2048×2732)`}
+              title={blockingIssues.length ? `Fix: ${blockingIssues.join(' · ')}` : `Render ${totalToRender} PNGs — iPhone slots → images/ (${iphoneDimensions}), iPad slots → images-ipad/ (2048 × 2732)`}
             >
               Export
             </Button>

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, RefreshCcw, RotateCcw, Save, Sparkles, Wand2, X } from 'lucide-react';
+import { AlertTriangle, Eye, RefreshCcw, RotateCcw, Save, Sparkles, Wand2, X } from 'lucide-react';
 import { Button, SegmentedControl } from '../components/shared';
 import { Inspector } from '../components/studio/Inspector';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
@@ -10,6 +10,7 @@ import { useHighlight } from '../state/highlight';
 import { useEnhance } from '../lib/useEnhance';
 import { useKeyGate } from '../state/keyGate';
 import { getPreset } from '../lib/presets';
+import { formatDimensions, getIPhoneProfile, IPAD_CANVAS, IPHONE_PROFILES, type IPhoneModel } from '../lib/deviceProfiles';
 
 // /api on direct :5180/studio/, /studio-api when proxied via Keywords origin :5173/studio/.
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
@@ -24,6 +25,8 @@ export function EditorScreen() {
     updateScreenshot,
     viewMode,
     setViewMode,
+    iphoneModel,
+    setProject,
   } = useStudio();
 
   // Pulse the main canvas when an agent edit touches the active slot (matches
@@ -180,6 +183,43 @@ export function EditorScreen() {
   }, []);
 
   const active = screenshots.find((s) => s.id === activeScreenshotId);
+  const activeDevice = active?.device ?? 'iphone';
+  const activeProfile = getIPhoneProfile(iphoneModel);
+  const activeDimensions = activeDevice === 'ipad' ? IPAD_CANVAS : activeProfile.canvas;
+  const sourceDimensionsMismatch = activeDevice === 'iphone'
+    && active?.sourcePixelWidth
+    && active?.sourcePixelHeight
+    && (active.sourcePixelWidth !== activeProfile.canvas.w || active.sourcePixelHeight !== activeProfile.canvas.h);
+
+  const changeIphoneModel = (nextModel: IPhoneModel) => {
+    if (nextModel === iphoneModel) return;
+    const hasGeneratedIphoneImages = screenshots.some(
+      (s) => (s.device ?? 'iphone') === 'iphone' && (s.action?.aiImageUrl || s.enhancedUrl),
+    );
+    if (hasGeneratedIphoneImages && !window.confirm(
+      'Changing the iPhone model changes the canvas dimensions. Existing iPhone AI renders will be cleared and must be generated again. Continue?',
+    )) return;
+    setProject({ iphoneModel: nextModel });
+    if (hasGeneratedIphoneImages) {
+      screenshots.forEach((s) => {
+        if ((s.device ?? 'iphone') !== 'iphone') return;
+        updateScreenshot(s.id, {
+          enhancedUrl: null,
+          enhanceState: 'idle',
+          action: s.action
+            ? {
+                ...s.action,
+                aiImageUrl: null,
+                aiHistory: [],
+                lastPrompt: null,
+                generateState: 'idle',
+              }
+            : s.action,
+        });
+      });
+      setViewMode('scaffold');
+    }
+  };
 
   if (screenshots.length === 0) {
     return (
@@ -223,9 +263,33 @@ export function EditorScreen() {
             value={viewMode}
             onChange={setViewMode}
           />
+          {active && activeDevice === 'iphone' && (
+            <select
+              className="select"
+              aria-label="iPhone screenshot model"
+              value={iphoneModel}
+              onChange={(e) => changeIphoneModel(e.target.value as IPhoneModel)}
+              style={{ width: 'auto', minWidth: 164, height: 30, padding: '0 28px 0 10px', fontSize: 11 }}
+            >
+              {IPHONE_PROFILES.map((profile) => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.label}
+                </option>
+              ))}
+            </select>
+          )}
           <span className="tabular muted" style={{ fontSize: 11 }}>
-            {active ? ((active.device ?? 'iphone') === 'ipad' ? '2048 × 2732' : '1290 × 2796') : ''}
+            {active ? formatDimensions(activeDimensions) : ''}
           </span>
+          {sourceDimensionsMismatch && (
+            <span
+              title={`Uploaded screenshot is ${active.sourcePixelWidth} × ${active.sourcePixelHeight}; selected model expects ${formatDimensions(activeProfile.canvas)}.`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--warn, #F59E0B)', fontSize: 11 }}
+            >
+              <AlertTriangle size={13} />
+              Source size differs
+            </span>
+          )}
           <span style={{ flex: 1 }} />
           <Button
             variant="ghost"

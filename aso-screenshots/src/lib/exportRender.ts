@@ -1,6 +1,6 @@
 /**
  * Phase 7 — render PNG per (slot × locale) at exact App Store dimensions.
- * iPhone: 1290×2796 (16 Pro Max — Apple auto-scales for smaller iPhones).
+ * iPhone: selected model profile dimensions.
  * iPad:   2048×2732 (iPad Pro 12.9" 3rd gen — APP_IPAD_PRO_3GEN_129).
  * Uses ReactDOM.createRoot to render an off-screen MockupCanvas at native
  * resolution, captures via html-to-image, posts the PNG bytes to the server
@@ -14,13 +14,9 @@ import { useStudio, type LocaleEntry, type Screenshot } from '../state/studio';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
 import { applyLocaleToSlot } from './applyLocale';
 import { clog } from './clog';
+import { formatDimensions, getCanvasDimensions } from './deviceProfiles';
 
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
-
-const CANVAS_DIMS = {
-  iphone: { w: 1290, h: 2796 },
-  ipad:   { w: 2048, h: 2732 },
-};
 
 export interface RenderJob {
   slot: Screenshot;
@@ -38,7 +34,7 @@ export interface RenderFailure {
 interface ExportOpts {
   outputFolder: string;
   filenamePattern: string;
-  /** 'iphone' (default, 1290×2796) or 'ipad' (2048×2732 APP_IPAD_PRO_3GEN_129). */
+  /** Device family; iPhone dimensions come from project state. */
   device?: 'iphone' | 'ipad';
   /** Per-locale subfolder (default true). */
   perLocaleFolder?: boolean;
@@ -112,9 +108,10 @@ async function renderOne(
   opts: ExportOpts,
 ): Promise<string> {
   const st = useStudio.getState();
-  // Per-slot device takes priority — iPad slot exports at 2048×2732, iPhone at 1290×2796.
+  // Per-slot device takes priority; the project model resolves iPhone dimensions.
   const dev = slot.device ?? opts.device ?? 'iphone';
-  const { w: CANVAS_W, h: CANVAS_H } = CANVAS_DIMS[dev];
+  const dimensions = getCanvasDimensions(dev, st.iphoneModel);
+  const { w: CANVAS_W, h: CANVAS_H } = dimensions;
   const localeCode = locale?.code ?? 'en';
   const localised = applyLocaleToSlot(slot, locale);
 
@@ -130,6 +127,7 @@ async function renderOne(
       createElement(MockupCanvas, {
         screenshot: localised,
         device: dev,
+        iphoneModel: st.iphoneModel,
         fitWidth: CANVAS_W,
         fitHeight: CANVAS_H,
         showDropZone: false,
@@ -144,7 +142,7 @@ async function renderOne(
     const inner = await waitForElement(wrapper, '[data-mockup-canvas-inner]', 3000);
     if (!inner) throw new Error('canvas inner not found in off-screen render (React mount timeout)');
     await waitForImages(wrapper);
-    // Drop the visual scale transform — capture at logical 1290×2796 native.
+    // Drop the visual scale transform and capture at the profile's native size.
     const prevTransform = inner.style.transform;
     const prevOverflow = inner.style.overflow;
     inner.style.transform = 'none';
@@ -174,7 +172,7 @@ async function renderOne(
     ctx.drawImage(sourceCanvas, 0, 0);
     const dataUri = rgbCanvas.toDataURL('image/png');
 
-    const sizeLabel = dev === 'ipad' ? '2048x2732' : '1290x2796';
+    const sizeLabel = formatDimensions(dimensions, 'x');
     const filename = resolveFilename(opts.filenamePattern, {
       app: st.appName || 'app',
       locale: localeCode,

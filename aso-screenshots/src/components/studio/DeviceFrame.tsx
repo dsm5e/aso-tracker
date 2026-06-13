@@ -1,37 +1,23 @@
 import type { ReactNode } from 'react';
+import {
+  getIPhoneProfile,
+  IPAD_FRAME,
+  type DeviceFrameGeometry,
+  type IPhoneModel,
+} from '../../lib/deviceProfiles';
 
 /**
- * Clay-style mockup of an iPhone 17 Pro Max or iPad Pro 13".
+ * Clay-style mockup of a selected iPhone profile or iPad Pro 13".
  * Matte body, soft drop shadow, zero glossy highlights — matches ButterKit's
  * "deviceStyle: clay" finish. Children fill the screen area.
  *
- * Sizes are calibrated against canvas (1290×2796) so the device fills naturally.
+ * Each iPhone frame uses the selected profile's exact screen aspect ratio.
  */
-
-// Sized so the phone occupies ~78% of canvas height — leaves room for headline above
-// or below without filling the whole frame. Real iPhone 17 Pro Max ratio is ~0.483.
-const IPHONE = {
-  width: 1064,
-  height: 2200,
-  bezel: 20,
-  cornerR: 168,
-  islandW: 290,
-  islandH: 72,
-  islandTop: 44,
-};
-
-const IPAD = {
-  width: 1620,
-  height: 2240,
-  bezel: 28,
-  cornerR: 80,
-  islandW: 0,
-  islandH: 0,
-  islandTop: 0,
-};
 
 interface Props {
   asset?: 'iphone' | 'ipad';
+  iphoneModel?: IPhoneModel;
+  showIsland?: boolean;
   children?: ReactNode;
   /** When the screen is empty / placeholder, render this label inside it. */
   placeholder?: ReactNode;
@@ -46,6 +32,8 @@ interface Props {
 
 export function DeviceFrame({
   asset = 'iphone',
+  iphoneModel,
+  showIsland = true,
   children,
   placeholder,
   onClickScreen,
@@ -54,7 +42,7 @@ export function DeviceFrame({
   onDragLeaveScreen,
   emptyScreenColor = '#000',
 }: Props) {
-  const D = asset === 'ipad' ? IPAD : IPHONE;
+  const D = asset === 'ipad' ? IPAD_FRAME : getIPhoneProfile(iphoneModel).frame;
   return (
     <div style={{ position: 'relative', width: D.width, height: D.height }}>
       {/* Soft drop shadow layer — drawn separately so we can multiply for depth without crispening edges */}
@@ -103,7 +91,7 @@ export function DeviceFrame({
         </div>
 
         {/* Dynamic island (iPhone only) */}
-        {D.islandW > 0 && (
+        {showIsland && D.islandW > 0 && (
           <div
             aria-hidden
             style={{
@@ -124,4 +112,16 @@ export function DeviceFrame({
   );
 }
 
-export const DEVICE_DIMS = { iphone: IPHONE, ipad: IPAD };
+export function getDeviceFrameGeometry(
+  asset: 'iphone' | 'ipad',
+  iphoneModel?: IPhoneModel,
+): DeviceFrameGeometry {
+  return asset === 'ipad' ? IPAD_FRAME : getIPhoneProfile(iphoneModel).frame;
+}
+
+// Legacy layout consumers render catalog thumbnails before project state exists.
+// Keep their geometry on the historical default profile.
+export const DEVICE_DIMS = {
+  iphone: getIPhoneProfile().frame,
+  ipad: IPAD_FRAME,
+};
