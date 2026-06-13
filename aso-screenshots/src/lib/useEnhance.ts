@@ -4,6 +4,7 @@ import { PRESETS, getPreset } from './presets';
 import { useStudio, type ActionData } from '../state/studio';
 import { buildIngredientsPromptBlock } from './heroIngredients';
 import { clog } from './clog';
+import { getCaptureDimensions, type IPhoneModel } from './deviceProfiles';
 
 // /api when app is hit on its own port; /studio-api when proxied via Keywords origin.
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
@@ -20,14 +21,10 @@ async function blobUrlToDataUri(url: string): Promise<string> {
   });
 }
 
-const CANVAS_CAPTURE_DIMS = {
-  iphone: { w: 1290, h: 2796, cw: 1280, ch: 2784 },
-  // iPad logical canvas is 2048×2732, but fal.ai rejects images that large.
-  // Capture at ~62.5% scale → 1280×1707 output, same file-size ballpark as iPhone scaffold.
-  ipad:   { w: 2048, h: 2732, cw: 1280, ch: 1707 },
-};
-
-async function captureScaffold(device: 'iphone' | 'ipad' = 'iphone'): Promise<string | null> {
+async function captureScaffold(
+  device: 'iphone' | 'ipad' = 'iphone',
+  iphoneModel?: IPhoneModel,
+): Promise<string | null> {
   const el = document.querySelector('[data-mockup-canvas-inner]') as HTMLElement | null;
   if (!el) throw new Error('MockupCanvas element not found in DOM');
 
@@ -42,7 +39,7 @@ async function captureScaffold(device: 'iphone' | 'ipad' = 'iphone'): Promise<st
   const previousDisplay = omitNodes.map((n) => n.style.display);
   omitNodes.forEach((n) => { n.style.display = 'none'; });
 
-  const d = CANVAS_CAPTURE_DIMS[device];
+  const d = getCaptureDimensions(device, iphoneModel);
   clog('enhance', `toPng dims=${d.w}×${d.h} canvas=${d.cw}×${d.ch}`);
   try {
     const dataUri = await toPng(el, {
@@ -127,8 +124,9 @@ export function useEnhance() {
     try {
       const preset = getPreset(ss.presetId) ?? PRESETS[0];
       const device = ss.device ?? 'iphone';
+      const iphoneModel = useStudio.getState().iphoneModel;
       clog('enhance', `click → capturing scaffold, slotId=${ss.id} device=${device} kind=${ss.kind}`);
-      const scaffoldDataUri = await captureScaffold(device);
+      const scaffoldDataUri = await captureScaffold(device, iphoneModel);
       if (!scaffoldDataUri) throw new Error('Could not capture canvas');
       clog('enhance', 'scaffold captured', { bytes: scaffoldDataUri.length, device });
 

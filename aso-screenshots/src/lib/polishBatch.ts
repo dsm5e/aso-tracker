@@ -12,6 +12,7 @@ import { useStudio, type ActionData } from '../state/studio';
 import { PRESETS, getPreset } from './presets';
 import { clog } from './clog';
 import { buildIngredientsPromptBlock } from './heroIngredients';
+import { getCaptureDimensions, type IPhoneModel } from './deviceProfiles';
 
 async function blobUrlToDataUri(url: string): Promise<string> {
   const res = await fetch(url);
@@ -37,12 +38,11 @@ const POLISH_DEFAULT_ACTION: ActionData = {
   generateState: 'idle',
 };
 
-const CAPTURE_DIMS = {
-  iphone: { w: 1290, h: 2796, cw: 1280, ch: 2784 },
-  ipad:   { w: 2048, h: 2732, cw: 1280, ch: 1707 },
-};
-
-async function captureScaffoldFor(slotId: string, device: 'iphone' | 'ipad' = 'iphone'): Promise<string> {
+async function captureScaffoldFor(
+  slotId: string,
+  device: 'iphone' | 'ipad' = 'iphone',
+  iphoneModel?: IPhoneModel,
+): Promise<string> {
   // Target the hidden full-resolution scaffold canvas (data-scaffold-slot), NOT
   // the visible compact card canvas — compact canvas is too small and causes the
   // phone to appear misplaced when toPng renders at full 1290/2048px width.
@@ -74,7 +74,7 @@ async function captureScaffoldFor(slotId: string, device: 'iphone' | 'ipad' = 'i
   const prevDisplays = omitNodes.map((n) => n.style.display);
   omitNodes.forEach((n) => { n.style.display = 'none'; });
 
-  const d = CAPTURE_DIMS[device];
+  const d = getCaptureDimensions(device, iphoneModel);
   clog('capture', `toPng dims: ${d.w}×${d.h} canvas: ${d.cw}×${d.ch}`);
   try {
     const dataUri = await toPng(el, {
@@ -145,7 +145,7 @@ export async function polishSlot(slotId: string): Promise<string> {
 
   try {
     clog('polish', `slot ${slotId} → capturing scaffold (device=${ss.device ?? 'iphone'})`);
-    const scaffoldDataUri = await captureScaffoldFor(slotId, ss.device ?? 'iphone');
+    const scaffoldDataUri = await captureScaffoldFor(slotId, ss.device ?? 'iphone', st.iphoneModel);
 
     const effectiveBackground =
       ss.backgroundOverride ?? st.appColor ?? preset.suggestedAccent ?? preset.background.css;

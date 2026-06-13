@@ -1,6 +1,7 @@
-import { create } from 'zustand';
+import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { PRESETS } from '../lib/presets';
+import { DEFAULT_IPHONE_MODEL, type IPhoneModel } from '../lib/deviceProfiles';
 
 export type Devices = 'iphone' | 'ipad' | 'both';
 
@@ -75,6 +76,9 @@ export interface Screenshot {
   device?: 'iphone' | 'ipad';
   /** Source PNG URL from simulator (object URL or absolute path) */
   sourceUrl: string | null;
+  /** Original uploaded bitmap dimensions, used to flag device-model mismatches. */
+  sourcePixelWidth?: number;
+  sourcePixelHeight?: number;
   /** Optional SECOND device image → renders a two-phone "V" mockup (a back
    *  phone tilted behind + the primary in front, overlapping — The Bump style).
    *  Used for dad-connect (QR + dad home) and milestone (timeline + dad tasks). */
@@ -187,6 +191,7 @@ interface StudioState {
    *  AI gets the actual icon image via image_urls so the result is brand-faithful. */
   appIconUrl: string | null;
   devices: Devices;
+  iphoneModel: IPhoneModel;
   outputFolder: string;
 
   /** Agent-driven wizard navigation. When set (via the bridge `goTo` + a state
@@ -250,7 +255,7 @@ interface StudioState {
   iconLab?: IconLab;
 
   // Mutations
-  setProject: (patch: Partial<Pick<StudioState, 'appName' | 'appColor' | 'appIconUrl' | 'devices' | 'outputFolder'>>) => void;
+  setProject: (patch: Partial<Pick<StudioState, 'appName' | 'appColor' | 'appIconUrl' | 'devices' | 'iphoneModel' | 'outputFolder'>>) => void;
   pickPreset: (id: string) => void;
   toggleMultiSelect: (id: string) => void;
   clearMultiSelect: () => void;
@@ -350,6 +355,10 @@ interface StudioState {
   addIpadVariant: () => void;
 }
 
+type StudioData = {
+  [K in keyof StudioState as StudioState[K] extends (...args: never[]) => unknown ? never : K]: StudioState[K];
+};
+
 /** Frozen snapshot of a PPO experiment — shows up in /setup → Recent PPO. */
 export interface ArchivedPPOExperiment {
   id: string;
@@ -393,6 +402,7 @@ export interface ArchivedProject {
     appColor: string;
     appIconUrl: string | null;
     devices: Devices;
+    iphoneModel?: IPhoneModel;
     outputFolder: string;
     selectedPresetId: string | null;
     screenshots: Screenshot[];
@@ -400,17 +410,18 @@ export interface ArchivedProject {
   };
 }
 
-const initial = {
+const initial: StudioData = {
   appName: '',
   appColor: '#3B82F6',
   appIconUrl: null as string | null,
   devices: 'iphone' as Devices,
+  iphoneModel: DEFAULT_IPHONE_MODEL,
   outputFolder: '',
   agentNav: null as string | null,
-  selectedPresetId: null,
+  selectedPresetId: null as string | null,
   catalogFilter: 'all' as const,
   screenshots: [] as Screenshot[],
-  activeScreenshotId: null,
+  activeScreenshotId: null as string | null,
   viewMode: 'scaffold' as const,
   previewDevice: 'iphone' as const,
   locales: [] as LocaleEntry[],
@@ -429,11 +440,12 @@ const initial = {
 };
 
 /** Subset of `initial` reset on "new project" — preserves archive + ai-spend. */
-const projectInitial = {
+const projectInitial: Partial<StudioData> = {
   appName: '',
   appColor: '#3B82F6',
   appIconUrl: null as string | null,
   devices: 'iphone' as Devices,
+  iphoneModel: DEFAULT_IPHONE_MODEL,
   outputFolder: '',
   selectedPresetId: null as string | null,
   catalogFilter: 'all' as const,
@@ -538,11 +550,11 @@ const CANVAS_W_FOR_PAIR = 1290;
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 
-export const useStudio = create<StudioState>()(
+export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioState>()(
   persist(
     (set) => ({
       ...initial,
-      setProject: (patch) => set(patch),
+      setProject: (patch) => { set(patch); },
       pickPreset: (id) =>
         set((state) => {
           const preset = PRESETS.find((p) => p.id === id);
@@ -1235,6 +1247,7 @@ export const useStudio = create<StudioState>()(
             appColor: state.appColor,
             appIconUrl: state.appIconUrl,
             devices: state.devices,
+            iphoneModel: state.iphoneModel,
             outputFolder: state.outputFolder,
             selectedPresetId: state.selectedPresetId,
             screenshots: state.screenshots,

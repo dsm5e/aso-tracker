@@ -448,6 +448,7 @@ function goTo(route: string): { ok: boolean } {
  *  can't resurrect the old active draft. */
 function startProject(opts: {
   devices?: 'iphone' | 'ipad' | 'both';
+  iphoneModel?: import('./deviceProfiles').IPhoneModel;
   appName?: string;
   appColor?: string;
   outputFolder?: string;
@@ -463,6 +464,7 @@ function startProject(opts: {
   }
   const proj: Record<string, unknown> = {};
   if (opts.devices !== undefined) proj.devices = opts.devices;
+  if (opts.iphoneModel !== undefined) proj.iphoneModel = opts.iphoneModel;
   if (opts.appName !== undefined) proj.appName = opts.appName;
   if (opts.appColor !== undefined) proj.appColor = opts.appColor;
   if (opts.outputFolder !== undefined) proj.outputFolder = opts.outputFolder;
@@ -518,9 +520,7 @@ function patchSlot(id: string, patch: Partial<Screenshot>): { ok: boolean; error
 }
 
 /** Project-level setter (appName, appColor, devices, outputFolder, etc.). */
-function patchProject(patch: Parameters<typeof useStudio.getState>[0] extends never
-  ? Record<string, unknown>
-  : Parameters<ReturnType<typeof useStudio.getState>['setProject']>[0]) {
+function patchProject(patch: Parameters<ReturnType<typeof useStudio.getState>['setProject']>[0]) {
   useStudio.getState().setProject(patch);
   return { ok: true } as const;
 }
