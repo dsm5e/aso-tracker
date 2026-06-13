@@ -1,10 +1,10 @@
-import { toPng } from 'html-to-image';
 import { useState, useCallback } from 'react';
 import { PRESETS, getPreset } from './presets';
 import { useStudio, type ActionData } from '../state/studio';
 import { buildIngredientsPromptBlock } from './heroIngredients';
 import { clog } from './clog';
-import { getCaptureDimensions, type IPhoneModel } from './deviceProfiles';
+import { type IPhoneModel } from './deviceProfiles';
+import { captureCanvasToPng } from './captureCanvas';
 
 // /api when app is hit on its own port; /studio-api when proxied via Keywords origin.
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
@@ -29,50 +29,25 @@ async function captureScaffold(
   if (!el) throw new Error('MockupCanvas element not found in DOM');
 
   clog('enhance', `captureScaffold device=${device} el=${el.tagName} offsetW=${el.offsetWidth}`);
-
-  const prevTransform = el.style.transform;
-  const prevOverflow = el.style.overflow;
-  el.style.transform = 'none';
-  el.style.overflow = 'hidden';
-
-  const omitNodes = Array.from(el.querySelectorAll<HTMLElement>('[data-capture-omit]'));
-  const previousDisplay = omitNodes.map((n) => n.style.display);
-  omitNodes.forEach((n) => { n.style.display = 'none'; });
-
-  const d = getCaptureDimensions(device, iphoneModel);
-  clog('enhance', `toPng dims=${d.w}×${d.h} canvas=${d.cw}×${d.ch}`);
-  try {
-    const dataUri = await toPng(el, {
-      pixelRatio: d.cw / d.w,
-      width: d.w,
-      height: d.h,
-      canvasWidth: d.cw,
-      canvasHeight: d.ch,
-      cacheBust: false,
-      skipFonts: true,
-      filter: (node) => {
-        if (node instanceof HTMLImageElement && node.alt === '') {
-          const src = node.getAttribute('src') || '';
-          if (
-            src.startsWith('data:image/png') ||
-            src.includes('oaiusercontent') ||
-            src.includes('openai') ||
-            src.includes('fal.media') ||
-            src.includes('fal.run')
-          ) {
-            return false;
-          }
+  return await captureCanvasToPng(el, {
+    device,
+    iphoneModel,
+    logTag: 'enhance',
+    filter: (node) => {
+      if (node instanceof HTMLImageElement && node.alt === '') {
+        const src = node.getAttribute('src') || '';
+        if (
+          src.includes('oaiusercontent') ||
+          src.includes('openai') ||
+          src.includes('fal.media') ||
+          src.includes('fal.run')
+        ) {
+          return false;
         }
-        return true;
-      },
-    });
-    clog('enhance', `captureScaffold done, length=${dataUri.length}`);
-    return dataUri;
-  } finally {
-    omitNodes.forEach((n, i) => { n.style.display = previousDisplay[i] ?? ''; });
-    el.style.transform = prevTransform;
-    el.style.overflow = prevOverflow;
-  }
+      }
+      return true;
+    },
+  });
 }
 
 const DEFAULT_ACTION: ActionData = {
