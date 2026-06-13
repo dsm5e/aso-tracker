@@ -152,7 +152,8 @@ export function useEnhance() {
       const captureH = device === 'ipad' ? 2732 : 2796;
       const titlePx = (ss as { titlePx?: number }).titlePx ?? 220;
       const lineCount = [ss.headline.verb, ss.headline.descriptor, ss.headline.subhead]
-        .filter(Boolean).length || 2;
+        .filter(Boolean)
+        .reduce((sum, text) => sum + text.split(/\r?\n/).filter(Boolean).length, 0) || 2;
       const headlineBottomPx = yFrac * captureH + titlePx * lineCount * 1.3 + 80;
       const headlinePct = Math.min(Math.round((headlineBottomPx / captureH) * 100), 50);
 

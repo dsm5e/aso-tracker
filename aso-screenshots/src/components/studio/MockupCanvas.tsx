@@ -48,10 +48,15 @@ function FitTitle({ text, initialPx, style, accentColor }: { text: string; initi
   }, [plain, initialPx]);
 
   return (
-    <div ref={ref} style={{ ...style, fontSize: sizeRef.current }}>
+    <div ref={ref} style={{ ...style, fontSize: sizeRef.current, whiteSpace: 'pre-wrap' }}>
       {renderAccented(text, accentColor)}
     </div>
   );
+}
+
+function explicitLineCount(text: string): number {
+  if (!text) return 0;
+  return text.split(/\r?\n/).length;
 }
 
 function hexToRgb(hex: string): [number, number, number] | null {
@@ -180,7 +185,12 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   // locale-adjusted smaller fonts don't move the device up, leaving empty space.
   const layoutTitlePx = deviceBaseTitlePx ?? titlePx;
   const layoutSubPx = deviceBaseSubPx ?? subPx;
-  const headlineHeight = layoutTitlePx + 24 + layoutSubPx;
+  const layoutTitleLines = explicitLineCount(ss.headline.verb || '');
+  const layoutSubLines = explicitLineCount(ss.headline.descriptor || '');
+  const titleBlockHeight = layoutTitleLines > 0 ? layoutTitlePx * 1.02 * layoutTitleLines : 0;
+  const subBlockHeight = layoutSubLines > 0 ? layoutSubPx * 1.15 * layoutSubLines : 0;
+  const headlineGap = titleBlockHeight > 0 && subBlockHeight > 0 ? 24 : 0;
+  const headlineHeight = titleBlockHeight + headlineGap + subBlockHeight;
   const textZoneBottom = headlineTop + headlineHeight; // boundary: text must stay above this
   const deviceX = (CANVAS_W - D.width) / 2 + presetOffX;
   const deviceY =
@@ -570,6 +580,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               fontWeight: textWeight,
               lineHeight: 1.02,
               letterSpacing: '-0.02em',
+              whiteSpace: 'pre-wrap',
               overflowWrap: 'normal',
               wordBreak: 'normal',
               hyphens: 'none',
@@ -584,6 +595,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
                 marginTop: 24,
                 opacity: 0.95,
                 letterSpacing: '-0.005em',
+                whiteSpace: 'pre-wrap',
                 overflowWrap: 'break-word',
                 wordBreak: 'normal',
               }}
