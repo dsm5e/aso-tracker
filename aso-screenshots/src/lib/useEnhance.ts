@@ -1,9 +1,10 @@
-import { toPng } from 'html-to-image';
 import { useState, useCallback } from 'react';
 import { PRESETS, getPreset } from './presets';
 import { useStudio, type ActionData } from '../state/studio';
 import { buildIngredientsPromptBlock } from './heroIngredients';
 import { clog } from './clog';
+import { type IPhoneModel } from './deviceProfiles';
+import { captureCanvasToPng } from './captureCanvas';
 
 // /api when app is hit on its own port; /studio-api when proxied via Keywords origin.
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
@@ -20,62 +21,33 @@ async function blobUrlToDataUri(url: string): Promise<string> {
   });
 }
 
-const CANVAS_CAPTURE_DIMS = {
-  iphone: { w: 1290, h: 2796, cw: 1280, ch: 2784 },
-  // iPad logical canvas is 2048×2732, but fal.ai rejects images that large.
-  // Capture at ~62.5% scale → 1280×1707 output, same file-size ballpark as iPhone scaffold.
-  ipad:   { w: 2048, h: 2732, cw: 1280, ch: 1707 },
-};
-
-async function captureScaffold(device: 'iphone' | 'ipad' = 'iphone'): Promise<string | null> {
+async function captureScaffold(
+  device: 'iphone' | 'ipad' = 'iphone',
+  iphoneModel?: IPhoneModel,
+): Promise<string | null> {
   const el = document.querySelector('[data-mockup-canvas-inner]') as HTMLElement | null;
   if (!el) throw new Error('MockupCanvas element not found in DOM');
 
   clog('enhance', `captureScaffold device=${device} el=${el.tagName} offsetW=${el.offsetWidth}`);
-
-  const prevTransform = el.style.transform;
-  const prevOverflow = el.style.overflow;
-  el.style.transform = 'none';
-  el.style.overflow = 'hidden';
-
-  const omitNodes = Array.from(el.querySelectorAll<HTMLElement>('[data-capture-omit]'));
-  const previousDisplay = omitNodes.map((n) => n.style.display);
-  omitNodes.forEach((n) => { n.style.display = 'none'; });
-
-  const d = CANVAS_CAPTURE_DIMS[device];
-  clog('enhance', `toPng dims=${d.w}×${d.h} canvas=${d.cw}×${d.ch}`);
-  try {
-    const dataUri = await toPng(el, {
-      pixelRatio: d.cw / d.w,
-      width: d.w,
-      height: d.h,
-      canvasWidth: d.cw,
-      canvasHeight: d.ch,
-      cacheBust: false,
-      skipFonts: true,
-      filter: (node) => {
-        if (node instanceof HTMLImageElement && node.alt === '') {
-          const src = node.getAttribute('src') || '';
-          if (
-            src.startsWith('data:image/png') ||
-            src.includes('oaiusercontent') ||
-            src.includes('openai') ||
-            src.includes('fal.media') ||
-            src.includes('fal.run')
-          ) {
-            return false;
-          }
+  return await captureCanvasToPng(el, {
+    device,
+    iphoneModel,
+    logTag: 'enhance',
+    filter: (node) => {
+      if (node instanceof HTMLImageElement && node.alt === '') {
+        const src = node.getAttribute('src') || '';
+        if (
+          src.includes('oaiusercontent') ||
+          src.includes('openai') ||
+          src.includes('fal.media') ||
+          src.includes('fal.run')
+        ) {
+          return false;
         }
-        return true;
-      },
-    });
-    clog('enhance', `captureScaffold done, length=${dataUri.length}`);
-    return dataUri;
-  } finally {
-    omitNodes.forEach((n, i) => { n.style.display = previousDisplay[i] ?? ''; });
-    el.style.transform = prevTransform;
-    el.style.overflow = prevOverflow;
-  }
+      }
+      return true;
+    },
+  });
 }
 
 const DEFAULT_ACTION: ActionData = {
@@ -127,8 +99,9 @@ export function useEnhance() {
     try {
       const preset = getPreset(ss.presetId) ?? PRESETS[0];
       const device = ss.device ?? 'iphone';
+      const iphoneModel = useStudio.getState().iphoneModel;
       clog('enhance', `click → capturing scaffold, slotId=${ss.id} device=${device} kind=${ss.kind}`);
-      const scaffoldDataUri = await captureScaffold(device);
+      const scaffoldDataUri = await captureScaffold(device, iphoneModel);
       if (!scaffoldDataUri) throw new Error('Could not capture canvas');
       clog('enhance', 'scaffold captured', { bytes: scaffoldDataUri.length, device });
 
@@ -154,7 +127,8 @@ export function useEnhance() {
       const captureH = device === 'ipad' ? 2732 : 2796;
       const titlePx = (ss as { titlePx?: number }).titlePx ?? 220;
       const lineCount = [ss.headline.verb, ss.headline.descriptor, ss.headline.subhead]
-        .filter(Boolean).length || 2;
+        .filter(Boolean)
+        .reduce((sum, text) => sum + text.split(/\r?\n/).filter(Boolean).length, 0) || 2;
       const headlineBottomPx = yFrac * captureH + titlePx * lineCount * 1.3 + 80;
       const headlinePct = Math.min(Math.round((headlineBottomPx / captureH) * 100), 50);
 

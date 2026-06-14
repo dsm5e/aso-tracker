@@ -1,7 +1,7 @@
 import React from 'react';
 import { Star, RotateCcw } from 'lucide-react';
-import { Button, Card, Input, Slider, Toggle, SegmentedControl } from '../shared';
-import { PRESETS, getPreset } from '../../lib/presets';
+import { Card, Input, Slider, Toggle, SegmentedControl } from '../shared';
+import { getPreset } from '../../lib/presets';
 import { CURATED_FONTS } from '../../lib/fonts';
 import { HERO_INGREDIENTS } from '../../lib/heroIngredients';
 import { useStudio, type Screenshot, type ActionData, type HeroIngredients } from '../../state/studio';
@@ -492,19 +492,27 @@ export function Inspector({ screenshot: ss }: Props) {
         )}
 
         <Card.Section title="Заголовок">
-          <Input
-            label="Глагол / Title"
-            placeholder="TRACK"
-            value={ss.headline.verb}
-            onChange={(e) => setHeadline({ verb: e.target.value })}
-          />
+          <div className="field">
+            <label className="field-label">Глагол / Title</label>
+            <textarea
+              className="textarea"
+              rows={3}
+              placeholder="TRACK"
+              value={ss.headline.verb}
+              onChange={(e) => setHeadline({ verb: e.target.value })}
+            />
+          </div>
           <div style={{ height: 10 }} />
-          <Input
-            label="Подзаголовок"
-            placeholder="EVERY DAY"
-            value={ss.headline.descriptor}
-            onChange={(e) => setHeadline({ descriptor: e.target.value })}
-          />
+          <div className="field">
+            <label className="field-label">Подзаголовок</label>
+            <textarea
+              className="textarea"
+              rows={3}
+              placeholder="EVERY DAY"
+              value={ss.headline.descriptor}
+              onChange={(e) => setHeadline({ descriptor: e.target.value })}
+            />
+          </div>
           <div style={{ height: 10 }} />
           <div className="field">
             <label className="field-label">Шрифт</label>

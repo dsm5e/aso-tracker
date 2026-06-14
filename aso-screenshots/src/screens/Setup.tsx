@@ -3,16 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { Smartphone, Tablet, Layers, Plus, Trash2, FlaskConical, Shapes, ArrowRight } from 'lucide-react';
 import { Button, Card, Input } from '../components/shared';
 import { useStudio, type Devices, type ArchivedProject, type ArchivedPPOExperiment } from '../state/studio';
-
-const DEVICES: { value: Devices; label: string; sub: string; icon: typeof Smartphone }[] = [
-  { value: 'iphone', label: 'iPhone', sub: '1320×2868 (6.9")', icon: Smartphone },
-  { value: 'ipad', label: 'iPad', sub: '2064×2752 (13")', icon: Tablet },
-  { value: 'both', label: 'Both', sub: 'iPhone + iPad max', icon: Layers },
-];
+import { formatDimensions, getIPhoneProfile } from '../lib/deviceProfiles';
 
 export function SetupScreen() {
   const nav = useNavigate();
   const devices = useStudio((s) => s.devices);
+  const iphoneModel = useStudio((s) => s.iphoneModel);
   const outputFolder = useStudio((s) => s.outputFolder);
   const appName = useStudio((s) => s.appName);
   const setProject = useStudio((s) => s.setProject);
@@ -25,6 +21,17 @@ export function SetupScreen() {
   const ppoDeleteSession = useStudio((s) => s.ppoDeleteSession);
   const screenshots = useStudio((s) => s.screenshots);
   const iconVariantCount = useStudio((s) => s.iconLab?.variants.length ?? 0);
+  const iphoneProfile = getIPhoneProfile(iphoneModel);
+  const deviceOptions: { value: Devices; label: string; sub: string; icon: typeof Smartphone }[] = [
+    {
+      value: 'iphone',
+      label: 'iPhone',
+      sub: `${iphoneProfile.label} · ${formatDimensions(iphoneProfile.canvas, '×')}`,
+      icon: Smartphone,
+    },
+    { value: 'ipad', label: 'iPad', sub: '2048×2732 (13")', icon: Tablet },
+    { value: 'both', label: 'Both', sub: `${iphoneProfile.label} + iPad`, icon: Layers },
+  ];
 
   const hasActiveWork = !!appName || !!outputFolder || screenshots.length > 0;
 
@@ -83,7 +90,7 @@ export function SetupScreen() {
               Generate at the largest size — App Store Connect auto-scales for smaller iPhones / iPads.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-              {DEVICES.map((d) => {
+              {deviceOptions.map((d) => {
                 const active = devices === d.value;
                 const Icon = d.icon;
                 return (

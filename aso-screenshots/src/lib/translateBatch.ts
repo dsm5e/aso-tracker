@@ -4,7 +4,7 @@
  * results back into the studio store under the matching locale entry.
  */
 
-import { useStudio, type Headline, type LocaleEntry } from '../state/studio';
+import { useStudio, type Headline } from '../state/studio';
 import { findLocaleSpec } from './locales';
 import { getPreset } from './presets';
 import { DEVICE_DIMS } from '../components/studio/DeviceFrame';
@@ -225,15 +225,25 @@ export function refitLocale(localeCode: string): { adjusted: number } {
 /** Simulate browser word-wrap: count lines a text renders at given charsPerLine. */
 function linesWithWordWrap(text: string, charsPerLine: number): number {
   if (charsPerLine <= 0) return 999;
-  const words = /\s/.test(text) ? text.split(/\s+/).filter(Boolean) : [text];
-  if (words.length === 0) return 1;
-  let lines = 1;
-  let cur = 0;
-  for (const w of words) {
-    const wLen = w.length;
-    const need = cur === 0 ? wLen : cur + 1 + wLen;
-    if (need <= charsPerLine) cur = need;
-    else { lines++; cur = wLen; }
+  const segments = text.split(/\r?\n/);
+  let lines = 0;
+  for (const segment of segments) {
+    const words = /\s/.test(segment) ? segment.split(/\s+/).filter(Boolean) : [segment];
+    if (words.length === 0) {
+      lines += 1;
+      continue;
+    }
+    let cur = 0;
+    lines += 1;
+    for (const w of words) {
+      const wLen = w.length;
+      const need = cur === 0 ? wLen : cur + 1 + wLen;
+      if (need <= charsPerLine) cur = need;
+      else {
+        lines += 1;
+        cur = wLen;
+      }
+    }
   }
   return lines;
 }

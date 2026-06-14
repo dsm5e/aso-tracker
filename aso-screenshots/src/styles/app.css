@@ -213,11 +213,9 @@ button, input, select, textarea {
 }
 
 /* ─── Inputs ──────────────────────────────────── */
-.input, .select {
+.input, .select, .textarea {
   display: block;
   width: 100%;
-  height: var(--row-h);
-  padding: 0 10px;
   border-radius: var(--r-2);
   border: 1px solid var(--line-2);
   background: var(--bg-2);
@@ -226,9 +224,20 @@ button, input, select, textarea {
   outline: none;
   transition: all 0.12s;
 }
+.input, .select {
+  height: var(--row-h);
+  padding: 0 10px;
+}
+.textarea {
+  min-height: calc(var(--row-h) * 2.5);
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.4;
+}
 .input::placeholder { color: var(--fg-3); }
-.input:hover, .select:hover { border-color: var(--line-3); }
-.input:focus, .select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.textarea::placeholder { color: var(--fg-3); }
+.input:hover, .select:hover, .textarea:hover { border-color: var(--line-3); }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field-label {

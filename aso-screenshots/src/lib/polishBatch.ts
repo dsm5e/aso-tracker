@@ -7,11 +7,12 @@
  * subsequent calls so the batch reads as a coherent series.
  */
 
-import { toPng } from 'html-to-image';
 import { useStudio, type ActionData } from '../state/studio';
 import { PRESETS, getPreset } from './presets';
 import { clog } from './clog';
 import { buildIngredientsPromptBlock } from './heroIngredients';
+import { getCaptureDimensions, type IPhoneModel } from './deviceProfiles';
+import { captureCanvasToPng } from './captureCanvas';
 
 async function blobUrlToDataUri(url: string): Promise<string> {
   const res = await fetch(url);
@@ -37,12 +38,11 @@ const POLISH_DEFAULT_ACTION: ActionData = {
   generateState: 'idle',
 };
 
-const CAPTURE_DIMS = {
-  iphone: { w: 1290, h: 2796, cw: 1280, ch: 2784 },
-  ipad:   { w: 2048, h: 2732, cw: 1280, ch: 1707 },
-};
-
-async function captureScaffoldFor(slotId: string, device: 'iphone' | 'ipad' = 'iphone'): Promise<string> {
+async function captureScaffoldFor(
+  slotId: string,
+  device: 'iphone' | 'ipad' = 'iphone',
+  iphoneModel?: IPhoneModel,
+): Promise<string> {
   // Target the hidden full-resolution scaffold canvas (data-scaffold-slot), NOT
   // the visible compact card canvas — compact canvas is too small and causes the
   // phone to appear misplaced when toPng renders at full 1290/2048px width.
@@ -59,77 +59,48 @@ async function captureScaffoldFor(slotId: string, device: 'iphone' | 'ipad' = 'i
     clog('capture', `  img src=${src.slice(0, 80)} complete=${img.complete} naturalW=${img.naturalWidth} ok=${ok}`);
   });
 
-  const prevTransform = el.style.transform;
-  const prevOverflow = el.style.overflow;
-  // The wrapper has visibility:hidden so it doesn't show in the UI. That
-  // cascades into el and makes toPng render a blank white canvas. Temporarily
-  // lift it to visible just for the capture, then restore.
-  const prevWrapperVisibility = scaffoldWrapper ? scaffoldWrapper.style.visibility : '';
-  if (scaffoldWrapper) scaffoldWrapper.style.visibility = 'visible';
-
-  el.style.transform = 'none';
-  el.style.overflow = 'hidden';
-
-  const omitNodes = Array.from(el.querySelectorAll<HTMLElement>('[data-capture-omit]'));
-  const prevDisplays = omitNodes.map((n) => n.style.display);
-  omitNodes.forEach((n) => { n.style.display = 'none'; });
-
-  const d = CAPTURE_DIMS[device];
-  clog('capture', `toPng dims: ${d.w}×${d.h} canvas: ${d.cw}×${d.ch}`);
-  try {
-    const dataUri = await toPng(el, {
-      pixelRatio: d.cw / d.w,
-      width: d.w,
-      height: d.h,
-      canvasWidth: d.cw,
-      canvasHeight: d.ch,
-      cacheBust: false,
-      skipFonts: true,
-      filter: (node) => {
-        // Exclude only AI-generated result images (fal / openai CDN). Keep
-        // everything else — including data:image/png which may be the user's
-        // uploaded screenshot embedded inline in the scaffold.
-        if (node instanceof HTMLImageElement && node.alt === '') {
-          const src = node.getAttribute('src') || '';
-          if (
-            src.includes('oaiusercontent') ||
-            src.includes('openai') ||
-            src.includes('fal.media') ||
-            src.includes('fal.run')
-          ) {
-            return false;
-          }
+  const dataUri = await captureCanvasToPng(el, {
+    slotId,
+    device,
+    iphoneModel,
+    wrapper: scaffoldWrapper,
+    logTag: 'capture',
+    filter: (node) => {
+      if (node instanceof HTMLImageElement && node.alt === '') {
+        const src = node.getAttribute('src') || '';
+        if (
+          src.includes('oaiusercontent') ||
+          src.includes('openai') ||
+          src.includes('fal.media') ||
+          src.includes('fal.run')
+        ) {
+          return false;
         }
-        return true;
-      },
+      }
+      return true;
+    },
+  });
+  const d = getCaptureDimensions(device, iphoneModel);
+  // Large scaffolds (>2 MB base64) cause fal.ai 408 timeouts. Re-encode as
+  // JPEG at 0.88 quality — keeps visual fidelity while cutting 5–8× in size.
+  if (dataUri.length > 2_000_000) {
+    const img = new Image();
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res();
+      img.onerror = rej;
+      img.src = dataUri;
     });
-    clog('capture', `toPng success, dataUri length=${dataUri.length}`);
-    // Large scaffolds (>2 MB base64) cause fal.ai 408 timeouts. Re-encode as
-    // JPEG at 0.88 quality — keeps visual fidelity while cutting 5–8× in size.
-    if (dataUri.length > 2_000_000) {
-      const img = new Image();
-      await new Promise<void>((res, rej) => {
-        img.onload = () => res();
-        img.onerror = rej;
-        img.src = dataUri;
-      });
-      // Half-res PNG — no JPEG banding artifacts on gradients, no white fill
-      const cvs = document.createElement('canvas');
-      cvs.width = Math.round(d.cw / 2);
-      cvs.height = Math.round(d.ch / 2);
-      const ctx = cvs.getContext('2d')!;
-      ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
-      const compressed = cvs.toDataURL('image/png');
-      clog('capture', `compressed: ${dataUri.length} → ${compressed.length} bytes (half-res PNG)`);
-      return compressed;
-    }
-    return dataUri;
-  } finally {
-    omitNodes.forEach((n, i) => { n.style.display = prevDisplays[i] ?? ''; });
-    el.style.transform = prevTransform;
-    el.style.overflow = prevOverflow;
-    if (scaffoldWrapper) scaffoldWrapper.style.visibility = prevWrapperVisibility;
+    // Half-res PNG — no JPEG banding artifacts on gradients, no white fill
+    const cvs = document.createElement('canvas');
+    cvs.width = Math.round(d.cw / 2);
+    cvs.height = Math.round(d.ch / 2);
+    const ctx = cvs.getContext('2d')!;
+    ctx.drawImage(img, 0, 0, cvs.width, cvs.height);
+    const compressed = cvs.toDataURL('image/png');
+    clog('capture', `compressed: ${dataUri.length} → ${compressed.length} bytes (half-res PNG)`);
+    return compressed;
   }
+  return dataUri;
 }
 
 /** Polish a single slot — captures its scaffold, calls the server, writes the
@@ -145,7 +116,7 @@ export async function polishSlot(slotId: string): Promise<string> {
 
   try {
     clog('polish', `slot ${slotId} → capturing scaffold (device=${ss.device ?? 'iphone'})`);
-    const scaffoldDataUri = await captureScaffoldFor(slotId, ss.device ?? 'iphone');
+    const scaffoldDataUri = await captureScaffoldFor(slotId, ss.device ?? 'iphone', st.iphoneModel);
 
     const effectiveBackground =
       ss.backgroundOverride ?? st.appColor ?? preset.suggestedAccent ?? preset.background.css;
