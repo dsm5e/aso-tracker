@@ -53,6 +53,12 @@ aso-video/output/
 aso-video/uploads/
 aso-video/.tmp/
 
+# aso-inapp — private per-app event copy + generated media (videos/frames).
+# The tool code (index.html, package.json) IS tracked; data + media are not.
+aso-inapp/media/
+aso-inapp/events.json
+!aso-inapp/events.example.json
+
 # Vite cache
 **/.vite/
 **/.vite-temp/

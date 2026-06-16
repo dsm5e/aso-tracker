@@ -1,0 +1,9 @@
+{
+  "name": "aso-inapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App Store In-App Events preview (card 16:9 + detail 9:16) for Elara",
+  "scripts": {
+    "dev": "python3 -m http.server 5196"
+  }
+}
