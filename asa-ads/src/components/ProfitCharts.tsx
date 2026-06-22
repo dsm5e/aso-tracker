@@ -74,6 +74,54 @@ export function CostPerTrialBars({ rows, blended }: { rows: GeoRow[]; blended: n
   );
 }
 
+export interface RoasRow { country: string; spend: number; revenue: number; roas: number }
+
+/** Real ROAS per geo — bar ∝ ROAS%, break-even at 100%. green ≥100% · amber ≥50% · red below / no revenue. */
+export function RoasByGeoBars({ rows }: { rows: RoasRow[] }) {
+  const data = rows.filter((r) => r.spend > 0).sort((a, b) => b.roas - a.roas);
+  if (data.length === 0) return null;
+
+  const rowH = 22;
+  const padL = 56, padR = 96, padT = 8, padB = 22;
+  const W = 1000;
+  const H = padT + padB + data.length * rowH;
+  const innerW = W - padL - padR;
+  const maxRoas = Math.max(2, ...data.map((d) => d.roas)); // cap axis at ≥200%
+  const x = (v: number) => padL + (Math.min(v, maxRoas) / maxRoas) * innerW;
+  const color = (roas: number, rev: number) => rev <= 0 ? "var(--red)" : roas >= 1 ? "var(--green)" : roas >= 0.5 ? "var(--amber)" : "var(--red)";
+
+  return (
+    <div className="card" style={{ padding: "12px 16px" }}>
+      <div className="muted" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6 }}>
+        Real ROAS · break-even = 100% (revenue = spend) · green ≥100% · amber ≥50%
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "auto" }}>
+        {/* break-even 100% line (only if within axis) */}
+        {maxRoas >= 1 && (
+          <>
+            <line x1={x(1)} y1={padT} x2={x(1)} y2={H - padB} stroke="var(--cyan)" strokeWidth="0.75" strokeDasharray="3 3" opacity="0.7" />
+            <text x={x(1)} y={H - 8} textAnchor="middle" fill="var(--cyan)" fontSize="10" fontFamily="var(--mono)">100%</text>
+          </>
+        )}
+        {data.map((d, i) => {
+          const y = padT + i * rowH;
+          const c = color(d.roas, d.revenue);
+          const w = x(d.roas) - padL;
+          return (
+            <g key={d.country}>
+              <text x={padL - 8} y={y + rowH / 2 + 3} textAnchor="end" fill="var(--bone)" fontSize="11" fontFamily="var(--mono)">{d.country}</text>
+              <rect x={padL} y={y + 3} width={Math.max(1, w)} height={rowH - 8} fill={c} opacity={d.revenue <= 0 ? 0.28 : 0.62} rx="1" />
+              <text x={Math.max(x(d.roas) + 6, padL + 6)} y={y + rowH / 2 + 3} fill="var(--bone-dim)" fontSize="10" fontFamily="var(--mono)">
+                {d.revenue <= 0 ? `$0 / ${fmtUsd(d.spend)}` : `${(d.roas * 100).toFixed(0)}% · ${fmtUsd(d.revenue)}/${fmtUsd(d.spend)}`}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
 export function EfficiencyScatter({ rows, blended }: { rows: GeoRow[]; blended: number }) {
   const data = rows.filter((r) => r.spend > 0);
   if (data.length === 0) return null;

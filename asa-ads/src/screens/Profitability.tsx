@@ -3,7 +3,7 @@ import { api, type DailyTotals } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
 import Sparkline from "../components/Sparkline.tsx";
 import HeroChart from "../components/HeroChart.tsx";
-import { CostPerTrialBars, EfficiencyScatter, zoneColor, type GeoRow } from "../components/ProfitCharts.tsx";
+import { CostPerTrialBars, EfficiencyScatter, RoasByGeoBars, zoneColor, type GeoRow } from "../components/ProfitCharts.tsx";
 import { exportRows } from "../lib/csv.ts";
 
 interface Props { reloadKey: number }
@@ -19,6 +19,7 @@ export default function Profitability({ reloadKey }: Props) {
   const [rev, setRev] = useState<RevRow[]>([]);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
+  const [projSpend, setProjSpend] = useState(100);
 
   useEffect(() => {
     setLoading(true);
@@ -104,6 +105,60 @@ export default function Profitability({ reloadKey }: Props) {
 
       <div className="divider">Payback trend</div>
       <HeroChart daily={daily} />
+
+      {hasRevenue && (
+        <>
+          <div className="divider">ROAS by geo</div>
+          <RoasByGeoBars rows={merged.map((r) => ({ country: r.country, spend: r.spend, revenue: r.revenue, roas: r.roas }))} />
+
+          <div className="divider">Payback projector</div>
+          <div className="card" style={{ padding: "14px 16px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+              <span className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em" }}>Pour</span>
+              <input type="number" value={projSpend} min={0} step={50}
+                onChange={(e) => setProjSpend(Math.max(0, Number(e.target.value)))}
+                style={{ width: 96 }} />
+              <span className="muted" style={{ fontSize: 11 }}>$ into a geo → projected revenue at its current ROAS (linear, holds only up to search-volume ceiling)</span>
+            </div>
+            {(() => {
+              const profitable = merged.filter((r) => r.revenue > 0).sort((a, b) => b.roas - a.roas);
+              if (profitable.length === 0) return <div className="muted" style={{ fontSize: 12 }}>no geo with revenue yet</div>;
+              return (
+                <table>
+                  <thead>
+                    <tr><th>Geo</th><th className="num">ROAS</th><th className="num">Pour</th><th className="num">→ Revenue</th><th className="num">Net</th></tr>
+                  </thead>
+                  <tbody>
+                    {profitable.map((r) => {
+                      const proj = projSpend * r.roas;
+                      const net = proj - projSpend;
+                      return (
+                        <tr key={r.country}>
+                          <td style={{ fontWeight: 500 }}>{r.country}</td>
+                          <td className="num" style={{ color: r.roas >= 1 ? "var(--green)" : "var(--amber)" }}>{(r.roas * 100).toFixed(0)}%</td>
+                          <td className="num">{fmtUsd(projSpend)}</td>
+                          <td className="num" style={{ color: "var(--green)" }}>{fmtUsd(proj)}</td>
+                          <td className="num" style={{ color: net >= 0 ? "var(--green)" : "var(--red)" }}>{net >= 0 ? "+" : ""}{fmtUsd(net)}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr>
+                      <td className="muted">Blended</td>
+                      <td className="num muted">{(t.roas * 100).toFixed(0)}%</td>
+                      <td className="num muted">{fmtUsd(projSpend)}</td>
+                      <td className="num muted">{fmtUsd(projSpend * t.roas)}</td>
+                      <td className="num muted">{projSpend * t.roas - projSpend >= 0 ? "+" : ""}{fmtUsd(projSpend * t.roas - projSpend)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              );
+            })()}
+            <div className="muted" style={{ fontSize: 10, marginTop: 8 }}>
+              ⚠ Linear at observed ROAS — early Adapty log (~from 06-21) + thin paid counts; treat as directional, not a guarantee. Niche search volume caps how much a geo can actually absorb.
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="divider">Cost per trial by geo</div>
       {geo.length === 0 ? (
