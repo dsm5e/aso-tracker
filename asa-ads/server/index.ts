@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { loadConfig, ELARA_APP_ID } from "./config.ts";
+import { loadConfig, ELARA_APP_ID, MEDSCAN_APP_ID } from "./config.ts";
 import { openDb, getDb } from "./db.ts";
 import { AsaClient } from "./asa-client.ts";
 import { AscClient } from "./asc-client.ts";
@@ -78,14 +78,38 @@ app.get("/api/campaigns", (req, res) => {
 app.get("/api/revenue", async (req, res) => {
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
   const days = Number(req.query.days ?? 30);
-  if (appId !== ELARA_APP_ID || !cfg.elaraRevenueFnUrl) { res.json({ rows: [] }); return; }
   try {
-    const url = new URL(cfg.elaraRevenueFnUrl);
-    url.searchParams.set("days", String(days));
-    if (cfg.elaraRevenueKey) url.searchParams.set("key", cfg.elaraRevenueKey);
-    const r = await fetch(url.toString());
-    if (!r.ok) { res.json({ rows: [], error: `revenue fn ${r.status}` }); return; }
-    res.json(await r.json());
+    if (appId === ELARA_APP_ID && cfg.elaraRevenueFnUrl) {
+      // Elara — already geo-grained.
+      const url = new URL(cfg.elaraRevenueFnUrl);
+      url.searchParams.set("days", String(days));
+      if (cfg.elaraRevenueKey) url.searchParams.set("key", cfg.elaraRevenueKey);
+      const r = await fetch(url.toString());
+      if (!r.ok) { res.json({ rows: [], error: `revenue fn ${r.status}` }); return; }
+      res.json(await r.json());
+      return;
+    }
+    if (appId === MEDSCAN_APP_ID && cfg.asaRevenueFnUrl) {
+      // MedScan — per-keyword (real AdServices attribution); fold to country grain.
+      const url = new URL(cfg.asaRevenueFnUrl);
+      url.searchParams.set("app", "medscan");
+      if (cfg.asaRevenuePullToken) url.searchParams.set("key", cfg.asaRevenuePullToken);
+      const r = await fetch(url.toString());
+      if (!r.ok) { res.json({ rows: [], error: `revenue fn ${r.status}` }); return; }
+      const j = await r.json() as { rows?: Array<{ country: string | null; trials: number; paid: number; revenueUsd: number }> };
+      const by = new Map<string, { country: string; trials: number; paid: number; revenueUsd: number }>();
+      for (const kw of j.rows ?? []) {
+        const c = (kw.country ?? "?").toUpperCase();
+        const row = by.get(c) ?? { country: c, trials: 0, paid: 0, revenueUsd: 0 };
+        row.trials += kw.trials || 0; row.paid += kw.paid || 0; row.revenueUsd += kw.revenueUsd || 0;
+        by.set(c, row);
+      }
+      const rows = [...by.values()].map((x) => ({ ...x, revenueUsd: Math.round(x.revenueUsd * 100) / 100 }))
+        .sort((a, b) => b.revenueUsd - a.revenueUsd);
+      res.json({ app: "medscan", rows });
+      return;
+    }
+    res.json({ rows: [] });
   } catch (e) {
     res.json({ rows: [], error: (e as Error).message });
   }

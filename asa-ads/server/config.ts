@@ -39,6 +39,9 @@ export interface AppConfig {
 
 /** Apple adamId for Elara — its revenue is geo-level (no per-keyword attribution yet). */
 export const ELARA_APP_ID = 6771391236;
+/** Apple adamId for MedScan — real per-keyword revenue (AdServices attribution),
+ *  aggregated to country grain for the geo ROAS view. */
+export const MEDSCAN_APP_ID = 6762091560;
 
 function need(name: string): string {
   const v = process.env[name];
