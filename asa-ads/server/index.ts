@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { loadConfig } from "./config.ts";
+import { loadConfig, ELARA_APP_ID } from "./config.ts";
 import { openDb, getDb } from "./db.ts";
 import { AsaClient } from "./asa-client.ts";
 import { AscClient } from "./asc-client.ts";
@@ -70,6 +70,25 @@ app.get("/api/campaigns", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
   res.json(listCampaignsWithMetrics(days, appId));
+});
+
+// Geo-level real revenue (currently Elara only — Adapty event log by country).
+// Server-side proxy so the function key never reaches the browser. Returns
+// { rows: [{ country, trials, paid, revenueUsd }] }; [] for apps without a feed.
+app.get("/api/revenue", async (req, res) => {
+  const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
+  const days = Number(req.query.days ?? 30);
+  if (appId !== ELARA_APP_ID || !cfg.elaraRevenueFnUrl) { res.json({ rows: [] }); return; }
+  try {
+    const url = new URL(cfg.elaraRevenueFnUrl);
+    url.searchParams.set("days", String(days));
+    if (cfg.elaraRevenueKey) url.searchParams.set("key", cfg.elaraRevenueKey);
+    const r = await fetch(url.toString());
+    if (!r.ok) { res.json({ rows: [], error: `revenue fn ${r.status}` }); return; }
+    res.json(await r.json());
+  } catch (e) {
+    res.json({ rows: [], error: (e as Error).message });
+  }
 });
 
 app.get("/api/daily", (req, res) => {

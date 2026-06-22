@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Route, Routes } from "react-router-dom";
 import { useSse } from "./lib/sse.ts";
 import Dashboard from "./screens/Dashboard.tsx";
+import Profitability from "./screens/Profitability.tsx";
 import Keywords from "./screens/Keywords.tsx";
 import SearchTerms from "./screens/SearchTerms.tsx";
 import Actions from "./screens/Actions.tsx";
@@ -82,6 +83,7 @@ export default function App() {
         <AppSwitcher />
         <nav>
           <NavLink to="/" end>Dashboard</NavLink>
+          <NavLink to="/profitability">Profitability</NavLink>
           <NavLink to="/keywords">Keywords</NavLink>
           <NavLink to="/search-terms">Search Terms</NavLink>
           <NavLink to="/negatives">Negatives</NavLink>
@@ -111,6 +113,7 @@ export default function App() {
       <main className="main">
         <Routes>
           <Route path="/" element={<Dashboard reloadKey={reloadKey} />} />
+          <Route path="/profitability" element={<Profitability reloadKey={reloadKey} />} />
           <Route path="/campaigns/:id" element={<CampaignDetail />} />
           <Route path="/keywords" element={<Keywords reloadKey={reloadKey} />} />
           <Route path="/search-terms" element={<SearchTerms reloadKey={reloadKey} />} />

@@ -30,7 +30,15 @@ export interface AppConfig {
   asaRevenueFnUrl?: string;
   /** Optional shared secret if the function is locked with ASA_PULL_TOKEN. */
   asaRevenuePullToken?: string;
+  /** elaraRevenueByCountry Cloud Function — geo-level real revenue for Elara
+   * (Adapty event log aggregated by store country). Feeds geo-level ROAS. */
+  elaraRevenueFnUrl?: string;
+  /** ?key= for the Elara revenue function (shared ADAPTY_WEBHOOK_TOKEN). */
+  elaraRevenueKey?: string;
 }
+
+/** Apple adamId for Elara — its revenue is geo-level (no per-keyword attribution yet). */
+export const ELARA_APP_ID = 6771391236;
 
 function need(name: string): string {
   const v = process.env[name];
@@ -65,5 +73,8 @@ export function loadConfig(): AppConfig {
     asaRevenueFnUrl: process.env.ASA_REVENUE_FN_URL
       ?? "https://us-central1-dream-journal-by-nomle.cloudfunctions.net/asaRevenueByKeyword",
     asaRevenuePullToken: process.env.ASA_PULL_TOKEN,
+    elaraRevenueFnUrl: process.env.ELARA_REVENUE_FN_URL
+      ?? "https://us-central1-elara-16e09.cloudfunctions.net/elaraRevenueByCountry",
+    elaraRevenueKey: process.env.ELARA_REVENUE_KEY,
   };
 }
