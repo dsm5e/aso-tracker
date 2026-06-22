@@ -8,3 +8,4 @@ data/*.db-*
 .env.local
 *.p8
 .vite
+*.tsbuildinfo
