@@ -73,11 +73,13 @@ export interface KeywordWithMetrics {
   cpt: number;
 }
 
-export function listKeywordsWithMetrics(daysBack = 14, campaignId?: number): KeywordWithMetrics[] {
+export function listKeywordsWithMetrics(daysBack = 14, campaignId?: number, appId?: number): KeywordWithMetrics[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
-  const where = campaignId ? `AND k.campaign_id = ?` : ``;
-  const args = campaignId ? [start, campaignId] : [start];
+  const where = `${campaignId ? `AND k.campaign_id = ?` : ``}${appId ? ` AND c.app_id = ?` : ``}`;
+  const args: unknown[] = [start];
+  if (campaignId) args.push(campaignId);
+  if (appId) args.push(appId);
   return db.prepare(`
     SELECT k.id, k.campaign_id, k.ad_group_id, c.name AS campaign_name, c.country,
            k.text, k.match_type, k.bid, k.status,
@@ -110,9 +112,11 @@ export interface SearchTerm {
   is_negative: number;
 }
 
-export function listSearchTerms(daysBack = 14): SearchTerm[] {
+export function listSearchTerms(daysBack = 14, appId?: number): SearchTerm[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const where = appId ? `AND c.app_id = ?` : ``;
+  const args: unknown[] = appId ? [start, appId] : [start];
   return db.prepare(`
     SELECT s.campaign_id, c.name AS campaign_name, c.country,
            s.term, s.source_keyword_id, s.match_type,
@@ -123,10 +127,10 @@ export function listSearchTerms(daysBack = 14): SearchTerm[] {
            (SELECT 1 FROM asa_negatives n WHERE n.campaign_id = s.campaign_id AND n.text = s.term) AS is_negative
     FROM asa_search_terms s
     JOIN asa_campaigns c ON c.id = s.campaign_id
-    WHERE s.date >= ?
+    WHERE s.date >= ? ${where}
     GROUP BY s.campaign_id, s.term, s.source_keyword_id
     ORDER BY impressions DESC
-  `).all(start) as SearchTerm[];
+  `).all(...args) as SearchTerm[];
 }
 
 export interface ActionRow {

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { api, type SearchTermSuggestion } from "../api.ts";
+import { useApp } from "../lib/AppContext.tsx";
 
 interface Props { reloadKey: number }
 
 export default function SearchTerms({ reloadKey }: Props) {
+  const { selected: appSel } = useApp();
   const [recs, setRecs] = useState<SearchTermSuggestion[]>([]);
   const [days, setDays] = useState(14);
   const [loading, setLoading] = useState(true);
@@ -11,8 +13,8 @@ export default function SearchTerms({ reloadKey }: Props) {
 
   useEffect(() => {
     setLoading(true);
-    api.stRecs(days).then(setRecs).finally(() => setLoading(false));
-  }, [days, reloadKey]);
+    api.stRecs(days, appSel).then(setRecs).finally(() => setLoading(false));
+  }, [days, reloadKey, appSel]);
 
   const filtered = recs.filter((r) => filter === "all" || r.suggestion === filter);
 

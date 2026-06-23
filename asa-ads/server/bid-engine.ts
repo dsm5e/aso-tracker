@@ -31,11 +31,13 @@ function targetCpi(country: string): number {
   return TIER1.has(country) ? 1.0 : 0.6;
 }
 
-export function recommend(daysBack = 7, campaignId?: number): BidRecommendation[] {
+export function recommend(daysBack = 7, campaignId?: number, appId?: number): BidRecommendation[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
-  const where = campaignId ? `AND k.campaign_id = ?` : ``;
-  const args: unknown[] = campaignId ? [start, campaignId] : [start];
+  const where = `${campaignId ? `AND k.campaign_id = ?` : ``}${appId ? ` AND c.app_id = ?` : ``}`;
+  const args: unknown[] = [start];
+  if (campaignId) args.push(campaignId);
+  if (appId) args.push(appId);
 
   const rows = db.prepare(`
     SELECT k.id AS keyword_id, k.text, k.match_type, k.bid, c.country,
@@ -118,9 +120,11 @@ export interface SearchTermSuggestion {
   reason: string;
 }
 
-export function suggestSearchTermActions(daysBack = 14, minImpForNegative = 30, minTapForNegative = 5): SearchTermSuggestion[] {
+export function suggestSearchTermActions(daysBack = 14, appId?: number, minImpForNegative = 30, minTapForNegative = 5): SearchTermSuggestion[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const where = appId ? `AND c.app_id = ?` : ``;
+  const args: unknown[] = appId ? [start, appId] : [start];
   const rows = db.prepare(`
     SELECT s.campaign_id, c.name AS campaign_name, s.term,
            SUM(s.impressions) AS imp,
@@ -131,9 +135,9 @@ export function suggestSearchTermActions(daysBack = 14, minImpForNegative = 30, 
            (SELECT 1 FROM asa_keywords k WHERE k.campaign_id = s.campaign_id AND lower(k.text) = lower(s.term) AND k.deleted = 0) AS is_kw
     FROM asa_search_terms s
     JOIN asa_campaigns c ON c.id = s.campaign_id
-    WHERE s.date >= ?
+    WHERE s.date >= ? ${where}
     GROUP BY s.campaign_id, s.term
-  `).all(start) as Array<{ campaign_id: number; campaign_name: string; term: string; imp: number; taps: number; installs: number; spend: number; is_neg: number | null; is_kw: number | null }>;
+  `).all(...args) as Array<{ campaign_id: number; campaign_name: string; term: string; imp: number; taps: number; installs: number; spend: number; is_neg: number | null; is_kw: number | null }>;
 
   const out: SearchTermSuggestion[] = [];
   for (const r of rows) {

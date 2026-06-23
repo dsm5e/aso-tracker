@@ -104,16 +104,16 @@ function appQ(appId?: number | "all"): string {
 
 export const api = {
   apps: () => get<AppRow[]>("/api/apps"),
-  negatives: () => get<Array<{ id: number; campaign_id: number; campaign_name: string; country: string; text: string; match_type: string; remote_id: number | null; added_at: string }>>("/api/negatives"),
+  negatives: (appId?: number | "all") => get<Array<{ id: number; campaign_id: number; campaign_name: string; country: string; text: string; match_type: string; remote_id: number | null; added_at: string }>>(`/api/negatives${appId && appId !== "all" ? `?app_id=${appId}` : ""}`),
   geo: (days = 14, appId?: number | "all") =>
     get<Array<{ country: string; impressions: number; taps: number; installs: number; spend: number; cpi: number; campaigns: number; trials: number }>>(`/api/geo?days=${days}${appQ(appId)}`),
   campaigns: (days = 14, appId?: number | "all") => get<Campaign[]>(`/api/campaigns?days=${days}${appQ(appId)}`),
   daily: (days = 14, campaignId?: number, appId?: number | "all") =>
     get<DailyTotals[]>(`/api/daily?days=${days}${campaignId ? `&campaign_id=${campaignId}` : ""}${appQ(appId)}`),
-  keywords: (days = 14, campaignId?: number) => get<Keyword[]>(`/api/keywords?days=${days}${campaignId ? `&campaign_id=${campaignId}` : ""}`),
-  searchTerms: (days = 14) => get<SearchTerm[]>(`/api/search-terms?days=${days}`),
-  bidRecs: (days = 7, campaignId?: number) => get<BidRec[]>(`/api/recommendations/bids?days=${days}${campaignId ? `&campaign_id=${campaignId}` : ""}`),
-  stRecs: (days = 14) => get<SearchTermSuggestion[]>(`/api/recommendations/search-terms?days=${days}`),
+  keywords: (days = 14, campaignId?: number, appId?: number | "all") => get<Keyword[]>(`/api/keywords?days=${days}${campaignId ? `&campaign_id=${campaignId}` : ""}${appQ(appId)}`),
+  searchTerms: (days = 14, appId?: number | "all") => get<SearchTerm[]>(`/api/search-terms?days=${days}${appQ(appId)}`),
+  bidRecs: (days = 7, campaignId?: number, appId?: number | "all") => get<BidRec[]>(`/api/recommendations/bids?days=${days}${campaignId ? `&campaign_id=${campaignId}` : ""}${appQ(appId)}`),
+  stRecs: (days = 14, appId?: number | "all") => get<SearchTermSuggestion[]>(`/api/recommendations/search-terms?days=${days}${appQ(appId)}`),
   actions: () => get<ActionRow[]>("/api/actions"),
   alerts: () => get<Array<{ id: number; campaign_id: number | null; alert_type: string; message: string; sent_at: string; delivered: number }>>("/api/alerts"),
   checkAlerts: () => post<{ checked: number; sent: number; skipped: number }>("/api/alerts/check"),

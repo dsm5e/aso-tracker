@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { loadConfig, ELARA_APP_ID, MEDSCAN_APP_ID } from "./config.ts";
+import { loadConfig, GEO_REVENUE_APP_ID, KEYWORD_REVENUE_APP_ID } from "./config.ts";
 import { openDb, getDb } from "./db.ts";
 import { AsaClient } from "./asa-client.ts";
 import { AscClient } from "./asc-client.ts";
@@ -28,13 +28,15 @@ app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.get("/api/apps", (_req, res) => res.json(listApps()));
 
-app.get("/api/negatives", (_req, res) => {
+app.get("/api/negatives", (req, res) => {
+  const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
   const rows = getDb().prepare(`
     SELECT n.id, n.campaign_id, c.name AS campaign_name, c.country, n.text, n.match_type, n.remote_id, n.added_at
     FROM asa_negatives n
     LEFT JOIN asa_campaigns c ON c.id = n.campaign_id
+    ${appId ? `WHERE c.app_id = ?` : ``}
     ORDER BY n.id DESC
-  `).all();
+  `).all(...(appId ? [appId] : []));
   res.json(rows);
 });
 
@@ -72,28 +74,28 @@ app.get("/api/campaigns", (req, res) => {
   res.json(listCampaignsWithMetrics(days, appId));
 });
 
-// Geo-level real revenue (currently Elara only — Adapty event log by country).
-// Server-side proxy so the function key never reaches the browser. Returns
-// { rows: [{ country, trials, paid, revenueUsd }] }; [] for apps without a feed.
+// Geo-level real revenue, server-side proxy so the function key never reaches
+// the browser. Returns { rows: [{ country, trials, paid, revenueUsd }] };
+// [] for apps without a configured revenue feed.
 app.get("/api/revenue", async (req, res) => {
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
   const days = Number(req.query.days ?? 30);
   try {
-    if (appId === ELARA_APP_ID && cfg.elaraRevenueFnUrl) {
-      // Elara — already geo-grained.
-      const url = new URL(cfg.elaraRevenueFnUrl);
+    if (appId && appId === GEO_REVENUE_APP_ID && cfg.geoRevenueFnUrl) {
+      // Already geo-grained.
+      const url = new URL(cfg.geoRevenueFnUrl);
       url.searchParams.set("days", String(days));
-      if (cfg.elaraRevenueKey) url.searchParams.set("key", cfg.elaraRevenueKey);
+      if (cfg.geoRevenueKey) url.searchParams.set("key", cfg.geoRevenueKey);
       const r = await fetch(url.toString());
       if (!r.ok) { res.json({ rows: [], error: `revenue fn ${r.status}` }); return; }
       res.json(await r.json());
       return;
     }
-    if (appId === MEDSCAN_APP_ID && cfg.asaRevenueFnUrl) {
-      // MedScan — per-keyword (real AdServices attribution); fold to country grain.
-      const url = new URL(cfg.asaRevenueFnUrl);
-      url.searchParams.set("app", "medscan");
-      if (cfg.asaRevenuePullToken) url.searchParams.set("key", cfg.asaRevenuePullToken);
+    if (appId && appId === KEYWORD_REVENUE_APP_ID && cfg.keywordRevenueFnUrl) {
+      // Per-keyword (real AdServices attribution); fold to country grain.
+      const url = new URL(cfg.keywordRevenueFnUrl);
+      if (cfg.keywordRevenueAppSlug) url.searchParams.set("app", cfg.keywordRevenueAppSlug);
+      if (cfg.keywordRevenuePullToken) url.searchParams.set("key", cfg.keywordRevenuePullToken);
       const r = await fetch(url.toString());
       if (!r.ok) { res.json({ rows: [], error: `revenue fn ${r.status}` }); return; }
       const j = await r.json() as { rows?: Array<{ country: string | null; trials: number; paid: number; revenueUsd: number }> };
@@ -106,7 +108,7 @@ app.get("/api/revenue", async (req, res) => {
       }
       const rows = [...by.values()].map((x) => ({ ...x, revenueUsd: Math.round(x.revenueUsd * 100) / 100 }))
         .sort((a, b) => b.revenueUsd - a.revenueUsd);
-      res.json({ app: "medscan", rows });
+      res.json({ app: cfg.keywordRevenueAppSlug ?? "keyword", rows });
       return;
     }
     res.json({ rows: [] });
@@ -140,12 +142,14 @@ app.get("/api/keywords/:id/daily", (req, res) => {
 app.get("/api/keywords", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const cid = req.query.campaign_id ? Number(req.query.campaign_id) : undefined;
-  res.json(listKeywordsWithMetrics(days, cid));
+  const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
+  res.json(listKeywordsWithMetrics(days, cid, appId));
 });
 
 app.get("/api/search-terms", (req, res) => {
   const days = Number(req.query.days ?? 14);
-  res.json(listSearchTerms(days));
+  const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
+  res.json(listSearchTerms(days, appId));
 });
 
 app.get("/api/roi/campaign/:id", (req, res) => {
@@ -171,12 +175,14 @@ app.get("/api/roi/verdict/:campaignId", (req, res) => {
 app.get("/api/recommendations/bids", (req, res) => {
   const days = Number(req.query.days ?? 7);
   const cid = req.query.campaign_id ? Number(req.query.campaign_id) : undefined;
-  res.json(recommend(days, cid));
+  const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
+  res.json(recommend(days, cid, appId));
 });
 
 app.get("/api/recommendations/search-terms", (req, res) => {
   const days = Number(req.query.days ?? 14);
-  res.json(suggestSearchTermActions(days));
+  const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
+  res.json(suggestSearchTermActions(days, appId));
 });
 
 app.post("/api/actions", (req, res) => {
@@ -258,7 +264,7 @@ app.post("/api/sync", (req, res) => {
   broadcast("sync:start", { days });
   // Fire and forget — sync continues in background even if client navigates away.
   // Progress tracked in currentSync (in-memory) + sync_log table.
-  fullSync(asa, asc, days, { fnUrl: cfg.asaRevenueFnUrl, app: "medscan", pullToken: cfg.asaRevenuePullToken })
+  fullSync(asa, asc, days, { fnUrl: cfg.keywordRevenueFnUrl, app: cfg.keywordRevenueAppSlug ?? "", pullToken: cfg.keywordRevenuePullToken })
     .then((r) => broadcast("sync:done", r))
     .catch((e) => broadcast("sync:error", { error: (e as Error).message }));
   res.json({ ok: true, started: true });

@@ -60,6 +60,8 @@ cp .env.example .env
 
 Or via UI: open the app, go to `Settings → API Credentials`, paste IDs + PEM contents. Saved to SQLite (still gitignored).
 
+**Optional — real revenue / ROAS overlay.** By default ROI uses a country-average estimate. To overlay deterministic revenue, point the `GEO_REVENUE_*` / `KEYWORD_REVENUE_*` env vars (see `.env.example`) at your own Cloud Functions: a geo-grained feed returning `{ rows: [{ country, trials, paid, revenueUsd }] }`, and/or a per-keyword feed (AdServices attribution) folded to country grain server-side. Set the matching app `adamId` per feed; leave unset to disable. Function keys stay server-side and never reach the browser.
+
 ### 4. Run
 
 ```bash
@@ -81,12 +83,15 @@ ASA Ads is built to be **agent-friendly**. Most state is in SQLite + JSON over H
 |---|---|---|
 | `data/asa-ads.db` | Campaigns, keywords, daily metrics, search terms, settings, alerts, action log | SQLite |
 | `GET /api/campaigns?days=14&app_id=X` | Campaigns with rolled-up metrics | JSON |
-| `GET /api/keywords?days=14` | Keywords + spend/installs/CPT | JSON |
-| `GET /api/search-terms?days=14` | Search terms aggregated | JSON |
+| `GET /api/keywords?days=14&app_id=X` | Keywords + spend/installs/CPT | JSON |
+| `GET /api/search-terms?days=14&app_id=X` | Search terms aggregated | JSON |
+| `GET /api/negatives?app_id=X` | Applied negative keywords | JSON |
 | `GET /api/roi/campaign/:id?spend=X` | ROI projection at given spend | JSON |
 | `GET /api/roi/keyword/:id?spend=X` | Per-keyword ROI projection | JSON |
-| `GET /api/recommendations/bids?days=7` | Bid recommendations with confidence | JSON |
-| `GET /api/recommendations/search-terms` | Negatives + discovery suggestions | JSON |
+| `GET /api/recommendations/bids?days=7&app_id=X` | Bid recommendations with confidence | JSON |
+| `GET /api/recommendations/search-terms?days=14&app_id=X` | Negatives + discovery suggestions | JSON |
+
+`app_id` is optional everywhere it appears — omit it for the all-apps view, or pass an Apple adamId to scope every list to one app (mirrors the sidebar App switcher).
 | `GET /api/sync/status` | Current sync phase + progress | JSON |
 | `GET /api/alerts` | Sent alert history | JSON |
 | `GET /sse` | Server-Sent Events stream (live updates) | text/event-stream |

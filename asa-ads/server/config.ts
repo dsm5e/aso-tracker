@@ -24,24 +24,27 @@ export interface AppConfig {
   asc: AscConfig;
   port: number;
   dataDir: string;
-  /** asaRevenueByKeyword Cloud Function URL — real per-keyword ASA revenue
-   * (deterministic AdServices attribution × Adapty revenue). Optional: when
-   * unset the ROI engine stays on the country-average estimate. */
-  asaRevenueFnUrl?: string;
-  /** Optional shared secret if the function is locked with ASA_PULL_TOKEN. */
-  asaRevenuePullToken?: string;
-  /** elaraRevenueByCountry Cloud Function — geo-level real revenue for Elara
-   * (Adapty event log aggregated by store country). Feeds geo-level ROAS. */
-  elaraRevenueFnUrl?: string;
-  /** ?key= for the Elara revenue function (shared ADAPTY_WEBHOOK_TOKEN). */
-  elaraRevenueKey?: string;
+  /** Per-keyword revenue Cloud Function URL — real per-keyword revenue
+   * (deterministic AdServices attribution × subscription revenue). Optional:
+   * when unset the ROI engine stays on the country-average estimate. */
+  keywordRevenueFnUrl?: string;
+  /** Optional shared secret if the keyword-revenue function is locked. */
+  keywordRevenuePullToken?: string;
+  /** App slug the keyword-revenue function expects in its `app` query param. */
+  keywordRevenueAppSlug?: string;
+  /** Geo-level revenue Cloud Function — real revenue aggregated by store
+   * country (e.g. a subscription event log). Feeds the geo-level ROAS view. */
+  geoRevenueFnUrl?: string;
+  /** ?key= shared secret for the geo-revenue function. */
+  geoRevenueKey?: string;
 }
 
-/** Apple adamId for Elara — its revenue is geo-level (no per-keyword attribution yet). */
-export const ELARA_APP_ID = 6771391236;
-/** Apple adamId for MedScan — real per-keyword revenue (AdServices attribution),
- *  aggregated to country grain for the geo ROAS view. */
-export const MEDSCAN_APP_ID = 6762091560;
+/** Apple adamId of the app whose revenue is reported at geo (country) grain.
+ *  Set via env; 0 disables the geo-revenue cross-match. */
+export const GEO_REVENUE_APP_ID = Number(process.env.GEO_REVENUE_APP_ID ?? 0);
+/** Apple adamId of the app with real per-keyword revenue (AdServices attribution),
+ *  aggregated to country grain for the geo ROAS view. 0 disables it. */
+export const KEYWORD_REVENUE_APP_ID = Number(process.env.KEYWORD_REVENUE_APP_ID ?? 0);
 
 function need(name: string): string {
   const v = process.env[name];
@@ -73,11 +76,10 @@ export function loadConfig(): AppConfig {
     },
     port: Number(process.env.PORT ?? 5181),
     dataDir: process.env.DATA_DIR ?? "./data",
-    asaRevenueFnUrl: process.env.ASA_REVENUE_FN_URL
-      ?? "https://us-central1-dream-journal-by-nomle.cloudfunctions.net/asaRevenueByKeyword",
-    asaRevenuePullToken: process.env.ASA_PULL_TOKEN,
-    elaraRevenueFnUrl: process.env.ELARA_REVENUE_FN_URL
-      ?? "https://us-central1-elara-16e09.cloudfunctions.net/elaraRevenueByCountry",
-    elaraRevenueKey: process.env.ELARA_REVENUE_KEY,
+    keywordRevenueFnUrl: process.env.KEYWORD_REVENUE_FN_URL,
+    keywordRevenuePullToken: process.env.KEYWORD_REVENUE_KEY,
+    keywordRevenueAppSlug: process.env.KEYWORD_REVENUE_APP_SLUG,
+    geoRevenueFnUrl: process.env.GEO_REVENUE_FN_URL,
+    geoRevenueKey: process.env.GEO_REVENUE_KEY,
   };
 }

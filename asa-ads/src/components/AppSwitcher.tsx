@@ -7,7 +7,7 @@ export default function AppSwitcher() {
 
   function shortName(name: string | null): string {
     if (!name) return "—";
-    // "MedScan: DICOM CT & MRI Viewer" → "MedScan"
+    // "My App: Tagline & Subtitle" → "My App"
     return name.split(":")[0].split(" — ")[0].trim();
   }
 

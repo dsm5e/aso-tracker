@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
+import { useApp } from "../lib/AppContext.tsx";
 import { exportRows } from "../lib/csv.ts";
 
 interface NegRow {
@@ -14,14 +15,15 @@ interface NegRow {
 }
 
 export default function Negatives() {
+  const { selected: appSel } = useApp();
   const [rows, setRows] = useState<NegRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    api.negatives().then(setRows).finally(() => setLoading(false));
-  }, []);
+    api.negatives(appSel).then(setRows).finally(() => setLoading(false));
+  }, [appSel]);
 
   const filtered = rows.filter((r) =>
     !filter ||

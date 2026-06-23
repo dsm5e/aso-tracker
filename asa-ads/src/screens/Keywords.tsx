@@ -28,10 +28,7 @@ export default function Keywords({ reloadKey }: Props) {
   const [pendingBulk, setPendingBulk] = useState<Array<{ keyword: Keyword; rec: BidRec }> | null>(null);
 
   async function load(): Promise<void> {
-    const [allK, r] = await Promise.all([api.keywords(days), api.bidRecs(days)]);
-    // Filter by selected app — using campaign_name → app lookup is overkill;
-    // simpler approach: server-side filter would be ideal but reuse what we have.
-    const k = appSel === "all" ? allK : allK; // server filter not yet wired for keywords; fallback to all
+    const [k, r] = await Promise.all([api.keywords(days, undefined, appSel), api.bidRecs(days, undefined, appSel)]);
     setRows(k);
     setRecs(r);
   }
