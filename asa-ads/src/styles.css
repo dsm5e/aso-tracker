@@ -706,3 +706,8 @@ tr.flash td {
 .row { display: flex; align-items: center; gap: 8px; }
 .col { display: flex; flex-direction: column; gap: 4px; }
 .spacer { flex: 1; }
+
+/* ── Command Center ──────────────────────────────────────────────── */
+.card.stat { padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.card.stat .muted { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; }
+.card.stat .big { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }

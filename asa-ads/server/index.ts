@@ -1,6 +1,6 @@
 import "dotenv/config";
 import express from "express";
-import { loadConfig, GEO_REVENUE_APP_ID, KEYWORD_REVENUE_APP_ID } from "./config.ts";
+import { loadConfig } from "./config.ts";
 import { openDb, getDb } from "./db.ts";
 import { AsaClient } from "./asa-client.ts";
 import { AscClient } from "./asc-client.ts";
@@ -13,6 +13,8 @@ import { attach, broadcast } from "./sse.ts";
 import { checkAndSendAlerts, listAlerts, loadAlertsConfig } from "./alerts.ts";
 import { loadSettings, updateSettings, listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule, suggestSettings } from "./settings.ts";
 import { getCredentialsMasked, setCredentials, type Provider } from "./credentials.ts";
+import { fetchRevenueRows } from "./revenue.ts";
+import { commandCenter, accountHealth } from "./command-center.ts";
 
 const cfg = loadConfig();
 openDb(cfg.dataDir);
@@ -80,40 +82,27 @@ app.get("/api/campaigns", (req, res) => {
 app.get("/api/revenue", async (req, res) => {
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
   const days = Number(req.query.days ?? 30);
+  const r = await fetchRevenueRows(cfg, appId, days);
+  res.json(r);
+});
+
+// Command Center — ASA ⋈ revenue ⋈ organic ASO positions, verdict per geo.
+app.get("/api/command-center", async (req, res) => {
+  const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
+  const days = Number(req.query.days ?? 30);
+  if (!appId) { res.status(400).json({ error: "app_id required" }); return; }
   try {
-    if (appId && appId === GEO_REVENUE_APP_ID && cfg.geoRevenueFnUrl) {
-      // Already geo-grained.
-      const url = new URL(cfg.geoRevenueFnUrl);
-      url.searchParams.set("days", String(days));
-      if (cfg.geoRevenueKey) url.searchParams.set("key", cfg.geoRevenueKey);
-      const r = await fetch(url.toString());
-      if (!r.ok) { res.json({ rows: [], error: `revenue fn ${r.status}` }); return; }
-      res.json(await r.json());
-      return;
-    }
-    if (appId && appId === KEYWORD_REVENUE_APP_ID && cfg.keywordRevenueFnUrl) {
-      // Per-keyword (real AdServices attribution); fold to country grain.
-      const url = new URL(cfg.keywordRevenueFnUrl);
-      if (cfg.keywordRevenueAppSlug) url.searchParams.set("app", cfg.keywordRevenueAppSlug);
-      if (cfg.keywordRevenuePullToken) url.searchParams.set("key", cfg.keywordRevenuePullToken);
-      const r = await fetch(url.toString());
-      if (!r.ok) { res.json({ rows: [], error: `revenue fn ${r.status}` }); return; }
-      const j = await r.json() as { rows?: Array<{ country: string | null; trials: number; paid: number; revenueUsd: number }> };
-      const by = new Map<string, { country: string; trials: number; paid: number; revenueUsd: number }>();
-      for (const kw of j.rows ?? []) {
-        const c = (kw.country ?? "?").toUpperCase();
-        const row = by.get(c) ?? { country: c, trials: 0, paid: 0, revenueUsd: 0 };
-        row.trials += kw.trials || 0; row.paid += kw.paid || 0; row.revenueUsd += kw.revenueUsd || 0;
-        by.set(c, row);
-      }
-      const rows = [...by.values()].map((x) => ({ ...x, revenueUsd: Math.round(x.revenueUsd * 100) / 100 }))
-        .sort((a, b) => b.revenueUsd - a.revenueUsd);
-      res.json({ app: cfg.keywordRevenueAppSlug ?? "keyword", rows });
-      return;
-    }
-    res.json({ rows: [] });
+    res.json(await commandCenter(cfg, appId, days));
   } catch (e) {
-    res.json({ rows: [], error: (e as Error).message });
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.get("/api/account-health", (_req, res) => {
+  try {
+    res.json(accountHealth());
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
   }
 });
 

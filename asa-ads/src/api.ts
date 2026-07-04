@@ -102,8 +102,35 @@ function appQ(appId?: number | "all"): string {
   return appId && appId !== "all" ? `&app_id=${appId}` : "";
 }
 
+export interface AsoLocaleSummary {
+  locale: string; date: string; tracked: number; ranked: number; top10: number;
+  avgPos: number | null; best: Array<{ keyword: string; position: number }>;
+}
+
+export interface CommandGeoRow {
+  country: string; campaigns: number; onHold: number;
+  spend: number; installs: number; cpi: number;
+  trials: number; paid: number; revenue: number; roas: number | null;
+  verdict: "scale" | "hold" | "cut" | "no-data"; reason: string;
+  aso: AsoLocaleSummary | null;
+}
+
+export interface CommandCenterData {
+  rows: CommandGeoRow[];
+  revenueSource: boolean;
+  aso: { slug: string | null; snapshotDate: string | null };
+  revenueError?: string;
+}
+
+export interface AccountHealth {
+  totalEnabled: number; running: number; onHold: number; paused: number;
+  billingSuspected: boolean; lastSyncAt: string | null;
+}
+
 export const api = {
   apps: () => get<AppRow[]>("/api/apps"),
+  commandCenter: (appId: number, days = 30) => get<CommandCenterData>(`/api/command-center?app_id=${appId}&days=${days}`),
+  accountHealth: () => get<AccountHealth>("/api/account-health"),
   negatives: (appId?: number | "all") => get<Array<{ id: number; campaign_id: number; campaign_name: string; country: string; text: string; match_type: string; remote_id: number | null; added_at: string }>>(`/api/negatives${appId && appId !== "all" ? `?app_id=${appId}` : ""}`),
   geo: (days = 14, appId?: number | "all") =>
     get<Array<{ country: string; impressions: number; taps: number; installs: number; spend: number; cpi: number; campaigns: number; trials: number }>>(`/api/geo?days=${days}${appQ(appId)}`),

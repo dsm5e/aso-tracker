@@ -96,7 +96,24 @@ function findAlerts(today: string): AlertCheck[] {
     });
   }
 
-  // 4. Spend spike: today >= 2x prev day (only if today >= $5)
+  // 4. Account hold wall: most ENABLED campaigns ON_HOLD = billing/card problem.
+  // One alert per day — this is the "card declined and nobody noticed" catcher.
+  const hold = db.prepare(`
+    SELECT
+      SUM(CASE WHEN status = 'ENABLED' THEN 1 ELSE 0 END) AS enabled,
+      SUM(CASE WHEN status = 'ENABLED' AND display_status = 'ON_HOLD' THEN 1 ELSE 0 END) AS onHold
+    FROM asa_campaigns
+  `).get() as { enabled: number; onHold: number };
+  if (hold.enabled > 0 && hold.onHold >= Math.max(3, Math.ceil(hold.enabled * 0.5))) {
+    out.push({
+      type: "account_hold",
+      key: `account-hold-${today}`,
+      campaignId: null,
+      message: `🚨 <b>Account on hold:</b> ${hold.onHold}/${hold.enabled} ENABLED campaigns are ON_HOLD — check Apple Ads billing (card declined?)`,
+    });
+  }
+
+  // 5. Spend spike: today >= 2x prev day (only if today >= $5)
   const yesterday = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
   const spikes = db.prepare(`
     SELECT c.id, c.name, c.country, d.spend AS today_spend, p.spend AS prev_spend
