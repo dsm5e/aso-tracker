@@ -79,6 +79,18 @@ export interface Screenshot {
   /** Original uploaded bitmap dimensions, used to flag device-model mismatches. */
   sourcePixelWidth?: number;
   sourcePixelHeight?: number;
+  /** How to compose sourceUrl. `device` puts an app screen inside the generated
+   * phone; `full-bleed` treats an already-designed preview as the final artwork
+   * and only layers the editable headline over it. */
+  sourceLayout?: 'device' | 'full-bleed';
+  /** Transform for an already-designed full-bleed preview. */
+  sourceScale?: number;
+  sourceOffsetX?: number;
+  sourceOffsetY?: number;
+  /** Per-slot headline color override; useful on finished light/dark artwork. */
+  textColorOverride?: string;
+  titleColorOverride?: string;
+  subtitleColorOverride?: string;
   /** Optional SECOND device image → renders a two-phone "V" mockup (a back
    *  phone tilted behind + the primary in front, overlapping — The Bump style).
    *  Used for dad-connect (QR + dad home) and milestone (timeline + dad tasks). */
@@ -271,6 +283,9 @@ interface StudioState {
   addScreenshot: (s: Partial<Screenshot>, opts?: { atIndex?: number }) => Screenshot;
   updateScreenshot: (id: string, patch: Partial<Screenshot>) => void;
   removeScreenshot: (id: string) => void;
+  duplicateScreenshot: (id: string) => void;
+  /** Replace iPad slots with fresh copies of every iPhone slot. */
+  syncIphoneToIpad: () => void;
   reorderScreenshots: (orderedIds: string[]) => void;
   setActiveScreenshot: (id: string | null) => void;
   setViewMode: (m: 'scaffold' | 'enhanced') => void;
@@ -843,6 +858,71 @@ export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioStat
           screenshots: state.screenshots.filter((s) => s.id !== id),
           activeScreenshotId: state.activeScreenshotId === id ? null : state.activeScreenshotId,
         })),
+
+      duplicateScreenshot: (id) =>
+        set((state) => {
+          const index = state.screenshots.findIndex((s) => s.id === id);
+          if (index < 0) return {};
+          const source = state.screenshots[index];
+          const copy: Screenshot = {
+            ...source,
+            id: newId(),
+            filename: source.filename.replace(/(\.[^.]+)?$/, ' copy$1'),
+            groupId: undefined,
+            headline: { ...source.headline },
+            action: source.action ? { ...source.action, ingredients: source.action.ingredients ? { ...source.action.ingredients } : undefined, ingredientParams: source.action.ingredientParams ? { ...source.action.ingredientParams } : undefined } : undefined,
+          };
+          const screenshots = [...state.screenshots];
+          screenshots.splice(index + 1, 0, copy);
+          return { screenshots, activeScreenshotId: copy.id };
+        }),
+
+      syncIphoneToIpad: () =>
+        set((state) => {
+          const iphoneSlots = state.screenshots.filter((s) => !s.device || s.device === 'iphone');
+          const ipadGroupIdMap = new Map<string, string>();
+          const sourceToIpadId = new Map<string, string>();
+          const ipadSlots = iphoneSlots.map((s): Screenshot => {
+            let groupId: string | undefined;
+            if (s.groupId) {
+              if (!ipadGroupIdMap.has(s.groupId)) ipadGroupIdMap.set(s.groupId, `pair-${Date.now()}-${newId()}`);
+              groupId = ipadGroupIdMap.get(s.groupId);
+            }
+            const ipadId = newId();
+            sourceToIpadId.set(s.id, ipadId);
+            return {
+              ...s,
+              id: ipadId,
+              device: 'ipad',
+              groupId,
+              headline: { ...s.headline },
+              enhancedUrl: null,
+              enhanceState: 'idle',
+              action: s.action ? { ...s.action, aiImageUrl: null, aiHistory: [], lastPrompt: null, generateState: 'idle' } : undefined,
+            };
+          });
+          const locales = state.locales.map((locale) => {
+            const translations = { ...locale.translations };
+            const pillTranslations = { ...(locale.pillTranslations ?? {}) };
+            const extraTranslations = { ...(locale.extraTranslations ?? {}) };
+            const slotAdjustments = { ...(locale.slotAdjustments ?? {}) };
+            for (const [sourceId, ipadId] of sourceToIpadId) {
+              if (locale.translations[sourceId]) translations[ipadId] = { ...locale.translations[sourceId] };
+              if (locale.pillTranslations?.[sourceId]) pillTranslations[ipadId] = locale.pillTranslations[sourceId];
+              if (locale.extraTranslations?.[sourceId]) extraTranslations[ipadId] = { ...locale.extraTranslations[sourceId] };
+              if (locale.slotAdjustments?.[sourceId]) slotAdjustments[ipadId] = { ...locale.slotAdjustments[sourceId] };
+            }
+            return { ...locale, translations, pillTranslations, extraTranslations, slotAdjustments };
+          });
+          return {
+            devices: 'both',
+            previewDevice: 'ipad',
+            sizes: { iphone: true, ipad: true },
+            screenshots: [...state.screenshots.filter((s) => s.device !== 'ipad'), ...ipadSlots],
+            locales,
+            activeScreenshotId: ipadSlots[0]?.id ?? state.activeScreenshotId,
+          };
+        }),
       reorderScreenshots: (orderedIds) =>
         set((state) => {
           const map = new Map(state.screenshots.map((s) => [s.id, s]));
