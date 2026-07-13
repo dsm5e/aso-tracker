@@ -614,18 +614,18 @@ export default function App() {
       <section className="content">
         <header className="toolbar">
           <div className="update-cluster">
-            <button className={`toolbar-refresh ${refreshing ? 'spinning' : ''}`} onClick={refresh} aria-label="Refresh">
-              ↻
+            <button className="toolbar-labeled" onClick={refresh} disabled={refreshing} aria-label="Update rankings">
+              <span className={refreshing ? 'spinning' : ''}>↻</span> Update
             </button>
             <button className="toolbar-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Snapshot options">▾</button>
             {updateMenuOpen && (
               <div className="menu update-menu" onMouseLeave={() => setUpdateMenuOpen(false)}>
-                <div className="menu-label">Run snapshot</div>
-                <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>Update {locale.toUpperCase()}</strong><small>current locale only</small></button>
-                <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Update {selectedApp?.name}</strong><small>all locales of this app</small></button>
-                <button onClick={() => startSnapshot('all')} disabled={refreshing}><strong>Update everything</strong><small>all apps · all locales</small></button>
+                <div className="menu-label">Update rankings — what to check</div>
+                <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>This locale ({locale.toUpperCase()})</strong><small>keywords of the current locale only</small></button>
+                <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Whole app ({selectedApp?.name})</strong><small>every locale of this app</small></button>
+                <button onClick={() => startSnapshot('all')} disabled={refreshing}><strong>All apps</strong><small>every app, every locale</small></button>
                 <div className="menu-separator" />
-                <div className="menu-label">Speed</div>
+                <div className="menu-label">Update speed</div>
                 {(Object.keys(SPEED_PRESETS) as SnapshotSpeed[]).map((speed) => (
                   <button key={speed} onClick={() => changeSpeed(speed)}>
                     <strong>{SPEED_PRESETS[speed].label}</strong>
@@ -637,7 +637,7 @@ export default function App() {
                   <>
                     <div className="menu-separator" />
                     <button className="menu-danger" onClick={() => { abortSnapshot().catch(() => {}); setUpdateMenuOpen(false); }}>
-                      <strong>Stop snapshot</strong><small>finishes the current keyword and exits</small>
+                      <strong>Stop update</strong><small>finishes the current keyword and exits</small>
                     </button>
                   </>
                 )}
@@ -650,29 +650,29 @@ export default function App() {
               <option key={code} value={code}>{localeFlag(code)} {code.toUpperCase()}</option>
             ))}
           </select>
-          <button className="toolbar-icon" onClick={openLocaleDialog} aria-label="Add locale">＋</button>
+          <button className="toolbar-labeled" onClick={openLocaleDialog} aria-label="Add locale">＋ Locale</button>
 
           <span className="toolbar-spacer" />
 
           {refreshing && (
             <span className="snapshot-status">
               <i /> Updating {progress?.completed ?? 0}/{progress?.total ?? rows.length}
-              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Stop snapshot">■</button>
+              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Stop update">■ Stop</button>
             </span>
           )}
           <button
-            className={`toolbar-icon relevance-toggle ${relevanceOn ? 'active' : ''}`}
+            className={`toolbar-labeled relevance-toggle ${relevanceOn ? 'active' : ''}`}
             onClick={() => setRelevanceOn((on) => !on)}
-            title="Toggle keyword relevance (genre match of top-5 apps)"
-          >◎</button>
-          <button className="toolbar-icon" onClick={() => setAnalyticsOpen(true)} title="Analytics — movers across all keywords">∿</button>
+            title="Show whether each keyword's top-5 apps match your genre"
+          >◎ Relevance</button>
+          <button className="toolbar-labeled" onClick={() => setAnalyticsOpen(true)} title="Position movement across all keywords">∿ Analytics</button>
           <button className="button button-primary" onClick={openKeywordsDialog}>Add Keywords <span>＋</span></button>
           <button className="button button-suggestion" onClick={findSuggestions} disabled={suggestionsLoading}>
             {suggestionsLoading ? 'Finding…' : suggestions ? `${suggestions.length} Suggestions` : 'Find Suggestions'} <span>✦</span>
           </button>
           <label className="search-field">
             <span>⌕</span>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search keywords" />
           </label>
         </header>
 
@@ -1361,7 +1361,7 @@ function OverviewScreen({
           </span>
         )}
         <button className="button button-primary" onClick={onRunAll} disabled={refreshing}>
-          {refreshing ? 'Snapshot running…' : 'Run full snapshot'} <span>↻</span>
+          {refreshing ? 'Updating rankings…' : 'Update all rankings'} <span>↻</span>
         </button>
       </header>
 
