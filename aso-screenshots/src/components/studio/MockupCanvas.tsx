@@ -208,7 +208,12 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const subtitleColor = ss.subtitleColorOverride || textColor;
   const textWeight = preset?.text.weight || 800;
   const isUpper = preset?.text.uppercase ?? true;
-  const textAlign = preset?.text.align || 'center';
+  const baseAlign = preset?.text.align || 'center';
+  // RTL locales (Arabic, Hebrew) mirror the horizontal alignment so the
+  // headline hugs the RIGHT edge, matching the right-to-left reading order.
+  const textAlign = localeMeta?.rtl
+    ? (baseAlign === 'left' ? 'right' : baseAlign === 'right' ? 'left' : 'center')
+    : baseAlign;
 
   const tiltDeg = ss.tiltDeg || 0;
   const tiltX = ss.tiltX ?? 0;

@@ -1,0 +1,25 @@
+{
+  "id": "elara-sand",
+  "name": "Elara Sand",
+  "kind": "real",
+  "description": "Warm sand / beige background with terracotta accent. Large high-contrast headline at the top (OCR-friendly), device framed below. Gender-neutral, premium, differentiates from pink pregnancy competitors. Every slot is a real in-app screen (no full-bleed art).",
+  "recommendedFor": "pregnancy / wellness / lifestyle",
+  "background": {
+    "type": "gradient",
+    "css": "linear-gradient(160deg, #F4ECDD 0%, #ECE3D4 45%, #E2D4BD 100%)"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 800,
+    "color": "#3A2E26",
+    "uppercase": false,
+    "align": "left"
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": true,
+  "decorationsHint": "Background only, behind the device — never touch the screen or move the phone. Warm SAND / BEIGE, never flat: large soft layered rounded blobs and dune-like waves blending cream #F4ECDD -> sand #ECE3D4 -> warm clay #E2D4BD, big and gently out-of-focus, with a soft terracotta #C97B5A glow / halo centered behind the phone and a few sparse translucent terracotta bubbles at low opacity. Calm, warm, premium, gender-neutral — never clinical, never pink, no 3D, no stock graphics, no extracted UI cards, no objects. Lots of breathing room.",
+  "samples": [
+    { "verb": "Pregnancy Tracker", "descriptor": "Week by week — baby size & due date", "device": { "scale": 0.92, "offsetY": 70 }, "text": { "yFraction": 0.055, "titlePx": 138, "subPx": 58 } }
+  ]
+}
