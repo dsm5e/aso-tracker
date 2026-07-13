@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   api,
   runSnapshot,
+  getSnapshotState,
+  subscribeToSnapshot,
+  abortSnapshot,
+  SPEED_PRESETS,
   type AppStats,
   type RankingRow,
   type SnapshotEvent,
+  type SnapshotSpeed,
   type KeywordSuggestion,
+  type RelevanceRow,
+  type MoversResponse,
+  type Mover,
 } from './api';
 import { APP_STORE_LOCALES } from './appStoreLocales';
 
@@ -42,6 +50,15 @@ const FLAG: Record<string, string> = {
 };
 
 const ARTWORK_SESSION_KEY = 'aso-keywords.artworks.v1';
+
+// Sibling ASO Studio tools, reverse-proxied under the same origin in dev
+// (see vite.config.ts) and by the hub in production.
+const STUDIO_LINKS = [
+  { id: 'aso', label: 'Keywords', hint: 'Rankings & suggestions', href: '/' },
+  { id: 'shot', label: 'Screenshots', hint: 'App Store visuals', href: '/studio/' },
+  { id: 'vid', label: 'Video', hint: 'Ad video pipeline', href: '/video/' },
+  { id: 'asa', label: 'ASA Ads', hint: 'Search Ads ROI', href: '/asa/' },
+];
 
 function initialArtworkCache(): Record<string, string> {
   try {
@@ -96,8 +113,25 @@ export default function App() {
   const [competitorBundle, setCompetitorBundle] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<KeywordSuggestion[] | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [studioMenuOpen, setStudioMenuOpen] = useState(false);
+  const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const [relevanceOn, setRelevanceOn] = useState(false);
+  const [relevance, setRelevance] = useState<Record<string, RelevanceRow>>({});
+  const [snapshotSpeed, setSnapshotSpeed] = useState<SnapshotSpeed>(
+    () => (localStorage.getItem('snapshotSpeed') === 'slow' ? 'slow' : 'medium')
+  );
 
   const selectedApp = apps.find((app) => app.id === selectedAppID) ?? apps[0];
+
+  // Refs so the long-lived snapshot event stream always sees the current
+  // app/locale without resubscribing on every selection change.
+  const localeRef = useRef(locale);
+  useEffect(() => { localeRef.current = locale; }, [locale]);
+  const selectedAppRef = useRef(selectedApp);
+  useEffect(() => { selectedAppRef.current = selectedApp; }, [selectedApp]);
+
+  useEffect(() => { localStorage.setItem('snapshotSpeed', snapshotSpeed); }, [snapshotSpeed]);
 
   const loadApps = useCallback(async () => {
     const result = await api.apps();
@@ -195,66 +229,105 @@ export default function App() {
     setLocale(normalized);
   };
 
-  const refresh = async () => {
+  const applySnapshotEvent = useCallback((event: SnapshotEvent) => {
+    setProgress(event);
+    if (event.type === 'done' || event.type === 'abort') {
+      setRefreshing(false);
+      setRowUpdates({});
+      const app = selectedAppRef.current;
+      const currentLocale = localeRef.current;
+      if (app && currentLocale) {
+        api.rankings(app.id, currentLocale).then(setRankings).catch(() => {});
+      }
+      loadApps().catch(() => {});
+      return;
+    }
+    if (!event.keyword || event.locale !== localeRef.current) return;
+    if (event.type === 'keyword-start') {
+      setRowUpdates((current) => ({
+        ...current,
+        [event.keyword!]: {
+          status: 'updating',
+          attempt: event.attempt,
+          maxAttempts: event.maxAttempts,
+        },
+      }));
+    }
+    if (event.type === 'retry') {
+      setRowUpdates((current) => ({
+        ...current,
+        [event.keyword!]: {
+          status: 'retrying',
+          attempt: event.attempt,
+          maxAttempts: event.maxAttempts,
+        },
+      }));
+    }
+    if (event.type === 'keyword') {
+      setRankings((current) => {
+        const index = current.findIndex((row) => row.locale === localeRef.current && row.keyword === event.keyword);
+        if (index < 0) return current;
+        const next = current.slice();
+        const previous = next[index];
+        next[index] = {
+          ...previous,
+          today: event.position ?? null,
+          top5: event.top5 ?? previous.top5,
+          trend: [...previous.trend, event.position ?? 0].slice(-30),
+        };
+        return next;
+      });
+      setRowUpdates((current) => ({
+        ...current,
+        [event.keyword!]: { status: event.error ? 'error' : 'done' },
+      }));
+    }
+  }, [loadApps]);
+
+  // A snapshot is a server-side singleton that survives page reloads. On mount,
+  // reattach to any run started in a previous session so progress keeps flowing.
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null;
+    getSnapshotState()
+      .then((state) => {
+        if (!state.running) return;
+        setRefreshing(true);
+        if (state.lastProgress) setProgress(state.lastProgress);
+        unsubscribe = subscribeToSnapshot(applySnapshotEvent);
+      })
+      .catch(() => { /* server not up yet — the manual refresh path still works */ });
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [applySnapshotEvent]);
+
+  const changeSpeed = (speed: SnapshotSpeed) => {
+    setSnapshotSpeed(speed);
+    if (refreshing) {
+      const preset = SPEED_PRESETS[speed];
+      api.setSnapshotSpeed(preset.sleepMs, preset.workers).catch(() => { /* run may have just ended */ });
+    }
+  };
+
+  const startSnapshot = async (scope: 'locale' | 'app' | 'all') => {
     if (!selectedApp || !locale || refreshing) return;
+    setUpdateMenuOpen(false);
     setRefreshing(true);
     setProgress(null);
-    setRowUpdates(Object.fromEntries(
-      (keywordMap[locale] ?? []).map((keyword) => [keyword, { status: 'queued' as const }])
-    ));
+    setRowUpdates(scope === 'locale'
+      ? Object.fromEntries((keywordMap[locale] ?? []).map((keyword) => [keyword, { status: 'queued' as const }]))
+      : {});
+    const scopeOpts = scope === 'locale'
+      ? { appIds: [selectedApp.id], locales: [locale] }
+      : scope === 'app'
+        ? { appIds: [selectedApp.id] }
+        : {};
     try {
-      await runSnapshot(
-        { appIds: [selectedApp.id], locales: [locale], speed: 'medium' },
-        (event) => {
-          setProgress(event);
-          if (!event.keyword || event.locale !== locale) return;
-          if (event.type === 'keyword-start') {
-            setRowUpdates((current) => ({
-              ...current,
-              [event.keyword!]: {
-                status: 'updating',
-                attempt: event.attempt,
-                maxAttempts: event.maxAttempts,
-              },
-            }));
-          }
-          if (event.type === 'retry') {
-            setRowUpdates((current) => ({
-              ...current,
-              [event.keyword!]: {
-                status: 'retrying',
-                attempt: event.attempt,
-                maxAttempts: event.maxAttempts,
-              },
-            }));
-          }
-          if (event.type === 'keyword') {
-            setRankings((current) => {
-              const index = current.findIndex((row) => row.locale === locale && row.keyword === event.keyword);
-              if (index < 0) return current;
-              const next = current.slice();
-              const previous = next[index];
-              next[index] = {
-                ...previous,
-                today: event.position ?? null,
-                top5: event.top5 ?? previous.top5,
-                trend: [...previous.trend, event.position ?? 0].slice(-30),
-              };
-              return next;
-            });
-            setRowUpdates((current) => ({
-              ...current,
-              [event.keyword!]: { status: event.error ? 'error' : 'done' },
-            }));
-          }
-        }
-      );
-      setRankings(await api.rankings(selectedApp.id, locale));
-      await loadApps();
+      await runSnapshot({ ...scopeOpts, speed: snapshotSpeed }, applySnapshotEvent);
     } finally {
       setRefreshing(false);
     }
   };
+
+  const refresh = () => startSnapshot('locale');
 
   const refreshOne = async (keyword: string) => {
     if (!selectedApp || !locale) return;
@@ -357,6 +430,26 @@ export default function App() {
     }
   };
 
+  // Relevance mode: classify each keyword by whether its top-5 apps share our
+  // genre (match / ambiguous / mismatch). Loaded lazily when toggled on.
+  useEffect(() => {
+    if (!relevanceOn || !selectedApp || !locale) return;
+    let cancelled = false;
+    api.keywordRelevance(selectedApp.id, locale)
+      .then((rows) => {
+        if (cancelled) return;
+        setRelevance(Object.fromEntries(rows.map((row) => [`${row.locale}|${row.keyword.toLocaleLowerCase()}`, row])));
+      })
+      .catch(() => { /* relevance is best-effort */ });
+    return () => { cancelled = true; };
+  }, [relevanceOn, selectedApp, locale]);
+
+  const copyClaudePrompt = async (keyword: string) => {
+    if (!selectedApp || !locale) return;
+    const { prompt } = await api.claudePrompt(selectedApp.id, keyword, locale);
+    await navigator.clipboard.writeText(prompt);
+  };
+
   const addSelectedSuggestions = async (selected: string[]) => {
     const current = keywordMap[locale] ?? [];
     await saveKeywords({ ...keywordMap, [locale]: Array.from(new Set([...current, ...selected])) });
@@ -381,11 +474,23 @@ export default function App() {
     <main className="workspace">
       <aside className="sidebar">
         <div className="sidebar-titlebar">
-          <span className="brand-mark">K</span>
+          <button className="brand-mark brand-button" onClick={() => setStudioMenuOpen((open) => !open)} aria-label="Switch studio">K</button>
           <div>
             <strong>Keywords</strong>
             <span>ASO workspace</span>
           </div>
+          {studioMenuOpen && (
+            <div className="menu studio-menu" onMouseLeave={() => setStudioMenuOpen(false)}>
+              <div className="menu-label">ASO Studio</div>
+              {STUDIO_LINKS.map((link) => (
+                <a key={link.id} href={link.href} className={link.id === 'aso' ? 'active' : ''}>
+                  <strong>{link.label}</strong>
+                  <small>{link.hint}</small>
+                  {link.id === 'aso' && <b>✓</b>}
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="sidebar-section-label sidebar-apps-label">Apps</div>
@@ -410,9 +515,37 @@ export default function App() {
 
       <section className="content">
         <header className="toolbar">
-          <button className={`toolbar-refresh ${refreshing ? 'spinning' : ''}`} onClick={refresh} aria-label="Refresh">
-            ↻
-          </button>
+          <div className="update-cluster">
+            <button className={`toolbar-refresh ${refreshing ? 'spinning' : ''}`} onClick={refresh} aria-label="Refresh">
+              ↻
+            </button>
+            <button className="toolbar-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Snapshot options">▾</button>
+            {updateMenuOpen && (
+              <div className="menu update-menu" onMouseLeave={() => setUpdateMenuOpen(false)}>
+                <div className="menu-label">Run snapshot</div>
+                <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>Update {locale.toUpperCase()}</strong><small>current locale only</small></button>
+                <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Update {selectedApp?.name}</strong><small>all locales of this app</small></button>
+                <button onClick={() => startSnapshot('all')} disabled={refreshing}><strong>Update everything</strong><small>all apps · all locales</small></button>
+                <div className="menu-separator" />
+                <div className="menu-label">Speed</div>
+                {(Object.keys(SPEED_PRESETS) as SnapshotSpeed[]).map((speed) => (
+                  <button key={speed} onClick={() => changeSpeed(speed)}>
+                    <strong>{SPEED_PRESETS[speed].label}</strong>
+                    <small>{SPEED_PRESETS[speed].note}</small>
+                    {snapshotSpeed === speed && <b>✓</b>}
+                  </button>
+                ))}
+                {refreshing && (
+                  <>
+                    <div className="menu-separator" />
+                    <button className="menu-danger" onClick={() => { abortSnapshot().catch(() => {}); setUpdateMenuOpen(false); }}>
+                      <strong>Stop snapshot</strong><small>finishes the current keyword and exits</small>
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           <div className="toolbar-title">Keywords</div>
           <select className="toolbar-pill locale-select" value={locale} onChange={(event) => setLocale(event.target.value)}>
             {Object.keys(keywordMap).sort().map((code) => (
@@ -426,8 +559,15 @@ export default function App() {
           {refreshing && (
             <span className="snapshot-status">
               <i /> Updating {progress?.completed ?? 0}/{progress?.total ?? rows.length}
+              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Stop snapshot">■</button>
             </span>
           )}
+          <button
+            className={`toolbar-icon relevance-toggle ${relevanceOn ? 'active' : ''}`}
+            onClick={() => setRelevanceOn((on) => !on)}
+            title="Toggle keyword relevance (genre match of top-5 apps)"
+          >◎</button>
+          <button className="toolbar-icon" onClick={() => setAnalyticsOpen(true)} title="Analytics — movers across all keywords">∿</button>
           <button className="button button-primary" onClick={openKeywordsDialog}>Add Keywords <span>＋</span></button>
           <button className="button button-suggestion" onClick={findSuggestions} disabled={suggestionsLoading}>
             {suggestionsLoading ? 'Finding…' : suggestions ? `${suggestions.length} Suggestions` : 'Find Suggestions'} <span>✦</span>
@@ -467,6 +607,8 @@ export default function App() {
                   updateState={rowUpdates[keyword]}
                   onRefresh={() => refreshOne(keyword)}
                   onOpenCompetitor={setCompetitorBundle}
+                  relevance={relevanceOn ? relevance[`${locale}|${keyword.toLocaleLowerCase()}`] : undefined}
+                  onCopyPrompt={() => copyClaudePrompt(keyword)}
                 />
               ))}
             </tbody>
@@ -498,9 +640,23 @@ export default function App() {
           onAdd={addSelectedSuggestions}
         />
       )}
+      {analyticsOpen && (
+        <AnalyticsDialog
+          apps={apps}
+          initialApp={selectedApp?.id ?? ''}
+          onClose={() => setAnalyticsOpen(false)}
+        />
+      )}
     </main>
   );
 }
+
+const RELEVANCE_LABEL: Record<RelevanceRow['flag'], string> = {
+  match: 'Relevant',
+  ambiguous: 'Mixed',
+  mismatch: 'Off-genre',
+  unknown: '?',
+};
 
 function KeywordRow({
   keyword,
@@ -510,6 +666,8 @@ function KeywordRow({
   updateState,
   onRefresh,
   onOpenCompetitor,
+  relevance,
+  onCopyPrompt,
 }: {
   keyword: string;
   ranking?: RankingRow;
@@ -518,15 +676,39 @@ function KeywordRow({
   updateState?: RowUpdateState;
   onRefresh: () => void;
   onOpenCompetitor: (bundleID: string) => void;
+  relevance?: RelevanceRow;
+  onCopyPrompt: () => Promise<void>;
 }) {
+  const [promptState, setPromptState] = useState<'idle' | 'copying' | 'copied'>('idle');
   const dayDelta = delta(ranking?.yesterday ?? null, ranking?.today ?? null);
   const weekDelta = delta(ranking?.w1 ?? null, ranking?.today ?? null);
   const tone = rankTone(ranking?.today ?? null);
+
+  const copyPrompt = async () => {
+    if (promptState !== 'idle') return;
+    setPromptState('copying');
+    try {
+      await onCopyPrompt();
+      setPromptState('copied');
+      window.setTimeout(() => setPromptState('idle'), 1500);
+    } catch {
+      setPromptState('idle');
+    }
+  };
+
   return (
     <tr>
       <td className="keyword-cell">
         <strong>{keyword}</strong>
         {ranking?.today != null && ranking.today <= 10 && <span className="keyword-dot" />}
+        {relevance && (
+          <span
+            className={`relevance-chip relevance-${relevance.flag}`}
+            title={`Top-5 genre match: ${relevance.matchCount}/5 · ${relevance.genreHistogram.map((g) => `${g.genre} ×${g.count}`).join(', ')}`}
+          >
+            {RELEVANCE_LABEL[relevance.flag]}
+          </span>
+        )}
       </td>
       <td><UpdateStatus state={updateState} timestamp={ranking?.lastUpdated} /></td>
       <td><span className={`rank rank-${tone}`}>{ranking?.today ? `# ${ranking.today}` : '# —'}</span></td>
@@ -536,6 +718,9 @@ function KeywordRow({
       <td><TopApps apps={ranking?.top5 ?? []} artworks={artworks} onOpen={onOpenCompetitor} /></td>
       <td>
         <div className="row-actions">
+          <button className="row-action row-prompt" onClick={copyPrompt} title="Copy Claude research prompt for this keyword">
+            {promptState === 'copied' ? '✓' : '✦'}
+          </button>
           <button className="row-action row-refresh" onClick={onRefresh} title="Update this keyword">↻</button>
           <button className="row-action row-remove" onClick={onRemove} title="Remove keyword">×</button>
         </div>
@@ -983,6 +1168,120 @@ function SuggestionsDialog({
         </footer>
       </section>
     </div>
+  );
+}
+
+const PERIOD_LABEL: Record<'day' | 'week' | 'month', string> = {
+  day: 'vs yesterday',
+  week: 'vs 7 days ago',
+  month: 'vs 30 days ago',
+};
+
+function AnalyticsDialog({
+  apps,
+  initialApp,
+  onClose,
+}: {
+  apps: AppStats[];
+  initialApp: string;
+  onClose: () => void;
+}) {
+  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week');
+  const [appFilter, setAppFilter] = useState(initialApp);
+  const [data, setData] = useState<MoversResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    api.movers(period, appFilter || undefined)
+      .then((response) => { if (!cancelled) setData(response); })
+      .catch((err) => { if (!cancelled) setError((err as Error).message); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [period, appFilter]);
+
+  const summary = data?.summary;
+
+  return (
+    <div className="dialog-backdrop" onMouseDown={onClose}>
+      <section className="analytics-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
+        <header>
+          <div className="dialog-symbol analytics-symbol">∿</div>
+          <div>
+            <h2>Analytics</h2>
+            <p>Movement across tracked keywords · {PERIOD_LABEL[period]}</p>
+          </div>
+          <div className="analytics-controls">
+            <div className="segmented">
+              {(['day', 'week', 'month'] as const).map((value) => (
+                <button key={value} className={period === value ? 'selected' : ''} onClick={() => setPeriod(value)}>
+                  {value[0].toUpperCase() + value.slice(1)}
+                </button>
+              ))}
+            </div>
+            <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)}>
+              <option value="">All apps</option>
+              {apps.map((app) => <option key={app.id} value={app.id}>{app.name}</option>)}
+            </select>
+          </div>
+          <button className="analytics-close" onClick={onClose}>×</button>
+        </header>
+
+        {error ? (
+          <div className="analytics-empty">{error}</div>
+        ) : loading || !data ? (
+          <div className="analytics-empty">Loading…</div>
+        ) : (
+          <div className="analytics-content">
+            {summary && (
+              <div className="analytics-summary">
+                <div><strong>{summary.totalRanked}</strong><span>ranked</span><Delta value={summary.rankedDelta} /></div>
+                <div><strong>{summary.top10}</strong><span>top 10</span><Delta value={summary.top10Delta} /></div>
+                <div><strong>{summary.top50}</strong><span>top 50</span><Delta value={summary.top50Delta} /></div>
+                <div>
+                  <strong>{summary.avgPosition != null ? `#${summary.avgPosition.toFixed(0)}` : '—'}</strong>
+                  <span>avg position</span>
+                  <Delta value={summary.avgDelta != null ? Math.round(summary.avgDelta) : null} />
+                </div>
+              </div>
+            )}
+            <div className="movers-grid">
+              <MoversList title="Gainers" tone="positive" movers={data.gainers} />
+              <MoversList title="Losers" tone="negative" movers={data.losers} />
+              <MoversList title="Newly ranked" tone="positive" movers={data.newlyRanked} />
+              <MoversList title="Dropouts" tone="negative" movers={data.dropouts} />
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+function MoversList({ title, tone, movers }: { title: string; tone: 'positive' | 'negative'; movers: Mover[] }) {
+  return (
+    <section className="movers-list">
+      <div className="sheet-section-title">{title}</div>
+      {movers.length === 0 ? (
+        <p className="sheet-empty">Nothing here for this period.</p>
+      ) : (
+        <div className="movers-rows">
+          {movers.slice(0, 12).map((mover) => (
+            <div key={`${mover.app}-${mover.locale}-${mover.keyword}`}>
+              <span className="mover-keyword">
+                <strong>{mover.keyword}</strong>
+                <small>{mover.appName} · {localeFlag(mover.locale)} {mover.locale.toUpperCase()}</small>
+              </span>
+              <span className="mover-shift">{mover.from != null ? `#${mover.from}` : '—'} → {mover.to != null ? `#${mover.to}` : '—'}</span>
+              <b className={`mover-delta mover-${tone}`}>{mover.delta > 0 ? `+${mover.delta}` : mover.delta}</b>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
