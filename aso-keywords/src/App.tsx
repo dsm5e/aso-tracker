@@ -14,10 +14,12 @@ import {
   type RelevanceRow,
   type MoversResponse,
   type Mover,
+  type LocaleAvg,
+  type CompetitorSummary,
 } from './api';
 import { APP_STORE_LOCALES } from './appStoreLocales';
 
-type DialogKind = 'keywords' | 'locale' | 'app' | 'error';
+type DialogKind = 'keywords' | 'locale' | 'app' | 'error' | 'delete-app';
 type DialogState = {
   kind: DialogKind;
   title: string;
@@ -121,6 +123,22 @@ export default function App() {
   const [snapshotSpeed, setSnapshotSpeed] = useState<SnapshotSpeed>(
     () => (localStorage.getItem('snapshotSpeed') === 'slow' ? 'slow' : 'medium')
   );
+  const [view, setView] = useState<'overview' | 'keywords'>('keywords');
+  const [theme, setTheme] = useState<'light' | 'dark'>(
+    () => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light')
+  );
+  const [pageSize, setPageSize] = useState<number>(() => Number(localStorage.getItem('pageSize')) || 0); // 0 = all
+  const [page, setPage] = useState(0);
+  const [detailKeyword, setDetailKeyword] = useState<string | null>(null);
+  const [competitorSummary, setCompetitorSummary] = useState<CompetitorSummary[]>([]);
+  const [localeAvgByApp, setLocaleAvgByApp] = useState<Record<string, LocaleAvg[]>>({});
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+  useEffect(() => { localStorage.setItem('pageSize', String(pageSize)); }, [pageSize]);
+  useEffect(() => { setPage(0); }, [locale, query, pageSize, selectedAppID]);
 
   const selectedApp = apps.find((app) => app.id === selectedAppID) ?? apps[0];
 
@@ -200,6 +218,12 @@ export default function App() {
       .filter((keyword) => !needle || keyword.toLocaleLowerCase().includes(needle))
       .map((keyword) => ({ keyword, ranking: rankingByKeyword.get(keyword.toLocaleLowerCase()) }));
   }, [keywordMap, locale, query, rankingByKeyword]);
+
+  const pageCount = pageSize > 0 ? Math.max(1, Math.ceil(rows.length / pageSize)) : 1;
+  const pagedRows = useMemo(
+    () => (pageSize > 0 ? rows.slice(page * pageSize, (page + 1) * pageSize) : rows),
+    [rows, page, pageSize]
+  );
 
   const saveKeywords = async (next: Record<string, string[]>) => {
     if (!selectedApp) return;
@@ -391,6 +415,7 @@ export default function App() {
       if (dialog.kind === 'keywords') await commitKeywords(value);
       if (dialog.kind === 'locale') await commitLocale(value);
       if (dialog.kind === 'app') await commitApp(value);
+      if (dialog.kind === 'delete-app') await confirmDeleteApp(value);
       setDialog(null);
     } finally {
       setDialogBusy(false);
@@ -428,6 +453,57 @@ export default function App() {
     } finally {
       setSuggestionsLoading(false);
     }
+  };
+
+  // Top competitors across all tracked keywords of the selected app.
+  useEffect(() => {
+    if (!selectedApp) return;
+    let cancelled = false;
+    setCompetitorSummary([]);
+    api.competitors(selectedApp.id)
+      .then((rows) => { if (!cancelled) setCompetitorSummary(rows); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedApp]);
+
+  // Per-locale averages for the Overview grid — one request per app, cached.
+  useEffect(() => {
+    if (view !== 'overview' || !apps.length) return;
+    let cancelled = false;
+    Promise.all(apps.map(async (app) => [app.id, await api.appLocales(app.id).catch(() => [])] as const))
+      .then((pairs) => { if (!cancelled) setLocaleAvgByApp(Object.fromEntries(pairs)); });
+    return () => { cancelled = true; };
+  }, [view, apps]);
+
+  // ⌘K opens the App Store search dialog from anywhere.
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setDialog({
+          kind: 'app',
+          title: 'Add app',
+          message: 'Search the App Store by name, bundle ID, or paste a numeric App Store ID.',
+          placeholder: 'Search apps or enter App Store ID',
+        });
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  const requestDeleteApp = (app: AppStats) => setDialog({
+    kind: 'delete-app',
+    title: `Delete “${app.name}”?`,
+    message: 'This permanently removes all keyword lists, snapshot history, and the app itself from tracking. This cannot be undone.',
+    value: app.id,
+  });
+
+  const confirmDeleteApp = async (id: string) => {
+    await api.deleteApp(id);
+    setSelectedAppID('');
+    setDetailKeyword(null);
+    await loadApps();
   };
 
   // Relevance mode: classify each keyword by whether its top-5 apps share our
@@ -493,26 +569,48 @@ export default function App() {
           )}
         </div>
 
+        <nav className="utility-nav">
+          <button className={view === 'overview' ? 'selected' : ''} onClick={() => setView('overview')}>
+            <span>▦</span> Overview
+          </button>
+          <button className={view === 'keywords' ? 'selected' : ''} onClick={() => setView('keywords')}>
+            <span>≣</span> Keywords
+          </button>
+        </nav>
+
         <div className="sidebar-section-label sidebar-apps-label">Apps</div>
         <div className="app-list">
           {apps.map((app) => (
-            <button
-              className={`app-item ${selectedApp?.id === app.id ? 'selected' : ''}`}
-              key={app.id}
-              onClick={() => setSelectedAppID(app.id)}
-            >
-              <AppIcon app={app} />
-              <span className="app-item-copy">
-                <strong>{app.name}</strong>
-                <small> iPhone · {app.keywords} keywords</small>
-              </span>
-            </button>
+            <div className={`app-item ${view === 'keywords' && selectedApp?.id === app.id ? 'selected' : ''}`} key={app.id}>
+              <button className="app-item-main" onClick={() => { setSelectedAppID(app.id); setView('keywords'); }}>
+                <AppIcon app={app} />
+                <span className="app-item-copy">
+                  <strong>{app.name}</strong>
+                  <small> iPhone · {app.keywords} keywords</small>
+                </span>
+              </button>
+              <button className="app-item-delete" title={`Delete ${app.name}`} onClick={() => requestDeleteApp(app)}>×</button>
+            </div>
           ))}
         </div>
 
+        <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
+          {theme === 'dark' ? '☀︎ Light mode' : '☾ Dark mode'}
+        </button>
         <button className="add-app-button" onClick={openAppDialog}>Add App <span>＋</span></button>
       </aside>
 
+      {view === 'overview' ? (
+        <OverviewScreen
+          apps={apps}
+          localeAvgByApp={localeAvgByApp}
+          onOpenApp={(id) => { setSelectedAppID(id); setView('keywords'); }}
+          onDeleteApp={requestDeleteApp}
+          onRunAll={() => startSnapshot('all')}
+          refreshing={refreshing}
+          progress={progress}
+        />
+      ) : (
       <section className="content">
         <header className="toolbar">
           <div className="update-cluster">
@@ -597,7 +695,7 @@ export default function App() {
                 Array.from({ length: 14 }).map((_, index) => <SkeletonRow key={index} />)
               ) : rows.length === 0 ? (
                 <tr><td colSpan={8}><div className="table-empty">No keywords in this locale yet.</div></td></tr>
-              ) : rows.map(({ keyword, ranking }) => (
+              ) : pagedRows.map(({ keyword, ranking }) => (
                 <KeywordRow
                   key={keyword}
                   keyword={keyword}
@@ -607,23 +705,66 @@ export default function App() {
                   updateState={rowUpdates[keyword]}
                   onRefresh={() => refreshOne(keyword)}
                   onOpenCompetitor={setCompetitorBundle}
+                  onOpenDetail={() => setDetailKeyword(keyword)}
                   relevance={relevanceOn ? relevance[`${locale}|${keyword.toLocaleLowerCase()}`] : undefined}
                   onCopyPrompt={() => copyClaudePrompt(keyword)}
                 />
               ))}
             </tbody>
           </table>
+
+          {competitorSummary.length > 0 && (
+            <div className="competitor-strip">
+              <div className="sidebar-section-label">Top competitors across your tracked keywords</div>
+              <div className="competitor-strip-chips">
+                {competitorSummary.slice(0, 20).map((competitor) => (
+                  <button key={competitor.bundleId} onClick={() => setCompetitorBundle(competitor.bundleId)}>
+                    <strong>{competitor.name}</strong>
+                    <span>{competitor.appearances}×</span>
+                    <small>avg #{competitor.avgRank}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <footer className="statusbar">
           <span>{rows.length} keywords</span>
           <span>{localeFlag(locale)} {locale.toUpperCase()}</span>
+          {pageSize > 0 && pageCount > 1 && (
+            <span className="pager">
+              <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹</button>
+              {page + 1} / {pageCount}
+              <button onClick={() => setPage(Math.min(pageCount - 1, page + 1))} disabled={page >= pageCount - 1}>›</button>
+            </span>
+          )}
+          <select className="page-size" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+            <option value={0}>All rows</option>
+            <option value={25}>25 / page</option>
+            <option value={50}>50 / page</option>
+            <option value={100}>100 / page</option>
+          </select>
           <span className="statusbar-spacer" />
           <span>Top 10: <strong>{rows.filter((row) => (row.ranking?.today ?? 999) <= 10).length}</strong></span>
           <span>Ranked: <strong>{rows.filter((row) => row.ranking?.today != null).length}</strong></span>
         </footer>
       </section>
+      )}
       {dialog && <InputDialog dialog={dialog} busy={dialogBusy} existingLocales={Object.keys(keywordMap)} onClose={() => setDialog(null)} onSubmit={submitDialog} />}
+      {detailKeyword && selectedApp && (
+        <KeywordDrawer
+          keyword={detailKeyword}
+          ranking={rankingByKeyword.get(detailKeyword.toLocaleLowerCase())}
+          relevance={relevance[`${locale}|${detailKeyword.toLocaleLowerCase()}`]}
+          locale={locale}
+          artworks={artworks}
+          onClose={() => setDetailKeyword(null)}
+          onRefresh={() => refreshOne(detailKeyword)}
+          onCopyPrompt={() => copyClaudePrompt(detailKeyword)}
+          onOpenCompetitor={(bundleID) => { setDetailKeyword(null); setCompetitorBundle(bundleID); }}
+        />
+      )}
       {competitorBundle && selectedApp && (
         <CompetitorDetail
           appID={selectedApp.id}
@@ -666,6 +807,7 @@ function KeywordRow({
   updateState,
   onRefresh,
   onOpenCompetitor,
+  onOpenDetail,
   relevance,
   onCopyPrompt,
 }: {
@@ -676,6 +818,7 @@ function KeywordRow({
   updateState?: RowUpdateState;
   onRefresh: () => void;
   onOpenCompetitor: (bundleID: string) => void;
+  onOpenDetail: () => void;
   relevance?: RelevanceRow;
   onCopyPrompt: () => Promise<void>;
 }) {
@@ -698,7 +841,7 @@ function KeywordRow({
 
   return (
     <tr>
-      <td className="keyword-cell">
+      <td className="keyword-cell" onClick={onOpenDetail} style={{ cursor: 'pointer' }}>
         <strong>{keyword}</strong>
         {ranking?.today != null && ranking.today <= 10 && <span className="keyword-dot" />}
         {relevance && (
@@ -957,6 +1100,7 @@ function InputDialog({
   const [appSearchError, setAppSearchError] = useState('');
   const [selectedAppResult, setSelectedAppResult] = useState<AppStoreSearchResult | null>(null);
   const isError = dialog.kind === 'error';
+  const isDelete = dialog.kind === 'delete-app';
   const multiline = dialog.kind === 'keywords';
   const isApp = dialog.kind === 'app';
   const localeOptions = useMemo(() => {
@@ -1008,11 +1152,11 @@ function InputDialog({
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();
-      if (!multiline && !isError && !isApp && event.key === 'Enter' && value.trim()) onSubmit(value);
+      if (!multiline && !isError && !isApp && !isDelete && event.key === 'Enter' && value.trim()) onSubmit(value);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [isApp, isError, multiline, onClose, onSubmit, value]);
+  }, [isApp, isDelete, isError, multiline, onClose, onSubmit, value]);
 
   const selectApp = (result: AppStoreSearchResult) => {
     setSelectedAppResult(result);
@@ -1026,10 +1170,10 @@ function InputDialog({
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title" onMouseDown={(event) => event.stopPropagation()}>
-        <div className={`dialog-symbol ${isError ? 'dialog-symbol-error' : ''}`}>{isError ? '!' : '+'}</div>
+        <div className={`dialog-symbol ${isError || isDelete ? 'dialog-symbol-error' : ''}`}>{isError ? '!' : isDelete ? '×' : '+'}</div>
         <h2 id="dialog-title">{dialog.title}</h2>
         <p>{dialog.message}</p>
-        {!isError && dialog.kind === 'locale' ? (
+        {isDelete ? null : !isError && dialog.kind === 'locale' ? (
           <div className="locale-picker">
             <label className="dialog-search">
               <span>⌕</span>
@@ -1085,15 +1229,19 @@ function InputDialog({
               </div>
             )}
           </div>
-        ) : !isError && (multiline ? (
+        ) : !isError && !isDelete && (multiline ? (
           <textarea autoFocus value={value} onChange={(event) => setValue(event.target.value)} placeholder={dialog.placeholder} rows={6} />
         ) : (
           <input autoFocus value={value} onChange={(event) => setValue(event.target.value)} placeholder={dialog.placeholder} inputMode={dialog.kind === 'app' ? 'numeric' : 'text'} />
         ))}
         <div className="dialog-actions">
           {!isError && <button className="dialog-button dialog-button-secondary" onClick={onClose}>Cancel</button>}
-          <button className="dialog-button dialog-button-primary" disabled={busy || (!isError && (!value.trim() || (isApp && !appCanSubmit)))} onClick={() => onSubmit(value)}>
-            {busy ? 'Working…' : isError ? 'Done' : dialog.kind === 'keywords' ? 'Add keywords' : dialog.kind === 'locale' ? 'Add locale' : 'Add app'}
+          <button
+            className={`dialog-button ${isDelete ? 'dialog-button-danger' : 'dialog-button-primary'}`}
+            disabled={busy || (!isError && (!value.trim() || (isApp && !appCanSubmit)))}
+            onClick={() => onSubmit(value)}
+          >
+            {busy ? 'Working…' : isError ? 'Done' : isDelete ? 'Delete app' : dialog.kind === 'keywords' ? 'Add keywords' : dialog.kind === 'locale' ? 'Add locale' : 'Add app'}
           </button>
         </div>
       </section>
@@ -1167,6 +1315,217 @@ function SuggestionsDialog({
           <button className="dialog-button dialog-button-primary" disabled={!selected.size || saving} onClick={add}>{saving ? 'Adding…' : `Add ${selected.size || ''} keywords`}</button>
         </footer>
       </section>
+    </div>
+  );
+}
+
+function Sparkline({ values, width = 120, height = 26 }: { values: number[]; width?: number; height?: number }) {
+  const clean = values.filter((value) => Number.isFinite(value));
+  if (clean.length < 2) return <span className="muted-cell">—</span>;
+  const min = Math.min(...clean);
+  const max = Math.max(...clean);
+  const range = max - min || 1;
+  const points = clean.map((value, index) => {
+    const x = index * (width / (clean.length - 1));
+    const y = 3 + (1 - (value - min) / range) * (height - 6);
+    return `${x},${y}`;
+  }).join(' ');
+  return <svg className="mini-trend sparkline" viewBox={`0 0 ${width} ${height}`}><polyline points={points} /></svg>;
+}
+
+function OverviewScreen({
+  apps,
+  localeAvgByApp,
+  onOpenApp,
+  onDeleteApp,
+  onRunAll,
+  refreshing,
+  progress,
+}: {
+  apps: AppStats[];
+  localeAvgByApp: Record<string, LocaleAvg[]>;
+  onOpenApp: (id: string) => void;
+  onDeleteApp: (app: AppStats) => void;
+  onRunAll: () => void;
+  refreshing: boolean;
+  progress: SnapshotEvent | null;
+}) {
+  return (
+    <section className="content">
+      <header className="toolbar">
+        <div className="toolbar-title">Overview</div>
+        <span className="toolbar-spacer" />
+        {refreshing && (
+          <span className="snapshot-status">
+            <i /> Updating {progress?.completed ?? 0}/{progress?.total ?? '…'}
+          </span>
+        )}
+        <button className="button button-primary" onClick={onRunAll} disabled={refreshing}>
+          {refreshing ? 'Snapshot running…' : 'Run full snapshot'} <span>↻</span>
+        </button>
+      </header>
+
+      <div className="overview-wrap">
+        <div className="overview-grid">
+          {apps.map((app) => {
+            const locales = localeAvgByApp[app.id] ?? [];
+            return (
+              <article className="overview-card" key={app.id}>
+                <header onClick={() => onOpenApp(app.id)}>
+                  <AppIcon app={app} size={46} />
+                  <div>
+                    <strong>{app.name}</strong>
+                    <small>{app.keywords} keywords · {app.locales.length} locales</small>
+                  </div>
+                  <button className="overview-delete" title={`Delete ${app.name}`} onClick={(event) => { event.stopPropagation(); onDeleteApp(app); }}>×</button>
+                </header>
+
+                <div className="overview-metrics" onClick={() => onOpenApp(app.id)}>
+                  <div><strong>{app.avgPos ? `#${Math.round(app.avgPos)}` : '—'}</strong><span>avg pos</span><Delta value={app.weekDelta?.avg ? Math.round(app.weekDelta.avg) : null} /></div>
+                  <div><strong>{app.top10}</strong><span>top 10</span><Delta value={app.weekDelta?.top10 || null} /></div>
+                  <div><strong>{app.top50}</strong><span>top 50</span><Delta value={app.weekDelta?.top50 || null} /></div>
+                </div>
+
+                <div className="overview-spark" onClick={() => onOpenApp(app.id)}>
+                  <Sparkline values={app.history?.top10 ?? []} />
+                  <small>top-10 keywords over snapshots</small>
+                </div>
+
+                {locales.length > 0 && (
+                  <div className="overview-locales">
+                    {locales.slice(0, 10).map((entry) => (
+                      <span key={entry.code} title={`${entry.code.toUpperCase()} — avg ${entry.avg != null ? `#${Math.round(entry.avg)}` : 'unranked'}`}>
+                        {localeFlag(entry.code)} {entry.avg != null ? `#${Math.round(entry.avg)}` : '—'}
+                      </span>
+                    ))}
+                    {locales.length > 10 && <span>+{locales.length - 10}</span>}
+                  </div>
+                )}
+
+                {(app.winners?.length > 0 || app.losers?.length > 0) && (
+                  <div className="overview-movers">
+                    {app.winners?.slice(0, 2).map((mover) => (
+                      <div key={`w-${mover.kw}`}><b className="mover-positive">↑{mover.delta}</b> {mover.kw} <small>#{mover.from} → #{mover.to}</small></div>
+                    ))}
+                    {app.losers?.slice(0, 2).map((mover) => (
+                      <div key={`l-${mover.kw}`}><b className="mover-negative">↓{Math.abs(mover.delta)}</b> {mover.kw} <small>#{mover.from} → #{mover.to}</small></div>
+                    ))}
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function KeywordDrawer({
+  keyword,
+  ranking,
+  relevance,
+  locale,
+  artworks,
+  onClose,
+  onRefresh,
+  onCopyPrompt,
+  onOpenCompetitor,
+}: {
+  keyword: string;
+  ranking?: RankingRow;
+  relevance?: RelevanceRow;
+  locale: string;
+  artworks: Record<string, string>;
+  onClose: () => void;
+  onRefresh: () => void;
+  onCopyPrompt: () => Promise<void>;
+  onOpenCompetitor: (bundleID: string) => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const dayDelta = delta(ranking?.yesterday ?? null, ranking?.today ?? null);
+  const weekDelta = delta(ranking?.w1 ?? null, ranking?.today ?? null);
+  const monthDelta = delta(ranking?.w4 ?? null, ranking?.today ?? null);
+
+  const copy = async () => {
+    try {
+      await onCopyPrompt();
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch { /* clipboard denied */ }
+  };
+
+  return (
+    <div className="competitor-backdrop" onMouseDown={onClose}>
+      <aside className="competitor-sheet keyword-drawer" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="competitor-header">
+          <span className={`drawer-rank rank rank-${rankTone(ranking?.today ?? null)}`}>{ranking?.today ? `#${ranking.today}` : '—'}</span>
+          <div>
+            <h2>{keyword}</h2>
+            <p>{localeFlag(locale)} {locale.toUpperCase()} · updated {formatRelativeTime(ranking?.lastUpdated).toLowerCase()}</p>
+            {relevance && (
+              <div className="competitor-badges">
+                <b className={`relevance-chip relevance-${relevance.flag}`} style={{ marginLeft: 0 }}>{RELEVANCE_LABEL[relevance.flag]}</b>
+                <b>{relevance.matchCount}/5 same genre</b>
+              </div>
+            )}
+          </div>
+          <button onClick={onClose}>×</button>
+        </header>
+
+        <div className="competitor-content">
+          <div className="competitor-stats">
+            <div><strong><Delta value={dayDelta} /></strong><span>24 hours</span></div>
+            <div><strong><Delta value={weekDelta} /></strong><span>7 days</span></div>
+            <div><strong><Delta value={monthDelta} /></strong><span>30 days</span></div>
+          </div>
+
+          {(ranking?.trend?.length ?? 0) >= 2 && (
+            <section>
+              <div className="sheet-section-title">Position trend</div>
+              <div className="drawer-trend"><Sparkline values={ranking!.trend} width={380} height={64} /></div>
+            </section>
+          )}
+
+          <section>
+            <div className="sheet-section-title">Top apps in this ranking</div>
+            {!ranking?.top5?.length ? (
+              <p className="sheet-empty">No snapshot data yet — run an update for this keyword.</p>
+            ) : (
+              <div className="drawer-top5">
+                {ranking.top5.map((app, index) => {
+                  const artwork = (app.tid ? artworks[String(app.tid)] : undefined) ?? artworks[app.id];
+                  const genre = relevance?.top5?.find((r) => (r.bundleId ?? r.id) === app.id)?.genre;
+                  return (
+                    <button key={`${app.id}-${index}`} onClick={() => onOpenCompetitor(app.id)}>
+                      <b>#{app.pos ?? index + 1}</b>
+                      {artwork ? <img src={artwork} alt="" /> : <span className="competitor-icon">{app.name.trim().slice(0, 1).toUpperCase()}</span>}
+                      <span><strong>{app.name}</strong><small>{app.dev}{genre ? ` · ${genre}` : ''}</small></span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
+          {relevance && relevance.genreHistogram.length > 0 && (
+            <section>
+              <div className="sheet-section-title">Genres in top 5</div>
+              <div className="drawer-genres">
+                {relevance.genreHistogram.map((genre) => (
+                  <span key={genre.genre}>{genre.genre} <b>×{genre.count}</b></span>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <footer className="competitor-footer">
+          <button onClick={copy}>{copied ? '✓ Copied' : '✦ Copy Claude prompt'}</button>
+          <button onClick={onRefresh}>↻ Update keyword</button>
+          <button onClick={onClose}>Done</button>
+        </footer>
+      </aside>
     </div>
   );
 }
