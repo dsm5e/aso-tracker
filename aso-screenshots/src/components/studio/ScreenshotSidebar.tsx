@@ -354,7 +354,11 @@ export function ScreenshotSidebar() {
         {previewDevice === 'iphone' && visibleScreenshots.length > 0 && (
           <Button
             variant="ghost"
-            onClick={syncIphoneToIpad}
+            onClick={() => {
+              const ipadCount = screenshots.filter((s) => s.device === 'ipad').length;
+              if (ipadCount > 0 && !window.confirm(`Replace ${ipadCount} iPad slide(s) with copies of the current iPhone set? Their generated images and locale edits will be discarded.`)) return;
+              syncIphoneToIpad();
+            }}
             leftIcon={<RefreshCw size={14} />}
             style={{ width: '100%', justifyContent: 'center', height: 32, color: 'var(--fg-2)' }}
             title="Replace the iPad section with copies of all current iPhone slides"

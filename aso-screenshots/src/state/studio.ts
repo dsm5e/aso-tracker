@@ -880,6 +880,7 @@ export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioStat
       syncIphoneToIpad: () =>
         set((state) => {
           const iphoneSlots = state.screenshots.filter((s) => !s.device || s.device === 'iphone');
+          const removedIpadIds = new Set(state.screenshots.filter((s) => s.device === 'ipad').map((s) => s.id));
           const ipadGroupIdMap = new Map<string, string>();
           const sourceToIpadId = new Map<string, string>();
           const ipadSlots = iphoneSlots.map((s): Screenshot => {
@@ -906,6 +907,14 @@ export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioStat
             const pillTranslations = { ...(locale.pillTranslations ?? {}) };
             const extraTranslations = { ...(locale.extraTranslations ?? {}) };
             const slotAdjustments = { ...(locale.slotAdjustments ?? {}) };
+            // Drop entries for the iPad slots being replaced so per-locale
+            // dicts don't accumulate orphaned keys across repeated syncs.
+            for (const oldId of removedIpadIds) {
+              delete translations[oldId];
+              delete pillTranslations[oldId];
+              delete extraTranslations[oldId];
+              delete slotAdjustments[oldId];
+            }
             for (const [sourceId, ipadId] of sourceToIpadId) {
               if (locale.translations[sourceId]) translations[ipadId] = { ...locale.translations[sourceId] };
               if (locale.pillTranslations?.[sourceId]) pillTranslations[ipadId] = locale.pillTranslations[sourceId];
