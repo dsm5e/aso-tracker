@@ -22,6 +22,10 @@ export interface SearchResult {
   artistName?: string;
   trackId?: number;
   trackViewUrl?: string;
+  artworkUrl100?: string;
+  primaryGenreName?: string;
+  averageUserRating?: number;
+  userRatingCount?: number;
 }
 
 // Global gate: enforce a minimum interval between any two iTunes requests,
@@ -95,14 +99,99 @@ export async function lookupItunes(
   id: string | number,
   country = 'us'
 ): Promise<SearchResult | null> {
-  const params = new URLSearchParams({ id: String(id), country });
-  const res = await fetch(`${BASE}/lookup?${params}`, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(15_000),
+  const appId = String(id).trim();
+  const cc = COUNTRY_OVERRIDE[country] ?? country;
+  const params = new URLSearchParams({ id: appId, country: cc });
+
+  try {
+    const res = await fetch(`${BASE}/lookup?${params}`, {
+      headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.2 (self-hosted)' },
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { results?: SearchResult[] };
+      if (data.results?.[0]) return data.results[0];
+    } else {
+      console.warn(`[itunes] lookup ${cc}/${appId} → HTTP ${res.status}; trying App Store page fallback`);
+    }
+  } catch (e) {
+    console.warn(`[itunes] lookup ${cc}/${appId} failed: ${(e as Error).message}; trying App Store page fallback`);
+  }
+
+  return lookupFromAppStorePage(appId, cc);
+}
+
+/** Apple intermittently returns 403 from the legacy iTunes Lookup API while
+ * the public App Store product page remains available. Its server payload
+ * includes the same adamId + PurchaseConfiguration data needed by AppAdder. */
+async function lookupFromAppStorePage(appId: string, country: string): Promise<SearchResult | null> {
+  const pageUrl = `https://apps.apple.com/${encodeURIComponent(country)}/app/id${encodeURIComponent(appId)}`;
+  const res = await fetch(pageUrl, {
+    headers: {
+      Accept: 'text/html,application/xhtml+xml',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36',
+    },
+    redirect: 'follow',
+    signal: AbortSignal.timeout(20_000),
   });
-  if (!res.ok) return null;
-  const data = (await res.json()) as { results?: SearchResult[] };
-  return data.results?.[0] || null;
+  if (!res.ok) {
+    console.warn(`[itunes] App Store fallback ${country}/${appId} → HTTP ${res.status}`);
+    return null;
+  }
+
+  const html = await res.text();
+  const payloadMatch = html.match(/<script[^>]+id=["']serialized-server-data["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (!payloadMatch) return null;
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(payloadMatch[1]);
+  } catch {
+    return null;
+  }
+
+  const stack: unknown[] = [payload];
+  let product: Record<string, unknown> | null = null;
+  while (stack.length > 0) {
+    const value = stack.pop();
+    if (!value || typeof value !== 'object') continue;
+    if (Array.isArray(value)) {
+      stack.push(...value);
+      continue;
+    }
+    const obj = value as Record<string, unknown>;
+    const purchase = obj.purchaseConfiguration;
+    if (purchase && typeof purchase === 'object') {
+      const pc = purchase as Record<string, unknown>;
+      if (String(pc.adamId ?? '') === appId && typeof pc.bundleId === 'string') {
+        product = pc;
+        break;
+      }
+    }
+    if (String(obj.adamId ?? '') === appId && typeof obj.bundleId === 'string') {
+      product = obj;
+      break;
+    }
+    stack.push(...Object.values(obj));
+  }
+  if (!product?.bundleId) return null;
+
+  const title = typeof product.appName === 'string'
+    ? product.appName
+    : html.match(/<meta\s+name=["']apple:title["']\s+content=["']([^"']+)/i)?.[1]?.replace(/ App - App Store$/, '');
+  const description = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']+)/i)?.[1] ?? '';
+  const artistName = description.match(/\sby\s(.+?)\son the App Store/i)?.[1];
+  const artworkUrl100 = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']+)/i)?.[1];
+  const canonical = html.match(/<link\s+rel=["']canonical["']\s+href=["']([^"']+)/i)?.[1] ?? pageUrl;
+
+  return {
+    bundleId: String(product.bundleId),
+    trackName: title,
+    artistName,
+    trackId: Number(appId),
+    trackViewUrl: canonical,
+    artworkUrl100,
+  };
 }
 
 export interface Position {
