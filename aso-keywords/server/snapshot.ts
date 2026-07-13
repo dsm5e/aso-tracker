@@ -1,9 +1,9 @@
 import { RateLimited, findPosition, searchItunes } from './itunes.js';
 import { loadApps, loadKeywords, type AppConfig } from './config.js';
-import { insertSnapshotsBatch, type SnapshotRow, db } from './db.js';
+import { insertSnapshot, type SnapshotRow, db } from './db.js';
 
 export interface SnapshotProgress {
-  type: 'start' | 'locale' | 'keyword' | 'done' | 'abort' | 'throttle' | 'speed';
+  type: 'start' | 'locale' | 'keyword-start' | 'keyword' | 'retry' | 'done' | 'abort' | 'throttle' | 'speed';
   total?: number;
   completed?: number;
   locale?: string;
@@ -16,6 +16,9 @@ export interface SnapshotProgress {
   workers?: number;
   cooldownSec?: number;
   source?: 'auto' | 'user';
+  attempt?: number;
+  maxAttempts?: number;
+  top5?: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
 }
 
 export interface SnapshotOptions {
@@ -173,6 +176,8 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
   const COOLDOWN_SEC = 60;
   /** After this many consecutive successful keywords, step pacing back toward baseline. */
   const RECOVERY_SUCCESS_THRESHOLD = 30;
+  const MAX_TASK_ATTEMPTS = 3;
+  const taskAttempts = new Map<string, number>();
 
   function recoverStep(): void {
     if (!liveRuntime || !liveRuntime.throttled) return;
@@ -257,8 +262,18 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
         const myIdx = pointer++;
         if (myIdx >= tasks.length) return;
         const task = tasks[myIdx];
+        const taskKey = `${task.app.id}|${task.locale}|${task.keyword}`;
 
         try {
+          emit({
+            type: 'keyword-start',
+            completed,
+            total: totalCombos,
+            locale: task.locale,
+            keyword: task.keyword,
+            attempt: (taskAttempts.get(taskKey) ?? 0) + 1,
+            maxAttempts: MAX_TASK_ATTEMPTS,
+          });
           const currentSleep = liveRuntime?.sleepMs ?? sleepMs;
           const results = await searchItunes(task.locale, task.keyword, { sleepMs: currentSleep });
           const { position, total, top5 } = findPosition(results, task.app.bundle);
@@ -279,6 +294,9 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             top5,
           };
           records.push(rec);
+          // Commit each successful keyword immediately. A browser close,
+          // worker restart or later rate limit never discards prior progress.
+          insertSnapshot(rec);
           completed++;
           emit({
             type: 'keyword',
@@ -287,6 +305,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             locale: task.locale,
             keyword: task.keyword,
             position,
+            top5,
           });
         } catch (e) {
           if (e instanceof RateLimited) {
@@ -295,6 +314,23 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             await autoThrottle((e as Error).message);
             if (aborted) return;
             tasks.push(task); // requeue
+            continue;
+          }
+          const attempt = (taskAttempts.get(taskKey) ?? 0) + 1;
+          taskAttempts.set(taskKey, attempt);
+          if (attempt < MAX_TASK_ATTEMPTS) {
+            emit({
+              type: 'retry',
+              completed,
+              total: totalCombos,
+              locale: task.locale,
+              keyword: task.keyword,
+              error: (e as Error).message || 'unknown',
+              attempt,
+              maxAttempts: MAX_TASK_ATTEMPTS,
+            });
+            await sleep([1000, 3000, 8000][attempt - 1] ?? 8000);
+            tasks.push(task);
             continue;
           }
           const rec: SnapshotRow = {
@@ -308,6 +344,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             error: (e as Error).message || 'unknown',
           };
           records.push(rec);
+          insertSnapshot(rec);
           completed++;
           emit({
             type: 'keyword',
@@ -327,8 +364,6 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
   }
 
   liveRuntime = null;
-
-  if (records.length) insertSnapshotsBatch(records);
 
   if (aborted) {
     emit({ type: 'abort', reason: abortReason, completed, total: totalCombos });
@@ -363,7 +398,7 @@ export async function refreshKeyword(
       total,
       top5,
     };
-    insertSnapshotsBatch([rec]);
+    insertSnapshot(rec);
     return rec;
   } catch (e) {
     const rec: SnapshotRow = {
@@ -376,7 +411,7 @@ export async function refreshKeyword(
       top5: [],
       error: (e as Error).message || 'unknown',
     };
-    insertSnapshotsBatch([rec]);
+    insertSnapshot(rec);
     throw e;
   }
 }

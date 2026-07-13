@@ -1,6 +1,7 @@
 import express from 'express';
 import { existsSync, unlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { timingSafeEqual } from 'node:crypto';
 import { KEYWORDS_FILES_DIR } from './paths.js';
 import { getAppsWithStats, getLocaleStatsByApp, getRankings } from './queries.js';
 import { loadApps, saveApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
@@ -12,9 +13,82 @@ import { competitorInfo, competitorKeywords, topCompetitors } from './competitor
 import { getCompetitorPricing } from './pricing.js';
 import { getCompetitorReviews } from './reviews.js';
 import { keywordRelevance, buildClaudePrompt } from './relevance.js';
+import { keywordSuggestions } from './suggestions.js';
 
 const app = express();
 app.use(express.json());
+
+app.get('/healthz', (_req, res) => {
+  res.json({ ok: true });
+});
+
+// Small internal tool: HTTP Basic Auth keeps both the UI and mutation API private.
+// Local development stays passwordless; production credentials come from secrets.
+app.use((req, res, next) => {
+  const expectedPassword = process.env.APP_PASSWORD;
+  if (!expectedPassword) return next();
+  const expectedUsername = process.env.APP_USERNAME || 'admin';
+  const encoded = req.headers.authorization?.startsWith('Basic ')
+    ? req.headers.authorization.slice(6)
+    : '';
+  let username = '';
+  let password = '';
+  try {
+    [username, password] = Buffer.from(encoded, 'base64').toString('utf8').split(':', 2);
+  } catch {/* malformed authorization header */}
+  const userBuffer = Buffer.from(username || '');
+  const expectedUserBuffer = Buffer.from(expectedUsername);
+  const passwordBuffer = Buffer.from(password || '');
+  const expectedPasswordBuffer = Buffer.from(expectedPassword);
+  const authenticated = userBuffer.length === expectedUserBuffer.length
+    && passwordBuffer.length === expectedPasswordBuffer.length
+    && timingSafeEqual(userBuffer, expectedUserBuffer)
+    && timingSafeEqual(passwordBuffer, expectedPasswordBuffer);
+  if (authenticated) return next();
+  res.setHeader('WWW-Authenticate', 'Basic realm="ASO Keywords", charset="UTF-8"');
+  res.status(401).send('Authentication required');
+});
+
+const appSearchCache = new Map<string, { expiresAt: number; results: any[] }>();
+const appSearchInFlight = new Map<string, Promise<any[]>>();
+
+async function searchAppStore(term: string, country: string): Promise<any[]> {
+  const key = `${country.toLowerCase()}:${term.toLocaleLowerCase()}`;
+  const cached = appSearchCache.get(key);
+  if (cached && cached.expiresAt > Date.now()) return cached.results;
+  const existing = appSearchInFlight.get(key);
+  if (existing) return existing;
+
+  const request = (async () => {
+    let url: string;
+    if (/^\d+$/.test(term)) {
+      url = `https://itunes.apple.com/lookup?id=${term}&country=${country}`;
+    } else if (/^[a-zA-Z0-9.\-_]+$/.test(term) && term.includes('.')) {
+      const lookup = await fetch(`https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(term)}&country=${country}`, { signal: AbortSignal.timeout(15_000) });
+      if (!lookup.ok) throw new Error(`App Store lookup failed (${lookup.status})`);
+      const data = (await lookup.json()) as { results?: any[] };
+      if (data.results?.length) return data.results;
+      const params = new URLSearchParams({ term, country, media: 'software', entity: 'software', limit: '15' });
+      url = `https://itunes.apple.com/search?${params}`;
+    } else {
+      const params = new URLSearchParams({ term, country, media: 'software', entity: 'software', limit: '15' });
+      url = `https://itunes.apple.com/search?${params}`;
+    }
+    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) throw new Error(`App Store search failed (${response.status})`);
+    const data = (await response.json()) as { results?: any[] };
+    return data.results || [];
+  })();
+
+  appSearchInFlight.set(key, request);
+  try {
+    const results = await request;
+    appSearchCache.set(key, { expiresAt: Date.now() + 10 * 60_000, results });
+    return results;
+  } finally {
+    appSearchInFlight.delete(key);
+  }
+}
 
 // --- Apps ---
 app.get('/api/apps', (_req, res) => {
@@ -71,6 +145,19 @@ app.get('/api/apps/:id/keywords', (req, res) => {
 app.put('/api/apps/:id/keywords', (req, res) => {
   saveKeywords(req.params.id, req.body);
   res.json({ ok: true });
+});
+
+app.get('/api/apps/:id/suggestions', async (req, res) => {
+  const locale = String(req.query.locale || '').trim().toLowerCase();
+  if (!locale) {
+    res.status(400).json({ error: 'locale required' });
+    return;
+  }
+  try {
+    res.json(await keywordSuggestions(req.params.id, locale));
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
 });
 
 // --- Rankings table ---
@@ -183,29 +270,11 @@ app.get('/api/competitors/pricing', async (req, res) => {
 // --- iTunes search (name / bundleId / numeric id) ---
 app.get('/api/itunes/search', async (req, res) => {
   const term = (req.query.term as string || '').trim();
-  const country = (req.query.country as string) || 'us';
+  const country = ((req.query.country as string) || 'us').toLowerCase();
   if (!term) { res.json([]); return; }
 
   try {
-    // If the term is purely numeric, treat it as iTunes App ID
-    if (/^\d+$/.test(term)) {
-      const r = await fetch(`https://itunes.apple.com/lookup?id=${term}&country=${country}`, { signal: AbortSignal.timeout(15_000) });
-      const d = (await r.json()) as { results?: any[] };
-      res.json(d.results || []);
-      return;
-    }
-    // If it looks like a bundle id (has a dot, no space), lookup by bundleId
-    if (/^[a-zA-Z0-9.\-_]+$/.test(term) && term.includes('.')) {
-      const r = await fetch(`https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(term)}&country=${country}`, { signal: AbortSignal.timeout(15_000) });
-      const d = (await r.json()) as { results?: any[] };
-      if (d.results && d.results.length) { res.json(d.results); return; }
-      // fall through to search if nothing found
-    }
-    // Otherwise, full-text search
-    const params = new URLSearchParams({ term, country, media: 'software', entity: 'software', limit: '15' });
-    const r = await fetch(`https://itunes.apple.com/search?${params}`, { signal: AbortSignal.timeout(15_000) });
-    const d = (await r.json()) as { results?: any[] };
-    res.json(d.results || []);
+    res.json(await searchAppStore(term, country));
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }
@@ -225,6 +294,118 @@ app.get('/api/itunes/lookup', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }
+});
+
+const artworkCache = new Map<string, { url: string; expiresAt: number }>();
+
+// Batch artwork lookup for keyword ranking rows. New snapshots resolve in one
+// request by numeric ID. Legacy snapshots may only contain bundle IDs; those
+// are resolved through a small bounded worker pool and cached for 24 hours.
+app.post('/api/itunes/artworks', async (req, res) => {
+  const ids = (Array.isArray(req.body?.ids) ? req.body.ids : [])
+    .map((id: unknown) => String(id).trim())
+    .filter((id) => /^\d+$/.test(id))
+    .slice(0, 200);
+  const bundles = (Array.isArray(req.body?.bundles) ? req.body.bundles : [])
+    .map((bundle: unknown) => String(bundle).trim())
+    .filter(Boolean)
+    .slice(0, 200);
+  const country = String(req.body?.country || 'us').split('-')[0];
+  const now = Date.now();
+  const result: Record<string, string> = {};
+  const missing: string[] = [];
+
+  for (const id of ids) {
+    const cached = artworkCache.get(`${country}:${id}`);
+    if (cached && cached.expiresAt > now) result[id] = cached.url;
+    else missing.push(id);
+  }
+
+  if (missing.length) {
+    try {
+      const params = new URLSearchParams({ id: missing.join(','), country });
+      const response = await fetch(`https://itunes.apple.com/lookup?${params}`, {
+        headers: { Accept: 'application/json' },
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (response.ok) {
+        const payload = await response.json() as {
+          results?: Array<{
+            trackId?: number;
+            artworkUrl60?: string;
+            artworkUrl100?: string;
+            artworkUrl512?: string;
+          }>;
+        };
+        for (const app of payload.results ?? []) {
+          if (!app.trackId) continue;
+          const url = app.artworkUrl100 || app.artworkUrl60 || app.artworkUrl512;
+          if (!url) continue;
+          const id = String(app.trackId);
+          result[id] = url;
+          artworkCache.set(`${country}:${id}`, {
+            url,
+            expiresAt: now + 24 * 60 * 60 * 1000,
+          });
+        }
+      }
+    } catch {
+      // Artwork is progressive enhancement; ranking data remains usable.
+    }
+  }
+
+  const missingBundles = bundles.filter((bundle) => {
+    const cached = artworkCache.get(`${country}:bundle:${bundle}`);
+    if (cached && cached.expiresAt > now) {
+      result[bundle] = cached.url;
+      return false;
+    }
+    return true;
+  });
+
+  let bundlePointer = 0;
+  async function resolveBundleWorker() {
+    while (bundlePointer < missingBundles.length) {
+      const bundle = missingBundles[bundlePointer++];
+      try {
+        const params = new URLSearchParams({ bundleId: bundle, country });
+        const response = await fetch(`https://itunes.apple.com/lookup?${params}`, {
+          headers: { Accept: 'application/json' },
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (!response.ok) continue;
+        const payload = await response.json() as {
+          results?: Array<{
+            trackId?: number;
+            artworkUrl60?: string;
+            artworkUrl100?: string;
+            artworkUrl512?: string;
+          }>;
+        };
+        const app = payload.results?.[0];
+        const url = app?.artworkUrl100 || app?.artworkUrl60 || app?.artworkUrl512;
+        if (!url) continue;
+        result[bundle] = url;
+        artworkCache.set(`${country}:bundle:${bundle}`, {
+          url,
+          expiresAt: now + 24 * 60 * 60 * 1000,
+        });
+        if (app?.trackId) {
+          const id = String(app.trackId);
+          result[id] = url;
+          artworkCache.set(`${country}:${id}`, {
+            url,
+            expiresAt: now + 24 * 60 * 60 * 1000,
+          });
+        }
+      } catch {
+        // Keep the letter fallback for an unavailable storefront app.
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(4, missingBundles.length) }, () => resolveBundleWorker()));
+
+  res.json(result);
 });
 
 // --- Refresh a single keyword (on-demand from UI) ---
@@ -325,7 +506,7 @@ function snapshotBroadcast(event: SnapshotEvent) {
   if (snapshotState.events.length > SNAPSHOT_BUFFER_CAP) {
     snapshotState.events.splice(0, snapshotState.events.length - SNAPSHOT_BUFFER_CAP);
   }
-  if (event.type === 'progress' || event.type === 'app-start' || event.type === 'app-done') {
+  if (event.type === 'start' || event.type === 'locale' || event.type === 'keyword-start' || event.type === 'keyword' || event.type === 'retry' || event.type === 'throttle' || event.type === 'speed') {
     snapshotState.lastProgress = event;
   }
   if (event.type === 'done' || event.type === 'abort') {
@@ -360,8 +541,9 @@ function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: 
     sleepMs: typeof opts.sleepMs === 'number' ? opts.sleepMs : undefined,
     skipExisting: opts.skipExisting === true,
     onProgress: (ev) => {
-      // Track total once we receive the init event so the capsule can show "X/Y".
-      if (snapshotState.options && (ev as SnapshotEvent).type === 'init') {
+      // Track total once we receive the start event so reconnecting clients
+      // can render accurate progress without replaying the full buffer.
+      if (snapshotState.options && (ev as SnapshotEvent).type === 'start') {
         const total = (ev as { total?: number }).total;
         if (typeof total === 'number') snapshotState.options.total = total;
       }
@@ -444,7 +626,16 @@ app.get('/api/snapshot/stream', (req, res) => {
   });
 });
 
+// Production serves the built React application from the same origin as the API.
+// Keeping one origin avoids CORS and ensures Basic Auth also protects the UI.
+const staticDir = resolve(process.cwd(), 'dist');
+if (existsSync(staticDir)) {
+  app.use(express.static(staticDir, { index: false, maxAge: '1h' }));
+  app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));
+  app.use((_req, res) => res.sendFile(join(staticDir, 'index.html')));
+}
+
 const PORT = Number(process.env.PORT) || 5174;
 app.listen(PORT, () => {
-  console.log(`ASO Tracker API listening on http://localhost:${PORT}`);
+  console.log(`ASO Keywords listening on http://localhost:${PORT}`);
 });

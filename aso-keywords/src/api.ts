@@ -43,6 +43,7 @@ export interface RankingRow {
   w4: number | null;
   top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
   trend: number[];
+  lastUpdated: number | null;
 }
 
 export interface CompetitorSummary {
@@ -72,6 +73,7 @@ export interface CompetitorInfo {
   iconUrl?: string;
   description?: string;
   storeUrl?: string;
+  screenshotUrls?: string[];
 }
 
 export interface PricingProduct {
@@ -121,6 +123,13 @@ export interface RelevanceRow {
   flag: 'match' | 'ambiguous' | 'mismatch' | 'unknown';
 }
 
+export interface KeywordSuggestion {
+  keyword: string;
+  source: 'apple_autocomplete' | 'competitor_title';
+  score: number;
+  evidence: string;
+}
+
 export const api = {
   apps: () => fetch('/api/apps').then((r) => j<AppStats[]>(r)),
   appLocales: (id: string) =>
@@ -163,10 +172,22 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(keywords),
     }).then((r) => j(r)),
+  suggestions: (id: string, locale: string) =>
+    fetch(`/api/apps/${id}/suggestions?locale=${encodeURIComponent(locale)}`)
+      .then((r) => j<KeywordSuggestion[]>(r)),
   itunesLookup: (iTunesId: string, country = 'us') =>
     fetch(`/api/itunes/lookup?id=${iTunesId}&country=${country}`).then((r) => j(r)),
-  itunesSearch: (term: string, country = 'us') =>
-    fetch(`/api/itunes/search?term=${encodeURIComponent(term)}&country=${country}`).then((r) => j<Array<{
+  artworks: (ids: number[], bundles: string[], country = 'us') =>
+    ids.length === 0 && bundles.length === 0
+      ? Promise.resolve({} as Record<string, string>)
+      : fetch('/api/itunes/artworks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, bundles, country }),
+        })
+          .then((r) => j<Record<string, string>>(r)),
+  itunesSearch: (term: string, country = 'us', signal?: AbortSignal) =>
+    fetch(`/api/itunes/search?term=${encodeURIComponent(term)}&country=${country}`, { signal }).then((r) => j<Array<{
       trackId: number;
       trackName?: string;
       bundleId?: string;
@@ -229,7 +250,7 @@ export interface MoversResponse {
 }
 
 export interface SnapshotEvent {
-  type: 'start' | 'locale' | 'keyword' | 'done' | 'abort' | 'throttle' | 'speed';
+  type: 'start' | 'locale' | 'keyword-start' | 'keyword' | 'retry' | 'done' | 'abort' | 'throttle' | 'speed';
   total?: number;
   completed?: number;
   locale?: string;
@@ -242,6 +263,9 @@ export interface SnapshotEvent {
   workers?: number;
   cooldownSec?: number;
   source?: 'auto' | 'user';
+  attempt?: number;
+  maxAttempts?: number;
+  top5?: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
 }
 
 export type SnapshotSpeed = 'medium' | 'slow';

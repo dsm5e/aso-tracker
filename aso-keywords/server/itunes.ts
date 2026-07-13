@@ -22,7 +22,9 @@ export interface SearchResult {
   artistName?: string;
   trackId?: number;
   trackViewUrl?: string;
+  artworkUrl60?: string;
   artworkUrl100?: string;
+  artworkUrl512?: string;
   primaryGenreName?: string;
   averageUserRating?: number;
   userRatingCount?: number;

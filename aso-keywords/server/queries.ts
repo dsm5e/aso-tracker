@@ -222,6 +222,7 @@ export interface RankingRow {
   w4: number | null;  // 30 days ago
   top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
   trend: number[];     // last 30 snapshots, position (null→0 padding)
+  lastUpdated: number | null;
 }
 
 export function getRankings(appId: string, localeFilter?: string): RankingRow[] {
@@ -244,7 +245,7 @@ export function getRankings(appId: string, localeFilter?: string): RankingRow[] 
       WHERE app = ?
       GROUP BY locale, keyword, date
     )
-    SELECT s.locale, s.keyword, s.date, s.position, s.top5_json
+    SELECT s.locale, s.keyword, s.date, s.position, s.top5_json, s.created_at
     FROM snapshots s
     JOIN latest l ON s.id = l.maxid
   `;
@@ -253,13 +254,15 @@ export function getRankings(appId: string, localeFilter?: string): RankingRow[] 
     params.push(localeFilter);
   }
   sql += ` ORDER BY s.locale, s.keyword, s.date DESC`;
-  const rows = db.prepare(sql).all(...params) as Array<{ locale: string; keyword: string; date: string; position: number | null; top5_json: string }>;
+  const rows = db.prepare(sql).all(...params) as Array<{ locale: string; keyword: string; date: string; position: number | null; top5_json: string; created_at: number }>;
 
   const bucket = new Map<string, {
     locale: string; keyword: string;
     today: number | null; yesterday: number | null; w1: number | null; w4: number | null;
     top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
     trend: number[];
+    lastUpdated: number | null;
+    latestDate?: string;
   }>();
 
   // Seed with ALL configured keywords so they appear immediately — even before
@@ -273,7 +276,7 @@ export function getRankings(appId: string, localeFilter?: string): RankingRow[] 
         bucket.set(key, {
           locale: loc, keyword: kw,
           today: null, yesterday: null, w1: null, w4: null,
-          top5: [], trend: [],
+          top5: [], trend: [], lastUpdated: null,
         });
       }
     }
@@ -290,12 +293,17 @@ export function getRankings(appId: string, localeFilter?: string): RankingRow[] 
       bucket.set(key, {
         locale: r.locale, keyword: r.keyword,
         today: null, yesterday: null, w1: null, w4: null,
-        top5: [], trend: [],
+        top5: [], trend: [], lastUpdated: null,
       });
     }
     const b = bucket.get(key)!;
-    if (r.date === today && b.today === null) {
+    // Rows are ordered newest-first per keyword. The first row is the current
+    // rank for this locale+keyword even when another locale was refreshed on a
+    // later calendar date.
+    if (!b.latestDate) {
+      b.latestDate = r.date;
       b.today = r.position;
+      b.lastUpdated = r.created_at ? r.created_at * 1000 : null;
       try {
         const parsed = JSON.parse(r.top5_json) as Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
         // Assign position from array index for legacy rows that didn't persist it.
@@ -310,7 +318,14 @@ export function getRankings(appId: string, localeFilter?: string): RankingRow[] 
   }
 
   const out = Array.from(bucket.values()).map((b) => ({
-    ...b,
+    locale: b.locale,
+    keyword: b.keyword,
+    today: b.today,
+    yesterday: b.yesterday,
+    w1: b.w1,
+    w4: b.w4,
+    top5: b.top5,
+    lastUpdated: b.lastUpdated,
     trend: b.trend.reverse(),
   }));
   // Sort by today rank asc (ranked first, unranked last)

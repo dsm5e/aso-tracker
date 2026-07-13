@@ -13,6 +13,7 @@ export interface CompetitorInfo {
   iconUrl?: string;
   description?: string;
   storeUrl?: string;
+  screenshotUrls?: string[];
 }
 
 export interface CompetitorSummary {
@@ -182,6 +183,8 @@ export async function competitorInfo(bundleId: string): Promise<CompetitorInfo |
       artworkUrl100?: string;
       description?: string;
       trackViewUrl?: string;
+      screenshotUrls?: string[];
+      ipadScreenshotUrls?: string[];
     }>;
   };
   const r = data.results?.[0];
@@ -197,6 +200,7 @@ export async function competitorInfo(bundleId: string): Promise<CompetitorInfo |
     iconUrl: r.artworkUrl100,
     description: r.description,
     storeUrl: r.trackViewUrl,
+    screenshotUrls: r.screenshotUrls?.length ? r.screenshotUrls : r.ipadScreenshotUrls,
   };
 }
 

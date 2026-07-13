@@ -16,6 +16,8 @@ import { join, resolve } from 'node:path';
  */
 export const STUDIO_HOME = process.env.ASO_STUDIO_HOME
   ? resolve(process.env.ASO_STUDIO_HOME)
+  : process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? resolve(process.env.RAILWAY_VOLUME_MOUNT_PATH)
   : join(homedir(), '.aso-studio');
 
 export const KEYWORDS_HOME = join(STUDIO_HOME, 'keywords');
