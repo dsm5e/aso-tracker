@@ -62,6 +62,13 @@ with urllib.request.urlopen(req) as r:
       "device": "iphone | ipad",   // ALWAYS set explicitly — undefined breaks on JSON round-trip
       "kind": "action | regular",  // action = hero slot, regular = feature slot
       "headline": { "verb": "", "descriptor": "", "subhead": "" },
+      "sourceLayout": "device | full-bleed", // full-bleed = pre-designed preview used as final artwork; only headline is layered on top
+      "sourceScale": 1.0,          // full-bleed only: transform of the finished preview
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "textColorOverride": "#hex | undefined",     // per-slot color overrides (fall back to preset)
+      "titleColorOverride": "#hex | undefined",
+      "subtitleColorOverride": "#hex | undefined",
       "font": "Inter",
       "titlePx": 220,              // line-height in canvas-px for headline text
       "textYFraction": 0.07,       // where headline starts (0=top, 1=bottom)

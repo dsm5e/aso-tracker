@@ -13,7 +13,7 @@ ASO Studio is a monorepo of **four** connected tools sharing one origin (`localh
 | Tool | Path | What it does |
 |---|---|---|
 | **Keywords** | `/` | Per-keyword, per-locale rank tracking across 50+ countries. Snapshot engine, week-over-week deltas, competitor intelligence. |
-| **Screenshots / PPO** | `/studio/` | App Store screenshot generator with AI hero enhancement (fal.ai gpt-image-2). Templates, scaffolds, headline overlays, locale translations. Multi-strategy A/B treatment generator for ASC PPO. |
+| **Screenshots / PPO** | `/studio/` | App Store screenshot generator with AI hero enhancement (fal.ai gpt-image-2). Templates, scaffolds, headline overlays, locale translations. Finished-preview (full-bleed) mode for pre-designed artwork, slide duplication, one-click iPhone→iPad sync. Multi-strategy A/B treatment generator for ASC PPO. |
 | **Video** *(beta)* | `/video/` | UGC video pipeline for ad creative — script → voiceover → b-roll → captions. |
 | **ASA Ads** *(new)* | `/asa/` | Apple Search Ads optimization — ROI projection, per-keyword bid intelligence, search-term cleanup, ASC trial cross-match, Telegram alerts. Self-hosted alternative to SearchAds.com. |
 
