@@ -501,6 +501,7 @@ export function Inspector({ screenshot: ss }: Props) {
               value={ss.headline.verb}
               onChange={(e) => setHeadline({ verb: e.target.value })}
             />
+            <div style={{ marginTop: 5, fontSize: 10.5, color: 'var(--fg-3)' }}>Enter — перенос строки. *Слово* — акцентный цвет.</div>
           </div>
           <div style={{ height: 10 }} />
           <div className="field">
@@ -512,6 +513,7 @@ export function Inspector({ screenshot: ss }: Props) {
               value={ss.headline.descriptor}
               onChange={(e) => setHeadline({ descriptor: e.target.value })}
             />
+            <div style={{ marginTop: 5, fontSize: 10.5, color: 'var(--fg-3)' }}>Enter — перенос строки. *Слово* — акцентный цвет.</div>
           </div>
           <div style={{ height: 10 }} />
           <div className="field">
@@ -546,6 +548,43 @@ export function Inspector({ screenshot: ss }: Props) {
                 );
               })()}
             </select>
+          </div>
+          <div style={{ height: 10 }} />
+          <div className="field">
+            <label className="field-label">Цвет заголовка</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input
+                type="color"
+                value={/^#[0-9a-f]{6}$/i.test(ss.titleColorOverride ?? '') ? ss.titleColorOverride! : (ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF')}
+                onInput={(e) => set({ titleColorOverride: (e.target as HTMLInputElement).value })}
+                onChange={(e) => set({ titleColorOverride: e.target.value })}
+                style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)', background: 'transparent', cursor: 'pointer' }}
+              />
+              <Input
+                value={ss.titleColorOverride ?? ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF'}
+                onChange={(e) => set({ titleColorOverride: e.target.value })}
+                style={{ flex: 1, fontFamily: 'var(--font-mono)' }}
+              />
+              <ResetDot active={!!ss.titleColorOverride} onClick={() => set({ titleColorOverride: undefined })} />
+            </div>
+          </div>
+          <div style={{ height: 10 }} />
+          <div className="field">
+            <label className="field-label">Цвет подзаголовка</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" value={/^#[0-9a-f]{6}$/i.test(ss.subtitleColorOverride ?? '') ? ss.subtitleColorOverride! : (ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF')} onInput={(e) => set({ subtitleColorOverride: (e.target as HTMLInputElement).value })} onChange={(e) => set({ subtitleColorOverride: e.target.value })} style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)', background: 'transparent', cursor: 'pointer' }} />
+              <Input value={ss.subtitleColorOverride ?? ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF'} onChange={(e) => set({ subtitleColorOverride: e.target.value })} style={{ flex: 1, fontFamily: 'var(--font-mono)' }} />
+              <ResetDot active={!!ss.subtitleColorOverride} onClick={() => set({ subtitleColorOverride: undefined })} />
+            </div>
+          </div>
+          <div style={{ height: 10 }} />
+          <div className="field">
+            <label className="field-label">Акцентный цвет (*слова*)</label>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input type="color" value={/^#[0-9a-f]{6}$/i.test(ss.headlineAccent ?? '') ? ss.headlineAccent! : (getPreset(ss.presetId)?.suggestedAccent ?? '#3B82F6')} onInput={(e) => set({ headlineAccent: (e.target as HTMLInputElement).value })} onChange={(e) => set({ headlineAccent: e.target.value })} style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)', background: 'transparent', cursor: 'pointer' }} />
+              <Input value={ss.headlineAccent ?? getPreset(ss.presetId)?.suggestedAccent ?? '#3B82F6'} onChange={(e) => set({ headlineAccent: e.target.value })} style={{ flex: 1, fontFamily: 'var(--font-mono)' }} />
+              <ResetDot active={!!ss.headlineAccent} onClick={() => set({ headlineAccent: undefined })} />
+            </div>
           </div>
           <div style={{ height: 10 }} />
           <div className="field">
@@ -643,6 +682,49 @@ export function Inspector({ screenshot: ss }: Props) {
 
 
         {isScaffold && (<>
+        <Card.Section title="Режим исходника">
+          <SegmentedControl
+            value={ss.sourceLayout ?? 'device'}
+            items={[
+              { value: 'device', label: 'Экран в телефоне' },
+              { value: 'full-bleed', label: 'Готовое превью' },
+            ]}
+            onChange={(sourceLayout) => set({ sourceLayout })}
+          />
+          <div style={{ marginTop: 8, fontSize: 11, lineHeight: 1.4, color: 'var(--fg-3)' }}>
+            «Готовое превью» сохраняет исходную композицию и накладывает поверх только заголовок и подзаголовок.
+          </div>
+        </Card.Section>
+
+        {(ss.sourceLayout ?? 'device') === 'full-bleed' && (
+          <Card.Section title="Размер готового превью">
+            <div className="field">
+              <label className="field-label">
+                Масштаб <span className="tabular muted">{Math.round((ss.sourceScale ?? 1) * 100)}%</span>
+              </label>
+              <Slider value={Math.round((ss.sourceScale ?? 1) * 100)} min={25} max={250} step={1} onChange={(v) => set({ sourceScale: v / 100 })} />
+              <ResetDot active={(ss.sourceScale ?? 1) !== 1} onClick={() => set({ sourceScale: 1 })} />
+            </div>
+            <div style={{ height: 10 }} />
+            <div className="field">
+              <label className="field-label">
+                Сдвиг X <span className="tabular muted">{ss.sourceOffsetX ?? 0}</span>
+              </label>
+              <Slider value={ss.sourceOffsetX ?? 0} min={-1000} max={1000} step={5} onChange={(v) => set({ sourceOffsetX: v })} />
+              <ResetDot active={(ss.sourceOffsetX ?? 0) !== 0} onClick={() => set({ sourceOffsetX: 0 })} />
+            </div>
+            <div style={{ height: 10 }} />
+            <div className="field">
+              <label className="field-label">
+                Сдвиг Y <span className="tabular muted">{ss.sourceOffsetY ?? 0}</span>
+              </label>
+              <Slider value={ss.sourceOffsetY ?? 0} min={-1500} max={1500} step={5} onChange={(v) => set({ sourceOffsetY: v })} />
+              <ResetDot active={(ss.sourceOffsetY ?? 0) !== 0} onClick={() => set({ sourceOffsetY: 0 })} />
+            </div>
+          </Card.Section>
+        )}
+
+        {(ss.sourceLayout ?? 'device') === 'device' && (<>
         <Card.Section title="Позиция устройства">
           <div className="field">
             <label className="field-label">
@@ -744,6 +826,8 @@ export function Inspector({ screenshot: ss }: Props) {
             <ResetDot active={(ss.tiltY ?? 0) !== 0} onClick={() => set({ tiltY: 0 })} />
           </div>
         </Card.Section>
+
+        </>)}
 
         <Card.Section title="Позиция текста">
           <div className="field">

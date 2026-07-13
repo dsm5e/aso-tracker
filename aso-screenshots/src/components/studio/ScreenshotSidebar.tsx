@@ -15,7 +15,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Link2, Link2Off, Plus, Smartphone, Sparkles, Tablet, Trash2, Wand2 } from 'lucide-react';
+import { Copy, GripVertical, Link2, Link2Off, Plus, Smartphone, Sparkles, Tablet, Trash2, Wand2, RefreshCw } from 'lucide-react';
 import { Button, Pill } from '../shared';
 import { useStudio, type Screenshot } from '../../state/studio';
 import { useHighlight } from '../../state/highlight';
@@ -38,6 +38,8 @@ export function ScreenshotSidebar() {
     previewDevice,
     setPreviewDevice,
     addIpadVariant,
+    duplicateScreenshot,
+    syncIphoneToIpad,
   } = useStudio();
 
   // Filter slots by current device view
@@ -233,6 +235,7 @@ export function ScreenshotSidebar() {
                         selected={multiSelect.includes(s.id)}
                         onSelect={(e) => handleRowClick(s.id, e.shiftKey || e.metaKey || e.ctrlKey)}
                         onRemove={() => removeScreenshot(s.id)}
+                        onDuplicate={() => duplicateScreenshot(s.id)}
                       />,
                     );
                     i++;
@@ -292,6 +295,7 @@ export function ScreenshotSidebar() {
                             selected={multiSelect.includes(g.id)}
                             onSelect={(e) => handleRowClick(g.id, e.shiftKey || e.metaKey || e.ctrlKey)}
                             onRemove={() => removeScreenshot(g.id)}
+                            onDuplicate={() => duplicateScreenshot(g.id)}
                           />
                         ))}
                       </div>
@@ -347,6 +351,17 @@ export function ScreenshotSidebar() {
         >
           Add screen
         </Button>
+        {previewDevice === 'iphone' && visibleScreenshots.length > 0 && (
+          <Button
+            variant="ghost"
+            onClick={syncIphoneToIpad}
+            leftIcon={<RefreshCw size={14} />}
+            style={{ width: '100%', justifyContent: 'center', height: 32, color: 'var(--fg-2)' }}
+            title="Replace the iPad section with copies of all current iPhone slides"
+          >
+            Sync to iPad
+          </Button>
+        )}
         {/* Add iPad — visible when project is iPhone-only and no iPad slots exist yet */}
         {devices !== 'both' && !hasIpadSlots && (
           <Button
@@ -375,12 +390,14 @@ function SortableRow({
   selected,
   onSelect,
   onRemove,
+  onDuplicate,
 }: {
   ss: Screenshot;
   active: boolean;
   selected: boolean;
   onSelect: (e: React.MouseEvent) => void;
   onRemove: () => void;
+  onDuplicate: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: ss.id,
@@ -500,6 +517,14 @@ function SortableRow({
           <Sparkles size={10} />
         </Pill>
       )}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+        style={{ appearance: 'none', border: 0, background: 'transparent', color: 'var(--fg-3)', cursor: 'pointer', padding: 4, borderRadius: 4 }}
+        title="Duplicate slide"
+      >
+        <Copy size={13} />
+      </button>
       <button
         type="button"
         onClick={(e) => {

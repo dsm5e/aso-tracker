@@ -59,9 +59,11 @@ export function ExportScreen() {
   if (locales.length > 0 && !allTranslated) {
     issues.push(`${locales.filter((l) => !l.aiTranslated).length} locale(s) not translated — finish in Locales`);
   }
-  // Polish skip is allowed (warning), but missing app name / folder / hero blocks.
+  // Finished-preview workflows do not need an AI hero or polish pass. An empty
+  // app name is also safe: exportRender already falls back to the `app` slug.
+  // Only conditions that make writing PNGs impossible should disable Export.
   const blockingIssues = issues.filter((i) =>
-    i.includes('App name') || i.includes('Output folder') || i.includes('No screenshots') || i.includes('No hero') || i.includes('Hero hasn\'t')
+    i.includes('Output folder') || i.includes('No screenshots')
   );
 
   const totalToRender = (locales.length > 0 ? locales.length : 1) * screenshots.length;

@@ -120,6 +120,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const iphoneModel = iphoneModelOverride ?? projectIphoneModel;
   const { w: CANVAS_W, h: CANVAS_H } = getCanvasDimensions(device, iphoneModel);
   const viewMode = viewModeOverride ?? globalViewMode;
+  const isFullBleedSource = ss.sourceLayout === 'full-bleed';
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -202,7 +203,9 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   // Font: locale override > user pick > preset default. Same precedence for color/weight.
   const textFont = localeMeta?.fontOverride || ss.font || preset?.text.font || 'Inter';
   const textDir = localeMeta?.rtl ? 'rtl' : undefined;
-  const textColor = preset?.text.color || '#FFFFFF';
+  const textColor = ss.textColorOverride || preset?.text.color || '#FFFFFF';
+  const titleColor = ss.titleColorOverride || textColor;
+  const subtitleColor = ss.subtitleColorOverride || textColor;
   const textWeight = preset?.text.weight || 800;
   const isUpper = preset?.text.uppercase ?? true;
   const textAlign = preset?.text.align || 'center';
@@ -447,10 +450,93 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
             }}
           />
         )}
-        {parametricPalette && (
+        {isFullBleedSource && ss.sourceUrl && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 0,
+              pointerEvents: 'none',
+              transform: `translate3d(${ss.sourceOffsetX ?? 0}px, ${ss.sourceOffsetY ?? 0}px, 0) scale(${ss.sourceScale ?? 1})`,
+              transformOrigin: 'center center',
+            }}
+          >
+            <img
+              key={ss.sourceUrl}
+              src={ss.sourceUrl}
+              alt=""
+              draggable={false}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+            />
+          </div>
+        )}
+        {isFullBleedSource && ss.sourceUrl && showDropZone && (
+          <div
+            role="button"
+            aria-label="Replace finished preview"
+            title="Перетащи новый файл для замены · двойной клик — выбрать файл"
+            onDoubleClick={onPickFile}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 4,
+              cursor: 'default',
+              border: dragOver ? '8px dashed #3B82F6' : '8px solid transparent',
+              background: dragOver ? 'rgba(59,130,246,0.16)' : 'transparent',
+              boxSizing: 'border-box',
+            }}
+          >
+            {dragOver && (
+              <div style={{
+                position: 'absolute', inset: 0, display: 'grid', placeItems: 'center',
+                color: '#1D4ED8', fontFamily: 'Inter, sans-serif', fontSize: 52,
+                fontWeight: 800, textShadow: '0 2px 12px white',
+              }}>
+                Отпусти, чтобы заменить превью
+              </div>
+            )}
+          </div>
+        )}
+        {isFullBleedSource && !ss.sourceUrl && showDropZone && (
+          <button
+            type="button"
+            onClick={onPickFile}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            style={{
+              position: 'absolute',
+              inset: 40,
+              zIndex: 2,
+              border: '4px dashed rgba(59,130,246,0.55)',
+              borderRadius: 32,
+              background: dragOver ? 'rgba(59,130,246,0.16)' : 'rgba(255,255,255,0.82)',
+              color: '#2563EB',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 28,
+              cursor: 'pointer',
+              fontFamily: 'Inter, sans-serif',
+              fontSize: 54,
+              fontWeight: 700,
+            }}
+          >
+            <ImagePlus size={128} />
+            Добавить готовое превью
+            <span style={{ fontSize: 34, fontWeight: 500, color: '#64748B' }}>
+              PNG, JPG или WebP · можно перетащить сюда
+            </span>
+          </button>
+        )}
+        {!isFullBleedSource && parametricPalette && (
           <MountainBackground palette={parametricPalette} width={CANVAS_W} height={CANVAS_H} />
         )}
-        {parametricKind === 'dots' && (
+        {!isFullBleedSource && parametricKind === 'dots' && (
           <DotsBackground bgColor={dotsBgColor} dotColor={dotsColor} width={CANVAS_W} height={CANVAS_H} />
         )}
         {/* AI-polished hero — background layer.
@@ -577,6 +663,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
             initialPx={titlePx}
             accentColor={ss.headlineAccent ?? preset?.suggestedAccent}
             style={{
+              color: titleColor,
               fontWeight: textWeight,
               lineHeight: 1.02,
               letterSpacing: '-0.02em',
@@ -589,6 +676,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
           {descDisplay && (
             <div
               style={{
+                color: subtitleColor,
                 fontSize: subPx,
                 fontWeight: 400,
                 lineHeight: 1.15,
@@ -722,7 +810,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
                   label: ss.frontLabel,
                 },
               ];
-          const showDevice = !aiHero && !(ss.kind === 'action' && (ss.action?.hideDevice ?? false));
+          const showDevice = !isFullBleedSource && !aiHero && !(ss.kind === 'action' && (ss.action?.hideDevice ?? false));
           return (
             <>
               {/* Device layer — hidden once the AI render already contains the
