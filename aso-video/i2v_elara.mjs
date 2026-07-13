@@ -5,8 +5,9 @@ const KEY = JSON.parse(readFileSync(homedir()+'/.aso-studio/keys.json','utf8')).
 fal.config({ credentials: KEY });
 const IN = process.argv[2], OUT = process.argv[3];
 const PROMPT = process.argv[4] || "Very subtle gentle motion: soft breathing, hands rest tenderly on the belly, warm light flickers gently, calm serene, minimal camera movement, cinematic photorealistic";
+const DURATION = process.argv[5] || "5";
 const url = await fal.storage.upload(new File([readFileSync(IN)], 'in.png', { type:'image/png' }));
-const r = await fal.subscribe('fal-ai/kling-video/v2.5-turbo/pro/image-to-video', { input:{ image_url:url, prompt:PROMPT, duration:5 }, logs:false });
+const r = await fal.subscribe('fal-ai/kling-video/v3/pro/image-to-video', { input:{ image_url:url, prompt:PROMPT, duration:DURATION, generate_audio:false }, logs:false });
 const v=(r.data?.video?.url)||(r.video?.url);
 const vid=await fetch(v); writeFileSync(OUT, Buffer.from(await vid.arrayBuffer()));
 console.log('saved', OUT);
