@@ -5,7 +5,7 @@ import { Button, Card, Input } from '../components/shared';
 import { useStudio } from '../state/studio';
 import { renderAll, pickOutputFolder, type RenderFailure } from '../lib/exportRender';
 import { pushStateNow } from '../lib/stateSync';
-import { formatDimensions, getIPhoneProfile } from '../lib/deviceProfiles';
+import { APP_STORE_IPHONE_CANVAS, formatDimensions } from '../lib/deviceProfiles';
 
 /**
  * Phase 7 placeholder + project archive flow. Real PNG render via Playwright
@@ -21,8 +21,7 @@ export function ExportScreen() {
   const archiveCurrentProject = useStudio((s) => s.archiveCurrentProject);
   const loadedFromProjectId = useStudio((s) => s.loadedFromProjectId);
   const locales = useStudio((s) => s.locales);
-  const iphoneModel = useStudio((s) => s.iphoneModel);
-  const iphoneDimensions = formatDimensions(getIPhoneProfile(iphoneModel).canvas);
+  const iphoneDimensions = formatDimensions(APP_STORE_IPHONE_CANVAS);
 
   const filenamePattern = useStudio((s) => s.filenamePattern);
   const setExport = useStudio((s) => s.setExport);

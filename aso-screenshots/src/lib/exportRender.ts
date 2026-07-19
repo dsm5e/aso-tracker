@@ -1,6 +1,6 @@
 /**
  * Phase 7 — render PNG per (slot × locale) at exact App Store dimensions.
- * iPhone: selected model profile dimensions.
+ * iPhone: fixed current Pro Max dimensions (preview model does not affect export).
  * iPad:   2048×2732 (iPad Pro 12.9" 3rd gen — APP_IPAD_PRO_3GEN_129).
  * Uses ReactDOM.createRoot to render an off-screen MockupCanvas at native
  * resolution, captures via html-to-image, posts the PNG bytes to the server
@@ -14,7 +14,12 @@ import { useStudio, type LocaleEntry, type Screenshot } from '../state/studio';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
 import { applyLocaleToSlot } from './applyLocale';
 import { clog } from './clog';
-import { formatDimensions, getCanvasDimensions } from './deviceProfiles';
+import {
+  APP_STORE_IPHONE_CANVAS,
+  APP_STORE_IPHONE_MODEL,
+  IPAD_CANVAS,
+  formatDimensions,
+} from './deviceProfiles';
 
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
 
@@ -108,9 +113,12 @@ async function renderOne(
   opts: ExportOpts,
 ): Promise<string> {
   const st = useStudio.getState();
-  // Per-slot device takes priority; the project model resolves iPhone dimensions.
+  // The editor's selected iPhone model is preview-only. ASC export always uses
+  // the largest current Pro Max canvas so files land in the required 6.9" well.
   const dev = slot.device ?? opts.device ?? 'iphone';
-  const dimensions = getCanvasDimensions(dev, st.iphoneModel);
+  const dimensions = dev === 'ipad'
+    ? IPAD_CANVAS
+    : APP_STORE_IPHONE_CANVAS;
   const { w: CANVAS_W, h: CANVAS_H } = dimensions;
   const localeCode = locale?.code ?? 'en';
   const localised = applyLocaleToSlot(slot, locale);
@@ -127,7 +135,7 @@ async function renderOne(
       createElement(MockupCanvas, {
         screenshot: localised,
         device: dev,
-        iphoneModel: st.iphoneModel,
+        iphoneModel: dev === 'iphone' ? APP_STORE_IPHONE_MODEL : st.iphoneModel,
         fitWidth: CANVAS_W,
         fitHeight: CANVAS_H,
         showDropZone: false,

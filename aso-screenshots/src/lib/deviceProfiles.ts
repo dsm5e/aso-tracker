@@ -46,6 +46,10 @@ const makeFrame = (
 
 export const DEFAULT_IPHONE_MODEL: IPhoneModel = 'iphone-15-pro-max';
 
+/** App Store exports always target the largest current iPhone screenshot size.
+ *  The model selected in the editor only controls the preview canvas/frame. */
+export const APP_STORE_IPHONE_MODEL: IPhoneModel = 'iphone-17-pro-max';
+
 export const IPHONE_PROFILES: readonly IPhoneProfile[] = [
   {
     id: 'iphone-17-pro',
@@ -93,6 +97,9 @@ export function getCanvasDimensions(
 ): CanvasDimensions {
   return device === 'ipad' ? IPAD_CANVAS : getIPhoneProfile(iphoneModel).canvas;
 }
+
+export const APP_STORE_IPHONE_CANVAS: CanvasDimensions =
+  getIPhoneProfile(APP_STORE_IPHONE_MODEL).canvas;
 
 export function formatDimensions({ w, h }: CanvasDimensions, separator = ' × '): string {
   return `${w}${separator}${h}`;
