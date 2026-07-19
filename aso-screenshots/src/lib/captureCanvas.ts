@@ -37,7 +37,7 @@ async function waitForImages(el: HTMLElement, timeoutMs: number, logTag: string)
   await Promise.race([
     Promise.all(imgs.map(async (img, index) => {
       if (img.complete && img.naturalWidth > 0) {
-        try { await img.decode(); } catch {}
+        try { await img.decode(); } catch { /* load state below is authoritative */ }
         return;
       }
       await new Promise<void>((resolve) => {
@@ -60,7 +60,7 @@ async function waitForImages(el: HTMLElement, timeoutMs: number, logTag: string)
         }, timeoutMs);
       });
       if (img.complete && img.naturalWidth > 0) {
-        try { await img.decode(); } catch {}
+        try { await img.decode(); } catch { /* load state below is authoritative */ }
       }
     })),
     new Promise<void>((resolve) => window.setTimeout(resolve, timeoutMs)),

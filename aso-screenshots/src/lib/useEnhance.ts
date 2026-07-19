@@ -247,7 +247,7 @@ export function useEnhance() {
         setViewMode(prevViewMode);
       }
     }
-  }, [ss, appName, appColor, updateScreenshot]);
+  }, [ss, appName, appColor, appIconUrl, bumpAiSpent, updateScreenshot]);
 
   const discard = useCallback(() => {
     if (!ss) return;

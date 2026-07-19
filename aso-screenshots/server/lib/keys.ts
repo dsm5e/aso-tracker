@@ -22,7 +22,7 @@ export type KeyName = (typeof KEY_NAMES)[number];
 
 type KeysFile = Partial<Record<KeyName, string>>;
 
-let cache: Partial<Record<KeyName, string | null>> = {};
+const cache: Partial<Record<KeyName, string | null>> = {};
 
 function ensureHome(): void {
   if (!existsSync(STUDIO_HOME)) mkdirSync(STUDIO_HOME, { recursive: true });

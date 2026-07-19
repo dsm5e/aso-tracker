@@ -126,7 +126,7 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
   // Pill translations live on a parallel map per-locale — see studio store.
   st.setLocalePillTranslations?.(localeCode, Object.fromEntries(
     Object.entries(perSlot)
-      .filter(([_, v]) => (v as { pill?: string }).pill)
+      .filter(([, v]) => (v as { pill?: string }).pill)
       .map(([slotId, v]) => [slotId, (v as { pill?: string }).pill!]),
   ));
 
@@ -330,54 +330,6 @@ function fitToAvailableH(opts: {
   // Return unchanged if the difference is negligible (< 2px) to avoid noisy patches.
   if (Math.abs(newTitle - titlePx) < 2 && Math.abs(newSub - subPx) < 2) return { titlePx, subPx };
   return { titlePx: newTitle, subPx: newSub };
-}
-
-/** Find the largest font size where:
- *   1. the longest word in `targetText` fits on a single line (no character
- *      breaks inside a word — preserves readability),
- *   2. the target's total rendered height ≤ the source's at its base size
- *      (translation never extends past the source's headline bbox).
- *
- *  Binary search over [minPx, min(basePx, wordFitCeiling)]. Returns undefined
- *  when no shrink is needed (target already fits at base). */
-function autoFitToSourceHeight(
-  sourceText: string,
-  targetText: string,
-  basePx: number,
-  boxWidth: number,
-  charRatio: number,
-  lineHeight: number,
-  minPx: number,
-): number | undefined {
-  if (!targetText || !sourceText) return undefined;
-  const renderedHeight = (text: string, fontSize: number) => {
-    const charsPerLine = Math.max(1, Math.floor(boxWidth / (fontSize * charRatio)));
-    const lines = Math.max(1, linesWithWordWrap(text, charsPerLine));
-    return lines * fontSize * lineHeight;
-  };
-  // (1) Word-break ceiling — fontSize at which the longest word still fits one line.
-  const tokens = /\s/.test(targetText) ? targetText.split(/\s+/) : [targetText];
-  const longest = tokens.reduce((acc, t) => Math.max(acc, t.length), 1);
-  const wordFitCeiling = Math.floor(boxWidth / (longest * charRatio));
-
-  // (2) Source-height bound at base size.
-  const sourceHeight = renderedHeight(sourceText, basePx);
-
-  const upper = Math.min(basePx, Math.max(minPx, wordFitCeiling));
-
-  if (renderedHeight(targetText, upper) <= sourceHeight + 1) {
-    return upper < basePx ? upper : undefined;
-  }
-  // Binary search the max fontSize ≤ upper that respects sourceHeight.
-  let lo = minPx;
-  let hi = upper;
-  while (hi - lo > 1) {
-    const mid = (lo + hi) / 2;
-    if (renderedHeight(targetText, mid) <= sourceHeight) lo = mid;
-    else hi = mid;
-  }
-  const result = Math.floor(lo);
-  return result < basePx ? result : undefined;
 }
 
 /** Re-fit all translated locales in one shot — same algorithm as refitLocale,

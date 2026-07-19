@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { Buffer } from 'node:buffer';
 import { homedir, platform } from 'node:os';
 import { dirname, isAbsolute, join, resolve } from 'node:path';
+import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile);
 
@@ -17,6 +18,9 @@ interface SavePngBody {
   folder: string;
   /** Optional sub-path inside folder for organization (e.g. locale code). */
   subPath?: string;
+  /** Native canvas dimensions expected by App Store Connect. */
+  expectedWidth?: number;
+  expectedHeight?: number;
 }
 
 function expandHome(p: string): string {
@@ -50,8 +54,27 @@ export async function exportSavePng(req: Request, res: Response) {
       return;
     }
     const buf = Buffer.from(m[1], 'base64');
+    const metadata = await sharp(buf).metadata();
+    const width = metadata.width;
+    const height = metadata.height;
+    if (!width || !height) {
+      res.status(400).json({ error: 'could not read exported image dimensions' });
+      return;
+    }
+    if (
+      body.expectedWidth !== undefined
+      && body.expectedHeight !== undefined
+      && (width !== body.expectedWidth || height !== body.expectedHeight)
+    ) {
+      res.status(422).json({
+        error: `export dimension mismatch: rendered ${width}x${height}, expected ${body.expectedWidth}x${body.expectedHeight}`,
+        actual: { width, height },
+        expected: { width: body.expectedWidth, height: body.expectedHeight },
+      });
+      return;
+    }
     await writeFile(filePath, new Uint8Array(buf));
-    res.json({ ok: true, path: filePath, bytes: buf.byteLength });
+    res.json({ ok: true, path: filePath, bytes: buf.byteLength, width, height });
   } catch (e) {
     console.error('[export] save failed:', (e as Error).message);
     res.status(500).json({ error: (e as Error).message });

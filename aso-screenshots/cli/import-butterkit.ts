@@ -13,7 +13,7 @@
  * layout (bg + text positions + font + sample headlines).
  */
 
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs'; // eslint-disable-line
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from 'node:fs';
 import { join, basename, resolve } from 'node:path';
 
 const SCREENSHOTS_ROOT = resolve(import.meta.dirname, '..');

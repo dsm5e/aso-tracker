@@ -195,6 +195,8 @@ async function renderOne(
         filename,
         folder: opts.outputFolder,
         subPath,
+        expectedWidth: CANVAS_W,
+        expectedHeight: CANVAS_H,
       }),
     });
     if (!saveRes.ok) {

@@ -194,6 +194,7 @@ button, input, select, textarea {
   justify-content: center;
 }
 
+.btn--sm { height: 24px; padding: 0 8px; font-size: 11px; }
 .btn--lg { height: 36px; padding: 0 16px; font-size: 13px; border-radius: var(--r-3); }
 
 .btn--danger { color: var(--danger); }

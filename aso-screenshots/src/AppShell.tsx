@@ -18,7 +18,7 @@ const STEPS = [
 ];
 
 interface SwitcherItem {
-  id: 'aso' | 'shot' | 'vid';
+  id: 'aso' | 'shot' | 'vid' | 'asa';
   label: string;
   hint: string;
   href: string;

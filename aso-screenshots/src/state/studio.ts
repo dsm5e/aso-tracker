@@ -1396,7 +1396,7 @@ export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioStat
             return {
               ...s,
               id: newId(),
-              device: 'ipad' as 'ipad',
+              device: 'ipad',
               groupId: mappedGroupId,
               deviceX: mappedGroupId ? Math.round(s.deviceX * xScale) : s.deviceX,
               // Clear AI-generated renders — iPad canvas is different dimensions

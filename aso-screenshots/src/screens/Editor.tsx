@@ -69,7 +69,7 @@ export function EditorScreen() {
     // them before snapshotting so a saved template doesn't accidentally bake in a hero.
     const regularScreenshots = screenshots.filter((s) => s.kind === 'regular');
     const samples = regularScreenshots.map((s, i) => {
-      const orig = basePreset.samples?.[i] ?? {};
+      const orig = basePreset.samples?.[i];
       return {
         ...orig,
         verb: s.headline.verb,
@@ -86,7 +86,7 @@ export function EditorScreen() {
           ...(s.subPx ? { subPx: s.subPx } : {}),
         },
         // Per-slot bg + pill survive what the user edited in this session.
-        ...(s.backgroundOverride ? { bgColor: s.backgroundOverride } : orig.bgColor ? { bgColor: orig.bgColor } : {}),
+        ...(s.backgroundOverride ? { bgColor: s.backgroundOverride } : orig?.bgColor ? { bgColor: orig.bgColor } : {}),
         ...(s.pill !== undefined ? { pill: s.pill } : {}),
         ...(s.pillBg ? { pillBg: s.pillBg } : {}),
         ...(s.pillFg ? { pillFg: s.pillFg } : {}),

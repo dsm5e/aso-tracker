@@ -15,7 +15,7 @@ export interface PresetText {
   weight: number;
   color: string;
   uppercase?: boolean;
-  align?: 'left' | 'center';
+  align?: 'left' | 'center' | 'right';
 }
 
 export interface PresetBackground {

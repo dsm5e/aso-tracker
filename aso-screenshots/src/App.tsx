@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from './AppShell';
 import { SetupScreen } from './screens/Setup';
 import { CatalogScreen } from './screens/Catalog';

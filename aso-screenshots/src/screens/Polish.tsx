@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Loader2, RefreshCcw, Sparkles, StopCircle, Wand2, X } from 'lucide-react';
+import { CheckCircle2, Loader2, RefreshCcw, StopCircle, Wand2, X } from 'lucide-react';
 import { Button } from '../components/shared';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
 import { useStudio, type Screenshot } from '../state/studio';

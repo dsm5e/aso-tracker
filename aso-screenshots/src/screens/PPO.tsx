@@ -5,7 +5,7 @@ import { useHighlight } from '../state/highlight';
 import { useGenSelect, isGenSelected } from '../state/genSelect';
 import type { PPOSourceScreen, PPOGeneration } from '../state/studio';
 import { Button, Card } from '../components/shared';
-import { Plus, Layers, Trash2, X, UploadCloud, ChevronDown, ChevronRight, Wand2, Download, Loader2, Save, Shapes, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, X, UploadCloud, ChevronDown, ChevronRight, Wand2, Download, Loader2, Save, Shapes, ArrowRight } from 'lucide-react';
 import { generateOne, generateStrategy } from '../lib/ppoGenerate';
 import { exportStrategy, exportAllStrategies, type ExportProgress } from '../lib/ppoExport';
 
@@ -79,8 +79,6 @@ export function PPOScreen() {
   const ppoAddSourceScreens = useStudio((s) => s.ppoAddSourceScreens);
   const ppoRemoveSourceScreen = useStudio((s) => s.ppoRemoveSourceScreen);
   const ppoAddStrategy = useStudio((s) => s.ppoAddStrategy);
-  const ppoRemoveStrategy = useStudio((s) => s.ppoRemoveStrategy);
-  const ppoUpdateStrategy = useStudio((s) => s.ppoUpdateStrategy);
   const ppoSetActiveStrategy = useStudio((s) => s.ppoSetActiveStrategy);
   const ppoToggleStrategyCollapsed = useStudio((s) => s.ppoToggleStrategyCollapsed);
   const ppoSetDevice = useStudio((s) => s.ppoSetDevice);
@@ -548,6 +546,7 @@ function StrategyCard({
   const genSelExplicit = useGenSelect((s) => s.explicit);
 
   const [showAddPicker, setShowAddPicker] = useState(false);
+  const [exportProg, setExportProg] = useState<ExportProgress | null>(null);
 
   const strategy = ppo?.strategies.find((s) => s.id === strategyId);
   const device = ppo?.device ?? 'iphone';
@@ -586,7 +585,6 @@ function StrategyCard({
   const renderedBothCount = (ppo?.sourceScreens ?? [])
     .filter((s) => s.id in strategy.prompts && strategy.generations[s.id]?.generateState === 'done').length;
   const isBatchInFlight = generatingCount > 0;
-  const [exportProg, setExportProg] = useState<ExportProgress | null>(null);
   const isExporting = exportProg !== null && exportProg.phase !== 'done';
   const exportLabel = !exportProg || exportProg.phase === 'done'
     ? `Export ${device === 'ipad' ? 'iPad' : 'iPhone'} ZIP${renderedCount > 0 ? ` (${renderedCount})` : ''}`

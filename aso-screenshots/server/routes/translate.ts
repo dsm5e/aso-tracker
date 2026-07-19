@@ -105,7 +105,7 @@ export async function translateBatch(req: Request, res: Response) {
     let parsed: { items?: Array<{ key: string; translation: string }> };
     try {
       parsed = JSON.parse(content);
-    } catch (e) {
+    } catch {
       console.error('[translate] non-JSON response:', content.slice(0, 200));
       res.status(502).json({ error: 'openai returned non-JSON', raw: content.slice(0, 400) });
       return;

@@ -256,7 +256,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
     adoptFile(file);
     e.target.value = '';
   };
-  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+  const onDrop = (e: DragEvent<HTMLElement>) => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files?.[0];

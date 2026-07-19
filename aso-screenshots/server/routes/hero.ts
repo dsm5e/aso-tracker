@@ -454,7 +454,7 @@ export async function heroGenerate(req: Request, res: Response) {
       const det = (body as { detail?: unknown })?.detail;
       if (Array.isArray(det)) detailMsg = det.map((d) => `${(d as { loc?: unknown[] })?.loc?.join?.('.') ?? ''}: ${(d as { msg?: string })?.msg ?? ''}`.trim()).filter(Boolean).join(' | ');
       else if (typeof det === 'string') detailMsg = det;
-    } catch {}
+    } catch { /* best-effort extraction from an unknown provider response */ }
     const clientMsg = [status ? `HTTP ${status}` : '', detailMsg || msg].filter(Boolean).join(' — ');
     const full = `${clientMsg}\n${stack}${causeMsg}${bodyStr ? `\n  body: ${bodyStr.slice(0, 800)}` : ''}`;
     console.error('[hero] error caught:', full);
@@ -462,7 +462,7 @@ export async function heroGenerate(req: Request, res: Response) {
       const { appendFileSync } = await import('node:fs');
       const ts = new Date().toISOString().slice(11, 23);
       appendFileSync('/tmp/aso-studio-dev.log', `[${ts}] [server:error] hero: ${full.slice(0, 1200)}\n`);
-    } catch {}
+    } catch { /* diagnostic logging must not mask the original API error */ }
     if (req.body?.slotId) {
       persistSlotResult(req.body.slotId as string, {
         generateState: 'error',

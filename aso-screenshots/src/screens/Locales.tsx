@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Check, Globe, Languages, Loader2, Plus, RefreshCcw, Trash2, X } from 'lucide-react';
 import { Button } from '../components/shared';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
-import { useStudio, type LocaleEntry, type Screenshot } from '../state/studio';
+import { useStudio, type LocaleEntry } from '../state/studio';
 import { CURATED_LOCALES, findLocaleSpec } from '../lib/locales';
 import { translateLocale, refitLocale, refitAllLocales } from '../lib/translateBatch';
 import { applyLocaleToSlot } from '../lib/applyLocale';

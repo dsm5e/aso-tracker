@@ -18,7 +18,6 @@ const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
 function send(level: Level, tag: string, msg: unknown, meta?: Record<string, unknown>) {
   const stringMsg = typeof msg === 'string' ? msg : JSON.stringify(msg);
   // Mirror to browser console for visibility
-  // eslint-disable-next-line no-console
   console[level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'log'](
     `[${tag}] ${stringMsg}`,
     meta ?? '',
