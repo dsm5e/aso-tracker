@@ -23,6 +23,8 @@ interface LibResponse {
 type Filter = 'all' | 'image' | 'video' | 'audio';
 
 const STORAGE_KEY = 'aso-video.librarySidebarOpen';
+const WIDTH_STORAGE_KEY = 'aso-video.librarySidebarWidth';
+const COLLAPSED_WIDTH = 40;
 
 function fmtBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -79,10 +81,36 @@ export function LibrarySidebar() {
   const [items, setItems] = useState<LibItem[]>([]);
   const [totalBytes, setTotalBytes] = useState(0);
   const [filter, setFilter] = useState<Filter>('all');
+  const [width, setWidth] = useState<number>(() => {
+    try {
+      const saved = Number(localStorage.getItem(WIDTH_STORAGE_KEY));
+      return Number.isFinite(saved) && saved >= 240 ? saved : 320;
+    } catch { return 320; }
+  });
 
   useEffect(() => {
     try { localStorage.setItem(STORAGE_KEY, open ? '1' : '0'); } catch {}
   }, [open]);
+
+  useEffect(() => {
+    const actual = open ? width : COLLAPSED_WIDTH;
+    document.documentElement.style.setProperty('--aso-library-width', `${actual}px`);
+    try { localStorage.setItem(WIDTH_STORAGE_KEY, String(width)); } catch {}
+    return () => { document.documentElement.style.removeProperty('--aso-library-width'); };
+  }, [open, width]);
+
+  function beginResize(e: React.PointerEvent) {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = width;
+    const move = (ev: PointerEvent) => setWidth(Math.max(240, Math.min(720, startWidth + ev.clientX - startX)));
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
 
   async function refresh() {
     try {
@@ -119,7 +147,7 @@ export function LibrarySidebar() {
   }
 
   return (
-    <div style={panel}>
+    <div style={{ ...panel, width }}>
       <div style={header}>
         <strong style={{ fontSize: 13 }}>Library</strong>
         <div style={{ flex: 1 }} />
@@ -150,6 +178,14 @@ export function LibrarySidebar() {
       <div style={footer}>
         Total: {items.length} files, {fmtBytes(totalBytes)}
       </div>
+      <div
+        onPointerDown={beginResize}
+        title="Drag to resize library"
+        style={{
+          position: 'absolute', top: 0, right: -4, bottom: 0, width: 8,
+          cursor: 'ew-resize', touchAction: 'none', zIndex: 2,
+        }}
+      />
     </div>
   );
 }

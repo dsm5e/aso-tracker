@@ -54,7 +54,16 @@ export async function exportSavePng(req: Request, res: Response) {
       return;
     }
     const buf = Buffer.from(m[1], 'base64');
-    const metadata = await sharp(buf).metadata();
+    // Canvas PNGs can still be encoded as RGBA even when the browser context
+    // was created with `alpha: false`. App Store Connect is more reliable with
+    // plain RGB screenshots, so flatten and explicitly remove alpha here at
+    // the final persistence boundary.
+    const outputBuf = await sharp(buf)
+      .flatten({ background: '#FFFFFF' })
+      .removeAlpha()
+      .png()
+      .toBuffer();
+    const metadata = await sharp(outputBuf).metadata();
     const width = metadata.width;
     const height = metadata.height;
     if (!width || !height) {
@@ -73,8 +82,8 @@ export async function exportSavePng(req: Request, res: Response) {
       });
       return;
     }
-    await writeFile(filePath, new Uint8Array(buf));
-    res.json({ ok: true, path: filePath, bytes: buf.byteLength, width, height });
+    await writeFile(filePath, new Uint8Array(outputBuf));
+    res.json({ ok: true, path: filePath, bytes: outputBuf.byteLength, width, height });
   } catch (e) {
     console.error('[export] save failed:', (e as Error).message);
     res.status(500).json({ error: (e as Error).message });

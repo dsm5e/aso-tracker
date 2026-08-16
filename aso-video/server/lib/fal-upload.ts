@@ -35,9 +35,18 @@ const MIME: Record<string, string> = {
 function localPath(url: string): string | null {
   // /output/foo.png  → ROOT/output/foo.png
   if (url.startsWith('/output/')) return join(ROOT, url);
+  // Vite mounts this app at /video/, while files under public/ are addressed
+  // by the graph as /video/<path>. Fal needs the real on-disk public path.
+  if (url.startsWith('/video/')) return join(ROOT, 'public', url.slice('/video/'.length));
   // http://localhost:5191/output/foo.png → ROOT/output/foo.png
   const m = url.match(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/.+)$/);
-  if (m) return join(ROOT, m[3]);
+  if (m) {
+    const pathname = m[3];
+    if (pathname.startsWith('/video/')) {
+      return join(ROOT, 'public', pathname.slice('/video/'.length));
+    }
+    return join(ROOT, pathname);
+  }
   return null;
 }
 

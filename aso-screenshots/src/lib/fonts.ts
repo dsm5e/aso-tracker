@@ -29,6 +29,7 @@ export const CURATED_FONTS: CuratedFont[] = [
   { family: 'Jost',              category: 'sans' },
   { family: 'Urbanist',          category: 'sans' },
   { family: 'DM Sans',           category: 'sans' },
+  { family: 'Nunito Sans',       category: 'sans' },
   // Serif
   { family: 'Fraunces',          category: 'serif' },
   { family: 'Playfair Display',  category: 'serif' },
@@ -46,5 +47,5 @@ export const CURATED_FONTS: CuratedFont[] = [
 /** Static list of font families already preloaded in index.html. */
 export const PRELOADED_FONTS = new Set([
   'Inter', 'JetBrains Mono', 'Fraunces', 'Space Grotesk',
-  'DM Serif Display', 'Manrope', 'IBM Plex Sans',
+  'DM Serif Display', 'Manrope', 'IBM Plex Sans', 'Nunito Sans',
 ]);

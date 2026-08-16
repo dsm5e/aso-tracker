@@ -29,7 +29,7 @@ export const KaraokeYellow: React.FC = () => {
           style={{
             color: i < split ? '#FFD700' : '#fff',
             WebkitTextStroke: '6px #000',
-            // @ts-expect-error paint-order is valid CSS
+            // paint-order is valid CSS
             paintOrder: 'stroke fill',
             textShadow: '0 6px 20px rgba(0,0,0,0.6)',
             margin: '0 8px',

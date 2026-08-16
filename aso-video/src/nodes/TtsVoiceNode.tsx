@@ -12,6 +12,7 @@ interface Data {
 
 const VOICES = [
   'en_female_emotional',
+  'en_female_ht_f08_warmy_breeze',
   'en_us_001',
   'en_female_samc',
   'en_us_007',

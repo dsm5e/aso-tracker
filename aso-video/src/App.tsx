@@ -41,6 +41,7 @@ import type { GraphPayload, NodeType } from './store/types';
 import { ReferenceImageNode } from './nodes/ReferenceImageNode';
 import { ReferenceVideoNode } from './nodes/ReferenceVideoNode';
 import { FluxImageNode } from './nodes/FluxImageNode';
+import { ImageEditNode } from './nodes/ImageEditNode';
 import { VideoGenNode } from './nodes/VideoGenNode';
 import { TtsVoiceNode } from './nodes/TtsVoiceNode';
 import { CaptionsNode } from './nodes/CaptionsNode';
@@ -58,6 +59,7 @@ import { LibrarySidebar } from './components/LibrarySidebar';
 import { BrandSwitcher } from './components/BrandSwitcher';
 // MockupProvider/useMockupToggle now live inside OutputNode itself.
 import SettingsModal from './components/SettingsModal';
+import { TimelineEditor } from './components/TimelineEditor';
 
 // Categories for the + Add Node menu. Order matters — sources first, then
 // processors, then sink.
@@ -66,7 +68,8 @@ const NODE_MENU_SECTIONS: { title: string; items: NodeMenuItem[] }[] = [
   {
     title: 'Sources',
     items: [
-      { type: 'flux-image', label: '🎨 Image Gen (AI)', hint: 'gpt-image-2 / flux 1.1 — character or asset' },
+      { type: 'image-gen', label: '🎨 Image Gen (AI)', hint: 'GPT Image 2 / Flux 1.1 — character or asset' },
+      { type: 'image-edit', label: '💇 Hairstyle Edit', hint: 'change only hair; preserve master identity, clothes and framing' },
       { type: 'video-gen', label: '🎬 Video Gen (AI)', hint: 'Kling / Seedance / Happy Horse, multi-shot supported' },
       { type: 'tts-voice', label: '🎙 TTS Voice', hint: 'TikTok TTS voiceover' },
       { type: 'reference-image', label: '🖼 Reference Image (upload)', hint: 'static png/jpg from disk' },
@@ -100,9 +103,6 @@ const NODE_MENU_SECTIONS: { title: string; items: NodeMenuItem[] }[] = [
 ];
 
 // Flat lookup for places that just need a label (delete confirms etc).
-const NODE_TYPE_LABELS: Record<NodeType, string> = NODE_MENU_SECTIONS.flatMap((s) => s.items)
-  .reduce((acc, it) => { acc[it.type] = it.label; return acc; }, {} as Record<NodeType, string>);
-
 function GraphEditor() {
   const [graph, setGraph] = useState<GraphPayload | null>(null);
   const [workflows, setWorkflows] = useState<string[]>([]);
@@ -110,6 +110,8 @@ function GraphEditor() {
   const [showAdd, setShowAdd] = useState(false);
   const [showLoad, setShowLoad] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [editorMode, setEditorMode] = useState<'nodes' | 'timeline'>('nodes');
+  const [lastChangedIds, setLastChangedIds] = useState<Set<string>>(new Set());
   const [showInf, setShowInf] = useState(false);
   // Tracks last SSE delivery time. If we go >12s without one (heartbeat is
   // 15s on the server), we mark the connection stale and force-poll.
@@ -381,6 +383,7 @@ function GraphEditor() {
         const newNodeIds = new Set(g.nodes.map((n) => n.id));
         const moved: string[] = [];
         const dataChanged: string[] = [];
+        const runtimeChanged: string[] = [];
         const added: string[] = [];
         const removedNodeGhosts = new Map<string, { position: {x:number;y:number}; type: string; data: Record<string,unknown> }>();
         const IGNORE_DATA_KEYS = new Set(['status','progress','stage','elapsed','cost','outputUrl','error','blocked','upstreamUrl','cached','words']);
@@ -394,8 +397,13 @@ function GraphEditor() {
           if (!before) { added.push(n.id); continue; }
           const posChanged = before.position.x !== n.position.x || before.position.y !== n.position.y;
           const dChanged = JSON.stringify(stripVolatile(before.data)) !== JSON.stringify(stripVolatile(n.data));
+          const beforeRuntime = before.data as { status?: string; outputUrl?: string };
+          const afterRuntime = n.data as { status?: string; outputUrl?: string };
+          const rChanged = beforeRuntime.outputUrl !== afterRuntime.outputUrl
+            || (beforeRuntime.status !== afterRuntime.status && afterRuntime.status === 'done');
           if (posChanged) moved.push(n.id);
           if (dChanged) dataChanged.push(n.id);
+          if (rChanged) runtimeChanged.push(n.id);
         }
         for (const n of prevSnapshot.nodes) {
           if (!newNodeIds.has(n.id)) {
@@ -414,12 +422,18 @@ function GraphEditor() {
           }
         }
 
-        // Animation only on external (agent) edits — user UI moves don't flash.
-        if (isExternal) {
-          const changedSet = new Set([...moved, ...dataChanged, ...added]);
+        // Agent edits flash as before. Runtime media changes also flash in
+        // both Nodes and Timeline so a completed generation is never silent.
+        if (isExternal || runtimeChanged.length > 0) {
+          const changedSet = new Set([
+            ...(isExternal ? [...moved, ...dataChanged, ...added] : []),
+            ...runtimeChanged,
+          ]);
           if (changedSet.size > 0) {
             setFlashingIds(changedSet);
+            setLastChangedIds(changedSet);
             setTimeout(() => mounted && setFlashingIds(new Set()), 1700);
+            setTimeout(() => mounted && setLastChangedIds(new Set()), 3200);
           }
           if (removedNodeGhosts.size > 0) {
             setGhostNodes(removedNodeGhosts);
@@ -555,6 +569,8 @@ function GraphEditor() {
     'reference-image': ReferenceImageNode as never,
     'reference-video': ReferenceVideoNode as never,
     'flux-image': FluxImageNode as never,
+    'image-gen': FluxImageNode as never,
+    'image-edit': ImageEditNode as never,
     'video-gen': VideoGenNode as never,
     'tts-voice': TtsVoiceNode as never,
     captions: CaptionsNode as never,
@@ -575,6 +591,16 @@ function GraphEditor() {
   const [rfEdges, setRfEdges] = useState<Edge[]>([]);
   const draggingIdsRef = useRef<Set<string>>(new Set());
 
+  useEffect(() => {
+    if (editorMode !== 'nodes' || lastChangedIds.size === 0) return;
+    const changedNodes = rfNodes.filter((node) => lastChangedIds.has(node.id));
+    if (changedNodes.length === 0) return;
+    const timer = window.setTimeout(() => {
+      rf.fitView({ nodes: changedNodes, padding: 0.28, duration: 420 });
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [editorMode, lastChangedIds, rf, rfNodes]);
+
   // Sync server graph → local rf state. Re-runs when flashingIds changes so
   // the flash className gets attached/removed on the freshly synced nodes.
   useEffect(() => {
@@ -590,7 +616,7 @@ function GraphEditor() {
       // reference uploads (which don't run) "done" = has a `url` set.
       // Renders as a grey, disabled Run button + amber wash on the card.
       const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
-      function isUpstreamReady(src: typeof graph.nodes[number]): boolean {
+      function isUpstreamReady(src: GraphPayload['nodes'][number]): boolean {
         if (src.type === 'reference-image' || src.type === 'reference-video') {
           return Boolean((src.data as { url?: string }).url);
         }
@@ -753,9 +779,9 @@ function GraphEditor() {
   async function handleLoadInfluencer(inf: Influencer) {
     setShowInf(false);
     if (!graphRef.current) return;
-    let target = graphRef.current.nodes.find((n) => n.type === 'flux-image');
+    let target = graphRef.current.nodes.find((n) => n.type === 'image-gen' || n.type === 'flux-image');
     if (!target) {
-      const created = await createNode({ type: 'flux-image', position: { x: 200, y: 200 } });
+      const created = await createNode({ type: 'image-gen', position: { x: 200, y: 200 } });
       target = created;
     }
     if (!target) return;
@@ -813,7 +839,7 @@ function GraphEditor() {
 
       const patch: Record<string, unknown> = { ...clearRun };
 
-      if (n.type === 'flux-image') {
+      if (n.type === 'image-gen' || n.type === 'flux-image') {
         const isCharacter = (data.usage ?? 'character') === 'character';
         if (keepModel && isCharacter) {
           // preserve prompt + outputUrl + status='done'
@@ -879,6 +905,10 @@ function GraphEditor() {
         <BrandSwitcher current="vid" />
         <div style={{ width: 1, height: 22, background: '#2a2a2a' }} />
         <strong style={{ fontSize: 13, opacity: 0.7 }}>graph</strong>
+        <div style={{ display: 'flex', border: '1px solid #30343b', borderRadius: 7, overflow: 'hidden' }}>
+          <button onClick={() => setEditorMode('nodes')} style={{ ...tbBtn, border: 0, borderRadius: 0, background: editorMode === 'nodes' ? '#334155' : '#171717' }}>Nodes</button>
+          <button onClick={() => setEditorMode('timeline')} style={{ ...tbBtn, border: 0, borderRadius: 0, background: editorMode === 'timeline' ? '#0F766E' : '#171717' }}>Timeline</button>
+        </div>
         <div style={{ position: 'relative' }}>
           <button onClick={() => setShowLoad((v) => !v)} style={tbBtn}>Load Workflow ▼</button>
           {showLoad && (
@@ -1073,7 +1103,7 @@ function GraphEditor() {
         >⚙</button>
       </div>
 
-      <ReactFlow
+      {editorMode === 'nodes' ? <ReactFlow
         nodes={rfNodes}
         edges={rfEdges}
         nodeTypes={nodeTypes}
@@ -1103,6 +1133,8 @@ function GraphEditor() {
               'reference-image': '#7C3AED',
               'reference-video': '#7C3AED',
               'flux-image': '#F97316',
+              'image-gen': '#F97316',
+              'image-edit': '#14B8A6',
               'video-gen': '#3B82F6',
               'tts-voice': '#10B981',
               captions: '#EC4899',
@@ -1120,7 +1152,9 @@ function GraphEditor() {
           maskColor="rgba(0,0,0,0.6)"
           style={{ background: '#171717', border: '1px solid #2a2a2a' }}
         />
-      </ReactFlow>
+      </ReactFlow> : graph ? (
+        <TimelineEditor graph={graph} changedIds={lastChangedIds} onPatch={(id, data) => patchNode(id, { data })} />
+      ) : null}
       <LibrarySidebar />
       <LightboxRoot />
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
@@ -1257,6 +1291,49 @@ export function App() {
         .react-flow__edge.edge-ghost path {
           stroke-dasharray: 8 6;
           animation: asov-edge-ghost 1.4s ease-out forwards;
+        }
+        .timeline-editor {
+          grid-template-rows: minmax(220px, 1fr) clamp(240px, 39vh, 330px);
+          transition: left 160ms ease;
+        }
+        .timeline-preview-row {
+          display: grid;
+          grid-template-columns: minmax(280px, 1fr) minmax(230px, 280px);
+        }
+        .timeline-stage {
+          height: calc(100% - 8px);
+          max-height: 570px;
+          max-width: calc(100% - 8px);
+        }
+        .timeline-inspector {
+          border-left: 1px solid #252a31;
+        }
+        @media (max-height: 720px) {
+          .timeline-editor {
+            grid-template-rows: minmax(180px, 1fr) 250px;
+          }
+          .timeline-stage {
+            max-height: 100%;
+          }
+        }
+        @media (max-width: 900px) {
+          .timeline-preview-row {
+            grid-template-columns: minmax(220px, 1fr) 220px;
+          }
+          .timeline-inspector {
+            padding: 10px !important;
+          }
+        }
+        @media (max-width: 680px) {
+          .timeline-editor {
+            grid-template-rows: minmax(190px, 42vh) minmax(250px, 1fr);
+          }
+          .timeline-preview-row {
+            grid-template-columns: 1fr;
+          }
+          .timeline-inspector {
+            display: none;
+          }
         }
       `}</style>
       <style>{`

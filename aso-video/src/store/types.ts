@@ -1,4 +1,4 @@
-export type NodeType = 'reference-image' | 'reference-video' | 'flux-image' | 'video-gen' | 'tts-voice' | 'captions' | 'split-screen' | 'image-overlay' | 'end-card' | 'stitch' | 'transcribe' | 'group' | 'output';
+export type NodeType = 'reference-image' | 'reference-video' | 'image-gen' | 'flux-image' | 'image-edit' | 'video-gen' | 'tts-voice' | 'captions' | 'split-screen' | 'image-overlay' | 'end-card' | 'stitch' | 'video-overlay' | 'transcribe' | 'group' | 'output';
 
 export interface GraphNode {
   id: string;
@@ -19,5 +19,5 @@ export interface GraphPayload {
   version: 1;
   nodes: GraphNode[];
   edges: GraphEdge[];
-  meta: { updatedAt: number; totalCost: number };
+  meta: { updatedAt: number; totalCost: number; [key: string]: unknown };
 }

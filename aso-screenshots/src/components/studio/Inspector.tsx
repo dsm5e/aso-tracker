@@ -474,22 +474,73 @@ export function Inspector({ screenshot: ss }: Props) {
           )}
         </Card.Section>
 
-        {ss.kind === 'regular' && (
-          <Card.Section title="AI Polish">
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
-                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-0)' }}>Designer callout</span>
-                <span style={{ fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.3 }}>
-                  Магнифай ключевого UI-элемента в bubble со стрелкой. Включается только при polish.
-                </span>
-              </div>
-              <Toggle
-                checked={!!ss.polishCallout}
-                onChange={(on) => set({ polishCallout: on })}
+        {ss.kind === 'regular' && (() => {
+          const action = ss.action;
+          const useCustom = action?.useCustomPrompt ?? false;
+          return (
+            <Card.Section title="AI Polish">
+              <Input
+                label="Что улучшить"
+                placeholder="e.g. replace only photo thumbnails with a consistent family album"
+                value={action?.themeHint ?? ''}
+                onChange={(e) => setAction({ themeHint: e.target.value })}
+                hint="Короткая цель для polish. Геометрия устройства и UI остаются зафиксированы."
               />
-            </div>
-          </Card.Section>
-        )}
+              <div style={{ height: 12 }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-0)' }}>Свой промпт</span>
+                  <span style={{ fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.3 }}>
+                    Выполняется только на шаге AI Polish. Базовый scaffold остаётся обычной вёрсткой.
+                  </span>
+                </div>
+                <Toggle
+                  checked={useCustom}
+                  onChange={(on) => setAction({ useCustomPrompt: on })}
+                />
+              </div>
+              {useCustom && (
+                <>
+                  <div style={{ height: 8 }} />
+                  <textarea
+                    className="textarea"
+                    rows={10}
+                    spellCheck={false}
+                    value={action?.customPrompt ?? ''}
+                    onChange={(e) => setAction({ customPrompt: e.target.value })}
+                    placeholder="Polish this scaffold while preserving the device, screen UI and headline zone…"
+                    style={{
+                      width: '100%',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 11,
+                      lineHeight: 1.45,
+                      padding: 8,
+                      borderRadius: 'var(--r-2)',
+                      border: '1px solid var(--line-2)',
+                      background: 'var(--bg-2)',
+                      color: 'var(--fg-0)',
+                      resize: 'vertical',
+                      minHeight: 120,
+                    }}
+                  />
+                </>
+              )}
+              <div style={{ height: 12 }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-0)' }}>Designer callout</span>
+                  <span style={{ fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.3 }}>
+                    Магнифай ключевого UI-элемента в bubble со стрелкой. Включается только при polish.
+                  </span>
+                </div>
+                <Toggle
+                  checked={!!ss.polishCallout}
+                  onChange={(on) => set({ polishCallout: on })}
+                />
+              </div>
+            </Card.Section>
+          );
+        })()}
 
         <Card.Section title="Заголовок">
           <div className="field">
@@ -679,6 +730,77 @@ export function Inspector({ screenshot: ss }: Props) {
           )}
         </Card.Section>
 
+        <Card.Section title="Conversion overlays">
+          <Input
+            label="Handwritten CTA"
+            placeholder="Tap to count"
+            value={ss.annotation ?? ''}
+            onChange={(e) => set({ annotation: e.target.value || undefined })}
+          />
+          <div style={{ height: 10 }} />
+          <Input
+            label="Proof / review"
+            placeholder="History · patterns · shared moments"
+            value={ss.proofText ?? ''}
+            onChange={(e) => set({ proofText: e.target.value || undefined })}
+          />
+          <div style={{ height: 10 }} />
+          <Input
+            label="Proof attribution"
+            placeholder="5★ App Store review"
+            value={ss.proofAttribution ?? ''}
+            onChange={(e) => set({ proofAttribution: e.target.value || undefined })}
+          />
+          <div style={{ height: 10 }} />
+          <Input
+            label="Bottom trust strip"
+            placeholder="COUNT · HISTORY · PATTERNS"
+            value={ss.trustStrip ?? ''}
+            onChange={(e) => set({ trustStrip: e.target.value || undefined })}
+          />
+          <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.4 }}>
+            Все строки остаются живым текстом, переводятся отдельно и не запекаются в AI-art.
+          </p>
+        </Card.Section>
+
+        {ss.heroTextLayout === 'elara' && (
+          <Card.Section title="Elara phone copy">
+            <Input
+              label="Phone brand"
+              value={ss.phoneBrand ?? ''}
+              onChange={(e) => set({ phoneBrand: e.target.value || undefined })}
+            />
+            <div style={{ height: 10 }} />
+            <Input
+              label="Phone title"
+              value={ss.phoneTitle ?? ''}
+              onChange={(e) => set({ phoneTitle: e.target.value || undefined })}
+            />
+            <div style={{ height: 10 }} />
+            <Input
+              label="Phone subtitle"
+              value={ss.phoneSubtitle ?? ''}
+              onChange={(e) => set({ phoneSubtitle: e.target.value || undefined })}
+            />
+            <div style={{ height: 10 }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <Input
+                label="Toggle left"
+                value={ss.phoneToggleLeft ?? ''}
+                onChange={(e) => set({ phoneToggleLeft: e.target.value || undefined })}
+              />
+              <Input
+                label="Toggle right"
+                value={ss.phoneToggleRight ?? ''}
+                onChange={(e) => set({ phoneToggleRight: e.target.value || undefined })}
+              />
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.4 }}>
+              Текст внутри hero-телефона остаётся живым и переводится вместе с остальными строками.
+            </p>
+          </Card.Section>
+        )}
+
 
 
         {isScaffold && (<>
@@ -724,7 +846,142 @@ export function Inspector({ screenshot: ss }: Props) {
           </Card.Section>
         )}
 
+        <Card.Section title="Выравнивание текста">
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(['left', 'center', 'right'] as const).map((a) => (
+              <button key={a} onClick={() => set({ textAlignOverride: a })}
+                style={{ flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
+                  border: '1px solid var(--line)', fontSize: 12,
+                  background: (ss.textAlignOverride ?? '') === a ? 'var(--ai)' : 'transparent',
+                  color: (ss.textAlignOverride ?? '') === a ? '#fff' : 'var(--fg-2)' }}>
+                {a === 'left' ? 'Слева' : a === 'center' ? 'По центру' : 'Справа'}
+              </button>
+            ))}
+            <button onClick={() => set({ textAlignOverride: undefined })}
+              title="Взять из пресета"
+              style={{ padding: '7px 10px', borderRadius: 7, cursor: 'pointer',
+                border: '1px solid var(--line)', background: 'transparent',
+                color: 'var(--fg-3)', fontSize: 12 }}>Авто</button>
+          </div>
+        </Card.Section>
+
+        {ss.sourceLayout === 'arch' && (
+          <Card.Section title="Арка">
+            {([
+              ['Начало арки',   'archTopFrac',      15, 45,  1, 0.275, true],
+              ['Начало полос',  'archStripTopFrac', 35, 75,  1, 0.52,  true],
+              ['Поле по краям', 'archPad',           0, 120, 1, 42,    false],
+              ['Каёмка',        'archRim',           0, 60,  1, 28,    false],
+              ['Наклон реза',   'archSkew',          0, 20,  1, 7,     false],
+            ] as const).map(([label, key, min, max, step, def, frac]) => {
+              const raw = (ss as Record<string, unknown>)[key] as number | undefined;
+              const val = raw ?? def;
+              const shown = frac ? Math.round(val * 100) : Math.round(val);
+              return (
+                <div className="field" key={key} style={{ marginBottom: 10 }}>
+                  <label className="field-label">
+                    {label} <span className="tabular muted">{shown}{frac ? '%' : 'px'}</span>
+                  </label>
+                  <Slider value={shown} min={min} max={max} step={step}
+                    onChange={(v) => set({ [key]: frac ? v / 100 : v } as Partial<Screenshot>)} />
+                  <ResetDot active={raw !== undefined && raw !== def}
+                    onClick={() => set({ [key]: def } as Partial<Screenshot>)} />
+                </div>
+              );
+            })}
+            <div className="field">
+              <label className="field-label">
+                Зум полос <span className="tabular muted">{Math.round((ss.archZoom ?? 1.12) * 100)}%</span>
+              </label>
+              <Slider value={Math.round((ss.archZoom ?? 1.12) * 100)} min={100} max={180} step={1}
+                onChange={(v) => set({ archZoom: v / 100 })} />
+              <ResetDot active={(ss.archZoom ?? 1.12) !== 1.12} onClick={() => set({ archZoom: 1.12 })} />
+            </div>
+            <div className="field" style={{ marginTop: 10 }}>
+              <label className="field-label">Цвет каёмки</label>
+              <input type="color" value={ss.archAccent ?? '#2F6FA8'}
+                onChange={(e) => set({ archAccent: e.target.value })}
+                style={{ width: '100%', height: 32, border: '1px solid var(--line)',
+                  borderRadius: 7, background: 'transparent', cursor: 'pointer' }} />
+            </div>
+          </Card.Section>
+        )}
+
+        {ss.sourceLayout === 'before-after' && (
+          <Card.Section title="До / после">
+            <div className="field">
+              <label className="field-label">
+                Положение шва <span className="tabular muted">{Math.round((ss.baSplit ?? 0.42) * 100)}%</span>
+              </label>
+              <Slider value={Math.round((ss.baSplit ?? 0.42) * 100)} min={5} max={95} step={1}
+                onChange={(v) => set({ baSplit: v / 100 })} />
+              <ResetDot active={(ss.baSplit ?? 0.42) !== 0.42} onClick={() => set({ baSplit: 0.42 })} />
+            </div>
+            <div style={{ height: 10 }} />
+            <div className="field">
+              <label className="field-label">
+                Высота ручки <span className="tabular muted">{Math.round((ss.baHandleFrac ?? 0.52) * 100)}%</span>
+              </label>
+              <Slider value={Math.round((ss.baHandleFrac ?? 0.52) * 100)} min={5} max={90} step={1}
+                onChange={(v) => set({ baHandleFrac: v / 100 })} />
+              <ResetDot active={(ss.baHandleFrac ?? 0.52) !== 0.52} onClick={() => set({ baHandleFrac: 0.52 })} />
+            </div>
+            <div style={{ height: 10 }} />
+            <div className="field">
+              <label className="field-label">
+                Затемнение под текстом <span className="tabular muted">{Math.round((ss.baScrimFrac ?? 0.34) * 100)}%</span>
+              </label>
+              <Slider value={Math.round((ss.baScrimFrac ?? 0.34) * 100)} min={0} max={70} step={1}
+                onChange={(v) => set({ baScrimFrac: v / 100 })} />
+              <ResetDot active={(ss.baScrimFrac ?? 0.34) !== 0.34} onClick={() => set({ baScrimFrac: 0.34 })} />
+            </div>
+            <div style={{ height: 12 }} />
+            <div className="field">
+              <label className="field-label">Бейдж — строка 1</label>
+              <input value={ss.badgeLine1 ?? ''} onChange={(e) => set({ badgeLine1: e.target.value })}
+                placeholder="10,000,000+" className="input" />
+            </div>
+            <div className="field" style={{ marginTop: 8 }}>
+              <label className="field-label">Бейдж — строка 2</label>
+              <input value={ss.badgeLine2 ?? ''} onChange={(e) => set({ badgeLine2: e.target.value })}
+                placeholder="Generated" className="input" />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, fontSize: 12 }}>
+              <input type="checkbox" checked={ss.badgeStars ?? false}
+                onChange={(e) => set({ badgeStars: e.target.checked })} />
+              Звёзды в бейдже
+            </label>
+          </Card.Section>
+        )}
+
         {(ss.sourceLayout ?? 'device') === 'device' && (<>
+        <Card.Section title="Стиль устройства">
+          <div style={{ display: 'flex', gap: 6 }}>
+            {([['clay', 'Clay'], ['titanium', 'Титан'], ['frameless', 'Без рамки']] as const).map(([v, label]) => (
+              <button key={v} onClick={() => set({ deviceFrameStyle: v })}
+                style={{ flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
+                  border: '1px solid var(--line)', fontSize: 12,
+                  background: (ss.deviceFrameStyle ?? 'clay') === v ? 'var(--ai)' : 'transparent',
+                  color: (ss.deviceFrameStyle ?? 'clay') === v ? '#fff' : 'var(--fg-2)' }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {ss.deviceFrameStyle === 'frameless' && (
+            <div className="field" style={{ marginTop: 10 }}>
+              <label className="field-label">
+                Срез снизу <span className="tabular muted">{Math.round((ss.screenCropBottom ?? 0) * 100)}%</span>
+              </label>
+              {/* Карточка укорачивается вместе со скруглением: нижние углы
+                  пересчитываются по новой высоте, а сам снимок не масштабируется. */}
+              <Slider value={ss.screenCropBottom ?? 0} min={0} max={0.5} step={0.005}
+                onChange={(v) => set({ screenCropBottom: v })} />
+              <ResetDot active={(ss.screenCropBottom ?? 0) !== 0}
+                onClick={() => set({ screenCropBottom: 0 })} />
+            </div>
+          )}
+        </Card.Section>
+
         <Card.Section title="Позиция устройства">
           <div className="field">
             <label className="field-label">

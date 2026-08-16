@@ -1,0 +1,30 @@
+{
+  "id": "puri-lime-life",
+  "name": "Puri Lime Life",
+  "kind": "real",
+  "description": "Cleaner-style premium utility composition rebuilt in Puri's black, graphite and electric-lime visual language. Bold short copy, deep contrast, soft lime light, a large black iPhone and sparse editorial lifestyle photo cards.",
+  "recommendedFor": "phone cleaner / photo utility / lifestyle",
+  "background": {
+    "type": "gradient",
+    "css": "linear-gradient(155deg, #050604 0%, #14180D 52%, #C9F31D 100%)"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 900,
+    "color": "#FFFFFF",
+    "uppercase": true,
+    "align": "center"
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": true,
+  "suggestedAccent": "#C9F31D",
+  "decorationsHint": "Puri-only palette: matte black #050604, graphite #171A15, electric lime #C9F31D and restrained warm white. Use broad soft gradient fields, a luminous lime halo behind the phone, subtle translucent bubbles and at most two rounded editorial family-photo cards. No neon rainbow, no blue or purple, no generic 3D cleaning props, no fake awards or ratings.",
+  "samples": [
+    { "verb": "FREE UP", "descriptor": "SPACE IN ONE SMART SCAN", "device": { "scale": 0.88, "offsetY": 80 }, "text": { "yFraction": 0.055, "titlePx": 164, "subPx": 68 } },
+    { "verb": "DELETE", "descriptor": "DUPLICATES SAFELY", "device": { "scale": 0.88, "offsetY": 80 }, "text": { "yFraction": 0.055, "titlePx": 164, "subPx": 68 } },
+    { "verb": "KEEP", "descriptor": "THE BEST SHOT", "device": { "scale": 0.88, "offsetY": 80 }, "text": { "yFraction": 0.055, "titlePx": 164, "subPx": 68 } },
+    { "verb": "CLEAR", "descriptor": "SCREENSHOTS IN SECONDS", "device": { "scale": 0.88, "offsetY": 80 }, "text": { "yFraction": 0.055, "titlePx": 164, "subPx": 68 } },
+    { "verb": "SHRINK", "descriptor": "LARGE VIDEOS", "device": { "scale": 0.88, "offsetY": 80 }, "text": { "yFraction": 0.055, "titlePx": 164, "subPx": 68 } }
+  ]
+}

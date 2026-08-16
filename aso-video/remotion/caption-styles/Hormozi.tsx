@@ -31,7 +31,7 @@ export const Hormozi: React.FC = () => {
             fontFamily:
               'Inter, "SF Pro Display", system-ui, -apple-system, sans-serif',
             WebkitTextStroke: '5px #000',
-            // @ts-expect-error paint-order is valid CSS
+            // paint-order is valid CSS
             paintOrder: 'stroke fill',
             textShadow: '0 8px 28px rgba(0,0,0,0.65)',
             letterSpacing: -2,

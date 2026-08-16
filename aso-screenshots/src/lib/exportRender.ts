@@ -9,7 +9,7 @@
 
 import { createRoot, type Root } from 'react-dom/client';
 import { createElement } from 'react';
-import { toCanvas } from 'html-to-image';
+import { getFontEmbedCSS, toCanvas } from 'html-to-image';
 import { useStudio, type LocaleEntry, type Screenshot } from '../state/studio';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
 import { applyLocaleToSlot } from './applyLocale';
@@ -55,6 +55,21 @@ export interface ExportResult {
   failed: number;
   files: string[];
   failures: RenderFailure[];
+}
+
+// Resolving + base64-inlining every Google font can take several seconds.
+// The stylesheet is project-independent, so compute it once per Studio page
+// and reuse it for every slot/locale in the batch.
+let fontEmbedCssPromise: Promise<string> | null = null;
+
+function sharedFontEmbedCSS(node: HTMLElement): Promise<string> {
+  if (!fontEmbedCssPromise) {
+    fontEmbedCssPromise = getFontEmbedCSS(node).catch((error) => {
+      fontEmbedCssPromise = null;
+      throw error;
+    });
+  }
+  return fontEmbedCssPromise;
 }
 
 
@@ -150,11 +165,32 @@ async function renderOne(
     const inner = await waitForElement(wrapper, '[data-mockup-canvas-inner]', 3000);
     if (!inner) throw new Error('canvas inner not found in off-screen render (React mount timeout)');
     await waitForImages(wrapper);
+    const headline = wrapper.querySelector<HTMLElement>('[data-headline-box]');
+    const title = wrapper.querySelector<HTMLElement>('[data-headline-title]');
+    const descriptor = wrapper.querySelector<HTMLElement>('[data-headline-descriptor]');
+    if (headline && title) {
+      const h = headline.getBoundingClientRect();
+      const t = title.getBoundingClientRect();
+      const d = descriptor?.getBoundingClientRect();
+      if (d && d.top < t.bottom + 4) {
+        throw new Error(
+          `localized text collision before capture: title bottom ${t.bottom.toFixed(1)}, `
+          + `descriptor top ${d.top.toFixed(1)}`,
+        );
+      }
+      const contentBottom = d?.bottom ?? t.bottom;
+      if (contentBottom > h.bottom + 1) {
+        throw new Error(
+          `localized headline exceeds safe zone by ${(contentBottom - h.bottom).toFixed(1)}px`,
+        );
+      }
+    }
     // Drop the visual scale transform and capture at the profile's native size.
     const prevTransform = inner.style.transform;
     const prevOverflow = inner.style.overflow;
     inner.style.transform = 'none';
     inner.style.overflow = 'hidden';
+    const fontEmbedCSS = await sharedFontEmbedCSS(inner);
     // Capture via toCanvas (returns canvas with default alpha buffer).
     const sourceCanvas = await toCanvas(inner, {
       pixelRatio: 1,
@@ -163,7 +199,12 @@ async function renderOne(
       canvasWidth: CANVAS_W,
       canvasHeight: CANVAS_H,
       cacheBust: false,
-      skipFonts: true,
+      // The localized fit pass measures the loaded Studio web font. Omitting
+      // fonts from the foreignObject clone makes Chromium fall back to a
+      // different face during capture, changing line wraps after positions
+      // were measured (most visible in long Spanish/German headlines).
+      skipFonts: false,
+      fontEmbedCSS,
     });
     inner.style.transform = prevTransform;
     inner.style.overflow = prevOverflow;

@@ -1,0 +1,162 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "hair-model",
+      "type": "flux-image",
+      "position": { "x": 40, "y": 40 },
+      "data": {
+        "label": "MODEL — replace this image",
+        "prompt": "Vertical 9:16 beauty portrait of an adult woman, centered shoulder-up framing, neutral light grey studio background, direct eye contact, realistic skin texture, dark simple spaghetti-strap top, soft commercial beauty lighting, no text, no logos",
+        "aspectRatio": "9:16",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "usage": "character",
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-generated-scenes",
+      "type": "video-gen",
+      "position": { "x": 440, "y": 40 },
+      "data": {
+        "label": "AI MODEL SHOTS — identity-locked",
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "duration": 13,
+        "audio": false,
+        "status": "idle",
+        "multiShot": true,
+        "shotType": "customize",
+        "shots": [
+          { "duration": 3.8, "prompt": "Centered beauty portrait, subtle natural head motion and blinking. HARD CUT through three flattering hairstyles while keeping the exact same face, body, wardrobe, camera and grey background. No text or interface." },
+          { "duration": 3.9, "prompt": "Same exact woman and framing with sleek straight hair, nearly still for a face-scanning UI overlay. Subtle breathing and blinking only. No rendered interface, no text." },
+          { "duration": 5.3, "prompt": "Same exact woman and framing. HARD CUT hairstyle try-on sequence: layered textured bob, Hollywood waves, sleek straight hair, curly French bob. Each style holds about one second. Preserve identity. No text or interface." }
+        ],
+        "timeline": {
+          "start": 0,
+          "duration": 13,
+          "track": 0,
+          "role": "video",
+          "label": "Generated model shots",
+          "layout": { "x": 0, "y": 0, "width": 100, "height": 100, "opacity": 1 }
+        }
+      }
+    },
+    {
+      "id": "hair-voiceover",
+      "type": "tts-voice",
+      "position": { "x": 40, "y": 620 },
+      "data": {
+        "label": "VOICEOVER — editable copy",
+        "text": "Ugly? You just haven't found the right hairstyle for your face shape yet. With Hair App, simply scan your face to discover your face shape, then instantly try on hairstyles recommended just for you. In seconds, you'll find the hairstyle that suits you best.",
+        "voice": "en_female_emotional",
+        "status": "idle",
+        "timeline": { "start": 0, "duration": 12.24, "track": 4, "role": "audio", "label": "Voiceover" }
+      }
+    },
+    {
+      "id": "hair-captions",
+      "type": "captions",
+      "position": { "x": 840, "y": 40 },
+      "data": {
+        "label": "Hook captions",
+        "preset": "capcut-classic",
+        "fontSize": 118,
+        "marginV": 410,
+        "status": "idle",
+        "timeline": {
+          "start": 0,
+          "duration": 3.84,
+          "track": 3,
+          "role": "overlay",
+          "label": "Word-by-word hook text",
+          "layout": { "x": 12, "y": 39, "width": 76, "height": 18, "opacity": 1 }
+        }
+      }
+    },
+    {
+      "id": "hair-face-scan-ui",
+      "type": "reference-image",
+      "position": { "x": 840, "y": 600 },
+      "data": {
+        "label": "UI — cyan 3D face scan (transparent PNG)",
+        "usage": "asset",
+        "timeline": {
+          "start": 3.84,
+          "duration": 3.88,
+          "track": 2,
+          "role": "overlay",
+          "label": "Face scan + Soft Heart result",
+          "layout": { "x": 4, "y": 5, "width": 92, "height": 72, "opacity": 1 }
+        }
+      }
+    },
+    {
+      "id": "hair-selector-ui",
+      "type": "reference-image",
+      "position": { "x": 1240, "y": 600 },
+      "data": {
+        "label": "UI — hairstyle thumbnail ribbon",
+        "usage": "asset",
+        "timeline": {
+          "start": 12.24,
+          "duration": 3.96,
+          "track": 2,
+          "role": "overlay",
+          "label": "Fast thumbnail carousel",
+          "layout": { "x": 7, "y": 62, "width": 86, "height": 17, "opacity": 1 }
+        }
+      }
+    },
+    {
+      "id": "hair-drum-sfx",
+      "type": "reference-video",
+      "position": { "x": 1240, "y": 940 },
+      "data": {
+        "label": "SFX — spinning selector / ratchet",
+        "usage": "asset",
+        "timeline": { "start": 12.24, "duration": 3.96, "track": 4, "role": "audio", "label": "Spinning drum SFX" }
+      }
+    },
+    {
+      "id": "hair-end-card",
+      "type": "end-card",
+      "position": { "x": 1240, "y": 40 },
+      "data": {
+        "label": "Hair App store end card",
+        "duration": 2,
+        "cta": "Download now",
+        "subtitle": "Find the hairstyle made for you",
+        "brand": "Hair App",
+        "status": "idle",
+        "timeline": {
+          "start": 16.2,
+          "duration": 2,
+          "track": 1,
+          "role": "video",
+          "label": "Store end card",
+          "layout": { "x": 0, "y": 0, "width": 100, "height": 100, "opacity": 1 }
+        }
+      }
+    },
+    {
+      "id": "hair-output",
+      "type": "output",
+      "position": { "x": 1640, "y": 40 },
+      "data": { "label": "FINAL — Hair App 18.2s" }
+    }
+  ],
+  "edges": [
+    { "id": "hair-e1", "source": "hair-model", "sourceHandle": "image", "target": "hair-generated-scenes", "targetHandle": "image_url" },
+    { "id": "hair-e2", "source": "hair-generated-scenes", "sourceHandle": "video", "target": "hair-captions", "targetHandle": "video" },
+    { "id": "hair-e3", "source": "hair-captions", "sourceHandle": "video", "target": "hair-end-card", "targetHandle": "video" },
+    { "id": "hair-e4", "source": "hair-end-card", "sourceHandle": "video", "target": "hair-output", "targetHandle": "video" }
+  ],
+  "meta": {
+    "updatedAt": 0,
+    "totalCost": 0,
+    "timeline": { "duration": 18.2, "fps": 30, "width": 1080, "height": 1920 }
+  }
+}

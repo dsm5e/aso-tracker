@@ -36,6 +36,8 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
 
   return {
     ...ss,
+    sourceUrl: loc.sourceOverrides?.[ss.id] ?? ss.sourceUrl,
+    secondaryUrl: loc.secondaryOverrides?.[ss.id] ?? ss.secondaryUrl,
     headline: tr
       ? { verb: tr.verb || ss.headline.verb, descriptor: tr.descriptor || ss.headline.descriptor, subhead: ss.headline.subhead }
       : ss.headline,
@@ -44,6 +46,15 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
     footer: extra?.footer ?? ss.footer,
     frontLabel: extra?.frontLabel ?? ss.frontLabel,
     backLabel: extra?.backLabel ?? ss.backLabel,
+    annotation: extra?.annotation ?? ss.annotation,
+    proofText: extra?.proofText ?? ss.proofText,
+    proofAttribution: extra?.proofAttribution ?? ss.proofAttribution,
+    trustStrip: extra?.trustStrip ?? ss.trustStrip,
+    phoneBrand: extra?.phoneBrand ?? ss.phoneBrand,
+    phoneTitle: extra?.phoneTitle ?? ss.phoneTitle,
+    phoneSubtitle: extra?.phoneSubtitle ?? ss.phoneSubtitle,
+    phoneToggleLeft: extra?.phoneToggleLeft ?? ss.phoneToggleLeft,
+    phoneToggleRight: extra?.phoneToggleRight ?? ss.phoneToggleRight,
     textX: (ss.textX ?? 0) + (adj?.textX ?? 0),
     textY: (ss.textY ?? 0) + (adj?.textY ?? 0),
     titlePx: adj?.titlePx ?? ss.titlePx,

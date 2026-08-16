@@ -1,0 +1,115 @@
+{
+  "id": "roomvi-homeai",
+  "name": "Roomvi Home AI",
+  "kind": "real",
+  "description": "Brand-tinted off-white background (#EFF4F9), large black Inter headline pinned top-left, full-bleed interior photo below reaching the bottom edge. Mirrors the Home AI (id6464476667) listing rhythm: hero photo, joined Upload→Result pair, category chips, phone mockup. Brand blue #2F6FA8 used for chips and the primary action button inside the artwork.",
+  "recommendedFor": "interior design / AI photo redesign",
+  "background": {
+    "type": "solid",
+    "css": "#EFF4F9"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 500,
+    "color": "#111111",
+    "uppercase": false,
+    "align": "left"
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "suggestedAccent": "#2F6FA8",
+  "isGradient": false,
+  "decorationsHint": "No decorations. Pure white background — the interior photograph is the whole visual. Never add gradients, blobs, shadows or stickers behind the artwork.",
+  "samples": [
+    {
+      "verb": "Meet **Roomvi**\n**AI Home**\nDesign",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "Garden & Patio\n**Makeover**",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "Try Different\n**Room Layouts**",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "Interior Design\n**in Any Style**",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "**Clean Up** Messy\nRooms Instantly",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "**Replace Objects**\nEasily with AI",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "Change **Exterior**\nof Your House",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "Try New **Floor**\nDesigns",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    },
+    {
+      "verb": "**Change Colors**\nof Your Walls",
+      "descriptor": "",
+      "text": {
+        "yFraction": 0.045,
+        "titlePx": 150,
+        "subPx": 70
+      }
+    }
+  ]
+}

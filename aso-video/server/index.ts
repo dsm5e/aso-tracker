@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import tiktokTts from './routes/tiktok-tts.js';
+import falTts from './routes/fal-tts.js';
 import whisper from './routes/whisper.js';
 import flux from './routes/flux.js';
 import kling from './routes/kling.js';
@@ -45,6 +46,7 @@ app.get('/api/health', (_req, res) => {
 
 // V1 routes
 app.use(tiktokTts);
+app.use(falTts);
 app.use(whisper);
 
 // V1.5 routes — image-to-video comparison

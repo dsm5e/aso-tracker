@@ -1,0 +1,1815 @@
+{
+  "version": 1,
+  "nodes": [
+    {
+      "id": "hair-model-master",
+      "type": "image-gen",
+      "position": {
+        "x": 40,
+        "y": 40
+      },
+      "data": {
+        "label": "MASTER IDENTITY — generate first",
+        "model": "gpt-image-2",
+        "quality": "medium",
+        "aspectRatio": "9:16",
+        "usage": "character",
+        "identityLock": true,
+        "prompt": "Vertical 9:16 ultra-photorealistic premium beauty identity master based on the approved scan-scene woman. Preserve her recognizable soft-heart/oval face, subtle natural asymmetry, pale green-hazel eyes, faint beauty marks, restrained irregular skin texture, taupe professional makeup and calm neutral expression. Straight champagne-beige blonde baseline hair with a clean center part resting naturally behind the shoulders, neither glamorous nor messy. Large soft key 35 degrees camera-left and above, weak fill, negative fill camera-right with soft cheek/nose/jaw shadows, delicate hair rim and separately lit darker pearl-grey background. Real full-frame 85mm cosmetics photography with restrained retouching. No scan graphics, mathematically perfect symmetry, plastic skin, ring light, jewelry, text, logo, UI or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "done",
+        "cost": 0
+      }
+    },
+    {
+      "id": "hair-frame-01",
+      "type": "image-edit",
+      "position": {
+        "x": 440,
+        "y": 40
+      },
+      "data": {
+        "label": "Hook 01 · home ponytail",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to ordinary loose low at-home ponytail with slightly uneven crown volume, soft face-framing strands and a few controlled flyaways. Set the performance to: preserve the master expression exactly: calm neutral face, relaxed closed lips and direct eye contact; opening phase of a subtle blink. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/hook-01-home-ponytail-v2.png",
+        "status": "done",
+        "timeline": {
+          "start": 0,
+          "duration": 0.9,
+          "track": 0,
+          "role": "video",
+          "label": "Hook 01 · home ponytail",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-02",
+      "type": "image-edit",
+      "position": {
+        "x": 440,
+        "y": 520
+      },
+      "data": {
+        "label": "Hook 02 · wider bob",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to chin-length voluminous blonde bob with outward waves concentrated at cheek level. Set the performance to: subtle three-quarter view toward camera-left, head turned about 12 degrees, eyebrows naturally raised, eyes slightly widened and lips gently parted in a believable surprised doubtful reaction. Accessories and shot-specific additions: ivory off-shoulder knit top and tiny pearl stud earrings. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/hook-02-wider-fal.png",
+        "status": "done",
+        "timeline": {
+          "start": 0.9,
+          "duration": 0.8,
+          "track": 0,
+          "role": "video",
+          "label": "Hook 02 · wider bob",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-03",
+      "type": "image-edit",
+      "position": {
+        "x": 440,
+        "y": 1000
+      },
+      "data": {
+        "label": "Hook 03 · asymmetric",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to asymmetric blonde style with a deep side part, large side-swept wave and the other side tucked behind the ear. Set the performance to: three-quarter view toward camera-right, head turned about 15 degrees and gaze slightly off-camera. Accessories and shot-specific additions: black satin square-neck top and one small sculptural gold earring on the tucked side. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/hook-03-unbalanced-fal.png",
+        "status": "done",
+        "timeline": {
+          "start": 1.7,
+          "duration": 0.8,
+          "track": 0,
+          "role": "video",
+          "label": "Hook 03 · asymmetric",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-04",
+      "type": "image-edit",
+      "position": {
+        "x": 440,
+        "y": 1480
+      },
+      "data": {
+        "label": "Hook 04 · centered layers",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to long symmetrical champagne-blonde face-framing layers with a precise center part and balanced volume. Set the performance to: almost frontal, head angled four degrees and chin slightly lifted with a calm confident expression. Accessories and shot-specific additions: tailored cream blazer over a neutral top and tiny understated gold studs. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/hook-04-centered-fal.png",
+        "status": "done",
+        "timeline": {
+          "start": 2.5,
+          "duration": 0.8,
+          "track": 0,
+          "role": "video",
+          "label": "Hook 04 · centered layers",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-05",
+      "type": "image-edit",
+      "position": {
+        "x": 440,
+        "y": 1960
+      },
+      "data": {
+        "label": "Hook 05 · shorter fringe",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to collarbone-length textured blonde lob with full airy curtain bangs and volume around the temples and cheekbones. Set the performance to: three-quarter toward camera-left with a gentle ten-degree head turn and slight chin drop. Accessories and shot-specific additions: muted dusty-rose boat-neck top and one delicate short gold chain necklace. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/hook-05-shorter-fal-9x16.png",
+        "status": "done",
+        "timeline": {
+          "start": 3.3,
+          "duration": 1.34,
+          "track": 0,
+          "role": "video",
+          "label": "Hook 05 · shorter fringe",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-06",
+      "type": "image-edit",
+      "position": {
+        "x": 440,
+        "y": 2440
+      },
+      "data": {
+        "label": "Scan base · eyes closed",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to sleek straight blonde hair with a precise center part, tucked behind the shoulders. Set the performance to: both eyes naturally and fully closed, calm still face; opening phase before she slowly opens her eyes. Accessories and shot-specific additions: no jewelry; add only the first 5 percent of a thin luminous pink face-scanning contour as two short arcs at the upper forehead and temples with no more than three tracking points; leave the rest of the face clear, with no complete mask and no full mesh. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/scan-06-eyes-closed-mask-start.png",
+        "status": "done",
+        "transitionIn": {
+          "type": "slide-bounce-up",
+          "duration": 0.52
+        },
+        "timeline": {
+          "start": 4.64,
+          "duration": 3,
+          "track": 0,
+          "role": "video",
+          "label": "Scan base · eyes closed",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-07",
+      "type": "image-edit",
+      "position": {
+        "x": 440,
+        "y": 2920
+      },
+      "data": {
+        "label": "Result 01 · textured bob",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to layered textured blonde bob. Set the performance to: high-fashion editorial gaze: relaxed neutral eyebrows, slightly lowered eyelids, quiet direct eye contact, lips only barely parted on a soft controlled exhale and chin lowered a few millimeters; poised and magnetic, with no recognizable surprise or smile. Accessories and shot-specific additions: black strapless top and no jewelry. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/result-01-textured-bob-fashion.png",
+        "status": "done",
+        "timeline": {
+          "start": 7.64,
+          "duration": 0.85,
+          "track": 0,
+          "role": "video",
+          "label": "Result 01 · textured bob",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-08",
+      "type": "image-edit",
+      "position": {
+        "x": 440,
+        "y": 3400
+      },
+      "data": {
+        "label": "Result 02 · textured bob alt",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to layered textured blonde bob with fuller airy volume. Set the performance to: high-fashion three-quarter pose, head tilted eight degrees right, eyes looking through the lens with calm confidence, lips softly closed and one shoulder subtly leading; no smile or reaction face. Accessories and shot-specific additions: ivory square-neck top and small pearl drop earrings. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/result-02-full-bob-fashion.png",
+        "status": "done",
+        "transitionIn": {
+          "type": "mask-wipe",
+          "duration": 0.22
+        },
+        "timeline": {
+          "start": 8.490000000000002,
+          "duration": 1,
+          "track": 0,
+          "role": "video",
+          "label": "Result 02 · textured bob alt",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-09",
+      "type": "image-edit",
+      "position": {
+        "x": 800,
+        "y": 40
+      },
+      "data": {
+        "label": "Result 03 · Hollywood waves",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to long polished blonde Hollywood waves. Set the performance to: editorial side glance with heavy relaxed eyelids and a controlled almost-smile, head angled fifteen degrees left, fingertips already resting on the lower hair; opening phase of slowly brushing the waves. Accessories and shot-specific additions: deep burgundy satin top, delicate minimal gold necklace and tiny matching gold studs. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/result-03-hollywood-waves-fashion.png",
+        "status": "done",
+        "transitionIn": {
+          "type": "mask-wipe",
+          "duration": 0.22
+        },
+        "timeline": {
+          "start": 9.490000000000002,
+          "duration": 1.1,
+          "track": 0,
+          "role": "video",
+          "label": "Result 03 · Hollywood waves",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-10",
+      "type": "image-edit",
+      "position": {
+        "x": 800,
+        "y": 520
+      },
+      "data": {
+        "label": "Result 04 · sleek straight",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to sleek straight blonde hair. Set the performance to: serene powerful runway expression, eyes steady and slightly narrowed, lips relaxed, chin lifted a few millimeters; opening phase of a slow head turn toward camera-right. Accessories and shot-specific additions: structured white blazer and no jewelry. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/result-04-sleek-fashion.png",
+        "status": "done",
+        "transitionIn": {
+          "type": "mask-wipe",
+          "duration": 0.22
+        },
+        "timeline": {
+          "start": 10.59,
+          "duration": 0.85,
+          "track": 0,
+          "role": "video",
+          "label": "Result 04 · sleek straight",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-11",
+      "type": "image-edit",
+      "position": {
+        "x": 800,
+        "y": 1000
+      },
+      "data": {
+        "label": "Result 05 · curly French bob",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to short curly blonde French bob with soft fringe. Set the performance to: soft fashion-campaign gaze slightly past camera, relaxed eyelids, lips faintly parted on a quiet exhale, head tilted slightly right and fingertips touching one curl; opening phase of gently lifting the curl, no broad smile. Accessories and shot-specific additions: dusty-blue boat-neck top, small thin polished gold hoops and no necklace. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/result-05-curly-bob-fashion.png",
+        "status": "done",
+        "transitionIn": {
+          "type": "mask-wipe",
+          "duration": 0.22
+        },
+        "timeline": {
+          "start": 11.440000000000001,
+          "duration": 0.8,
+          "track": 0,
+          "role": "video",
+          "label": "Result 05 · curly French bob",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-12",
+      "type": "image-edit",
+      "position": {
+        "x": 800,
+        "y": 1480
+      },
+      "data": {
+        "label": "Drum 01",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to short curly French bob. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 12.240000000000002,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 01",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-13",
+      "type": "image-edit",
+      "position": {
+        "x": 800,
+        "y": 1960
+      },
+      "data": {
+        "label": "Drum 02",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to layered shoulder-length brunette hair. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 12.440000000000001,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 02",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-14",
+      "type": "image-edit",
+      "position": {
+        "x": 800,
+        "y": 2440
+      },
+      "data": {
+        "label": "Drum 03",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to sleek high ponytail. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 12.64,
+          "duration": 0.27,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 03",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-15",
+      "type": "image-edit",
+      "position": {
+        "x": 800,
+        "y": 2920
+      },
+      "data": {
+        "label": "Drum 04",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to straight bob with blunt bangs. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 12.91,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 04",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-16",
+      "type": "image-edit",
+      "position": {
+        "x": 800,
+        "y": 3400
+      },
+      "data": {
+        "label": "Drum 05",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to long loose brunette curls. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 13.11,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 05",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-17",
+      "type": "image-edit",
+      "position": {
+        "x": 1160,
+        "y": 40
+      },
+      "data": {
+        "label": "Drum 06",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to smooth elegant updo. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 13.310000000000002,
+          "duration": 0.17,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 06",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-18",
+      "type": "image-edit",
+      "position": {
+        "x": 1160,
+        "y": 520
+      },
+      "data": {
+        "label": "Drum 07",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to short pixie cut. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 13.48,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 07",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-19",
+      "type": "image-edit",
+      "position": {
+        "x": 1160,
+        "y": 1000
+      },
+      "data": {
+        "label": "Drum 08",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to layered textured bob. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 13.68,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 08",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-20",
+      "type": "image-edit",
+      "position": {
+        "x": 1160,
+        "y": 1480
+      },
+      "data": {
+        "label": "Drum 09",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to long center-parted layers. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 13.879999999999999,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 09",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-21",
+      "type": "image-edit",
+      "position": {
+        "x": 1160,
+        "y": 1960
+      },
+      "data": {
+        "label": "Drum 10",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to curly French bob. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 14.080000000000002,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 10",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-22",
+      "type": "image-edit",
+      "position": {
+        "x": 1160,
+        "y": 2440
+      },
+      "data": {
+        "label": "Drum 11",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to sleek straight hair. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 14.280000000000001,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 11",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-23",
+      "type": "image-edit",
+      "position": {
+        "x": 1160,
+        "y": 2920
+      },
+      "data": {
+        "label": "Drum 12",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to soft Hollywood waves. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 14.48,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 12",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-24",
+      "type": "image-edit",
+      "position": {
+        "x": 1160,
+        "y": 3400
+      },
+      "data": {
+        "label": "Drum 13",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to messy high bun. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 14.68,
+          "duration": 0.16,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 13",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-25",
+      "type": "image-edit",
+      "position": {
+        "x": 1520,
+        "y": 40
+      },
+      "data": {
+        "label": "Drum 14",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to long waves with curtain bangs. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 14.84,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 14",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-26",
+      "type": "image-edit",
+      "position": {
+        "x": 1520,
+        "y": 520
+      },
+      "data": {
+        "label": "Drum 15",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to jaw-length rounded bob. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 15.04,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 15",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-27",
+      "type": "image-edit",
+      "position": {
+        "x": 1520,
+        "y": 1000
+      },
+      "data": {
+        "label": "Drum 16",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to high ponytail with face-framing strands. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 15.239999999999998,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 16",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-28",
+      "type": "image-edit",
+      "position": {
+        "x": 1520,
+        "y": 1480
+      },
+      "data": {
+        "label": "Drum 17",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to long glossy loose curls. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 15.439999999999998,
+          "duration": 0.2,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 17",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-29",
+      "type": "image-edit",
+      "position": {
+        "x": 1520,
+        "y": 1960
+      },
+      "data": {
+        "label": "Drum 18",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to straight lob with wispy bangs. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 15.64,
+          "duration": 0.17,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 18",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-30",
+      "type": "image-edit",
+      "position": {
+        "x": 1520,
+        "y": 2440
+      },
+      "data": {
+        "label": "Drum 19",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to sleek low bun. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 15.809999999999999,
+          "duration": 0.23,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 19",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-frame-31",
+      "type": "image-edit",
+      "position": {
+        "x": 1520,
+        "y": 2920
+      },
+      "data": {
+        "label": "Drum 20",
+        "usage": "asset",
+        "sourceIdentityNode": "hair-model-master",
+        "model": "nano-banana-2-edit",
+        "prompt": "Create the exact starting still for this short video shot. Change the hairstyle to layered textured bob. Set the performance to: calm attractive expression, natural head angle, prepared for a tiny real-time motion. Accessories and shot-specific additions: no jewelry or additional objects. Preserve the exact same adult blonde woman's identity, subtle natural facial asymmetry, realistic skin texture, body, wardrobe, camera angle, crop, dimensional camera-left beauty key, weak fill, camera-right negative fill, hair rim and darker pearl-grey background. Keep wardrobe and identity perfectly consistent. The pose and any scan graphic must already be the natural first phase of the requested motion so the animation model can continue without snapping from an empty or neutral frame. No text, logos, interface or watermark.",
+        "outputUrl": "/video/hair-app/model-master-v7-scan-identity.png",
+        "status": "idle",
+        "timeline": {
+          "start": 16.04,
+          "duration": 0.17,
+          "track": 0,
+          "role": "video",
+          "label": "Drum 20",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-motion-01",
+      "type": "video-gen",
+      "position": {
+        "x": 1960,
+        "y": 40
+      },
+      "data": {
+        "label": "ANIMATE · Hook 01 · home ponytail",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Natural fashion-film micro-motion: one soft blink, a quiet exhale and an almost imperceptible head settle. Keep identity, hair and wardrobe stable; real-time speed, locked camera.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-02",
+      "type": "video-gen",
+      "position": {
+        "x": 1960,
+        "y": 520
+      },
+      "data": {
+        "label": "ANIMATE · Hook 02 · wider bob",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Editorial beauty motion: eyes return calmly to the lens, lips close softly after a breath, tiny shoulder settle. No surprise, no talking, no identity or hairstyle drift.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-03",
+      "type": "video-gen",
+      "position": {
+        "x": 1960,
+        "y": 1000
+      },
+      "data": {
+        "label": "ANIMATE · Hook 03 · asymmetric",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Fashion three-quarter pose: gaze glides back toward camera while the side-swept hair moves only slightly from inertia. Controlled real-time movement, locked camera.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-04",
+      "type": "video-gen",
+      "position": {
+        "x": 1960,
+        "y": 1480
+      },
+      "data": {
+        "label": "ANIMATE · Hook 04 · centered layers",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Runway micro-performance: chin lifts a few millimeters, one slow blink and subtle breathing. Symmetrical layers remain stable, no morphing.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-05",
+      "type": "video-gen",
+      "position": {
+        "x": 1960,
+        "y": 1960
+      },
+      "data": {
+        "label": "ANIMATE · Hook 05 · shorter fringe",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Editorial close-up: a tiny head turn finishes and curtain fringe settles naturally. Quiet exhale, heavy relaxed gaze, no smile or face change.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-06",
+      "type": "video-gen",
+      "position": {
+        "x": 1960,
+        "y": 2440
+      },
+      "data": {
+        "label": "ANIMATE · Scan base · eyes closed",
+        "model": "kling",
+        "mode": "image",
+        "resolution": "auto",
+        "prompt": "Animate this exact source portrait with strict identity and frame preservation. Locked camera, absolutely no zoom, pan, tilt, reframing, crop change, background change, hairstyle change, wardrobe change, facial reshaping, beauty retouching, morphing or added cinematic effects. She begins with both eyes closed and slowly opens them with only subtle natural breathing. Continue the existing tiny pink scan arcs: a thin luminous pink facial-tracking web grows smoothly across the forehead, temples, cheeks, nose and jaw until it wraps the entire face as a precise delicate connected mesh. The web is the only graphic animation. Keep the original face visible beneath it. Real-time speed, no cuts, no flashes, no particles, no text.",
+        "duration": 3,
+        "audio": false,
+        "disabled": false,
+        "requiresApproval": true,
+        "approvedImageUrl": "/video/hair-app/scan-06-eyes-closed-mask-start.png",
+        "sourceImageUrl": "/video/hair-app/scan-06-eyes-closed-mask-start.png",
+        "outputUrl": "/output/videos/kling-image-1785252125638.mp4",
+        "cost": 0.336,
+        "status": "done"
+      }
+    },
+    {
+      "id": "hair-motion-07",
+      "type": "video-gen",
+      "position": {
+        "x": 2340,
+        "y": 40
+      },
+      "data": {
+        "label": "ANIMATE · Result 01 · textured bob",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "High-fashion beauty motion: quiet direct gaze, one soft blink and controlled exhale; textured bob moves minimally. No reaction face.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-08",
+      "type": "video-gen",
+      "position": {
+        "x": 2340,
+        "y": 520
+      },
+      "data": {
+        "label": "ANIMATE · Result 02 · textured bob alt",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Three-quarter fashion pose with a subtle shoulder lead and a slow eye movement through the lens. Fuller bob breathes slightly, no smile.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-09",
+      "type": "video-gen",
+      "position": {
+        "x": 2340,
+        "y": 1000
+      },
+      "data": {
+        "label": "ANIMATE · Result 03 · Hollywood waves",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Slow editorial side glance while fingertips brush the lower Hollywood waves once. Hair follows with realistic weight, real-time speed.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-10",
+      "type": "video-gen",
+      "position": {
+        "x": 2340,
+        "y": 1480
+      },
+      "data": {
+        "label": "ANIMATE · Result 04 · sleek straight",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Serene runway motion: slow small head turn toward camera-right, steady eyes and barely visible breathing. Sleek hair remains straight and stable.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-motion-11",
+      "type": "video-gen",
+      "position": {
+        "x": 2340,
+        "y": 1960
+      },
+      "data": {
+        "label": "ANIMATE · Result 05 · curly French bob",
+        "model": "happy-horse",
+        "mode": "image",
+        "resolution": "720p",
+        "prompt": "Soft campaign gaze past camera while fingertips gently lift and release one curl. Curly bob bounces once with realistic weight; no broad smile.",
+        "duration": 3,
+        "audio": false,
+        "disabled": true,
+        "requiresApproval": true,
+        "approvedImageUrl": null,
+        "sourceImageUrl": null,
+        "status": "idle"
+      }
+    },
+    {
+      "id": "hair-face-scan-ui",
+      "type": "reference-image",
+      "position": {
+        "x": 1880,
+        "y": 40
+      },
+      "data": {
+        "label": "MOTION · cyan scan + 3D mask",
+        "usage": "asset",
+        "motionDesign": {
+          "kind": "face-scan",
+          "sourceUrl": "/output/videos/kling-image-1785252125638.mp4"
+        },
+        "timeline": {
+          "start": 4.64,
+          "duration": 3,
+          "track": 2,
+          "role": "overlay",
+          "label": "Cyan face scan motion",
+          "layout": {
+            "x": 4,
+            "y": 5,
+            "width": 92,
+            "height": 72,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-selector-ui",
+      "type": "reference-image",
+      "position": {
+        "x": 1880,
+        "y": 300
+      },
+      "data": {
+        "label": "MOTION · thumbnail selector ribbon",
+        "usage": "asset",
+        "motionDesign": {
+          "kind": "selector-ribbon",
+          "sourceUrl": "/video/hair-app/model-master-v7-scan-identity.png"
+        },
+        "timeline": {
+          "start": 12.240000000000002,
+          "duration": 3.97,
+          "track": 2,
+          "role": "overlay",
+          "label": "Scrolling hairstyle ribbon",
+          "layout": {
+            "x": 7,
+            "y": 62,
+            "width": 86,
+            "height": 17,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-hairstyle-ui",
+      "type": "reference-image",
+      "position": {
+        "x": 1880,
+        "y": 430
+      },
+      "data": {
+        "label": "MOTION · hairstyle title + result UI",
+        "usage": "asset",
+        "motionDesign": {
+          "kind": "hairstyle-ui"
+        },
+        "timeline": {
+          "start": 7.64,
+          "duration": 4.6,
+          "track": 2,
+          "role": "overlay",
+          "label": "Hairstyle names + Soft Heart UI",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-hook-captions",
+      "type": "captions",
+      "position": {
+        "x": 1880,
+        "y": 560
+      },
+      "data": {
+        "label": "TEXT · hook captions",
+        "motionDesign": {
+          "kind": "hook-captions"
+        },
+        "preset": "capcut-classic",
+        "fontSize": 118,
+        "marginV": 410,
+        "status": "idle",
+        "timeline": {
+          "start": 0,
+          "duration": 4.64,
+          "track": 3,
+          "role": "overlay",
+          "label": "Word-by-word hook captions",
+          "layout": {
+            "x": 12,
+            "y": 39,
+            "width": 76,
+            "height": 18,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-voiceover",
+      "type": "tts-voice",
+      "position": {
+        "x": 1880,
+        "y": 820
+      },
+      "data": {
+        "label": "AUDIO · TTS voiceover",
+        "text": "[confidently] Ugly? [softly] You just haven’t found the right hairstyle for your face shape yet. [warmly] With Hair App, simply scan your face to discover your face shape... then instantly try on hairstyles recommended just for you. [playfully] In seconds, you’ll find the hairstyle that suits you best.",
+        "voice": "fal-elevenlabs/Aria",
+        "status": "done",
+        "outputUrl": "/output/audio/hair-app-eleven-aria-v1.mp3",
+        "cost": 0.0303,
+        "timeline": {
+          "start": 0,
+          "duration": 16.16,
+          "track": 4,
+          "role": "audio",
+          "label": "TTS voiceover · ElevenLabs Aria"
+        }
+      }
+    },
+    {
+      "id": "hair-drum-sfx",
+      "type": "reference-video",
+      "position": {
+        "x": 1880,
+        "y": 1080
+      },
+      "data": {
+        "label": "AUDIO · spinning drum SFX",
+        "usage": "asset",
+        "url": "/output/audio/hair-drum-ratchet.wav",
+        "timeline": {
+          "start": 12.240000000000002,
+          "duration": 3.97,
+          "track": 4,
+          "role": "audio",
+          "label": "Spinning drum / ratchet"
+        }
+      }
+    },
+    {
+      "id": "hair-fashion-bgm",
+      "type": "reference-video",
+      "position": {
+        "x": 1880,
+        "y": 950
+      },
+      "data": {
+        "label": "BGM · Techno Fest Vibes — A. M.",
+        "usage": "asset",
+        "url": "/output/audio/hair-techno-fest-bgm.mp3",
+        "volume": 0.18,
+        "source": "Mixkit Stock Music Free License",
+        "timeline": {
+          "start": 0,
+          "duration": 18.209999999999997,
+          "track": 4,
+          "role": "audio",
+          "label": "BGM · Techno Fest Vibes (instrumental EDM)"
+        }
+      }
+    },
+    {
+      "id": "hair-cut-clicks",
+      "type": "reference-video",
+      "position": {
+        "x": 1880,
+        "y": 1210
+      },
+      "data": {
+        "label": "AUDIO · hairstyle cut clicks",
+        "usage": "asset",
+        "url": "/output/audio/hair-cut-clicks.wav",
+        "timeline": {
+          "start": 7.64,
+          "duration": 4.6,
+          "track": 4,
+          "role": "audio",
+          "label": "Click SFX on hard cuts"
+        }
+      }
+    },
+    {
+      "id": "hair-end-card",
+      "type": "end-card",
+      "position": {
+        "x": 2240,
+        "y": 40
+      },
+      "data": {
+        "label": "END CARD · Hair App",
+        "duration": 2,
+        "cta": "Download now",
+        "subtitle": "Find the hairstyle made for you",
+        "brand": "Hair App",
+        "status": "idle",
+        "motionDesign": {
+          "kind": "store-end-card",
+          "sourceUrl": "/video/hair-app/model-master-v7-scan-identity.png"
+        },
+        "timeline": {
+          "start": 16.209999999999997,
+          "duration": 2,
+          "track": 1,
+          "role": "video",
+          "label": "Store end card",
+          "layout": {
+            "x": 0,
+            "y": 0,
+            "width": 100,
+            "height": 100,
+            "opacity": 1
+          }
+        }
+      }
+    },
+    {
+      "id": "hair-output",
+      "type": "output",
+      "position": {
+        "x": 2600,
+        "y": 40
+      },
+      "data": {
+        "label": "FINAL · Hair App 18.209999999999997s"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "hair-master-to-frame-01",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-01",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-02",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-02",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-03",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-03",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-04",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-04",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-05",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-05",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-06",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-06",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-07",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-07",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-08",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-08",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-09",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-09",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-10",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-10",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-11",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-11",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-12",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-12",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-13",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-13",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-14",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-14",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-15",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-15",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-16",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-16",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-17",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-17",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-18",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-18",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-19",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-19",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-20",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-20",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-21",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-21",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-22",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-22",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-23",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-23",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-24",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-24",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-25",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-25",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-26",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-26",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-27",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-27",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-28",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-28",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-29",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-29",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-30",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-30",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-master-to-frame-31",
+      "source": "hair-model-master",
+      "sourceHandle": "image",
+      "target": "hair-frame-31",
+      "targetHandle": "image"
+    },
+    {
+      "id": "hair-frame-to-motion-01",
+      "source": "hair-frame-01",
+      "sourceHandle": "image",
+      "target": "hair-motion-01",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-02",
+      "source": "hair-frame-02",
+      "sourceHandle": "image",
+      "target": "hair-motion-02",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-03",
+      "source": "hair-frame-03",
+      "sourceHandle": "image",
+      "target": "hair-motion-03",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-04",
+      "source": "hair-frame-04",
+      "sourceHandle": "image",
+      "target": "hair-motion-04",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-05",
+      "source": "hair-frame-05",
+      "sourceHandle": "image",
+      "target": "hair-motion-05",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-06",
+      "source": "hair-frame-06",
+      "sourceHandle": "image",
+      "target": "hair-motion-06",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-07",
+      "source": "hair-frame-07",
+      "sourceHandle": "image",
+      "target": "hair-motion-07",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-08",
+      "source": "hair-frame-08",
+      "sourceHandle": "image",
+      "target": "hair-motion-08",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-09",
+      "source": "hair-frame-09",
+      "sourceHandle": "image",
+      "target": "hair-motion-09",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-10",
+      "source": "hair-frame-10",
+      "sourceHandle": "image",
+      "target": "hair-motion-10",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-frame-to-motion-11",
+      "source": "hair-frame-11",
+      "sourceHandle": "image",
+      "target": "hair-motion-11",
+      "targetHandle": "image_url"
+    },
+    {
+      "id": "hair-output-edge",
+      "source": "hair-end-card",
+      "sourceHandle": "video",
+      "target": "hair-output",
+      "targetHandle": "video"
+    }
+  ],
+  "meta": {
+    "updatedAt": 0,
+    "totalCost": 0,
+    "timeline": {
+      "duration": 18.209999999999997,
+      "fps": 30,
+      "width": 1080,
+      "height": 1920
+    },
+    "strategy": "image-first; hard cuts; motion overlays; animate only after picture lock"
+  }
+}

@@ -74,6 +74,9 @@ export interface Screenshot {
   filename: string;
   /** Which device family this slot belongs to. 'iphone' by default. */
   device?: 'iphone' | 'ipad';
+  /** Optional premium hardware overlay. `titanium` keeps the simulator capture
+   * as the real screen layer and draws a photorealistic iPhone frame above it. */
+  deviceFrameStyle?: 'clay' | 'titanium' | 'frameless';
   /** Source PNG URL from simulator (object URL or absolute path) */
   sourceUrl: string | null;
   /** Original uploaded bitmap dimensions, used to flag device-model mismatches. */
@@ -82,7 +85,71 @@ export interface Screenshot {
   /** How to compose sourceUrl. `device` puts an app screen inside the generated
    * phone; `full-bleed` treats an already-designed preview as the final artwork
    * and only layers the editable headline over it. */
-  sourceLayout?: 'device' | 'full-bleed';
+  sourceLayout?: 'device' | 'full-bleed' | 'arch' | 'before-after';
+  /** `arch` layout (Roomvi): фото сверху, белая арка-карточка с акцентной
+   *  каёмкой, снизу диагональные полосы «одна комната — разные стили».
+   *  Текст рисует ШТАТНЫЙ оверлей заголовка, поэтому шрифт/размер/цвет/
+   *  выравнивание берутся из инспектора, как у всех остальных макетов. */
+  archHeroUrl?: string;
+  archBands?: Array<{ url: string; label: string }>;
+  archTopFrac?: number;      // где начинается арка (0..1 от высоты)
+  archStripTopFrac?: number; // где начинаются полосы
+  archPad?: number;          // серое поле по бокам и снизу, px
+  archRim?: number;          // белая каёмка, px
+  archSkew?: number;         // наклон диагоналей, % ширины
+  archZoom?: number;         // зум полос
+  archAccent?: string;       // цвет верхней дуги
+
+  /** `before-after`: два кадра одной сцены со швом и ручкой. Заголовок и здесь
+   *  рисует штатный оверлей, бейдж с лаврами опционален. */
+  baBeforeUrl?: string;
+  baAfterUrl?: string;
+  baSplit?: number;
+  baHandleFrac?: number;
+  badgeLaurelLeftUrl?: string;
+  badgeLaurelRightUrl?: string;
+  badgeLine1?: string;
+  badgeLine2?: string;
+  badgeStars?: boolean;
+  badgeTopFrac?: number;
+  badgeLeftFrac?: number;
+  /** Высота затемнения под заголовком на `before-after`, доля высоты. */
+  baScrimFrac?: number;
+
+  /** Выравнивание заголовка на конкретном слоте. Без него берётся из пресета,
+   *  а он общий на всю серию — из-за чего мокап-слоты наследовали left. */
+  textAlignOverride?: 'left' | 'center' | 'right';
+
+  /** Плашки-стикеры вокруг устройства: наклонённые карточки с подписью, как в
+   *  листингах, где вокруг телефона «наклеены» ярлыки фич. Заполняют пустоту
+   *  на разреженных экранах и называют действие словами, которых в интерфейсе
+   *  может не быть. Координаты — доли канваса, чтобы не зависеть от размера. */
+  /** Срез нижней части снимка в frameless-карточке, доля высоты (0…0.5). */
+  screenCropBottom?: number;
+
+  stickers?: Array<{
+    /** Текст плашки. Пусто — если это карточка с картинкой. */
+    text?: string;
+    /** Картинка внутри карточки (вырезанный объект на белом). */
+    imageUrl?: string;
+    /** Несколько картинок в ОДНОЙ белой подложке, в ряд. Отдельные плашки на
+     *  один ряд налезают на содержимое экрана, общая подложка держит их
+     *  как единый блок. */
+    imageUrls?: string[];
+    /** Подписи под картинками ряда, по одной на кадр. */
+    imageCaptions?: string[];
+    /** Стрелка между кадрами ряда: пара читается как «из этого — в это». */
+    rowArrow?: boolean;
+    xFrac: number;
+    yFrac: number;
+    rotate?: number;
+    tone?: 'light' | 'accent';
+    /** Ширина карточки в долях канваса. Для промпт-плашки ставят ~0.8. */
+    widthFrac?: number;
+    /** Кегль текста; по умолчанию 54. */
+    fontPx?: number;
+    align?: 'left' | 'center';
+  }>;
   /** Transform for an already-designed full-bleed preview. */
   sourceScale?: number;
   sourceOffsetX?: number;
@@ -112,6 +179,24 @@ export interface Screenshot {
    *  "+ invite your partner — free"). Competitor formula = footer microcopy.
    *  Empty/undefined = none. */
   footer?: string;
+  /** MedScan-style conversion overlays. These remain live text above the
+   *  generated textless hero art, so every locale can reuse one AI render. */
+  annotation?: string;
+  proofText?: string;
+  proofAttribution?: string;
+  trustStrip?: string;
+  /** Optional live copy rendered into reserved blank regions inside a
+   *  textless full-bleed hero phone. These strings stay independently
+   *  localizable instead of being baked into the generated artwork. */
+  phoneBrand?: string;
+  phoneTitle?: string;
+  phoneSubtitle?: string;
+  phoneToggleLeft?: string;
+  phoneToggleRight?: string;
+  /** Named overlay geometry for generated art with fixed reserved regions. */
+  heroTextLayout?: 'elara' | 'father-editorial' | 'father-product-localized' | 'cpp-centered' | 'cpp-editorial';
+  /** Optional geometry variant for live copy inside a generated Hero phone. */
+  heroPhoneOverlayLayout?: 'elara-soft-v4';
   /** Color for an accent word in the headline verb. Words wrapped in
    *  *asterisks* render in this color (amma/HiMommy formula). Falls back to
    *  the preset's suggestedAccent when unset. */
@@ -141,6 +226,10 @@ export interface Screenshot {
   textYFraction?: number;
   titlePx?: number;
   subPx?: number;
+  /** Explicit bottom edge of the headline safe zone on full-bleed art. */
+  headlineSafeBottomFraction?: number;
+  /** Vertically center localized copy inside the bounded headline safe zone. */
+  headlineVerticalAlign?: 'start' | 'center';
   /** Screenshots sharing the same groupId mirror the same sourceUrl (cross-slot pair). */
   groupId?: string;
   /** Per-regular-slot toggle for the designer-style "feature callout" — a
@@ -176,10 +265,22 @@ export interface LocaleEntry {
   translations: Record<string, Headline>;
   /** Pill / badge translations keyed by screenshot id (separate from headline). */
   pillTranslations?: Record<string, string>;
-  /** Other localizable HTML-overlay strings per screenshot id: the footer
-   *  microcopy capsule + the V-mockup device captions. Baked AI-image text is
-   *  NOT here (it lives in the generated PNG). */
-  extraTranslations?: Record<string, { footer?: string; frontLabel?: string; backLabel?: string }>;
+  /** Other localizable HTML-overlay strings per screenshot id. Baked AI-image
+   *  text is intentionally excluded — hero art stays language-neutral. */
+  extraTranslations?: Record<string, {
+    footer?: string;
+    frontLabel?: string;
+    backLabel?: string;
+    annotation?: string;
+    proofText?: string;
+    proofAttribution?: string;
+    trustStrip?: string;
+    phoneBrand?: string;
+    phoneTitle?: string;
+    phoneSubtitle?: string;
+    phoneToggleLeft?: string;
+    phoneToggleRight?: string;
+  }>;
   /** Per-slot text adjustments specific to this locale. Lets the user nudge
    *  position / resize the headline for languages where the translation runs
    *  longer (German) or shorter (CJK) than the source. Renderer adds these
@@ -190,6 +291,13 @@ export interface LocaleEntry {
     titlePx?: number;
     subPx?: number;
   }>;
+  /** Optional locale-specific finished-preview asset per slot. Used when the
+   *  source gallery already exists in every language (for example, Elara 2.1
+   *  frames 2–8) while the first hero remains one textless shared scaffold. */
+  sourceOverrides?: Record<string, string>;
+  /** Locale-specific rear screen for a two-device composition. Kept separate
+   *  from sourceOverrides so both phones can show native in-app UI. */
+  secondaryOverrides?: Record<string, string>;
   /** Optional per-locale font override (script→font auto, can be manual) */
   fontOverride?: string;
   aiTranslated: boolean;
@@ -211,6 +319,9 @@ interface StudioState {
    *  it — lets me drive Setup → Style → Editor → … so the user watches the
    *  steps switch. Ephemeral. */
   agentNav: string | null;
+  /** One-shot API command consumed by an open Studio tab. The tab renders the
+   *  slot's exact DOM scaffold, captures it, then runs the normal AI Polish. */
+  agentPolishCommand: { requestId: string; slotId: string } | null;
 
   // Catalog
   selectedPresetId: string | null;
@@ -294,7 +405,15 @@ interface StudioState {
   removeLocale: (id: string) => void;
   setLocaleTranslations: (id: string, translations: Record<string, Headline>) => void;
   setLocalePillTranslations: (id: string, pills: Record<string, string>) => void;
-  setLocaleExtraTranslations: (id: string, extra: Record<string, { footer?: string; frontLabel?: string; backLabel?: string }>) => void;
+  setLocaleExtraTranslations: (id: string, extra: Record<string, {
+    footer?: string;
+    frontLabel?: string;
+    backLabel?: string;
+    annotation?: string;
+    proofText?: string;
+    proofAttribution?: string;
+    trustStrip?: string;
+  }>) => void;
   updateLocaleSlotAdjustment: (
     localeId: string,
     slotId: string,
@@ -433,6 +552,7 @@ const initial: StudioData = {
   iphoneModel: DEFAULT_IPHONE_MODEL,
   outputFolder: '',
   agentNav: null as string | null,
+  agentPolishCommand: null as { requestId: string; slotId: string } | null,
   selectedPresetId: null as string | null,
   catalogFilter: 'all' as const,
   screenshots: [] as Screenshot[],

@@ -58,6 +58,7 @@ export const COLORS: Record<string, string> = {
   'reference-image': '#7C3AED',
   'reference-video': '#7C3AED',
   'flux-image': '#F97316',
+  'image-gen': '#F97316',
   'video-gen': '#3B82F6',
   'tts-voice': '#10B981',
   captions: '#EC4899',
@@ -126,6 +127,7 @@ export interface NodeShellProps {
 }
 
 export function NodeShell({ id, type, title, status, inputs = [], outputs = [], children, onRun, runLabel, progress, stage, wide, accentColor, blocked }: NodeShellProps) {
+  void wide;
   const [open, setOpen] = useState(true);
   const headerColor = accentColor ?? COLORS[type] ?? '#444';
 

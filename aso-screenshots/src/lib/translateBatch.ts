@@ -37,10 +37,41 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
     }
     st.setLocaleTranslations(localeCode, translationsRec);
     // Footer capsule + V captions — copy originals too.
-    const extraRec: Record<string, { footer?: string; frontLabel?: string; backLabel?: string }> = {};
+    const extraRec: Record<string, {
+      footer?: string;
+      frontLabel?: string;
+      backLabel?: string;
+      annotation?: string;
+      proofText?: string;
+      proofAttribution?: string;
+      trustStrip?: string;
+      phoneBrand?: string;
+      phoneTitle?: string;
+      phoneSubtitle?: string;
+      phoneToggleLeft?: string;
+      phoneToggleRight?: string;
+    }> = {};
     for (const s of slots) {
-      if (s.footer || s.frontLabel || s.backLabel) {
-        extraRec[s.id] = { footer: s.footer, frontLabel: s.frontLabel, backLabel: s.backLabel };
+      if (
+        s.footer || s.frontLabel || s.backLabel || s.annotation ||
+        s.proofText || s.proofAttribution || s.trustStrip ||
+        s.phoneBrand || s.phoneTitle || s.phoneSubtitle ||
+        s.phoneToggleLeft || s.phoneToggleRight
+      ) {
+        extraRec[s.id] = {
+          footer: s.footer,
+          frontLabel: s.frontLabel,
+          backLabel: s.backLabel,
+          annotation: s.annotation,
+          proofText: s.proofText,
+          proofAttribution: s.proofAttribution,
+          trustStrip: s.trustStrip,
+          phoneBrand: s.phoneBrand,
+          phoneTitle: s.phoneTitle,
+          phoneSubtitle: s.phoneSubtitle,
+          phoneToggleLeft: s.phoneToggleLeft,
+          phoneToggleRight: s.phoneToggleRight,
+        };
       }
     }
     st.setLocaleExtraTranslations?.(localeCode, extraRec);
@@ -58,6 +89,15 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
     if (s.footer) items.push({ key: `${s.id}:footer`, text: s.footer });
     if (s.frontLabel) items.push({ key: `${s.id}:frontLabel`, text: s.frontLabel });
     if (s.backLabel) items.push({ key: `${s.id}:backLabel`, text: s.backLabel });
+    if (s.annotation) items.push({ key: `${s.id}:annotation`, text: s.annotation });
+    if (s.proofText) items.push({ key: `${s.id}:proofText`, text: s.proofText });
+    if (s.proofAttribution) items.push({ key: `${s.id}:proofAttribution`, text: s.proofAttribution });
+    if (s.trustStrip) items.push({ key: `${s.id}:trustStrip`, text: s.trustStrip });
+    if (s.phoneBrand) items.push({ key: `${s.id}:phoneBrand`, text: s.phoneBrand });
+    if (s.phoneTitle) items.push({ key: `${s.id}:phoneTitle`, text: s.phoneTitle });
+    if (s.phoneSubtitle) items.push({ key: `${s.id}:phoneSubtitle`, text: s.phoneSubtitle });
+    if (s.phoneToggleLeft) items.push({ key: `${s.id}:phoneToggleLeft`, text: s.phoneToggleLeft });
+    if (s.phoneToggleRight) items.push({ key: `${s.id}:phoneToggleRight`, text: s.phoneToggleRight });
   }
   if (items.length === 0) return { translated: 0, failed: 0 };
 
@@ -80,13 +120,39 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
   const data = (await r.json()) as TranslateResponse;
   // Group results back by slot id.
   const perSlot: Record<string, Headline & { pill?: string }> = {};
-  const extraSlot: Record<string, { footer?: string; frontLabel?: string; backLabel?: string }> = {};
+  const extraSlot: Record<string, {
+    footer?: string;
+    frontLabel?: string;
+    backLabel?: string;
+    annotation?: string;
+    proofText?: string;
+    proofAttribution?: string;
+    trustStrip?: string;
+    phoneBrand?: string;
+    phoneTitle?: string;
+    phoneSubtitle?: string;
+    phoneToggleLeft?: string;
+    phoneToggleRight?: string;
+  }> = {};
   for (const it of data.items) {
     const [slotId, field] = it.key.split(':');
     if (!slotId || !field) continue;
-    if (field === 'footer' || field === 'frontLabel' || field === 'backLabel') {
+    if (
+      field === 'footer' ||
+      field === 'frontLabel' ||
+      field === 'backLabel' ||
+      field === 'annotation' ||
+      field === 'proofText' ||
+      field === 'proofAttribution' ||
+      field === 'trustStrip' ||
+      field === 'phoneBrand' ||
+      field === 'phoneTitle' ||
+      field === 'phoneSubtitle' ||
+      field === 'phoneToggleLeft' ||
+      field === 'phoneToggleRight'
+    ) {
       extraSlot[slotId] = extraSlot[slotId] ?? {};
-      extraSlot[slotId][field] = it.translation;
+      extraSlot[slotId][field as keyof (typeof extraSlot)[string]] = it.translation;
       continue;
     }
     perSlot[slotId] = perSlot[slotId] ?? { verb: '', descriptor: '', subhead: '' };

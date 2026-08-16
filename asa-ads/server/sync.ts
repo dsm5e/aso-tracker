@@ -46,6 +46,29 @@ export async function syncCampaigns(asa: AsaClient): Promise<RawCampaign[]> {
   `);
   const ts = now();
   db.transaction(() => {
+    // Apple omits permanently deleted campaigns from listCampaigns(). Keep
+    // their historical delivery rows, but never leave a vanished campaign
+    // looking ENABLED in the local read model.
+    const liveIds = campaigns.map((campaign) => campaign.id);
+    if (liveIds.length) {
+      const placeholders = liveIds.map(() => "?").join(",");
+      db.prepare(`
+        UPDATE asa_campaigns
+        SET status = 'DELETED',
+            serving_status = 'NOT_RUNNING',
+            display_status = 'DELETED',
+            synced_at = ?
+        WHERE id NOT IN (${placeholders})
+      `).run(ts, ...liveIds);
+    } else {
+      db.prepare(`
+        UPDATE asa_campaigns
+        SET status = 'DELETED',
+            serving_status = 'NOT_RUNNING',
+            display_status = 'DELETED',
+            synced_at = ?
+      `).run(ts);
+    }
     for (const c of campaigns) {
       upsert.run({
         id: c.id,

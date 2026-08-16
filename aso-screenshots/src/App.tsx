@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AppShell } from './AppShell';
 import { SetupScreen } from './screens/Setup';
@@ -11,6 +11,7 @@ import { PPOScreen } from './screens/PPO';
 import { IconGeneratorScreen } from './screens/IconGenerator';
 import { AgentCursor } from './components/AgentCursor';
 import { useStudio } from './state/studio';
+import { polishSlot } from './lib/polishBatch';
 
 // BASE_URL is '/studio/' when proxied via Keywords origin, '/' for direct access.
 // React Router wants no trailing slash, hence the replace.
@@ -48,6 +49,45 @@ function AgentNavigator() {
   return null;
 }
 
+/** API-driven one-slot Polish. The server broadcasts a command; an open Studio
+ * tab supplies the only browser-owned piece — an exact full-resolution DOM
+ * scaffold capture — and then uses the same pipeline as the Polish button. */
+function AgentPolishRunner() {
+  const command = useStudio((s) => s.agentPolishCommand);
+  const nav = useNavigate();
+  const handled = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!command || handled.current.has(command.requestId)) return;
+    handled.current.add(command.requestId);
+
+    void (async () => {
+      nav('/polish');
+      let scaffoldReady = false;
+      for (let attempt = 0; attempt < 60; attempt++) {
+        if (document.querySelector(`[data-scaffold-slot="${command.slotId}"] [data-mockup-canvas-inner]`)) {
+          scaffoldReady = true;
+          break;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 200));
+      }
+
+      useStudio.setState({ agentPolishCommand: null });
+      if (!scaffoldReady) {
+        console.error(`[agent-polish] scaffold unavailable for ${command.slotId}`);
+        return;
+      }
+      try {
+        await polishSlot(command.slotId);
+      } catch (error) {
+        console.error(`[agent-polish] ${command.slotId} failed`, error);
+      }
+    })();
+  }, [command, nav]);
+
+  return null;
+}
+
 /** First-render redirect from index ("/") to the last visited route, falling
  *  back to /setup. Renders nothing when source/target match. */
 function HomeRedirect() {
@@ -64,6 +104,7 @@ export function App() {
     <BrowserRouter basename={ROUTER_BASENAME}>
       <RouteMemory />
       <AgentNavigator />
+      <AgentPolishRunner />
       <AgentCursor />
       <Routes>
         <Route element={<AppShell />}>

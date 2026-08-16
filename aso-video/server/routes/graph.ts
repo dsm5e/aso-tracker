@@ -35,6 +35,8 @@ const VALID_TYPES = new Set<NodeType>([
   'reference-image',
   'reference-video',
   'flux-image',
+  'image-gen',
+  'image-edit',
   'video-gen',
   'tts-voice',
   'captions',
@@ -214,7 +216,7 @@ async function runNode(id: string): Promise<GraphNode> {
   updateNode(id, { data: { status: 'loading', error: undefined } });
 
   try {
-    if (node.type === 'flux-image') {
+    if (node.type === 'flux-image' || node.type === 'image-gen') {
       const d = node.data as { prompt?: string; aspectRatio?: string; model?: string; quality?: string };
       if (!d.prompt) throw new Error('prompt required');
       const model = d.model ?? 'gpt-image-2';
@@ -228,6 +230,24 @@ async function runNode(id: string): Promise<GraphNode> {
       });
       const data = (await r.json()) as { ok?: boolean; error?: string; url?: string; cost?: number };
       if (!data.ok) throw new Error(data.error ?? 'image gen failed');
+      return updateNode(id, { data: { status: 'done', outputUrl: data.url, cost: data.cost ?? 0.04 } })!;
+    }
+
+    if (node.type === 'image-edit') {
+      const upstream = upstreamFor(id, 'image');
+      if (!upstream) throw new Error('image edit: connect the master image');
+      const source = (upstream.data as { outputUrl?: string; url?: string }).outputUrl
+        ?? (upstream.data as { url?: string }).url;
+      const d = node.data as { prompt?: string; model?: string; quality?: string };
+      if (!source) throw new Error('image edit: master image has no output');
+      if (!d.prompt) throw new Error('image edit: prompt required');
+      const r = await fetch(`${INTERNAL_BASE}/api/image/edit`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ prompt: d.prompt, image_url: source, model: d.model, quality: d.quality, node_id: id }),
+      });
+      const data = (await r.json()) as { ok?: boolean; error?: string; url?: string; cost?: number };
+      if (!data.ok) throw new Error(data.error ?? 'image edit failed');
       return updateNode(id, { data: { status: 'done', outputUrl: data.url, cost: data.cost ?? 0.04 } })!;
     }
 
@@ -411,6 +431,8 @@ async function runNode(id: string): Promise<GraphNode> {
         prompt?: string;
         duration: number;
         audio: boolean;
+        requiresApproval?: boolean;
+        approvedImageUrl?: string | null;
       };
       // Resolve image inputs via upstream edges if mode=image.
       // Handles: image_url, image_url_2, image_url_3, … — sorted ascending.
@@ -427,6 +449,9 @@ async function runNode(id: string): Promise<GraphNode> {
         }
       }
       const imageUrl = imageUrls[0];
+      if (d.mode === 'image' && d.requiresApproval && d.approvedImageUrl !== imageUrl) {
+        throw new Error('Approve the current photo in Timeline Inspector before generating video');
+      }
       // Resolve prompt via edge if connected, else use node prompt.
       let prompt = d.prompt;
       const promptUp = upstreamFor(id, 'prompt');
@@ -483,6 +508,7 @@ async function runNode(id: string): Promise<GraphNode> {
         data: {
           status: 'done',
           outputUrl: data.url,
+          sourceImageUrl: imageUrl,
           cost: data.cost,
           elapsed: data.elapsed_seconds,
         },
@@ -518,6 +544,7 @@ router.post('/api/graph/run-all', async (req, res) => {
   for (const id of order) {
     const n = findNode(id);
     if (!n) continue;
+    if ((n.data as { disabled?: boolean }).disabled) continue;
     if (n.type === 'reference-image' || n.type === 'output') continue;
     if (!force && (n.data as { status?: string }).status === 'done') continue;
     try {

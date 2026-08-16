@@ -22,7 +22,7 @@ export const CapCutClassic: React.FC = () => {
           fontFamily:
             'Inter, "SF Pro Display", system-ui, -apple-system, sans-serif',
           WebkitTextStroke: '6px #000',
-          // @ts-expect-error paint-order is valid CSS
+          // paint-order is valid CSS
           paintOrder: 'stroke fill',
           textShadow: '0 6px 20px rgba(0,0,0,0.6)',
           lineHeight: 1.05,

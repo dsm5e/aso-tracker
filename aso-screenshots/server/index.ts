@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { writeFileSync, appendFileSync, mkdirSync, readFileSync, existsSync, watch } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 const DEV_LOG = '/tmp/aso-studio-dev.log';
 function devLog(line: string) {
@@ -158,6 +159,40 @@ app.post('/api/studio-state/push', (req, res) => {
     broadcastState(json);
     console.log('[studio-state] agent push broadcast', sseClients.size, 'clients');
     res.json({ ok: true, broadcast: sseClients.size });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// Trigger the browser-owned Polish pipeline by stable slot id. The API server
+// cannot capture a React DOM scaffold itself, so it broadcasts a one-shot
+// command to an open Studio tab, which captures and submits the exact canvas.
+app.post('/api/screenshots/polish-slot', (req, res) => {
+  try {
+    const slotId = typeof req.body?.slotId === 'string' ? req.body.slotId : '';
+    if (!slotId) {
+      res.status(400).json({ error: 'slotId required' });
+      return;
+    }
+    const state = JSON.parse(inMemoryState) as Record<string, unknown> & {
+      screenshots?: Array<{ id?: string }>;
+    };
+    if (!state.screenshots?.some((slot) => slot.id === slotId)) {
+      res.status(404).json({ error: `slot not found: ${slotId}` });
+      return;
+    }
+    if (sseClients.size === 0) {
+      res.status(409).json({ error: 'Open Studio in a browser before starting Polish' });
+      return;
+    }
+    const requestId = randomUUID();
+    state.agentNav = '/polish';
+    state.agentPolishCommand = { requestId, slotId };
+    const json = JSON.stringify(state);
+    inMemoryState = json;
+    writeFileSync(STATE_FILE, json);
+    broadcastState(json);
+    res.status(202).json({ ok: true, requestId, slotId, broadcast: sseClients.size });
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }

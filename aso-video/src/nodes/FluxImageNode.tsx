@@ -81,7 +81,7 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
   return (
     <NodeShell
       id={id}
-      type="flux-image"
+      type="image-gen"
       title={data.label || (usage === 'asset' ? 'Image Gen — Asset' : 'Image Gen — Character')}
       status={data.status}
       progress={data.progress}

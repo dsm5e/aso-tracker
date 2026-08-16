@@ -21,6 +21,8 @@ export type NodeType =
   | 'reference-image'
   | 'reference-video'
   | 'flux-image'
+  | 'image-gen'
+  | 'image-edit'
   | 'video-gen'
   | 'tts-voice'
   | 'captions'
@@ -52,7 +54,7 @@ export interface Graph {
   version: 1;
   nodes: GraphNode[];
   edges: GraphEdge[];
-  meta: { updatedAt: number; totalCost: number };
+  meta: { updatedAt: number; totalCost: number; [key: string]: unknown };
 }
 
 const ROOT = join(homedir(), '.aso-studio', 'video');
@@ -193,7 +195,7 @@ export function replaceGraph(next: Graph): Graph {
     version: 1,
     nodes: Array.isArray(next.nodes) ? next.nodes : [],
     edges: Array.isArray(next.edges) ? next.edges : [],
-    meta: { updatedAt: Date.now(), totalCost: 0 },
+    meta: { ...(next.meta ?? {}), updatedAt: Date.now(), totalCost: Number(next.meta?.totalCost ?? 0) },
   };
   persist();
   broadcast();
@@ -203,6 +205,8 @@ export function replaceGraph(next: Graph): Graph {
 const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
   'reference-image': {},
   'flux-image': { prompt: '', aspectRatio: '9:16', model: 'gpt-image-2', quality: 'medium', usage: 'character', status: 'idle' },
+  'image-gen': { prompt: '', aspectRatio: '9:16', model: 'gpt-image-2', quality: 'medium', usage: 'character', status: 'idle' },
+  'image-edit': { prompt: '', model: 'flux-kontext-pro', quality: 'medium', status: 'idle' },
   'video-gen': {
     model: 'kling',
     mode: 'image',
@@ -219,6 +223,7 @@ const DEFAULT_DATA: Record<NodeType, Record<string, unknown>> = {
   'image-overlay': { start: 2.0, end: 3.5, position: 'card', fadeMs: 200, opacity: 1.0, status: 'idle' },
   'end-card': { duration: 3.0, cta: 'Try Dream Free', subtitle: 'Decode every dream', brand: 'Dream', status: 'idle' },
   'stitch': { status: 'idle' },
+  'video-overlay': { start: 0, end: 3, x: 0, y: 0, width: 100, opacity: 1, status: 'idle' },
   'transcribe': { status: 'idle' },
   'group': { label: 'Group', color: '#A855F7' },
   output: { label: 'Output' },
