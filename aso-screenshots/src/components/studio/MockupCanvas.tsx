@@ -1,4 +1,4 @@
-import { useRef, useState, useLayoutEffect, type DragEvent, type CSSProperties } from 'react';
+import { Fragment, useRef, useState, useLayoutEffect, type DragEvent, type CSSProperties, type ReactNode } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { getPreset } from '../../lib/presets';
 import { useStudio, type Screenshot } from '../../state/studio';
@@ -9,47 +9,145 @@ import { paletteFromAccent, deriveDotsBg } from '../../lib/palette';
 import { saveScreenshotBlob } from '../../lib/screenshotStore';
 import { getCanvasDimensions, type IPhoneModel } from '../../lib/deviceProfiles';
 
-/** Renders text at `initialPx`, then shrinks the font until the block fits
- *  within ~3 lines (maxH = initialPx × 3.2). Words wrap naturally first;
- *  font reduction kicks in only when wrapping alone isn't enough. */
 /** Render a headline string, coloring any *asterisk-wrapped* run with the
- *  accent color (amma / HiMommy formula: one emotional word recolored). */
-function renderAccented(text: string, accentColor?: string) {
-  if (!accentColor || !text.includes('*')) return text;
-  // Split on *...* keeping the captured group; odd indices are accented.
-  return text.split(/\*([^*]+)\*/g).map((seg, i) =>
-    i % 2 === 1 ? (
-      <span key={i} style={{ color: accentColor }}>{seg}</span>
-    ) : (
-      seg
-    )
-  );
+ *  accent color (amma / HiMommy formula: one emotional word recolored).
+ *  `==run==` draws a highlighter plate behind the run — the marker-pen device
+ *  the Roomvi arch hero uses on the word "AI". Parsed before the others so a
+ *  highlighted run can still be bold. */
+function renderAccented(text: string, accentColor?: string, highlightColor?: string): ReactNode {
+  if (text.includes('==')) {
+    return text.split(/==([^=]+)==/g).map((chunk, ci) =>
+      ci % 2 === 1 ? (
+        <span key={`h${ci}`} style={{
+          background: highlightColor ?? '#F5E14B',
+          padding: '0 0.10em', borderRadius: 6,
+          // nowrap + базовая линия: без них подсветка ломалась на границе строки —
+          // «A» уезжала в плашку выше, а «I» оставалась голой на строке.
+          display: 'inline-block', transform: 'skewX(-9deg)',
+          whiteSpace: 'nowrap', verticalAlign: 'baseline',
+        }}>
+          <span style={{ display: 'inline-block', transform: 'skewX(9deg)' }}>
+            {renderAccented(chunk, accentColor, highlightColor)}
+          </span>
+        </span>
+      ) : (
+        <Fragment key={`t${ci}`}>{renderAccented(chunk, accentColor, highlightColor)}</Fragment>
+      )
+    );
+  }
+  if (!text.includes('*')) return text;
+  // **run** → heavier weight (mixed-weight headlines, Home AI style).
+  // *run*   → accent color. Bold is parsed first so the two can be combined.
+  return text.split(/\*\*([^*]+)\*\*/g).map((chunk, ci) => {
+    if (ci % 2 === 1) {
+      return (
+        <span key={`b${ci}`} style={{ fontWeight: 900 }}>
+          {renderAccented(chunk, accentColor, highlightColor)}
+        </span>
+      );
+    }
+    if (!accentColor || !chunk.includes('*')) return chunk;
+    return chunk.split(/\*([^*]+)\*/g).map((seg, i) =>
+      i % 2 === 1 ? (
+        <span key={`${ci}-${i}`} style={{ color: accentColor }}>{seg}</span>
+      ) : (
+        seg
+      )
+    );
+  });
 }
 
-function FitTitle({ text, initialPx, style, accentColor }: { text: string; initialPx: number; style?: CSSProperties; accentColor?: string }) {
+/** One-line conversion copy (trust strips / compact proof cards). It is
+ * measured in the real export DOM and shrunk until it fits the safe width. */
+function FitSingleLine({
+  text,
+  initialPx,
+  minPx = 24,
+  style,
+}: {
+  text: string;
+  initialPx: number;
+  minPx?: number;
+  style?: CSSProperties;
+}) {
   const ref = useRef<HTMLDivElement>(null);
-  const sizeRef = useRef(initialPx);
-  // Plain text (markers stripped) drives the fit measurement / effect deps.
-  const plain = text.replace(/\*/g, '');
 
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const maxH = initialPx * 3.2;
-    const minSize = Math.round(initialPx * 0.45);
     let size = initialPx;
     el.style.fontSize = `${size}px`;
-    // Shrink until: no word overflows horizontally AND block fits vertically.
-    while (size > minSize && (el.scrollHeight > maxH || el.scrollWidth > el.clientWidth)) {
-      size = Math.max(size - 6, minSize);
+    while (size > minPx && el.scrollWidth > el.clientWidth) {
+      size = Math.max(size - 2, minPx);
       el.style.fontSize = `${size}px`;
     }
-    sizeRef.current = size;
-  }, [plain, initialPx]);
+  }, [text, initialPx, minPx]);
+
+  return <div ref={ref} style={{ ...style, fontSize: initialPx, whiteSpace: 'nowrap', overflow: 'hidden' }}>{text}</div>;
+}
+
+/** Localized copy constrained to a fixed safe box. It wraps naturally to at
+ *  most two lines, then shrinks until both lines fit without clipping. */
+function FitUpToTwoLines({
+  text,
+  initialPx,
+  minPx = 22,
+  style,
+}: {
+  text: string;
+  initialPx: number;
+  minPx?: number;
+  style?: CSSProperties;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const textEl = textRef.current;
+    if (!box || !textEl) return;
+    const fit = () => {
+      let size = initialPx;
+      textEl.style.fontSize = `${size}px`;
+      const overflows = () => {
+        const lineHeight = Number.parseFloat(getComputedStyle(textEl).lineHeight) || size * 1.05;
+        const twoLineHeight = lineHeight * 2 + 2;
+        return (
+          textEl.scrollWidth > box.clientWidth ||
+          textEl.scrollHeight > Math.min(box.clientHeight, twoLineHeight)
+        );
+      };
+      while (size > minPx && overflows()) {
+        size = Math.max(size - 2, minPx);
+        textEl.style.fontSize = `${size}px`;
+      }
+    };
+    fit();
+    void document.fonts?.ready.then(fit);
+  }, [text, initialPx, minPx]);
 
   return (
-    <div ref={ref} style={{ ...style, fontSize: sizeRef.current, whiteSpace: 'pre-wrap' }}>
-      {renderAccented(text, accentColor)}
+    <div
+      ref={boxRef}
+      style={{
+        ...style,
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        ref={textRef}
+        style={{
+          width: '100%',
+          fontSize: initialPx,
+          lineHeight: 'inherit',
+          whiteSpace: 'pre-wrap',
+          overflowWrap: 'break-word',
+          wordBreak: 'normal',
+          textAlign: 'inherit',
+        }}
+      >
+        {text}
+      </div>
     </div>
   );
 }
@@ -121,6 +219,8 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const { w: CANVAS_W, h: CANVAS_H } = getCanvasDimensions(device, iphoneModel);
   const viewMode = viewModeOverride ?? globalViewMode;
   const isFullBleedSource = ss.sourceLayout === 'full-bleed';
+  const isArch = ss.sourceLayout === 'arch';
+  const isBeforeAfter = ss.sourceLayout === 'before-after';
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -206,9 +306,21 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const textColor = ss.textColorOverride || preset?.text.color || '#FFFFFF';
   const titleColor = ss.titleColorOverride || textColor;
   const subtitleColor = ss.subtitleColorOverride || textColor;
-  const textWeight = preset?.text.weight || 800;
+  const isElaraHeroText = ss.heroTextLayout === 'elara';
+  const isElaraSoftPhoneOverlay = ss.heroPhoneOverlayLayout === 'elara-soft-v4';
+  const isFatherEditorialText = ss.heroTextLayout === 'father-editorial';
+  const isFatherProductText = ss.heroTextLayout === 'father-product-localized';
+  const isCppCenteredText = ss.heroTextLayout === 'cpp-centered';
+  const isCppEditorialText = ss.heroTextLayout === 'cpp-editorial';
+  const textWeight = isCppEditorialText
+    ? 700
+    : isElaraHeroText
+      ? 900
+      : isFatherEditorialText || isFatherProductText || isCppCenteredText
+        ? 850
+        : (preset?.text.weight || 800);
   const isUpper = preset?.text.uppercase ?? true;
-  const baseAlign = preset?.text.align || 'center';
+  const baseAlign = ss.textAlignOverride ? ss.textAlignOverride : isArch || isElaraHeroText || isFatherEditorialText || isFatherProductText || isCppCenteredText || isCppEditorialText ? 'center' : (preset?.text.align || 'center');
   // RTL locales (Arabic, Hebrew) mirror the horizontal alignment so the
   // headline hugs the RIGHT edge, matching the right-to-left reading order.
   const textAlign = localeMeta?.rtl
@@ -228,6 +340,112 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const _effScale = presetScale * dscale;
   const _centerY = deviceY + dy + D.height / 2;
   const visualDeviceTop = _centerY - _effScale * (D.width / 2 * Math.abs(Math.sin(_rotRad)) + D.height / 2 * Math.abs(Math.cos(_rotRad)));
+  const verbDisplay = isUpper ? (ss.headline.verb || '').toUpperCase() : ss.headline.verb;
+  const descDisplay = isUpper ? (ss.headline.descriptor || '').toUpperCase() : ss.headline.descriptor;
+
+  // Localized headline copy must fit as ONE block. Previously the title was
+  // shrunk independently while the descriptor kept its original size. Long
+  // Spanish/French/German strings could therefore flow into the descriptor or
+  // the device. Measure pill + title + descriptor together and reduce all
+  // three proportionally until the complete block fits its real safe zone.
+  const headlineBoxRef = useRef<HTMLDivElement>(null);
+  const headlineContentRef = useRef<HTMLDivElement>(null);
+  const headlineTitleRef = useRef<HTMLDivElement>(null);
+  const headlineDescRef = useRef<HTMLDivElement>(null);
+  const headlinePillRef = useRef<HTMLDivElement>(null);
+  const fullBleedSafeBottom = Math.round(
+    CANVAS_H * (ss.headlineSafeBottomFraction ?? 0.4),
+  );
+  // В арке устройство не рисуется, но его фантомная позиция всё равно
+  // считалась — и именно она обрезала заголовок посреди третьей строки.
+  // Реальная граница здесь — верх полосы со снимками.
+  const archStripTop = Math.round((ss.archStripTopFrac ?? 0.52) * CANVAS_H);
+  // Explicit per-slot override wins on EVERY layout, not just full-bleed:
+  // AI-baked device positions drift from the scaffold math, so the derived
+  // visualDeviceTop line can land inside the rendered device. A manual
+  // headlineSafeBottomFraction draws the line exactly where the user put it.
+  const headlineSafeBottom = ss.headlineSafeBottomFraction != null
+    ? Math.round(CANVAS_H * ss.headlineSafeBottomFraction)
+    : isFullBleedSource
+      ? fullBleedSafeBottom
+      : isArch
+        ? archStripTop - 30
+        : Math.floor(visualDeviceTop - 38);
+  const headlineSafeHeight = Math.max(
+    220,
+    headlineSafeBottom - headlineTop - (ss.textY || 0),
+  );
+
+  useLayoutEffect(() => {
+    const box = headlineBoxRef.current;
+    const content = headlineContentRef.current;
+    const title = headlineTitleRef.current;
+    if (!box || !content || !title) return;
+
+    let cancelled = false;
+    const descriptor = headlineDescRef.current;
+    const pill = headlinePillRef.current;
+    const initialPillPx = isElaraHeroText
+      ? 34
+      : isFatherEditorialText
+        ? 34
+        : isFatherProductText
+          ? 32
+          : Math.round(titlePx * 0.22);
+    const minTitlePx = Math.max(46, Math.round(titlePx * 0.46));
+    const minSubPx = Math.max(25, Math.round(subPx * 0.5));
+    const minPillPx = Math.max(22, Math.round(initialPillPx * 0.64));
+
+    const applySizes = (nextTitle: number, nextSub: number, nextPill: number) => {
+      title.style.fontSize = `${nextTitle}px`;
+      if (descriptor) descriptor.style.fontSize = `${nextSub}px`;
+      if (pill) pill.style.fontSize = `${nextPill}px`;
+    };
+
+    const overflows = () => (
+      content.scrollHeight > box.clientHeight + 1
+      || content.scrollWidth > box.clientWidth + 1
+    );
+
+    const fit = () => {
+      if (cancelled) return;
+      let nextTitle = titlePx;
+      let nextSub = subPx;
+      let nextPill = initialPillPx;
+      applySizes(nextTitle, nextSub, nextPill);
+
+      // Keep the design's title/subtitle ratio instead of crushing only one
+      // element. The explicit minimums prevent translated text becoming tiny.
+      while (
+        overflows()
+        && (nextTitle > minTitlePx || nextSub > minSubPx || nextPill > minPillPx)
+      ) {
+        nextTitle = Math.max(minTitlePx, nextTitle - 3);
+        nextSub = Math.max(minSubPx, nextSub - 1.5);
+        nextPill = Math.max(minPillPx, nextPill - 1);
+        applySizes(nextTitle, nextSub, nextPill);
+      }
+    };
+
+    fit();
+    void document.fonts?.ready.then(fit);
+    const observer = new ResizeObserver(fit);
+    observer.observe(box);
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [
+    verbDisplay,
+    descDisplay,
+    ss.pill,
+    titlePx,
+    subPx,
+    headlineSafeHeight,
+    isElaraHeroText,
+    isFatherEditorialText,
+    isFatherProductText,
+  ]);
 
   // compute scale to fit
   let scale = 1;
@@ -263,9 +481,6 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
     if (!file) return;
     adoptFile(file);
   };
-
-  const verbDisplay = isUpper ? (ss.headline.verb || '').toUpperCase() : ss.headline.verb;
-  const descDisplay = isUpper ? (ss.headline.descriptor || '').toUpperCase() : ss.headline.descriptor;
 
   // AI hero shows whenever there's a generated image AND the user toggled to Enhanced —
   // independent of `kind`, so Enhance works for any slot, not only action/hero ones.
@@ -314,6 +529,8 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
         <DeviceFrame
           asset={asset}
           iphoneModel={iphoneModel}
+          frameStyle={ss.deviceFrameStyle}
+          cropBottomFrac={ss.screenCropBottom}
           showIsland={!opts.url}
           emptyScreenColor={opts.interactive && dragOver ? 'var(--accent-soft)' : '#000'}
           onClickScreen={opts.interactive && showDropZone ? onPickFile : undefined}
@@ -434,10 +651,183 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
           position: 'relative',
         }}
       >
+        {/* --- Roomvi `arch`: фото + белая арка с акцентной каёмкой + диагональные
+            полосы. Заголовок сюда НЕ входит: его рисует штатный оверлей ниже,
+            чтобы шрифт и выравнивание слушались инспектора. --- */}
+        {isArch && (() => {
+          const pad    = ss.archPad ?? 42;
+          const rim    = ss.archRim ?? 28;
+          const archY  = Math.round((ss.archTopFrac ?? 0.275) * CANVAS_H);
+          const stripY = Math.round((ss.archStripTopFrac ?? 0.52) * CANVAS_H);
+          const skew   = ss.archSkew ?? 7;
+          const zoom   = ss.archZoom ?? 1.12;
+          const accent = ss.archAccent ?? appColor ?? '#2F6FA8';
+          const cardW  = CANVAS_W - 2 * pad;
+          const radius = Math.round(cardW * 0.62);
+          const bands  = ss.archBands ?? [];
+          const n      = bands.length || 1;
+          return (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 0 }}>
+              <div style={{ position: 'absolute', inset: 0,
+                background: 'linear-gradient(to bottom,#E9E8E4 0%,#DFDEDA 40%,#C8C8C8 100%)' }} />
+              {ss.archHeroUrl && (
+                <img src={ss.archHeroUrl} alt="" draggable={false}
+                  style={{ position: 'absolute', top: 0, left: 0, width: CANVAS_W,
+                    height: archY + 150, objectFit: 'cover', objectPosition: '50% 42%',
+                    WebkitMaskImage: 'linear-gradient(to bottom,#000 0%,#000 78%,rgba(0,0,0,.6) 88%,rgba(0,0,0,.22) 95%,transparent 100%)',
+                    maskImage: 'linear-gradient(to bottom,#000 0%,#000 78%,rgba(0,0,0,.6) 88%,rgba(0,0,0,.22) 95%,transparent 100%)' }} />
+              )}
+              <div style={{ position: 'absolute', left: pad, right: pad, top: archY,
+                bottom: pad, background: '#fff', borderRadius: `${radius}px ${radius}px 0 0` }} />
+              <div style={{ position: 'absolute', left: pad, right: pad, top: archY,
+                height: Math.round(CANVAS_H * 0.34), border: `${rim}px solid ${accent}`,
+                borderBottom: 'none', borderRadius: `${radius}px ${radius}px 0 0`,
+                // Полпикселя размытия: CSS-бордюр на радиусе в ~800px растеризуется
+                // ступеньками, и на экспорте дуга читается «гребёнкой». Сглаживание
+                // убирает лесенку, не съедая толщину обводки.
+                filter: 'blur(1.1px)',
+                WebkitMaskImage: 'linear-gradient(to bottom,#000 0%,rgba(0,0,0,.92) 10%,rgba(0,0,0,.55) 26%,rgba(0,0,0,.22) 42%,transparent 62%)',
+                maskImage: 'linear-gradient(to bottom,#000 0%,rgba(0,0,0,.92) 10%,rgba(0,0,0,.55) 26%,rgba(0,0,0,.22) 42%,transparent 62%)' }} />
+              <div style={{ position: 'absolute', left: pad + rim, right: pad + rim, top: stripY,
+                bottom: pad + rim, overflow: 'hidden' }}>
+                {bands.map((b, i) => {
+                  const l = (i * 100) / n, r = ((i + 1) * 100) / n;
+                  const L  = i === 0     ? l - skew - 6 : l + skew;
+                  const R  = i === n - 1 ? r + skew + 6 : r + skew;
+                  const LB = i === 0     ? l - skew - 6 : l - skew;
+                  const RB = i === n - 1 ? r + skew + 6 : r - skew;
+                  const poly = `polygon(${L}% -2%, ${R}% -2%, ${RB}% 102%, ${LB}% 102%)`;
+                  const cx = (l + r) / 2 - skew * 0.5;
+                  return (
+                    <div key={i} style={{ position: 'absolute', inset: 0, overflow: 'hidden',
+                      clipPath: poly, WebkitClipPath: poly }}>
+                      <img src={b.url} alt="" draggable={false}
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%',
+                          objectFit: 'cover', transform: `scale(${zoom})`, transformOrigin: '50% 50%' }} />
+                      {b.label && (
+                        <div style={{ position: 'absolute', bottom: 46, left: `${cx - 14}%`,
+                          right: `${100 - cx - 14}%`, textAlign: 'center', color: '#fff',
+                          font: '600 40px/1 system-ui', textShadow: '0 3px 18px rgba(0,0,0,.85)' }}>
+                          {b.label}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+        {isBeforeAfter && (() => {
+          const split  = ss.baSplit ?? 0.42;
+          const handle = ss.baHandleFrac ?? 0.52;
+          const x      = Math.round(split * CANVAS_W);
+          const bTop   = Math.round((ss.badgeTopFrac ?? 0.175) * CANVAS_H);
+          const bLeft  = Math.round((ss.badgeLeftFrac ?? 0.055) * CANVAS_W);
+          return (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#000' }}>
+              {ss.baAfterUrl && (
+                <img src={ss.baAfterUrl} alt="" draggable={false}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+              )}
+              {ss.baBeforeUrl && (
+                <div style={{ position: 'absolute', top: 0, left: 0, bottom: 0, width: x, overflow: 'hidden' }}>
+                  <img src={ss.baBeforeUrl} alt="" draggable={false}
+                    style={{ position: 'absolute', top: 0, left: 0, width: CANVAS_W, height: CANVAS_H, objectFit: 'cover' }} />
+                </div>
+              )}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0,
+                height: Math.round(CANVAS_H * (ss.baScrimFrac ?? 0.34)), pointerEvents: 'none',
+                background: 'linear-gradient(to bottom, rgba(0,0,0,.52) 0%, rgba(0,0,0,.38) 34%, rgba(0,0,0,.18) 66%, rgba(0,0,0,0) 100%)' }} />
+              <div style={{ position: 'absolute', top: 0, bottom: 0, left: x - 3, width: 6,
+                background: '#fff', boxShadow: '0 0 22px rgba(0,0,0,.45)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.25) 12%, rgba(0,0,0,.7) 24%, #000 34%, #000 100%)',
+                maskImage: 'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,.25) 12%, rgba(0,0,0,.7) 24%, #000 34%, #000 100%)' }} />
+              <div style={{ position: 'absolute', left: x - 58, top: Math.round(handle * CANVAS_H),
+                width: 116, height: 116, borderRadius: '50%', background: 'rgba(255,255,255,.30)',
+                border: '4px solid rgba(255,255,255,.92)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: '#fff', font: '400 40px/1 system-ui', letterSpacing: 4 }}>&#9668;&#9658;</div>
+              {(ss.badgeLine1 || ss.badgeLaurelLeftUrl) && (
+                <div style={{ position: 'absolute', left: bLeft, top: bTop,
+                  display: 'flex', alignItems: 'center', gap: 14, color: '#fff' }}>
+                  {ss.badgeLaurelLeftUrl && <img src={ss.badgeLaurelLeftUrl} alt="" style={{ height: 250 }} />}
+                  <div style={{ textAlign: 'center', textShadow: '0 3px 16px rgba(0,0,0,.6)' }}>
+                    {ss.badgeLine1 && <div style={{ font: '700 84px/1 system-ui' }}>{ss.badgeLine1}</div>}
+                    {ss.badgeLine2 && <div style={{ font: '500 58px/1.1 system-ui', opacity: .95 }}>{ss.badgeLine2}</div>}
+                    {ss.badgeStars && <div style={{ fontSize: 56, color: '#F5C518', letterSpacing: 3, marginTop: 8 }}>&#9733;&#9733;&#9733;&#9733;&#9733;</div>}
+                  </div>
+                  {ss.badgeLaurelRightUrl && <img src={ss.badgeLaurelRightUrl} alt="" style={{ height: 250 }} />}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+        {/* Стикеры рисуются ПОВЕРХ устройства (zIndex выше рамки), но ниже
+            заголовка: они часть сцены, а не текста. */}
+        {(ss.stickers?.length ?? 0) > 0 && (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 6, pointerEvents: 'none' }}>
+            {ss.stickers!.map((st, i) => {
+              const accent = st.tone === 'accent';
+              const isRow = Boolean(st.imageUrls?.length);
+              const isImage = Boolean(st.imageUrl) || isRow;
+              return (
+                <div key={i} style={{
+                  position: 'absolute',
+                  left: `${st.xFrac * 100}%`,
+                  top: `${st.yFrac * 100}%`,
+                  width: st.widthFrac ? `${st.widthFrac * 100}%` : undefined,
+                  transform: `translate(-50%,-50%) rotate(${st.rotate ?? 0}deg)`,
+                  background: accent ? (ss.archAccent ?? appColor ?? '#2F6FA8') : '#fff',
+                  color: accent ? '#fff' : '#141414',
+                  padding: isImage ? 18 : '26px 40px',
+                  borderRadius: isImage ? 28 : 22,
+                  font: `700 ${st.fontPx ?? 54}px/1.15 ${ss.font ?? 'Inter'}, system-ui`,
+                  whiteSpace: st.widthFrac ? 'normal' : 'pre',
+                  textAlign: st.align ?? 'center',
+                  boxShadow: '0 26px 60px rgba(0,0,0,.22), 0 6px 16px rgba(0,0,0,.12)',
+                }}>
+                  {isRow ? (
+                    <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start',
+                      position: 'relative' }}>
+                      {st.rowArrow && st.imageUrls!.length === 2 && (
+                        <div style={{ position: 'absolute', left: '50%', top: '42%',
+                          transform: 'translate(-50%,-50%)', zIndex: 2,
+                          width: 84, height: 84, borderRadius: 42, background: '#141414',
+                          color: '#fff', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', font: '600 44px/1 system-ui',
+                          boxShadow: '0 10px 24px rgba(0,0,0,.28)' }}>
+                          →
+                        </div>
+                      )}
+                      {st.imageUrls!.map((u, j) => (
+                        <div key={j} style={{ flex: 1, minWidth: 0 }}>
+                          {/* Кадр подрезан по высоте (object-fit), чтобы подпись
+                              поместилась внутрь той же подложки, а не увеличила её. */}
+                          <img src={u} alt="" style={{ display: 'block', width: '100%',
+                            aspectRatio: '0.95', objectFit: 'cover', borderRadius: 16 }} />
+                          {st.imageCaptions?.[j] && (
+                            <div style={{ marginTop: 14, textAlign: 'center', color: '#141414',
+                              font: `600 34px/1.1 ${ss.font ?? 'Inter'}, system-ui` }}>
+                              {st.imageCaptions[j]}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : isImage
+                    ? <img src={st.imageUrl} alt="" style={{ display: 'block', width: '100%',
+                        borderRadius: 16 }} />
+                    : st.text}
+                </div>
+              );
+            })}
+          </div>
+        )}
         {/* Full-bleed background image — bottom-most layer (under parametric bg,
             AI hero, device and text). Used for photographic cover frames
             (e.g. first/last App Store screenshots). Set via the agent bridge. */}
-        {ss.bgImageUrl && (
+        {ss.bgImageUrl && (!isFatherProductText || ss.sourceLayout === 'device') && (
           <img
             key={ss.bgImageUrl}
             src={ss.bgImageUrl}
@@ -474,6 +864,30 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
             />
           </div>
+        )}
+        {isFatherProductText && ss.bgImageUrl && ss.sourceLayout === 'full-bleed' && (
+          <img
+            key={`${ss.bgImageUrl}-localized-top-mask`}
+            src={ss.bgImageUrl}
+            alt=""
+            draggable={false}
+            style={{
+              position: 'absolute',
+              inset: '0 0 auto 0',
+              width: '100%',
+              // Stay fully opaque until every baked English title is covered,
+              // then feather into the original artwork before the phone begins.
+              // This avoids both ghost copy and a visible horizontal seam.
+              height: 520,
+              objectFit: 'cover',
+              objectPosition: 'center top',
+              display: 'block',
+              zIndex: 1,
+              pointerEvents: 'none',
+              WebkitMaskImage: 'linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%)',
+              maskImage: 'linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%)',
+            }}
+          />
         )}
         {isFullBleedSource && ss.sourceUrl && showDropZone && (
           <div
@@ -538,10 +952,10 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
             </span>
           </button>
         )}
-        {!isFullBleedSource && parametricPalette && (
+        {!isFullBleedSource && !isArch && !isBeforeAfter && parametricPalette && (
           <MountainBackground palette={parametricPalette} width={CANVAS_W} height={CANVAS_H} />
         )}
-        {!isFullBleedSource && parametricKind === 'dots' && (
+        {!isFullBleedSource && !isArch && !isBeforeAfter && parametricKind === 'dots' && (
           <DotsBackground bgColor={dotsBgColor} dotColor={dotsColor} width={CANVAS_W} height={CANVAS_H} />
         )}
         {/* AI-polished hero — background layer.
@@ -600,21 +1014,28 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
             the normal flow — gives crisp localised text on a clean canvas
             instead of gpt-image-2 baking a solid block in place of "removed" text. */}
         <div
+          ref={headlineBoxRef}
           data-capture-omit="text-overlay"
+          data-headline-box
           style={{
             position: 'absolute',
             left: 0,
             right: 0,
             top: headlineTop,
-            padding: '0 60px',
+            padding: isElaraHeroText ? '0 190px' : isFatherEditorialText ? '0 108px' : isFatherProductText ? '0 88px' : isCppCenteredText || isCppEditorialText ? '0 96px' : '0 60px',
             textAlign,
             fontFamily: `"${textFont}", Inter, sans-serif`,
             color: textColor,
+            zIndex: 3,
             transform: `translate(${ss.textX || 0}px, ${ss.textY || 0}px)`,
             // Editable mode lifts pointer-events lock + adds dashed border so
             // the user can drag the headline block to reposition for a locale.
             pointerEvents: editable ? 'auto' : 'none',
             direction: textDir,
+            height: headlineSafeHeight,
+            overflow: 'hidden',
+            display: ss.headlineVerticalAlign === 'center' ? 'flex' : undefined,
+            alignItems: ss.headlineVerticalAlign === 'center' ? 'center' : undefined,
             outline: editable ? '2px dashed rgba(59,130,246,0.6)' : undefined,
             outlineOffset: editable ? 8 : undefined,
             cursor: editable ? 'move' : undefined,
@@ -640,35 +1061,45 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
             window.addEventListener('mouseup', onUp);
           } : undefined}
         >
+          <div ref={headlineContentRef} style={{ width: '100%' }}>
           {ss.pill && (
             <div
+              ref={headlinePillRef}
               style={{
                 display: 'inline-block',
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'clip',
                 // Pill bg is template-driven (sample.pillBg seeded into ss).
                 // For Pastel Dots the accent re-tints the dotted background,
                 // not the pill — pill stays the template's branded pop colour.
-                background: ss.pillBg || '#E04A6F',
+                background: isElaraHeroText || isFatherProductText ? 'transparent' : (ss.pillBg || '#E04A6F'),
                 color: ss.pillFg || '#FFFFFF',
                 fontFamily: `"${textFont}", Inter, sans-serif`,
                 fontWeight: 800,
-                fontSize: Math.round(titlePx * 0.22),
+                fontSize: isElaraHeroText ? 34 : isFatherEditorialText ? 34 : isFatherProductText ? 32 : Math.round(titlePx * 0.22),
                 letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
-                padding: '18px 48px',
-                borderRadius: 999,
-                marginBottom: 32,
+                padding: isElaraHeroText || isFatherProductText ? 0 : isFatherEditorialText ? '16px 38px' : '18px 48px',
+                borderRadius: isElaraHeroText || isFatherProductText ? 0 : 999,
+                marginBottom: isElaraHeroText ? 38 : isFatherEditorialText ? 30 : isFatherProductText ? 18 : 32,
+                border: isFatherEditorialText ? '1px solid rgba(255,255,255,0.52)' : undefined,
+                boxShadow: isFatherEditorialText ? '0 12px 36px rgba(61,36,50,0.10)' : undefined,
+                // Keep the Father CPP pill translucent but do not use a CSS
+                // backdrop blur: Chromium expands that filter into a visible
+                // rectangular capture layer during the 1320×2868 export.
               }}
             >
               {ss.pill}
             </div>
           )}
-          <FitTitle
-            text={verbDisplay}
-            initialPx={titlePx}
-            accentColor={ss.headlineAccent ?? preset?.suggestedAccent}
+          <div
+            ref={headlineTitleRef}
+            data-headline-title
             style={{
               color: titleColor,
+              fontSize: titlePx,
               fontWeight: textWeight,
               lineHeight: 1.02,
               letterSpacing: '-0.02em',
@@ -677,13 +1108,17 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               wordBreak: 'normal',
               hyphens: 'none',
             }}
-          />
+          >
+            {renderAccented(verbDisplay, ss.headlineAccent ?? preset?.suggestedAccent)}
+          </div>
           {descDisplay && (
             <div
+              ref={headlineDescRef}
+              data-headline-descriptor
               style={{
                 color: subtitleColor,
                 fontSize: subPx,
-                fontWeight: 400,
+                fontWeight: 500,
                 lineHeight: 1.15,
                 marginTop: 24,
                 opacity: 0.95,
@@ -713,6 +1148,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               }}
             />
           )}
+          </div>
         </div>
 
         {/* Footer microcopy — small line pinned to the bottom of the canvas.
@@ -815,7 +1251,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
                   label: ss.frontLabel,
                 },
               ];
-          const showDevice = !isFullBleedSource && !aiHero && !(ss.kind === 'action' && (ss.action?.hideDevice ?? false));
+          const showDevice = !isFullBleedSource && !isArch && !isBeforeAfter && !aiHero && !(ss.kind === 'action' && (ss.action?.hideDevice ?? false));
           return (
             <>
               {/* Device layer — hidden once the AI render already contains the
@@ -828,6 +1264,265 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
             </>
           );
         })()}
+
+        {/* Reserved live-copy regions inside the generated Elara hero phone.
+            The artwork contains only blank surfaces; every word below is
+            translated by the same locale pipeline as the outer overlays. */}
+        {isElaraHeroText && (
+          <div
+            data-capture-omit="text-overlay"
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 41,
+              pointerEvents: 'none',
+              color: '#3E2340',
+              fontFamily: `"${textFont}", Inter, sans-serif`,
+              textAlign: 'center',
+              direction: textDir,
+            }}
+          >
+            {ss.phoneBrand && (
+              <div style={{
+                position: 'absolute',
+                left: isElaraSoftPhoneOverlay ? 455 : 380,
+                right: isElaraSoftPhoneOverlay ? 355 : 250,
+                top: isElaraSoftPhoneOverlay ? 1445 : 962,
+                color: '#F05F52',
+                fontSize: isElaraSoftPhoneOverlay ? 26 : 34,
+                lineHeight: 1,
+                fontWeight: 800,
+                letterSpacing: '0.12em',
+                textTransform: 'uppercase',
+              }}>
+                {ss.phoneBrand}
+              </div>
+            )}
+            {ss.phoneTitle && (
+              <FitUpToTwoLines
+                text={ss.phoneTitle}
+                initialPx={isElaraSoftPhoneOverlay ? 45 : 60}
+                minPx={isElaraSoftPhoneOverlay ? 28 : 34}
+                style={{
+                  position: 'absolute',
+                  left: isElaraSoftPhoneOverlay ? 500 : 365,
+                  right: isElaraSoftPhoneOverlay ? undefined : 300,
+                  width: isElaraSoftPhoneOverlay ? 340 : undefined,
+                  top: isElaraSoftPhoneOverlay ? 1510 : 1038,
+                  height: isElaraSoftPhoneOverlay ? 160 : 170,
+                  boxSizing: 'border-box',
+                  padding: isElaraSoftPhoneOverlay ? '0 8px' : undefined,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 0.98,
+                  fontWeight: 900,
+                  letterSpacing: '-0.025em',
+                  textAlign: 'center',
+                }}
+              />
+            )}
+            {ss.phoneSubtitle && (
+              <FitUpToTwoLines
+                text={ss.phoneSubtitle}
+                initialPx={isElaraSoftPhoneOverlay ? 21 : 25}
+                minPx={isElaraSoftPhoneOverlay ? 16 : 18}
+                style={{
+                  position: 'absolute',
+                  left: isElaraSoftPhoneOverlay ? 510 : 370,
+                  right: isElaraSoftPhoneOverlay ? undefined : 235,
+                  width: isElaraSoftPhoneOverlay ? 345 : undefined,
+                  top: isElaraSoftPhoneOverlay ? 1680 : 1260,
+                  height: isElaraSoftPhoneOverlay ? 100 : 58,
+                  boxSizing: 'border-box',
+                  padding: isElaraSoftPhoneOverlay ? '0 8px' : undefined,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1.1,
+                  fontWeight: 500,
+                  color: '#3E3140',
+                  textAlign: 'center',
+                }}
+              />
+            )}
+            {(ss.phoneToggleLeft || ss.phoneToggleRight) && (
+              <FitUpToTwoLines
+                text={`${ss.phoneToggleLeft ?? ''}  +  ${ss.phoneToggleRight ?? ''}`.trim()}
+                initialPx={isElaraSoftPhoneOverlay ? 26 : 31}
+                minPx={20}
+                style={{
+                  position: 'absolute',
+                  left: isElaraSoftPhoneOverlay ? 565 : 535,
+                  width: isElaraSoftPhoneOverlay ? 340 : 500,
+                  top: isElaraSoftPhoneOverlay ? 2170 : 2036,
+                  height: isElaraSoftPhoneOverlay ? 120 : 142,
+                  boxSizing: 'border-box',
+                  padding: '12px 32px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1.02,
+                  fontWeight: 750,
+                  letterSpacing: '0.005em',
+                  textAlign: 'center',
+                  transform: 'rotate(-2.2deg)',
+                  transformOrigin: 'center center',
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        {/* MedScan-style conversion overlays. They are deliberately omitted
+            from the AI scaffold and rendered above the generated art, keeping
+            every word crisp, editable and independently localizable. */}
+        {ss.annotation && (
+          <div
+            data-capture-omit="text-overlay"
+            style={{
+              position: 'absolute',
+              left: isElaraHeroText ? 92 : 54,
+              bottom: isElaraHeroText ? 420 : (ss.trustStrip ? 350 : 220),
+              width: isElaraHeroText ? 300 : 360,
+              zIndex: 40,
+              color: isElaraHeroText ? '#38223E' : (ss.headlineAccent ?? preset?.suggestedAccent ?? '#D96F71'),
+              fontFamily: '"Bradley Hand", "Comic Sans MS", cursive',
+              fontSize: isElaraHeroText ? 54 : 58,
+              fontWeight: 700,
+              lineHeight: 0.98,
+              transform: isElaraHeroText ? 'rotate(-4deg)' : 'rotate(-5deg)',
+              textAlign: 'left',
+              pointerEvents: 'none',
+              textShadow: '0 2px 12px rgba(255,255,255,0.75)',
+            }}
+          >
+            {!isElaraHeroText && <>↗<br /></>}{ss.annotation}
+          </div>
+        )}
+
+        {ss.proofText && (
+          <div
+            data-capture-omit="text-overlay"
+            style={{
+              position: 'absolute',
+              left: isElaraHeroText ? 350 : undefined,
+              right: isElaraHeroText ? 120 : 52,
+              bottom: isElaraHeroText ? 124 : (ss.trustStrip ? 154 : 40),
+              width: isElaraHeroText ? 'auto' : (ss.proofAttribution ? 560 : 650),
+              height: isElaraHeroText ? 162 : undefined,
+              minHeight: isElaraHeroText ? 104 : (ss.proofAttribution ? 210 : 116),
+              boxSizing: 'border-box',
+              padding: isElaraHeroText ? '16px 24px' : (ss.proofAttribution ? '34px 42px' : '24px 38px'),
+              borderRadius: isElaraHeroText ? 0 : 34,
+              zIndex: 42,
+              color: titleColor,
+              background: isElaraHeroText ? 'transparent' : '#FFFDFC',
+              border: isElaraHeroText ? 'none' : '2px solid rgba(217,111,113,0.22)',
+              boxShadow: isElaraHeroText ? 'none' : '0 16px 38px rgba(77,48,64,0.14)',
+              fontFamily: `"${textFont}", Inter, sans-serif`,
+              pointerEvents: 'none',
+              direction: textDir,
+              transform: isElaraHeroText ? 'translateY(-40px)' : undefined,
+            }}
+          >
+            {ss.proofAttribution && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: 28,
+                  top: 18,
+                  color: ss.headlineAccent ?? preset?.suggestedAccent ?? '#D96F71',
+                  fontFamily: 'Georgia, serif',
+                  fontSize: 82,
+                  lineHeight: 1,
+                  opacity: 0.9,
+                }}
+              >
+                “
+              </div>
+            )}
+            {ss.proofAttribution ? (
+              <div
+                style={{
+                  paddingLeft: 56,
+                  fontSize: 43,
+                  lineHeight: 1.15,
+                  fontWeight: 650,
+                  overflowWrap: 'break-word',
+                }}
+              >
+                {ss.proofText}
+              </div>
+            ) : isElaraHeroText ? (
+              <FitUpToTwoLines
+                text={ss.proofText}
+                initialPx={43}
+                minPx={25}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1.04,
+                  fontWeight: 750,
+                  textAlign: 'center',
+                }}
+              />
+            ) : (
+              <FitSingleLine
+                text={ss.proofText}
+                initialPx={40}
+                minPx={24}
+                style={{ width: '100%', lineHeight: 1.15, fontWeight: 650 }}
+              />
+            )}
+            {ss.proofAttribution && (
+              <FitSingleLine
+                text={ss.proofAttribution}
+                initialPx={30}
+                minPx={22}
+                style={{
+                  marginTop: 18,
+                  paddingLeft: 56,
+                  color: ss.headlineAccent ?? preset?.suggestedAccent ?? '#D96F71',
+                  fontWeight: 750,
+                  letterSpacing: '0.01em',
+                }}
+              />
+            )}
+          </div>
+        )}
+
+        {ss.trustStrip && (
+          <div
+            data-capture-omit="text-overlay"
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: isElaraHeroText ? 104 : 120,
+              boxSizing: 'border-box',
+              padding: '0 42px',
+              zIndex: 45,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#FFF8F4',
+              background: titleColor,
+              fontFamily: `"${textFont}", Inter, sans-serif`,
+              letterSpacing: '0.08em',
+              fontWeight: 750,
+              textAlign: 'center',
+              pointerEvents: 'none',
+              direction: textDir,
+            }}
+          >
+            <FitSingleLine text={ss.trustStrip} initialPx={isElaraHeroText ? 31 : 34} minPx={22} style={{ width: '100%' }} />
+          </div>
+        )}
       </div>
 
       <input
