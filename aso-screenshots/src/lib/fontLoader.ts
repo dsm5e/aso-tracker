@@ -15,6 +15,7 @@
 
 import { PRESETS } from './presets';
 import { CURATED_FONTS, PRELOADED_FONTS } from './fonts';
+import { CURATED_LOCALES } from './locales';
 
 const WEIGHTS = '400;500;600;700;800;900';
 
@@ -25,6 +26,12 @@ export function loadPresetFonts(): void {
   // Curated picker options
   for (const f of CURATED_FONTS) {
     if (!PRELOADED_FONTS.has(f.family)) fonts.add(f.family);
+  }
+  // Script fonts for non-Latin locales (CJK, Arabic, Thai, Hebrew, Devanagari).
+  // Without these the localized export silently falls back to a system face with
+  // different metrics — the fit pass then measures the wrong glyphs.
+  for (const l of CURATED_LOCALES) {
+    if (l.font && !PRELOADED_FONTS.has(l.font)) fonts.add(l.font);
   }
   // Anything a preset uses that escaped the curated set (e.g. exotic imported template)
   for (const p of PRESETS) {

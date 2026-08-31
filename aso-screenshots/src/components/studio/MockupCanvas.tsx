@@ -14,6 +14,35 @@ import { getCanvasDimensions, type IPhoneModel } from '../../lib/deviceProfiles'
  *  `==run==` draws a highlighter plate behind the run — the marker-pen device
  *  the Roomvi arch hero uses on the word "AI". Parsed before the others so a
  *  highlighted run can still be bold. */
+/** Letter-spacing is a Latin typography tool. Chromium applies tracking by
+ *  splitting the shaping run per cluster, which breaks scripts whose glyphs
+ *  reorder or join: Devanagari `दर्जनों` rendered as `दजेनों` (the repha was
+ *  dropped) and Arabic letters stop connecting. Return `normal` whenever the
+ *  string contains such a script, and the designed tracking otherwise. */
+const COMPLEX_SCRIPT = /[\u0590-\u05FF\u0600-\u06FF\u0700-\u074F\u0900-\u0DFF\u0E00-\u0EFF\u0F00-\u109F\u1780-\u17FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
+
+function tracking(text: string | undefined, designed: string): string {
+  return text && COMPLEX_SCRIPT.test(text) ? 'normal' : designed;
+}
+
+/** The display line-height (1.02) is tuned for Latin caps, whose ink stays
+ *  inside the em box. Devanagari hangs a repha above the shirorekha, Thai
+ *  stacks a vowel sign plus a tone mark, and Vietnamese stacks two diacritics
+ *  on one vowel — at 1.02 the clipped headline box shaved those off, which read
+ *  as a mis-shaped word (`दर्जनों` looked like `दजेनों`). Give those scripts the
+ *  room their ascenders actually need. */
+const TALL_SCRIPT = /[\u0900-\u0DFF\u0E00-\u0EFF\u0F00-\u109F\u1780-\u17FF]/;
+const STACKED_LATIN = /[\u1EA0-\u1EF9\u0102\u0103\u01A0\u01A1\u01AF\u01B0]/;
+
+function lineHeight(text: string | undefined, designed: number): number {
+  if (!text) return designed;
+  // Keep the bump as small as the ink needs: 1.42 cleared the marks but made a
+  // three-line headline 40% taller, which no longer fit the safe zone at all.
+  if (TALL_SCRIPT.test(text)) return Math.max(designed, 1.26);
+  if (STACKED_LATIN.test(text)) return Math.max(designed, 1.18);
+  return designed;
+}
+
 function renderAccented(text: string, accentColor?: string, highlightColor?: string): ReactNode {
   if (text.includes('==')) {
     return text.split(/==([^=]+)==/g).map((chunk, ci) =>
@@ -416,23 +445,46 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
 
       // Keep the design's title/subtitle ratio instead of crushing only one
       // element. The explicit minimums prevent translated text becoming tiny.
-      while (
-        overflows()
-        && (nextTitle > minTitlePx || nextSub > minSubPx || nextPill > minPillPx)
-      ) {
-        nextTitle = Math.max(minTitlePx, nextTitle - 3);
-        nextSub = Math.max(minSubPx, nextSub - 1.5);
-        nextPill = Math.max(minPillPx, nextPill - 1);
-        applySizes(nextTitle, nextSub, nextPill);
+      const shrinkTo = (floorTitle: number, floorSub: number, floorPill: number) => {
+        while (
+          overflows()
+          && (nextTitle > floorTitle || nextSub > floorSub || nextPill > floorPill)
+        ) {
+          nextTitle = Math.max(floorTitle, nextTitle - 3);
+          nextSub = Math.max(floorSub, nextSub - 1.5);
+          nextPill = Math.max(floorPill, nextPill - 1);
+          applySizes(nextTitle, nextSub, nextPill);
+        }
+      };
+      shrinkTo(minTitlePx, minSubPx, minPillPx);
+      // Reserve floor. A handful of locales (Arabic slot 2) still wrap one line
+      // too many at the designed minimum, and the export rejects an overflowing
+      // headline outright. A slightly smaller headline beats a missing
+      // screenshot, so give those a second pass with a lower bound.
+      if (overflows()) {
+        shrinkTo(
+          Math.max(34, Math.round(titlePx * 0.34)),
+          Math.max(20, Math.round(subPx * 0.38)),
+          Math.max(18, Math.round(initialPillPx * 0.5)),
+        );
       }
     };
 
     fit();
+    // `fonts.ready` can resolve BEFORE a locale's script font is even requested
+    // (the Devanagari face is only fetched once the localized text is in the
+    // DOM). Slot 1 then kept the fallback-metric size and overflowed by 176px.
+    // Watching the content box catches the reflow the font swap causes, and
+    // `loadingdone` catches faces that arrive after the observer settles.
     void document.fonts?.ready.then(fit);
+    const onFontsDone = () => fit();
+    document.fonts?.addEventListener?.('loadingdone', onFontsDone);
     const observer = new ResizeObserver(fit);
     observer.observe(box);
+    observer.observe(content);
     return () => {
       cancelled = true;
+      document.fonts?.removeEventListener?.('loadingdone', onFontsDone);
       observer.disconnect();
     };
   }, [
@@ -1078,7 +1130,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
                 fontFamily: `"${textFont}", Inter, sans-serif`,
                 fontWeight: 800,
                 fontSize: isElaraHeroText ? 34 : isFatherEditorialText ? 34 : isFatherProductText ? 32 : Math.round(titlePx * 0.22),
-                letterSpacing: '0.08em',
+                letterSpacing: tracking(ss.pill, '0.08em'),
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
                 padding: isElaraHeroText || isFatherProductText ? 0 : isFatherEditorialText ? '16px 38px' : '18px 48px',
@@ -1101,8 +1153,8 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               color: titleColor,
               fontSize: titlePx,
               fontWeight: textWeight,
-              lineHeight: 1.02,
-              letterSpacing: '-0.02em',
+              lineHeight: lineHeight(verbDisplay, 1.02),
+              letterSpacing: tracking(verbDisplay, '-0.02em'),
               whiteSpace: 'pre-wrap',
               overflowWrap: 'normal',
               wordBreak: 'normal',
@@ -1119,10 +1171,10 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
                 color: subtitleColor,
                 fontSize: subPx,
                 fontWeight: 500,
-                lineHeight: 1.15,
+                lineHeight: lineHeight(descDisplay, 1.15),
                 marginTop: 24,
                 opacity: 0.95,
-                letterSpacing: '-0.005em',
+                letterSpacing: tracking(descDisplay, '-0.005em'),
                 whiteSpace: 'pre-wrap',
                 overflowWrap: 'break-word',
                 wordBreak: 'normal',

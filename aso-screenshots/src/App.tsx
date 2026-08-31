@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { RenderScreen } from './screens/Render';
 import { AppShell } from './AppShell';
 import { SetupScreen } from './screens/Setup';
 import { CatalogScreen } from './screens/Catalog';
@@ -118,6 +119,7 @@ export function App() {
           <Route path="/ppo" element={<PPOScreen />} />
           <Route path="/icon-generator" element={<IconGeneratorScreen />} />
         </Route>
+        <Route path="/render" element={<RenderScreen />} />
       </Routes>
     </BrowserRouter>
   );

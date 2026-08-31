@@ -48,10 +48,19 @@ if (!started) throw new Error('Export button was not available after state sync'
 await page.waitForFunction((expectedCount) => {
   const body = document.body.innerText;
   return body.includes(`${expectedCount} rendered`);
-}, expected, { timeout: 120_000 });
+}, expected, { timeout: Math.max(120_000, expected * 8_000) });
 
 console.log((await page.locator('body').innerText()).split('\n').filter((line) =>
   /rendered|failed|saved|PNG/i.test(line)
 ).join('\n'));
+
+// Surface per-job failures: the footer only shows counts, and a silent
+// "0 failed" is the difference between a finished run and a missing locale.
+const failures = await page.evaluate(() => {
+  const body = document.body.innerText;
+  const m = body.match(/^.*(failed|collision|exceeds|safe zone).*$/gim);
+  return m ? m.slice(0, 40) : [];
+});
+if (failures.length) console.log('--- failures ---\n' + failures.join('\n'));
 
 await browser.close();

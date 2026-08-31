@@ -60,16 +60,22 @@ export interface ExportResult {
 // Resolving + base64-inlining every Google font can take several seconds.
 // The stylesheet is project-independent, so compute it once per Studio page
 // and reuse it for every slot/locale in the batch.
-let fontEmbedCssPromise: Promise<string> | null = null;
+// html-to-image only embeds @font-face rules for families actually USED inside
+// the captured node, so the result is per-font — a single global cache handed
+// the Latin stylesheet to Japanese/Arabic renders and their glyphs fell back to
+// a system face inside the SVG. Key the cache by the family the slot resolves to.
+const fontEmbedCssCache = new Map<string, Promise<string>>();
 
-function sharedFontEmbedCSS(node: HTMLElement): Promise<string> {
-  if (!fontEmbedCssPromise) {
-    fontEmbedCssPromise = getFontEmbedCSS(node).catch((error) => {
-      fontEmbedCssPromise = null;
+function sharedFontEmbedCSS(node: HTMLElement, key: string): Promise<string> {
+  let cached = fontEmbedCssCache.get(key);
+  if (!cached) {
+    cached = getFontEmbedCSS(node).catch((error) => {
+      fontEmbedCssCache.delete(key);
       throw error;
     });
+    fontEmbedCssCache.set(key, cached);
   }
-  return fontEmbedCssPromise;
+  return cached;
 }
 
 
@@ -190,7 +196,8 @@ async function renderOne(
     const prevOverflow = inner.style.overflow;
     inner.style.transform = 'none';
     inner.style.overflow = 'hidden';
-    const fontEmbedCSS = await sharedFontEmbedCSS(inner);
+    const fontKey = `${dev}|${locale?.fontOverride ?? ''}|${slot.font ?? ''}`;
+    const fontEmbedCSS = await sharedFontEmbedCSS(inner, fontKey);
     // Capture via toCanvas (returns canvas with default alpha buffer).
     const sourceCanvas = await toCanvas(inner, {
       pixelRatio: 1,

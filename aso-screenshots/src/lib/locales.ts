@@ -32,10 +32,15 @@ export interface LocaleSpec {
 // genuinely diverge.
 export const CURATED_LOCALES: LocaleSpec[] = [
   // ── Tier 1 — global launch core ────────────────────────────────────────
-  { code: 'en',     name: 'English',                flag: '🇬🇧', tier: 1 },
-  { code: 'es',     name: 'Spanish',                flag: '🇪🇸', tier: 1 },
-  { code: 'de',     name: 'German',                 flag: '🇩🇪', tier: 1 },
-  { code: 'fr',     name: 'French',                 flag: '🇫🇷', tier: 1 },
+  { code: 'en-US',  name: 'English (U.S.)',         flag: '🇺🇸', tier: 1 },
+  { code: 'en-GB',  name: 'English (U.K.)',         flag: '🇬🇧', tier: 1 },
+  { code: 'en-AU',  name: 'English (Australia)',    flag: '🇦🇺', tier: 1 },
+  { code: 'en-CA',  name: 'English (Canada)',       flag: '🇨🇦', tier: 1 },
+  { code: 'es-ES',  name: 'Spanish (Spain)',        flag: '🇪🇸', tier: 1 },
+  { code: 'es-MX',  name: 'Spanish (Mexico)',       flag: '🇲🇽', tier: 1 },
+  { code: 'de-DE',  name: 'German',                 flag: '🇩🇪', tier: 1 },
+  { code: 'fr-FR',  name: 'French',                 flag: '🇫🇷', tier: 1 },
+  { code: 'fr-CA',  name: 'French (Canada)',        flag: '🇨🇦', tier: 1 },
   { code: 'it',     name: 'Italian',                flag: '🇮🇹', tier: 1 },
   { code: 'pt-BR',  name: 'Portuguese (Brazil)',    flag: '🇧🇷', tier: 1 },
   { code: 'ru',     name: 'Russian',                flag: '🇷🇺', tier: 1 },
@@ -44,10 +49,10 @@ export const CURATED_LOCALES: LocaleSpec[] = [
   { code: 'zh-Hans',name: 'Chinese (Simplified)',   flag: '🇨🇳', tier: 1, font: 'Noto Sans SC' },
 
   // ── Tier 2 — major secondary markets ───────────────────────────────────
-  { code: 'nl',     name: 'Dutch',                  flag: '🇳🇱', tier: 2 },
+  { code: 'nl-NL',  name: 'Dutch',                  flag: '🇳🇱', tier: 2 },
   { code: 'pl',     name: 'Polish',                 flag: '🇵🇱', tier: 2 },
   { code: 'tr',     name: 'Turkish',                flag: '🇹🇷', tier: 2 },
-  { code: 'ar',     name: 'Arabic',                 flag: '🇸🇦', tier: 2, rtl: true,  font: 'Noto Sans Arabic' },
+  { code: 'ar-SA',  name: 'Arabic',                 flag: '🇸🇦', tier: 2, rtl: true,  font: 'Noto Sans Arabic' },
   { code: 'zh-Hant',name: 'Chinese (Traditional)',  flag: '🇹🇼', tier: 2, font: 'Noto Sans TC' },
   { code: 'pt-PT',  name: 'Portuguese (Portugal)',  flag: '🇵🇹', tier: 2 },
   { code: 'sv',     name: 'Swedish',                flag: '🇸🇪', tier: 2 },
@@ -69,8 +74,15 @@ export const CURATED_LOCALES: LocaleSpec[] = [
   { code: 'hr',     name: 'Croatian',               flag: '🇭🇷', tier: 3 },
   { code: 'uk',     name: 'Ukrainian',              flag: '🇺🇦', tier: 3 },
   { code: 'ms',     name: 'Malay',                  flag: '🇲🇾', tier: 3 },
+  { code: 'ca',     name: 'Catalan',                flag: '🇦🇩', tier: 3 },
 ];
 
+/** Legacy short codes used by older saved projects → current Apple codes. */
+const LOCALE_ALIASES: Record<string, string> = {
+  en: 'en-US', es: 'es-ES', de: 'de-DE', fr: 'fr-FR', nl: 'nl-NL', ar: 'ar-SA',
+};
+
 export function findLocaleSpec(code: string): LocaleSpec | undefined {
-  return CURATED_LOCALES.find((l) => l.code.toLowerCase() === code.toLowerCase());
+  const want = (LOCALE_ALIASES[code] ?? code).toLowerCase();
+  return CURATED_LOCALES.find((l) => l.code.toLowerCase() === want);
 }

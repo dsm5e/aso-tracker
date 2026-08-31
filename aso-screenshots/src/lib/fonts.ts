@@ -30,11 +30,16 @@ export const CURATED_FONTS: CuratedFont[] = [
   { family: 'Urbanist',          category: 'sans' },
   { family: 'DM Sans',           category: 'sans' },
   { family: 'Nunito Sans',       category: 'sans' },
+  // Broad-script workhorses. Most display families here are Latin-only, so a
+  // Cyrillic or Greek headline silently fell back to a system face with
+  // different metrics — these are the substitutes locales opt into.
+  { family: 'Noto Sans',         category: 'sans' },
   // Serif
   { family: 'Fraunces',          category: 'serif' },
   { family: 'Playfair Display',  category: 'serif' },
   { family: 'DM Serif Display',  category: 'serif' },
   { family: 'Crimson Pro',       category: 'serif' },
+  { family: 'Noto Serif',        category: 'serif' },
   // Display / condensed (great for short bold App Store headlines)
   { family: 'Bebas Neue',        category: 'display' },
   { family: 'Anton',             category: 'display' },
@@ -44,8 +49,10 @@ export const CURATED_FONTS: CuratedFont[] = [
   { family: 'JetBrains Mono',    category: 'mono' },
 ];
 
-/** Static list of font families already preloaded in index.html. */
-export const PRELOADED_FONTS = new Set([
-  'Inter', 'JetBrains Mono', 'Fraunces', 'Space Grotesk',
-  'DM Serif Display', 'Manrope', 'IBM Plex Sans', 'Nunito Sans',
-]);
+/** Families linked statically in index.html.
+ *
+ * Intentionally EMPTY: that <link> is cross-origin, so its @font-face rules are
+ * unreadable via `cssRules` and html-to-image cannot embed them into the export
+ * SVG. fontLoader re-fetches every family as a same-origin inline <style> so the
+ * rules stay readable; the duplicate declarations are harmless. */
+export const PRELOADED_FONTS = new Set<string>();
