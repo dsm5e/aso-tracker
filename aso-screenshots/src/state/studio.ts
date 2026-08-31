@@ -281,6 +281,16 @@ export interface LocaleEntry {
     phoneToggleLeft?: string;
     phoneToggleRight?: string;
   }>;
+  /** Переводы текста в наклейках, по индексу наклейки внутри слота.
+   *
+   *  Геометрия (координаты, поворот, ширина) не дублируется: она общая для
+   *  всех языков, меняются только слова. Без этого «Swap any object» и
+   *  подписи «Cream / Terracotta / Navy» оставались английскими поверх
+   *  полностью переведённого кадра. */
+  stickerTranslations?: Record<string, Array<{
+    text?: string;
+    imageCaptions?: string[];
+  } | null>>;
   /** Per-slot text adjustments specific to this locale. Lets the user nudge
    *  position / resize the headline for languages where the translation runs
    *  longer (German) or shorter (CJK) than the source. Renderer adds these
