@@ -17,6 +17,8 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
   let adj = loc.slotAdjustments?.[ss.id];
   let extra = loc.extraTranslations?.[ss.id];
   let stickerTr = loc.stickerTranslations?.[ss.id];
+  let badgeTr = loc.badgeTranslations?.[ss.id];
+  let bandTr = loc.archBandTranslations?.[ss.id];
 
   // Fallback: look for another slot with the same verb that has a translation.
   if (!tr && loc.translations && ss.headline.verb) {
@@ -33,6 +35,8 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
       if (!adj) adj = loc.slotAdjustments?.[match.id];
       if (!extra) extra = loc.extraTranslations?.[match.id];
       if (!stickerTr) stickerTr = loc.stickerTranslations?.[match.id];
+      if (!badgeTr) badgeTr = loc.badgeTranslations?.[match.id];
+      if (!bandTr) bandTr = loc.archBandTranslations?.[match.id];
     }
   }
 
@@ -44,6 +48,13 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
       ? { verb: tr.verb || ss.headline.verb, descriptor: tr.descriptor || ss.headline.descriptor, subhead: ss.headline.subhead }
       : ss.headline,
     pill: pill ?? ss.pill,
+    badgeLine1: badgeTr?.line1 ?? ss.badgeLine1,
+    badgeLine2: badgeTr?.line2 ?? ss.badgeLine2,
+    // Названия стилей под полосами арки: пропуск (null) оставляет исходное —
+    // часть терминов намеренно живёт по-английски и в других языках.
+    archBands: ss.archBands && bandTr
+      ? ss.archBands.map((band, i) => (bandTr?.[i] ? { ...band, label: bandTr[i] as string } : band))
+      : ss.archBands,
     // Наклейки переводятся по индексу: пропуск (null) оставляет исходный текст.
     stickers: ss.stickers && stickerTr
       ? ss.stickers.map((sticker, i) => {

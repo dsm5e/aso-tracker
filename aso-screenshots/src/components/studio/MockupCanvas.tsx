@@ -803,13 +803,13 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               {(ss.badgeLine1 || ss.badgeLaurelLeftUrl) && (
                 <div style={{ position: 'absolute', left: bLeft, top: bTop,
                   display: 'flex', alignItems: 'center', gap: 14, color: '#fff' }}>
-                  {ss.badgeLaurelLeftUrl && <img src={ss.badgeLaurelLeftUrl} alt="" style={{ height: 250 }} />}
+                  {ss.badgeLaurelLeftUrl && <img src={ss.badgeLaurelLeftUrl} alt="" style={{ height: ss.badgeLaurelHeight ?? 250 }} />}
                   <div style={{ textAlign: 'center', textShadow: '0 3px 16px rgba(0,0,0,.6)' }}>
                     {ss.badgeLine1 && <div style={{ font: '700 84px/1 system-ui' }}>{ss.badgeLine1}</div>}
                     {ss.badgeLine2 && <div style={{ font: '500 58px/1.1 system-ui', opacity: .95 }}>{ss.badgeLine2}</div>}
                     {ss.badgeStars && <div style={{ fontSize: 56, color: '#F5C518', letterSpacing: 3, marginTop: 8 }}>&#9733;&#9733;&#9733;&#9733;&#9733;</div>}
                   </div>
-                  {ss.badgeLaurelRightUrl && <img src={ss.badgeLaurelRightUrl} alt="" style={{ height: 250 }} />}
+                  {ss.badgeLaurelRightUrl && <img src={ss.badgeLaurelRightUrl} alt="" style={{ height: ss.badgeLaurelHeight ?? 250 }} />}
                 </div>
               )}
             </div>

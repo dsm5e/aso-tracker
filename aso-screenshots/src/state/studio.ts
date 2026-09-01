@@ -107,6 +107,8 @@ export interface Screenshot {
   baSplit?: number;
   baHandleFrac?: number;
   badgeLaurelLeftUrl?: string;
+  /** Высота лавровой ветви в px канваса (по умолчанию 250). */
+  badgeLaurelHeight?: number;
   badgeLaurelRightUrl?: string;
   badgeLine1?: string;
   badgeLine2?: string;
@@ -281,6 +283,14 @@ export interface LocaleEntry {
     phoneToggleLeft?: string;
     phoneToggleRight?: string;
   }>;
+  /** Перевод плашки соцдоказательства: число и подпись под ним.
+   *
+   *  Число переводится наравне с текстом: «10,000,000+» с запятыми читается
+   *  как чужой формат везде, кроме англоязычных сторов, а в CJK привычнее
+   *  своя разрядность (1000万+). */
+  badgeTranslations?: Record<string, { line1?: string; line2?: string }>;
+  /** Подписи под полосами арки (названия стилей), по индексу полосы. */
+  archBandTranslations?: Record<string, Array<string | null>>;
   /** Переводы текста в наклейках, по индексу наклейки внутри слота.
    *
    *  Геометрия (координаты, поворот, ширина) не дублируется: она общая для
