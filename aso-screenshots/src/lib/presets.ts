@@ -16,6 +16,69 @@ export interface PresetText {
   color: string;
   uppercase?: boolean;
   align?: 'left' | 'center' | 'right';
+  /**
+   * Optional styling knobs — all off by default so existing presets render
+   * exactly as before. Length values in shadows may use the `u` unit
+   * (1u = 1% of canvas width), e.g. `0 0.9u 0 #0B5FA8`, so one preset scales
+   * cleanly between the iPhone and iPad canvases.
+   */
+  /** CSS text-shadow for the title (hard + soft layers allowed). */
+  titleShadow?: string;
+  /** CSS text-shadow for the subtitle. */
+  subtitleShadow?: string;
+  /** Subtitle colour (default: the text colour). Slot overrides still win. */
+  subtitleColor?: string;
+  /** Subtitle font weight (default 500). */
+  subtitleWeight?: number;
+  /** Title line-height (default 1.02). */
+  titleLineHeight?: number;
+  /** Title letter-spacing (default -0.02em). */
+  titleLetterSpacing?: string;
+  /** Gap between title and subtitle in `u` (default: 24 canvas px). */
+  subtitleGapU?: number;
+  /** Uppercase the subtitle too (default: follows `uppercase`). */
+  subtitleUppercase?: boolean;
+  /** Never wrap a headline line: every explicit line (\n) is shrunk until it
+   *  fits the column width. Long words (СФОТОГРАФИРУЙ) never clip or wrap. */
+  fitLines?: boolean;
+  /** Horizontal padding of the headline column in `u` (default: 60 canvas px). */
+  sidePaddingU?: number;
+  /** Default pill styling for slots that carry a pill. */
+  pill?: {
+    bg?: string;
+    fg?: string;
+    /** CSS box-shadow, `u` units allowed (e.g. `0 0.6u 0 #C98A00`). */
+    shadow?: string;
+    weight?: number;
+    /** Font size as a fraction of the title px (default 0.22). */
+    sizeFrac?: number;
+    letterSpacing?: string;
+  };
+}
+
+/** Decorative layers for the `lagoon` parametric background (underwater kids look). */
+export interface LagoonDecor {
+  /** Diagonal light rays fading out towards the middle of the canvas. */
+  rays?: boolean;
+  /** Number of soft bubbles (default 16). */
+  bubbles?: number;
+  /** Share of bubbles drawn IN FRONT of the device (0..1, default 0.3). */
+  frontBubbleShare?: number;
+  /** Sand strip colour at the bottom; omit for no sand. */
+  sand?: string;
+  /** Sand strip height as a fraction of the canvas height (default 0.09). */
+  sandHeight?: number;
+}
+
+/** Device auto-placement relative to the MEASURED headline block. */
+export interface PresetLayout {
+  /** `below-headline`: the device hangs right under the rendered headline
+   *  (after fit), so short and long titles never leave a gap or overlap. */
+  deviceAnchor?: 'below-headline';
+  /** Gap between headline bottom and device top, in `u` (1% of canvas width). */
+  deviceGapU?: number;
+  /** Bottom of the headline safe zone (fraction of height) in anchored mode. */
+  headlineMaxFraction?: number;
 }
 
 export interface PresetBackground {
@@ -39,7 +102,9 @@ export interface PresetBackground {
    * the user's accent color via paletteFromAccent(). Currently only 'mountains' is
    * supported. Overrides imageSrc when present.
    */
-  parametric?: 'mountains' | 'dots';
+  parametric?: 'mountains' | 'dots' | 'lagoon';
+  /** Options for `parametric: 'lagoon'`. */
+  lagoon?: LagoonDecor;
   /** Optional grain overlay */
   grain?: boolean;
 }
@@ -55,6 +120,14 @@ export interface DeviceTransform {
   rotateZ?: number;
   /** Uniform scale, default 1. */
   scale?: number;
+  /** Per-device-family overrides (e.g. a different scale on iPad). */
+  ipad?: { scale?: number; offsetY?: number };
+  /** Clay frame body colour (default dark graphite gradient). */
+  bodyColor?: string;
+  /** Thin outer rim around the clay frame, e.g. `rgba(255,255,255,.35)`. */
+  rimColor?: string;
+  /** Replace the default drop shadow (CSS box-shadow, `u` units allowed). */
+  shadow?: string;
 }
 
 export interface SampleTextLayout {
@@ -126,6 +199,14 @@ export interface Preset {
   samples?: PresetSample[];
   /** Default device transform applied unless a sample overrides it. */
   device?: DeviceTransform;
+  /** Optional layout rules (device anchoring). */
+  layout?: PresetLayout;
+}
+
+/** Expand the `u` unit (1% of canvas width) inside a CSS length list. */
+export function expandU(css: string | undefined, canvasW: number): string | undefined {
+  if (!css) return css;
+  return css.replace(/(-?\d*\.?\d+)u\b/g, (_m, n) => `${((Number(n) * canvasW) / 100).toFixed(2)}px`);
 }
 
 // Templates = layout (device pos + text pos + font defaults) hardcoded per template;

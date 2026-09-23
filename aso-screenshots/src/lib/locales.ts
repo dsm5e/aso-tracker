@@ -75,6 +75,17 @@ export const CURATED_LOCALES: LocaleSpec[] = [
   { code: 'uk',     name: 'Ukrainian',              flag: '🇺🇦', tier: 3 },
   { code: 'ms',     name: 'Malay',                  flag: '🇲🇾', tier: 3 },
   { code: 'ca',     name: 'Catalan',                flag: '🇦🇩', tier: 3 },
+  { code: 'sl-SI',  name: 'Slovenian',              flag: '🇸🇮', tier: 3 },
+  { code: 'bn-BD',  name: 'Bangla',                 flag: '🇧🇩', tier: 3, font: 'Noto Sans Bengali' },
+  { code: 'gu-IN',  name: 'Gujarati',               flag: '🇮🇳', tier: 3, font: 'Noto Sans Gujarati' },
+  { code: 'kn-IN',  name: 'Kannada',                flag: '🇮🇳', tier: 3, font: 'Noto Sans Kannada' },
+  { code: 'ml-IN',  name: 'Malayalam',              flag: '🇮🇳', tier: 3, font: 'Noto Sans Malayalam' },
+  { code: 'mr-IN',  name: 'Marathi',                flag: '🇮🇳', tier: 3, font: 'Noto Sans Devanagari' },
+  { code: 'or-IN',  name: 'Odia',                   flag: '🇮🇳', tier: 3, font: 'Noto Sans Oriya' },
+  { code: 'pa-IN',  name: 'Punjabi',                flag: '🇮🇳', tier: 3, font: 'Noto Sans Gurmukhi' },
+  { code: 'ta-IN',  name: 'Tamil',                  flag: '🇮🇳', tier: 3, font: 'Noto Sans Tamil' },
+  { code: 'te-IN',  name: 'Telugu',                 flag: '🇮🇳', tier: 3, font: 'Noto Sans Telugu' },
+  { code: 'ur-PK',  name: 'Urdu',                   flag: '🇵🇰', tier: 3, rtl: true,  font: 'Noto Sans Arabic' },
 ];
 
 /** Legacy short codes used by older saved projects → current Apple codes. */

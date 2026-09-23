@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import {
   getIPhoneProfile,
   IPAD_FRAME,
+  IPAD_13_FRAME,
   type DeviceFrameGeometry,
+  type IPadModel,
   type IPhoneModel,
 } from '../../lib/deviceProfiles';
 
@@ -17,6 +19,13 @@ import {
 interface Props {
   asset?: 'iphone' | 'ipad';
   iphoneModel?: IPhoneModel;
+  ipadModel?: IPadModel;
+  /** Clay body colour override (default graphite gradient). */
+  bodyColor?: string;
+  /** Thin outer rim drawn around the clay body. */
+  rimColor?: string;
+  /** Replaces the default soft drop shadow. */
+  shadow?: string;
   frameStyle?: 'clay' | 'titanium' | 'frameless';
   showIsland?: boolean;
   children?: ReactNode;
@@ -38,6 +47,10 @@ interface Props {
 export function DeviceFrame({
   asset = 'iphone',
   iphoneModel,
+  ipadModel,
+  bodyColor,
+  rimColor,
+  shadow,
   frameStyle = 'clay',
   showIsland = true,
   children,
@@ -49,7 +62,7 @@ export function DeviceFrame({
   emptyScreenColor = '#000',
   cropBottomFrac = 0,
 }: Props) {
-  const D = asset === 'ipad' ? IPAD_FRAME : getIPhoneProfile(iphoneModel).frame;
+  const D = getDeviceFrameGeometry(asset, iphoneModel, ipadModel);
   const useTitaniumFrame = asset === 'iphone' && frameStyle === 'titanium';
 
   // `frameless` — без корпуса и рамки: сам скриншот, скруглённый, с мягкой
@@ -212,8 +225,10 @@ export function DeviceFrame({
           position: 'absolute',
           inset: 0,
           borderRadius: D.cornerR + D.bezel,
-          boxShadow:
-            '0 60px 120px -30px rgba(0,0,0,0.35), 0 25px 50px -15px rgba(0,0,0,0.20)',
+          boxShadow: [
+            shadow ?? '0 60px 120px -30px rgba(0,0,0,0.35), 0 25px 50px -15px rgba(0,0,0,0.20)',
+            rimColor ? `0 0 0 ${Math.max(4, Math.round(D.bezel * 0.35))}px ${rimColor}` : null,
+          ].filter(Boolean).join(', '),
           pointerEvents: 'none',
         }}
       />
@@ -223,7 +238,7 @@ export function DeviceFrame({
           position: 'absolute',
           inset: 0,
           borderRadius: D.cornerR + D.bezel,
-          background: 'linear-gradient(180deg, #2A2A2C 0%, #1A1A1C 100%)',
+          background: bodyColor ?? 'linear-gradient(180deg, #2A2A2C 0%, #1A1A1C 100%)',
           // Inner edge highlight + subtle outer rim
           boxShadow:
             'inset 0 0 0 1.5px rgba(255,255,255,0.07), inset 0 -1px 0 rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.06)',
@@ -275,8 +290,10 @@ export function DeviceFrame({
 export function getDeviceFrameGeometry(
   asset: 'iphone' | 'ipad',
   iphoneModel?: IPhoneModel,
+  ipadModel?: IPadModel,
 ): DeviceFrameGeometry {
-  return asset === 'ipad' ? IPAD_FRAME : getIPhoneProfile(iphoneModel).frame;
+  if (asset === 'ipad') return ipadModel === 'ipad-pro-13' ? IPAD_13_FRAME : IPAD_FRAME;
+  return getIPhoneProfile(iphoneModel).frame;
 }
 
 // Legacy layout consumers render catalog thumbnails before project state exists.

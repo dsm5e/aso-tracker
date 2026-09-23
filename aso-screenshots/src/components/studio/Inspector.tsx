@@ -4,6 +4,7 @@ import { Card, Input, Slider, Toggle, SegmentedControl } from '../shared';
 import { getPreset } from '../../lib/presets';
 import { CURATED_FONTS } from '../../lib/fonts';
 import { HERO_INGREDIENTS } from '../../lib/heroIngredients';
+import { DecorInspector } from './DecorInspector';
 import { useStudio, type Screenshot, type ActionData, type HeroIngredients } from '../../state/studio';
 
 // Full list lives in lib/fonts.ts — kept there so fontLoader.ts can preload them all.
@@ -874,7 +875,7 @@ export function Inspector({ screenshot: ss }: Props) {
               ['Каёмка',        'archRim',           0, 60,  1, 28,    false],
               ['Наклон реза',   'archSkew',          0, 20,  1, 7,     false],
             ] as const).map(([label, key, min, max, step, def, frac]) => {
-              const raw = (ss as Record<string, unknown>)[key] as number | undefined;
+              const raw = ss[key];
               const val = raw ?? def;
               const shown = frac ? Math.round(val * 100) : Math.round(val);
               return (
@@ -1016,6 +1017,8 @@ export function Inspector({ screenshot: ss }: Props) {
             <ResetDot active={(ss.deviceScale ?? 1) !== 1} onClick={() => set({ deviceScale: 1 })} />
           </div>
         </Card.Section>
+
+        <DecorInspector ss={ss} set={set} />
 
         <Card.Section title="Второе устройство (V-мокап)">
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '4px 0 0' }}>

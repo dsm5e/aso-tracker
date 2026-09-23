@@ -1,0 +1,50 @@
+{
+  "id": "liveaquarium-lagoon",
+  "name": "Lagoon Kids",
+  "kind": "real",
+  "description": "Bright underwater lagoon: sea gradient with light rays, soft bubbles (some in front of the phone) and a sand strip; chunky rounded white headline with a hard blue drop shadow, honey subtitle and pill; the phone hangs right under the headline and is clipped by the bottom edge. Made for Live Aquarium (kids).",
+  "recommendedFor": "kids / creativity / family apps",
+  "background": {
+    "type": "linear",
+    "css": "linear-gradient(180deg, #8BE4FA 0%, #3DB8F0 42%, #1C7BDB 78%, #1463C4 100%)",
+    "parametric": "lagoon",
+    "lagoon": { "rays": true, "bubbles": 16, "frontBubbleShare": 0.3, "sand": "#F6DFA4", "sandHeight": 0.09 }
+  },
+  "text": {
+    "font": "Nunito",
+    "weight": 900,
+    "color": "#FFFFFF",
+    "uppercase": true,
+    "align": "center",
+    "titleShadow": "0 0.9u 0 #0B5FA8, 0 2u 3u rgba(0,40,100,.35)",
+    "subtitleShadow": "0 0.6u 0 #0B5FA8",
+    "subtitleColor": "#FFE27A",
+    "subtitleWeight": 900,
+    "subtitleUppercase": false,
+    "titleLineHeight": 0.98,
+    "titleLetterSpacing": "0.01em",
+    "subtitleGapU": 1.2,
+    "fitLines": true,
+    "sidePaddingU": 5,
+    "pill": { "bg": "#FFC21A", "fg": "#22305E", "shadow": "0 0.6u 0 #C98A00", "weight": 900, "sizeFrac": 0.215, "letterSpacing": "0.04em" }
+  },
+  "layout": { "deviceAnchor": "below-headline", "deviceGapU": 4.5, "headlineMaxFraction": 0.34 },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": true,
+  "suggestedAccent": "#FFC21A",
+  "decorationsHint": "playful underwater canvas: soft bubbles, light rays, sand; bright candy colours coral, honey, sea-glass; friendly for parents and kids.",
+  "device": {
+    "asset": "iphone",
+    "scale": 1.02,
+    "ipad": { "scale": 0.98 },
+    "bodyColor": "#16213F",
+    "rimColor": "rgba(255,255,255,.35)",
+    "shadow": "0 3u 7u rgba(0,30,80,.45)"
+  },
+  "samples": [
+    { "verb": "ОЖИВИ\nРИСУНОК", "descriptor": "Рисунок станет живой 3D-рыбкой", "pill": "БЕЗ РЕКЛАМЫ", "text": { "yFraction": 0.045, "titlePx": 205, "subPx": 100 } },
+    { "verb": "РАСКРАСЬ\nРЫБКУ", "descriptor": "Заливка, штампы, радуга", "text": { "yFraction": 0.045, "titlePx": 205, "subPx": 100 } },
+    { "verb": "ДАЙ ИМЯ\nРЫБКЕ", "descriptor": "Каждая рыбка — питомец", "text": { "yFraction": 0.045, "titlePx": 205, "subPx": 100 } }
+  ]
+}

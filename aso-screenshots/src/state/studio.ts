@@ -1,7 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { PRESETS } from '../lib/presets';
-import { DEFAULT_IPHONE_MODEL, type IPhoneModel } from '../lib/deviceProfiles';
+import { DEFAULT_IPHONE_MODEL, type IPadModel, type IPhoneModel } from '../lib/deviceProfiles';
 
 export type Devices = 'iphone' | 'ipad' | 'both';
 
@@ -152,6 +152,11 @@ export interface Screenshot {
     fontPx?: number;
     align?: 'left' | 'center';
   }>;
+  /** Decorative overlays (kids, mascot, speech bubbles, doodles). */
+  decor?: DecorItem[];
+  /** Per-slot device anchoring override: `free` ignores the preset's
+   *  below-headline anchoring and uses the classic formula. */
+  deviceAnchor?: 'below-headline' | 'free';
   /** Transform for an already-designed full-bleed preview. */
   sourceScale?: number;
   sourceOffsetX?: number;
@@ -256,6 +261,49 @@ export interface Screenshot {
   action?: ActionData;
 }
 
+/** One named ordering of project slots (a PPO treatment, a CPP, …). */
+export interface LayoutVariant {
+  id: string;
+  title: string;
+  /** Slot ids in store order; iPhone and iPad slots may be mixed — exports
+   *  number each device family separately. */
+  slotIds: string[];
+  notes?: string;
+}
+
+/** Decorative overlay on a slot (cut-out image, speech bubble, doodle).
+ *  Stored in `Screenshot.decor`; text is localised by index through
+ *  `LocaleEntry.decorTranslations`. */
+export interface DecorItem {
+  kind: 'image' | 'bubble' | 'doodle';
+  /** Centre of the item, fractions of the canvas. */
+  xFrac: number;
+  yFrac: number;
+  /** Width as a fraction of the canvas width. */
+  widthFrac: number;
+  rotate?: number;
+  flipX?: boolean;
+  /** `back` = behind the device, `front` (default) = above device, below headline,
+   *  `top` = above everything including the headline. */
+  layer?: 'back' | 'front' | 'top';
+  opacity?: number;
+  /** kind=image: URL of a transparent PNG. */
+  src?: string;
+  /** Soft drop shadow under image/bubble (default true for image). */
+  shadow?: boolean;
+  /** kind=bubble: speech-bubble copy (localised). */
+  text?: string;
+  /** kind=bubble: tail direction. */
+  tail?: 'left' | 'right' | 'bottom-left' | 'bottom-right' | 'none';
+  bg?: string;
+  color?: string;
+  fontPx?: number;
+  /** kind=doodle: built-in hand-drawn SVG shape. */
+  shape?: 'arrow' | 'arrow-curly' | 'star' | 'heart' | 'sparkle' | 'swirl' | 'scribble' | 'burst' | 'wave';
+  /** Stroke / fill colour of a doodle. */
+  stroke?: string;
+}
+
 export interface LocaleEntry {
   id: string;
   /** BCP-47 locale code, e.g. en-US, ru-RU, ja, ar */
@@ -267,6 +315,9 @@ export interface LocaleEntry {
   translations: Record<string, Headline>;
   /** Pill / badge translations keyed by screenshot id (separate from headline). */
   pillTranslations?: Record<string, string>;
+  /** Speech-bubble / decor text by index inside the slot's `decor` list;
+   *  null keeps the source copy. */
+  decorTranslations?: Record<string, Array<string | null>>;
   /** Other localizable HTML-overlay strings per screenshot id. Baked AI-image
    *  text is intentionally excluded — hero art stays language-neutral. */
   extraTranslations?: Record<string, {
@@ -332,6 +383,15 @@ interface StudioState {
   appIconUrl: string | null;
   devices: Devices;
   iphoneModel: IPhoneModel;
+  /** iPad export canvas (12.9" 2048×2732 default, or 13" 2064×2752). */
+  ipadModel?: IPadModel;
+  /** Language of the untranslated source copy — names the export folder when
+   *  no locale entry is selected (default 'en'). */
+  sourceLocale?: string;
+  /** Named slot orderings of this project (e.g. PPO treatments). Each variant
+   *  is an ordered list of slot ids drawn from `screenshots`; every slot stays
+   *  a normal, translatable slot, so a variant localises for free. */
+  layoutVariants?: LayoutVariant[];
   outputFolder: string;
 
   /** Agent-driven wizard navigation. When set (via the bridge `goTo` + a state
@@ -398,7 +458,7 @@ interface StudioState {
   iconLab?: IconLab;
 
   // Mutations
-  setProject: (patch: Partial<Pick<StudioState, 'appName' | 'appColor' | 'appIconUrl' | 'devices' | 'iphoneModel' | 'outputFolder'>>) => void;
+  setProject: (patch: Partial<Pick<StudioState, 'appName' | 'appColor' | 'appIconUrl' | 'devices' | 'iphoneModel' | 'ipadModel' | 'sourceLocale' | 'outputFolder'>>) => void;
   pickPreset: (id: string) => void;
   toggleMultiSelect: (id: string) => void;
   clearMultiSelect: () => void;
@@ -557,6 +617,9 @@ export interface ArchivedProject {
     appIconUrl: string | null;
     devices: Devices;
     iphoneModel?: IPhoneModel;
+    ipadModel?: IPadModel;
+    sourceLocale?: string;
+    layoutVariants?: LayoutVariant[];
     outputFolder: string;
     selectedPresetId: string | null;
     screenshots: Screenshot[];
@@ -601,6 +664,9 @@ const projectInitial: Partial<StudioData> = {
   appIconUrl: null as string | null,
   devices: 'iphone' as Devices,
   iphoneModel: DEFAULT_IPHONE_MODEL,
+  ipadModel: undefined as IPadModel | undefined,
+  sourceLocale: undefined as string | undefined,
+  layoutVariants: undefined as LayoutVariant[] | undefined,
   outputFolder: '',
   selectedPresetId: null as string | null,
   catalogFilter: 'all' as const,
@@ -1477,6 +1543,9 @@ export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioStat
             appIconUrl: state.appIconUrl,
             devices: state.devices,
             iphoneModel: state.iphoneModel,
+            ipadModel: state.ipadModel,
+            sourceLocale: state.sourceLocale,
+            layoutVariants: state.layoutVariants,
             outputFolder: state.outputFolder,
             selectedPresetId: state.selectedPresetId,
             screenshots: state.screenshots,

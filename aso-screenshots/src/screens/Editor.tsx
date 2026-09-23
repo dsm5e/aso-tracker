@@ -10,7 +10,7 @@ import { useHighlight } from '../state/highlight';
 import { useEnhance } from '../lib/useEnhance';
 import { useKeyGate } from '../state/keyGate';
 import { getPreset } from '../lib/presets';
-import { formatDimensions, getIPhoneProfile, IPAD_CANVAS, IPHONE_PROFILES, type IPhoneModel } from '../lib/deviceProfiles';
+import { formatDimensions, getIPadCanvas, getIPhoneProfile, IPHONE_PROFILES, type IPadModel, type IPhoneModel } from '../lib/deviceProfiles';
 
 // /api on direct :5180/studio/, /studio-api when proxied via Keywords origin :5173/studio/.
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
@@ -26,6 +26,7 @@ export function EditorScreen() {
     viewMode,
     setViewMode,
     iphoneModel,
+    ipadModel,
     setProject,
   } = useStudio();
 
@@ -185,7 +186,7 @@ export function EditorScreen() {
   const active = screenshots.find((s) => s.id === activeScreenshotId);
   const activeDevice = active?.device ?? 'iphone';
   const activeProfile = getIPhoneProfile(iphoneModel);
-  const activeDimensions = activeDevice === 'ipad' ? IPAD_CANVAS : activeProfile.canvas;
+  const activeDimensions = activeDevice === 'ipad' ? getIPadCanvas(ipadModel) : activeProfile.canvas;
   const sourceDimensionsMismatch = activeDevice === 'iphone'
     && active?.sourcePixelWidth
     && active?.sourcePixelHeight
@@ -276,6 +277,18 @@ export function EditorScreen() {
                   {profile.label}
                 </option>
               ))}
+            </select>
+          )}
+          {active && activeDevice === 'ipad' && (
+            <select
+              className="select"
+              aria-label="iPad screenshot size"
+              value={ipadModel ?? 'ipad-pro-12.9'}
+              onChange={(e) => setProject({ ipadModel: e.target.value as IPadModel })}
+              style={{ width: 'auto', minWidth: 164, height: 30, padding: '0 28px 0 10px', fontSize: 11 }}
+            >
+              <option value="ipad-pro-12.9">iPad Pro 12.9" · 2048×2732</option>
+              <option value="ipad-pro-13">iPad Pro 13" · 2064×2752</option>
             </select>
           )}
           <span className="tabular muted" style={{ fontSize: 11 }}>

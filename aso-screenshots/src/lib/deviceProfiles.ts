@@ -76,6 +76,31 @@ export const IPHONE_PROFILES: readonly IPhoneProfile[] = [
 
 export const IPAD_CANVAS: CanvasDimensions = { w: 2048, h: 2732 };
 
+/** iPad canvases App Store Connect accepts in the 13" well. 12.9" (2048×2732)
+ *  stays the default so existing projects keep their geometry; 13" M4
+ *  (2064×2752) matches current iPad Pro simulator captures pixel-for-pixel. */
+export type IPadModel = 'ipad-pro-12.9' | 'ipad-pro-13';
+
+export const DEFAULT_IPAD_MODEL: IPadModel = 'ipad-pro-12.9';
+
+export const IPAD_13_CANVAS: CanvasDimensions = { w: 2064, h: 2752 };
+
+/** Frame whose screen aperture has the 3:4 ratio of the 13" capture, so the
+ *  screenshot fills it without letterboxing. */
+export const IPAD_13_FRAME: DeviceFrameGeometry = {
+  width: 1680,
+  height: 2221,
+  bezel: 28,
+  cornerR: 80,
+  islandW: 0,
+  islandH: 0,
+  islandTop: 0,
+};
+
+export function getIPadCanvas(model?: IPadModel): CanvasDimensions {
+  return model === 'ipad-pro-13' ? IPAD_13_CANVAS : IPAD_CANVAS;
+}
+
 export const IPAD_FRAME: DeviceFrameGeometry = {
   width: 1620,
   height: 2240,
@@ -94,8 +119,9 @@ export function getIPhoneProfile(model?: IPhoneModel): IPhoneProfile {
 export function getCanvasDimensions(
   device: 'iphone' | 'ipad',
   iphoneModel?: IPhoneModel,
+  ipadModel?: IPadModel,
 ): CanvasDimensions {
-  return device === 'ipad' ? IPAD_CANVAS : getIPhoneProfile(iphoneModel).canvas;
+  return device === 'ipad' ? getIPadCanvas(ipadModel) : getIPhoneProfile(iphoneModel).canvas;
 }
 
 export const APP_STORE_IPHONE_CANVAS: CanvasDimensions =
@@ -108,8 +134,9 @@ export function formatDimensions({ w, h }: CanvasDimensions, separator = ' × ')
 export function getCaptureDimensions(
   device: 'iphone' | 'ipad',
   iphoneModel?: IPhoneModel,
+  ipadModel?: IPadModel,
 ): CanvasDimensions & { cw: number; ch: number } {
-  const { w, h } = getCanvasDimensions(device, iphoneModel);
+  const { w, h } = getCanvasDimensions(device, iphoneModel, ipadModel);
   const cw = 1280;
   return { w, h, cw, ch: Math.round(cw * h / w) };
 }

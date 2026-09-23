@@ -24,9 +24,12 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
   const slots = st.screenshots;
   if (!slots.length) return { translated: 0, failed: 0 };
 
-  // English is the source language — copy originals directly, no API call needed.
-  const SOURCE_LOCALES = new Set(['en', 'en-US', 'en-GB', 'en-AU', 'en-CA']);
-  if (SOURCE_LOCALES.has(localeCode)) {
+  // Locales in the source language copy the originals — no API call needed.
+  // The source defaults to English; projects authored in another language
+  // set `sourceLocale` (e.g. 'ru').
+  const sourceLocale = st.sourceLocale ?? 'en';
+  const lang = (c: string) => c.toLowerCase().split('-')[0];
+  if (lang(localeCode) === lang(sourceLocale)) {
     const translationsRec: Record<string, Headline> = {};
     for (const s of slots) {
       translationsRec[s.id] = { verb: s.headline.verb, descriptor: s.headline.descriptor, subhead: s.headline.subhead ?? '' };
@@ -98,6 +101,10 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
     if (s.phoneSubtitle) items.push({ key: `${s.id}:phoneSubtitle`, text: s.phoneSubtitle });
     if (s.phoneToggleLeft) items.push({ key: `${s.id}:phoneToggleLeft`, text: s.phoneToggleLeft });
     if (s.phoneToggleRight) items.push({ key: `${s.id}:phoneToggleRight`, text: s.phoneToggleRight });
+    // Speech-bubble copy inside decor layers, keyed by decor index.
+    s.decor?.forEach((d, i) => {
+      if (d.kind === 'bubble' && d.text) items.push({ key: `${s.id}:decor.${i}`, text: d.text });
+    });
   }
   if (items.length === 0) return { translated: 0, failed: 0 };
 
@@ -107,7 +114,7 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       targetLocale: localeCode,
-      sourceLocale: 'en',
+      sourceLocale,
       appContext: st.appName ? `iOS app "${st.appName}". Target: App Store screenshots.` : 'iOS App Store screenshot strings.',
       items,
     }),
@@ -134,9 +141,17 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
     phoneToggleLeft?: string;
     phoneToggleRight?: string;
   }> = {};
+  const decorSlot: Record<string, Array<string | null>> = {};
   for (const it of data.items) {
     const [slotId, field] = it.key.split(':');
     if (!slotId || !field) continue;
+    if (field.startsWith('decor.')) {
+      const idx = Number(field.slice(6));
+      const slot = slots.find((x) => x.id === slotId);
+      decorSlot[slotId] = decorSlot[slotId] ?? (slot?.decor ?? []).map(() => null);
+      decorSlot[slotId][idx] = it.translation;
+      continue;
+    }
     if (
       field === 'footer' ||
       field === 'frontLabel' ||
@@ -196,6 +211,14 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
       .map(([slotId, v]) => [slotId, (v as { pill?: string }).pill!]),
   ));
 
+  if (Object.keys(decorSlot).length) {
+    useStudio.setState((state) => ({
+      locales: state.locales.map((l) => (l.code === localeCode
+        ? { ...l, decorTranslations: { ...(l.decorTranslations ?? {}), ...decorSlot } }
+        : l)),
+    }));
+  }
+
   // Auto-fit pass — long translations (German, Russian, French) wrap onto
   // more lines than the source, pushing the headline block down past the
   // source's bottom edge and onto the device. Solve for the largest font
@@ -213,6 +236,8 @@ export async function translateLocale(localeCode: string, signal?: AbortSignal):
     const minTitle = isCJK ? 100 : 90;
     const minSub = isCJK ? 50 : 44;
     const preset = getPreset(slot.presetId ?? '');
+    // Presets with per-line fitting size the headline at render time.
+    if (preset?.text.fitLines) continue;
     const availableH = computeAvailableH(
       device, slot.textYFraction ?? 0.07, baseTitle, baseSub,
       preset?.device?.offsetY ?? 0, slot.deviceY ?? 0,

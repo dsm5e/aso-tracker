@@ -190,3 +190,29 @@ cd ~/Developer/MYPROJECT/aso-studio/aso-screenshots && npm run dev
 # vite → :5180, api → :5181
 # proxied via aso-keywords at localhost:5173/studio/* and /studio-api/*
 ```
+
+## Data-driven kids/creative layouts (added for Live Aquarium)
+
+Preset-level opt-ins (all off by default, `u` = 1% of canvas width in CSS values):
+- `text.titleShadow` / `subtitleShadow` / `subtitleColor` / `subtitleWeight` /
+  `subtitleUppercase` / `titleLineHeight` / `titleLetterSpacing` / `subtitleGapU` /
+  `sidePaddingU` / `pill {bg, fg, shadow, weight, sizeFrac}`
+- `text.fitLines: true` — every `\n` line is nowrap and shrinks to the column width.
+- `layout.deviceAnchor: 'below-headline'` (+ `deviceGapU`, `headlineMaxFraction`) —
+  device hangs under the MEASURED headline. Slot opt-out: `deviceAnchor: 'free'`.
+- `background.parametric: 'lagoon'` + `background.lagoon {rays, bubbles, frontBubbleShare, sand}`.
+- `device.bodyColor / rimColor / shadow / ipad {scale, offsetY}`.
+
+Per-slot `decor[]` (kind `image` | `bubble` | `doodle`, `xFrac/yFrac/widthFrac/rotate/flipX`,
+`layer: back|front|top`). Bubble text is localised via `locale.decorTranslations[slotId][i]`.
+
+Project fields: `ipadModel` ('ipad-pro-12.9' 2048×2732 default | 'ipad-pro-13' 2064×2752),
+`sourceLocale` (language of the source copy, default 'en'), `layoutVariants[]`
+(`{id, title, slotIds}` — PPO treatments / slot orderings).
+
+CLIs:
+- `node cli/setup-liveaquarium.mjs` — rebuilds the Live Aquarium project (slots, decor, variants A–D).
+- `node cli/translate-locales.mjs --locales <list|all|asc> [--asc-locales …]` — transcreates
+  headlines/pills/bubbles via `/api/translate/batch` (OpenAI, falls back to the local Codex CLI).
+- `node cli/render-export.mjs --variants A,B|all --locales ru --tree '{variant}/{device}' --pattern '{n}.{ext}'`
+  — `{n}` is per-device position inside a variant; `--tree` placeholders: {app} {variant} {device} {images} {locale}.

@@ -19,6 +19,7 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
   let stickerTr = loc.stickerTranslations?.[ss.id];
   let badgeTr = loc.badgeTranslations?.[ss.id];
   let bandTr = loc.archBandTranslations?.[ss.id];
+  let decorTr = loc.decorTranslations?.[ss.id];
 
   // Fallback: look for another slot with the same verb that has a translation.
   if (!tr && loc.translations && ss.headline.verb) {
@@ -37,6 +38,7 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
       if (!stickerTr) stickerTr = loc.stickerTranslations?.[match.id];
       if (!badgeTr) badgeTr = loc.badgeTranslations?.[match.id];
       if (!bandTr) bandTr = loc.archBandTranslations?.[match.id];
+      if (!decorTr) decorTr = loc.decorTranslations?.[match.id];
     }
   }
 
@@ -67,6 +69,10 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
           };
         })
       : ss.stickers,
+    // Decor copy (speech bubbles) is translated by index; null keeps the source.
+    decor: ss.decor && decorTr
+      ? ss.decor.map((d, i) => (decorTr?.[i] ? { ...d, text: decorTr[i] as string } : d))
+      : ss.decor,
     // Localized footer capsule + V captions (fall back to source when absent).
     footer: extra?.footer ?? ss.footer,
     frontLabel: extra?.frontLabel ?? ss.frontLabel,

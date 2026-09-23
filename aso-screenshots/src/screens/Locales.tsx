@@ -374,7 +374,7 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
                         fitWidth={fw}
                         showDropZone={false}
                         viewModeOverride={ss.action?.aiImageUrl ? 'enhanced' : 'scaffold'}
-                        localeMeta={{ rtl: loc.rtl, fontOverride: loc.fontOverride }}
+                        localeMeta={{ rtl: loc.rtl, fontOverride: loc.fontOverride, lang: loc.code }}
                         deviceBaseTitlePx={ss.titlePx}
                         deviceBaseSubPx={ss.subPx}
                         showTextBoundary
@@ -415,7 +415,7 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
                     fitWidth={editorFw}
                     showDropZone={false}
                     viewModeOverride={ss.action?.aiImageUrl ? 'enhanced' : 'scaffold'}
-                    localeMeta={{ rtl: loc.rtl, fontOverride: loc.fontOverride }}
+                    localeMeta={{ rtl: loc.rtl, fontOverride: loc.fontOverride, lang: loc.code }}
                     deviceBaseTitlePx={ss.titlePx}
                     deviceBaseSubPx={ss.subPx}
                     showTextBoundary
