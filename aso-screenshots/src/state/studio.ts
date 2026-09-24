@@ -2,6 +2,7 @@ import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { PRESETS } from '../lib/presets';
 import { DEFAULT_IPHONE_MODEL, type IPadModel, type IPhoneModel } from '../lib/deviceProfiles';
+import type { LocalizedSources } from '../lib/localizedSources';
 
 export type Devices = 'iphone' | 'ipad' | 'both';
 
@@ -392,6 +393,9 @@ interface StudioState {
    *  is an ordered list of slot ids drawn from `screenshots`; every slot stays
    *  a normal, translatable slot, so a variant localises for free. */
   layoutVariants?: LayoutVariant[];
+  /** Per-language app screenshots (<dir>/<lang>/<file>) with fallback chain —
+   *  see lib/localizedSources.ts. Manifest maintained by cli/import-sources.mjs. */
+  localizedSources?: LocalizedSources;
   outputFolder: string;
 
   /** Agent-driven wizard navigation. When set (via the bridge `goTo` + a state
@@ -620,6 +624,7 @@ export interface ArchivedProject {
     ipadModel?: IPadModel;
     sourceLocale?: string;
     layoutVariants?: LayoutVariant[];
+    localizedSources?: LocalizedSources;
     outputFolder: string;
     selectedPresetId: string | null;
     screenshots: Screenshot[];
@@ -667,6 +672,7 @@ const projectInitial: Partial<StudioData> = {
   ipadModel: undefined as IPadModel | undefined,
   sourceLocale: undefined as string | undefined,
   layoutVariants: undefined as LayoutVariant[] | undefined,
+  localizedSources: undefined as LocalizedSources | undefined,
   outputFolder: '',
   selectedPresetId: null as string | null,
   catalogFilter: 'all' as const,
@@ -1546,6 +1552,7 @@ export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioStat
             ipadModel: state.ipadModel,
             sourceLocale: state.sourceLocale,
             layoutVariants: state.layoutVariants,
+            localizedSources: state.localizedSources,
             outputFolder: state.outputFolder,
             selectedPresetId: state.selectedPresetId,
             screenshots: state.screenshots,

@@ -216,3 +216,37 @@ CLIs:
   headlines/pills/bubbles via `/api/translate/batch` (OpenAI, falls back to the local Codex CLI).
 - `node cli/render-export.mjs --variants A,B|all --locales ru --tree '{variant}/{device}' --pattern '{n}.{ext}'`
   — `{n}` is per-device position inside a variant; `--tree` placeholders: {app} {variant} {device} {images} {locale}.
+
+## Localized app screenshots per language (`localizedSources`)
+
+Slots keep pointing at the ROOT capture `public/uploads/<dir>/<device>-0N-<name>.png`
+(language = `rootLang`). Per-language copies live next to it:
+`public/uploads/<dir>/<lang>/<device>-0N-<name>.png`. When a store locale renders
+(Locales preview, `/studio/render`, `cli/render-export.mjs`, in-app export), the
+locale maps to an app language and the first hit in `<lang> → fallback (en) → root`
+is used; a language equal to `rootLang` uses the root directly. Explicit
+`locale.sourceOverrides[slotId]` still wins. Logic: `src/lib/localizedSources.ts`
+(called from `applyLocaleToSlot`).
+
+Project field (the browser can't list folders, so `files` is a manifest):
+```json
+"localizedSources": {
+  "dir": "liveaquarium", "rootLang": "ru",
+  "files": { "en": ["iphone-01-aquarium.png", "…"], "de": ["…"] },
+  "localeMap": { "…": "…" },   // optional overrides of the ASC-locale → lang map
+  "fallback": ["en"],          // optional, default ['en']
+  "defaultLang": "en"          // optional, lang for locales absent from the map
+}
+```
+Default map: en-US/GB/AU/CA→en, de-DE→de, fr-FR/CA→fr, es-ES/MX→es, it, pt-BR/pt-PT→pt-BR,
+nl-NL→nl, sv, da, no→nb, fi, ja, ko, zh-Hans, zh-Hant, pl, tr, ru; everything else → en.
+
+Import (copies + rewrites the manifest, pushes live; writes state.json if the API is down):
+```bash
+node cli/import-sources.mjs --app liveaquarium --from ~/Developer/screenshots/LiveAquarium/source-l10n
+#   expects <from>/<lang>/<iphone|ipad>/0N-<name>.png  →  uploads/liveaquarium/<lang>/<device>-0N-<name>.png
+node cli/import-sources.mjs --app liveaquarium --scan    # rescan after manual adds/deletes
+#   --langs en,de   --root-lang ru   --dry
+```
+Missing files for a language just fall back (the import prints what's missing).
+`setup-liveaquarium.mjs` keeps `localizedSources` (it spreads the existing state).

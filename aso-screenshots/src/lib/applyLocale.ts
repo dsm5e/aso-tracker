@@ -8,6 +8,7 @@
  * added after the translate run.
  */
 import { useStudio, type LocaleEntry, type Screenshot } from '../state/studio';
+import { localizedSlotSources } from './localizedSources';
 
 export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Screenshot {
   if (!loc) return ss;
@@ -44,8 +45,8 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
 
   return {
     ...ss,
-    sourceUrl: loc.sourceOverrides?.[ss.id] ?? ss.sourceUrl,
-    secondaryUrl: loc.secondaryOverrides?.[ss.id] ?? ss.secondaryUrl,
+    // Localized app UI: per-locale override, else <lang> → fallback → root.
+    ...localizedSlotSources(ss, loc, useStudio.getState().localizedSources),
     headline: tr
       ? { verb: tr.verb || ss.headline.verb, descriptor: tr.descriptor || ss.headline.descriptor, subhead: ss.headline.subhead }
       : ss.headline,
