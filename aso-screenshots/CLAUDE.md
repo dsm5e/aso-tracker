@@ -217,6 +217,22 @@ CLIs:
 - `node cli/render-export.mjs --variants A,B|all --locales ru --tree '{variant}/{device}' --pattern '{n}.{ext}'`
   — `{n}` is per-device position inside a variant; `--tree` placeholders: {app} {variant} {device} {images} {locale}.
 
+## Device frames (`deviceFrameStyle`)
+
+`clay` (CSS body, historical default) | `titanium` (generated iPhone PNG, Elara) |
+`frameless` (rounded card) | `apple` — official Apple product bezels: iPhone 17 Pro Max
+(`silver`, `deep-blue`, `cosmic-orange`) and iPad Pro 13" M5 (`silver`, `space-black`).
+- Preset default: `device.frameStyle: 'apple'` + `device.bezelColor: { iphone, ipad }`.
+  Slot overrides: `deviceFrameStyle`, `deviceBezelColor` (Inspector → «Стиль устройства»).
+  Live Aquarium (`liveaquarium-lagoon`) uses `apple`, silver/silver.
+- The bezel keeps the clay frame's OUTER width, so tuned layouts keep their footprint;
+  the screen gets a bit smaller. `device.shadow` (box-shadow syntax) is converted to a
+  `drop-shadow` over the whole device, plus a tight contact shadow.
+- The PNG draws the rounded screen corners and the Dynamic Island (no CSS island is added).
+  The screenshot underneath gets a 0.2% bleed and a corner clip between the aperture and
+  the body curve. Assets, source and licence: `public/frames/apple/README.md`.
+  Adding a device: `python3 cli/measure-bezel.py <png>` → entry in `src/lib/deviceBezels.ts`.
+
 ## Localized app screenshots per language (`localizedSources`)
 
 Slots keep pointing at the ROOT capture `public/uploads/<dir>/<device>-0N-<name>.png`

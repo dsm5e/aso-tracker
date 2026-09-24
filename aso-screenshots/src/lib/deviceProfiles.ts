@@ -8,6 +8,13 @@ export interface CanvasDimensions {
   h: number;
 }
 
+/** How the device around the screenshot is drawn.
+ *  - `clay`      — flat matte body drawn in CSS (historical default)
+ *  - `titanium`  — generated photoreal iPhone overlay (Elara)
+ *  - `frameless` — no device, just the rounded screenshot card
+ *  - `apple`     — official Apple product bezel PNG (public/frames/apple) */
+export type DeviceFrameStyle = 'clay' | 'titanium' | 'frameless' | 'apple';
+
 export interface DeviceFrameGeometry {
   width: number;
   height: number;
@@ -16,6 +23,19 @@ export interface DeviceFrameGeometry {
   islandW: number;
   islandH: number;
   islandTop: number;
+  /** Set for image-based frames (`apple`): where the screen aperture and the
+   *  bezel PNG sit inside the width × height box (the box is the device body,
+   *  side buttons included). The PNG may extend past the box — its margins are
+   *  transparent. */
+  art?: {
+    src: string;
+    screen: { x: number; y: number; w: number; h: number };
+    /** Clip radius for the screenshot under the bezel (frame-box px). */
+    screenClipRadius: number;
+    image: { x: number; y: number; w: number; h: number };
+    /** The bezel already draws the Dynamic Island — never add the CSS one. */
+    hasIsland: boolean;
+  };
 }
 
 export interface IPhoneProfile {

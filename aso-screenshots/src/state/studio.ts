@@ -1,7 +1,7 @@
 import { create, type StoreApi, type UseBoundStore } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { PRESETS } from '../lib/presets';
-import { DEFAULT_IPHONE_MODEL, type IPadModel, type IPhoneModel } from '../lib/deviceProfiles';
+import { DEFAULT_IPHONE_MODEL, type DeviceFrameStyle, type IPadModel, type IPhoneModel } from '../lib/deviceProfiles';
 import type { LocalizedSources } from '../lib/localizedSources';
 
 export type Devices = 'iphone' | 'ipad' | 'both';
@@ -76,8 +76,12 @@ export interface Screenshot {
   /** Which device family this slot belongs to. 'iphone' by default. */
   device?: 'iphone' | 'ipad';
   /** Optional premium hardware overlay. `titanium` keeps the simulator capture
-   * as the real screen layer and draws a photorealistic iPhone frame above it. */
-  deviceFrameStyle?: 'clay' | 'titanium' | 'frameless';
+   * as the real screen layer and draws a photorealistic iPhone frame above it;
+   * `apple` does the same with the official Apple product bezel (iPhone + iPad).
+   * Unset = the preset's `device.frameStyle`, else `clay`. */
+  deviceFrameStyle?: DeviceFrameStyle;
+  /** Apple bezel colour key for `apple` frames (unset = preset / default). */
+  deviceBezelColor?: string;
   /** Source PNG URL from simulator (object URL or absolute path) */
   sourceUrl: string | null;
   /** Original uploaded bitmap dimensions, used to flag device-model mismatches. */

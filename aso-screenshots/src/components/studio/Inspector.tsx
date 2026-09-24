@@ -2,6 +2,7 @@ import React from 'react';
 import { Star, RotateCcw } from 'lucide-react';
 import { Card, Input, Slider, Toggle, SegmentedControl } from '../shared';
 import { getPreset } from '../../lib/presets';
+import { bezelsFor, getBezel } from '../../lib/deviceBezels';
 import { CURATED_FONTS } from '../../lib/fonts';
 import { HERO_INGREDIENTS } from '../../lib/heroIngredients';
 import { DecorInspector } from './DecorInspector';
@@ -957,17 +958,43 @@ export function Inspector({ screenshot: ss }: Props) {
 
         {(ss.sourceLayout ?? 'device') === 'device' && (<>
         <Card.Section title="Стиль устройства">
-          <div style={{ display: 'flex', gap: 6 }}>
-            {([['clay', 'Clay'], ['titanium', 'Титан'], ['frameless', 'Без рамки']] as const).map(([v, label]) => (
-              <button key={v} onClick={() => set({ deviceFrameStyle: v })}
-                style={{ flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
-                  border: '1px solid var(--line)', fontSize: 12,
-                  background: (ss.deviceFrameStyle ?? 'clay') === v ? 'var(--ai)' : 'transparent',
-                  color: (ss.deviceFrameStyle ?? 'clay') === v ? '#fff' : 'var(--fg-2)' }}>
-                {label}
-              </button>
-            ))}
-          </div>
+          {(() => {
+            // Unset slot style = the preset's default, so the active button
+            // shows what the canvas actually draws.
+            const presetDevice = getPreset(ss.presetId)?.device;
+            const family = ss.device === 'ipad' ? 'ipad' : 'iphone';
+            const style = ss.deviceFrameStyle ?? presetDevice?.frameStyle ?? 'clay';
+            const color = getBezel(family, ss.deviceBezelColor ?? presetDevice?.bezelColor?.[family]).color;
+            return (<>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {([['apple', 'Apple'], ['clay', 'Clay'], ['titanium', 'Титан'], ['frameless', 'Без рамки']] as const).map(([v, label]) => (
+                  <button key={v} onClick={() => set({ deviceFrameStyle: v })}
+                    style={{ flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
+                      border: '1px solid var(--line)', fontSize: 12,
+                      background: style === v ? 'var(--ai)' : 'transparent',
+                      color: style === v ? '#fff' : 'var(--fg-2)' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {style === 'apple' && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                  {/* Official Apple product bezels — colours of the real device. */}
+                  {bezelsFor(family).map((b) => (
+                    <button key={b.color} title={`${b.model} — ${b.colorLabel}`}
+                      onClick={() => set({ deviceBezelColor: b.color })}
+                      style={{ width: 24, height: 24, borderRadius: 999, cursor: 'pointer', padding: 0,
+                        background: b.swatch,
+                        border: color === b.color ? '2px solid var(--ai)' : '1px solid var(--line-2)',
+                        boxShadow: color === b.color ? '0 0 0 2px var(--bg-1, #fff) inset' : undefined }} />
+                  ))}
+                  <span className="muted" style={{ fontSize: 11 }}>
+                    {getBezel(family, color).colorLabel}
+                  </span>
+                </div>
+              )}
+            </>);
+          })()}
           {ss.deviceFrameStyle === 'frameless' && (
             <div className="field" style={{ marginTop: 10 }}>
               <label className="field-label">

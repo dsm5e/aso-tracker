@@ -296,7 +296,11 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const dt = preset?.device ?? { asset: 'iphone' as const };
   // iPad canvas always uses the iPad frame, regardless of preset default.
   const asset: 'iphone' | 'ipad' = device === 'ipad' ? 'ipad' : (dt.asset ?? 'iphone');
-  const D = getDeviceFrameGeometry(asset, iphoneModel, ipadModel);
+  // Frame style: slot override > preset default > clay. Resolved here so the
+  // layout maths (anchoring, safe zones) use the same box the frame draws.
+  const frameStyle = ss.deviceFrameStyle ?? dt.frameStyle;
+  const bezelColor = ss.deviceBezelColor ?? dt.bezelColor?.[asset];
+  const D = getDeviceFrameGeometry(asset, iphoneModel, ipadModel, frameStyle, bezelColor);
   const presetOffX = dt.offsetX ?? 0;
   const presetOffY = (device === 'ipad' ? dt.ipad?.offsetY : undefined) ?? dt.offsetY ?? 0;
   const presetRotZ = dt.rotateZ ?? 0;
@@ -633,7 +637,8 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
           bodyColor={dt.bodyColor}
           rimColor={dt.rimColor}
           shadow={expandU(dt.shadow, CANVAS_W)}
-          frameStyle={ss.deviceFrameStyle}
+          frameStyle={frameStyle}
+          bezelColor={bezelColor}
           cropBottomFrac={ss.screenCropBottom}
           showIsland={!opts.url}
           emptyScreenColor={opts.interactive && dragOver ? 'var(--accent-soft)' : '#000'}

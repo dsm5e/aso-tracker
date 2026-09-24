@@ -40,7 +40,9 @@
     "ipad": { "scale": 0.98 },
     "bodyColor": "#16213F",
     "rimColor": "rgba(255,255,255,.35)",
-    "shadow": "0 3u 7u rgba(0,30,80,.45)"
+    "shadow": "0 3u 7u rgba(0,30,80,.45)",
+    "frameStyle": "apple",
+    "bezelColor": { "iphone": "silver", "ipad": "silver" }
   },
   "samples": [
     { "verb": "ОЖИВИ\nРИСУНОК", "descriptor": "Рисунок станет живой 3D-рыбкой", "pill": "БЕЗ РЕКЛАМЫ", "text": { "yFraction": 0.045, "titlePx": 205, "subPx": 100 } },

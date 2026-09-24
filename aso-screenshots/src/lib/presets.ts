@@ -6,6 +6,7 @@
  * The scaffold renderer (MockupCanvas, Phase 4) reads these to assemble the 1290×2796 base.
  * AI polish (Phase 5) refines the scaffold, preserving its layout cues.
  */
+import type { DeviceFrameStyle } from './deviceProfiles';
 
 export type PresetKind = 'real' | 'abstract';
 
@@ -128,6 +129,11 @@ export interface DeviceTransform {
   rimColor?: string;
   /** Replace the default drop shadow (CSS box-shadow, `u` units allowed). */
   shadow?: string;
+  /** Default frame style for slots of this preset (slot `deviceFrameStyle` wins). */
+  frameStyle?: DeviceFrameStyle;
+  /** Apple bezel colour per device family for `frameStyle: 'apple'`
+   *  (keys from src/lib/deviceBezels.ts, e.g. `deep-blue`, `space-black`). */
+  bezelColor?: { iphone?: string; ipad?: string };
 }
 
 export interface SampleTextLayout {

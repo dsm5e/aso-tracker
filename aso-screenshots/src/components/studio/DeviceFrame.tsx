@@ -4,9 +4,11 @@ import {
   IPAD_FRAME,
   IPAD_13_FRAME,
   type DeviceFrameGeometry,
+  type DeviceFrameStyle,
   type IPadModel,
   type IPhoneModel,
 } from '../../lib/deviceProfiles';
+import { bezelFrameGeometry, getBezel } from '../../lib/deviceBezels';
 
 /**
  * Clay-style mockup of a selected iPhone profile or iPad Pro 13".
@@ -26,7 +28,9 @@ interface Props {
   rimColor?: string;
   /** Replaces the default soft drop shadow. */
   shadow?: string;
-  frameStyle?: 'clay' | 'titanium' | 'frameless';
+  frameStyle?: DeviceFrameStyle;
+  /** Colour key of the Apple bezel (`apple` style), e.g. `deep-blue`. */
+  bezelColor?: string;
   showIsland?: boolean;
   children?: ReactNode;
   /** When the screen is empty / placeholder, render this label inside it. */
@@ -52,6 +56,7 @@ export function DeviceFrame({
   rimColor,
   shadow,
   frameStyle = 'clay',
+  bezelColor,
   showIsland = true,
   children,
   placeholder,
@@ -62,12 +67,89 @@ export function DeviceFrame({
   emptyScreenColor = '#000',
   cropBottomFrac = 0,
 }: Props) {
-  const D = getDeviceFrameGeometry(asset, iphoneModel, ipadModel);
+  const D = getDeviceFrameGeometry(asset, iphoneModel, ipadModel, frameStyle, bezelColor);
   const useTitaniumFrame = asset === 'iphone' && frameStyle === 'titanium';
 
   // `frameless` — без корпуса и рамки: сам скриншот, скруглённый, с мягкой
   // тенью. Так делает DecAI на мокап-слотах: устройство не изображается, а
   // подразумевается, и всё внимание достаётся содержимому экрана.
+  // `apple` — official product bezel PNG over the screenshot. The screenshot
+  // fills the transparent aperture with a hairline bleed on every side (hidden
+  // under the opaque glass), so sub-pixel scaling never opens a seam between
+  // the screen and the bezel. Its corners are clipped to a radius that lies
+  // between the aperture curve and the body's outer curve: the PNG draws the
+  // visible screen corner and the island, the clip only keeps the square
+  // screenshot corner from poking out past the rounded body.
+  if (D.art) {
+    const A = D.art;
+    const bleedX = Math.max(2, A.screen.w * 0.002);
+    const bleedY = bleedX * (A.screen.h / A.screen.w); // keep the capture's aspect
+    // One drop-shadow over the whole stack follows the real silhouette (side
+    // buttons included) and never falls INTO the screen, which a shadow on the
+    // hollow bezel PNG alone would do.
+    const W = D.width;
+    const contact = `drop-shadow(0 ${(W * 0.006).toFixed(1)}px ${(W * 0.008).toFixed(1)}px rgba(0,0,0,0.30))`;
+    const ambient = shadow
+      ? boxShadowToDropShadow(shadow)
+      : `drop-shadow(0 ${(W * 0.035).toFixed(1)}px ${(W * 0.06).toFixed(1)}px rgba(0,0,0,0.30))`;
+    return (
+      <div style={{ position: 'relative', width: D.width, height: D.height, filter: `${contact} ${ambient}` }}>
+        <div
+          onClick={onClickScreen}
+          onDragOver={onDragOverScreen}
+          onDrop={onDropScreen}
+          onDragLeave={onDragLeaveScreen}
+          style={{
+            position: 'absolute',
+            left: A.screen.x - bleedX,
+            top: A.screen.y - bleedY,
+            width: A.screen.w + bleedX * 2,
+            height: A.screen.h + bleedY * 2,
+            borderRadius: A.screenClipRadius + bleedX,
+            overflow: 'hidden',
+            background: emptyScreenColor,
+            display: 'grid',
+            placeItems: 'center',
+            cursor: onClickScreen ? 'pointer' : 'default',
+          }}
+        >
+          {children ?? placeholder}
+        </div>
+        <img
+          aria-hidden
+          src={`${import.meta.env.BASE_URL}${A.src}`}
+          alt=""
+          draggable={false}
+          style={{
+            position: 'absolute',
+            left: A.image.x,
+            top: A.image.y,
+            width: A.image.w,
+            height: A.image.h,
+            maxWidth: 'none',
+            pointerEvents: 'none',
+          }}
+        />
+        {/* A bezel without its own island still gets the CSS one on an empty screen. */}
+        {showIsland && !A.hasIsland && D.islandW > 0 && (
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              top: D.islandTop,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: D.islandW,
+              height: D.islandH,
+              borderRadius: D.islandH / 2,
+              background: '#000',
+            }}
+          />
+        )}
+      </div>
+    );
+  }
+
   if (frameStyle === 'frameless') {
     // Apple-скругление — это НЕ дуга окружности: у border-radius кривизна в
     // точке стыка с прямой меняется скачком, и на большом радиусе угол читается
@@ -291,9 +373,41 @@ export function getDeviceFrameGeometry(
   asset: 'iphone' | 'ipad',
   iphoneModel?: IPhoneModel,
   ipadModel?: IPadModel,
+  frameStyle?: DeviceFrameStyle,
+  bezelColor?: string,
 ): DeviceFrameGeometry {
-  if (asset === 'ipad') return ipadModel === 'ipad-pro-13' ? IPAD_13_FRAME : IPAD_FRAME;
-  return getIPhoneProfile(iphoneModel).frame;
+  const base = asset === 'ipad'
+    ? (ipadModel === 'ipad-pro-13' ? IPAD_13_FRAME : IPAD_FRAME)
+    : getIPhoneProfile(iphoneModel).frame;
+  // The Apple bezel keeps the clay frame's outer width, so presets tuned with
+  // the clay mockup keep their composition; only the height follows the bezel.
+  if (frameStyle === 'apple') return bezelFrameGeometry(getBezel(asset, bezelColor), base.width);
+  return base;
+}
+
+/** CSS box-shadow list → filter drop-shadow chain (spread and inset dropped).
+ *  Lets presets keep one `device.shadow` value for every frame style. */
+export function boxShadowToDropShadow(boxShadow: string): string {
+  const parts: string[] = [];
+  let depth = 0, cur = '';
+  for (const ch of boxShadow) {
+    if (ch === '(') depth += 1;
+    if (ch === ')') depth -= 1;
+    if (ch === ',' && depth === 0) { parts.push(cur); cur = ''; } else cur += ch;
+  }
+  parts.push(cur);
+  return parts
+    .map((p) => p.trim())
+    .filter((p) => p && !/\binset\b/.test(p))
+    .map((p) => {
+      const color = p.match(/(rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]{3,8}\b|\b[a-z]+\b)\s*$/i)?.[0]
+        ?? p.match(/^(rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]{3,8}\b)/i)?.[0]
+        ?? 'rgba(0,0,0,0.3)';
+      const lengths = p.replace(color, '').trim().split(/\s+/).filter(Boolean).slice(0, 3);
+      while (lengths.length < 3) lengths.push('0');
+      return `drop-shadow(${lengths.join(' ')} ${color})`;
+    })
+    .join(' ');
 }
 
 // Legacy layout consumers render catalog thumbnails before project state exists.

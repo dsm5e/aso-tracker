@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Preset, PresetSample } from '../../lib/presets';
-import { DEVICE_DIMS, DeviceFrame } from './DeviceFrame';
+import { DeviceFrame, getDeviceFrameGeometry } from './DeviceFrame';
 import { MountainBackground } from './MountainBackground';
 import { DotsBackground } from './DotsBackground';
 import { ScreenPlaceholder } from './ScreenPlaceholder';
@@ -121,7 +121,10 @@ export function PresetThumbnail({
   // have sample fields REPLACE preset fields, drifting the catalog preview away from
   // what the editor shows for the same data.
   const asset = device?.asset ?? preset.device?.asset ?? 'iphone';
-  const D = DEVICE_DIMS[asset];
+  // Same frame the editor draws for this preset (Apple bezel, clay, …).
+  const frameStyle = preset.device?.frameStyle;
+  const bezelColor = preset.device?.bezelColor?.[asset];
+  const D = getDeviceFrameGeometry(asset, undefined, undefined, frameStyle, bezelColor);
   const offX = (preset.device?.offsetX ?? 0) + (device?.offsetX ?? 0);
   const offY = (preset.device?.offsetY ?? 0) + (device?.offsetY ?? 0);
   const rotZ = (preset.device?.rotateZ ?? 0) + (device?.rotateZ ?? 0);
@@ -262,6 +265,8 @@ export function PresetThumbnail({
           >
             <DeviceFrame
               asset={asset}
+              frameStyle={frameStyle}
+              bezelColor={bezelColor}
               emptyScreenColor={preset.suggestedAccent ?? '#FAEFD8'}
               placeholder={<ScreenPlaceholder accent={preset.suggestedAccent ?? '#C2956B'} />}
             >
