@@ -55,7 +55,7 @@ export function TranscribeNode({ id, data }: { id: string; data: Data }) {
               style={{
                 display: 'flex', gap: 8,
                 padding: '4px 6px', borderRadius: 'var(--ds-radius-inner)',
-                borderBottom: i < words.length - 1 ? '1px solid var(--ds-hairline)' : 'none',
+                background: i % 2 ? 'var(--ds-panel-2)' : 'transparent',
                 cursor: 'pointer',
               }}
             >

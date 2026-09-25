@@ -60,6 +60,9 @@ import { StudioSwitcher } from '../../shared/shell/StudioSwitcher';
 // MockupProvider/useMockupToggle now live inside OutputNode itself.
 import SettingsModal from './components/SettingsModal';
 import { TimelineEditor } from './components/TimelineEditor';
+// Adapty-style polish layer — imported after React Flow's and the shared
+// switcher's styles so it is the last stylesheet in the bundle.
+import './polish.css';
 
 // Categories for the + Add Node menu. Order matters — sources first, then
 // processors, then sink.
@@ -104,6 +107,19 @@ const NODE_MENU_SECTIONS: { title: string; items: NodeMenuItem[] }[] = [
 
 // Flat lookup for places that just need a label (delete confirms etc).
 function GraphEditor() {
+  // The toolbar floats over the canvas and may wrap on narrow windows; publish
+  // where it ends so the library rail and the timeline start right below it.
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const sync = () => root.style.setProperty('--vid-chrome-top', `${Math.round(el.getBoundingClientRect().bottom) + 8}px`);
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => { ro.disconnect(); root.style.removeProperty('--vid-chrome-top'); };
+  }, []);
   const [graph, setGraph] = useState<GraphPayload | null>(null);
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [influencers, setInfluencers] = useState<Influencer[]>([]);
@@ -897,15 +913,15 @@ function GraphEditor() {
     <div style={{ height: '100vh', width: '100vw', background: 'var(--ds-bg)', color: 'var(--ds-text)', fontFamily: 'var(--ds-font)' }}>
       {/* toolbar — wraps to multiple lines when the viewport gets narrow so
           buttons stay reachable instead of overflowing off-screen. */}
-      <div className="vid-toolbar">
+      <div className="vid-toolbar" ref={toolbarRef}>
         <StudioSwitcher current="video" />
-        <div className="vid-toolbar-sep" />
         <div className="ds-seg" role="tablist" aria-label="Editor mode">
           <button role="tab" aria-selected={editorMode === 'nodes'} onClick={() => setEditorMode('nodes')}>Nodes</button>
           <button role="tab" aria-selected={editorMode === 'timeline'} onClick={() => setEditorMode('timeline')}>Timeline</button>
         </div>
+        <div className="vid-toolbar-gap" />
         <div style={{ position: 'relative' }}>
-          <button className={`ds-btn${showLoad ? ' on' : ''}`} onClick={() => setShowLoad((v) => !v)}>
+          <button className={`ds-btn ds-btn-ghost${showLoad ? ' on' : ''}`} onClick={() => setShowLoad((v) => !v)}>
             Workflows <span className="vid-caret">▾</span>
           </button>
           {showLoad && (
@@ -937,7 +953,7 @@ function GraphEditor() {
         </div>
         <div style={{ position: 'relative' }}>
           <button
-            className={`ds-btn${showInf ? ' on' : ''}`}
+            className={`ds-btn ds-btn-ghost${showInf ? ' on' : ''}`}
             onClick={async () => {
               setInfluencers(await listInfluencers());
               setShowInf((v) => !v);
@@ -961,9 +977,10 @@ function GraphEditor() {
             </div>
           )}
         </div>
+        <div className="vid-toolbar-gap" />
         <div style={{ position: 'relative' }}>
-          <button className={`ds-btn${showAdd ? ' on' : ''}`} onClick={() => setShowAdd((v) => !v)}>
-            + Add Node <span className="vid-caret">▾</span>
+          <button className={`ds-btn ds-btn-ghost${showAdd ? ' on' : ''}`} onClick={() => setShowAdd((v) => !v)}>
+            + Add node <span className="vid-caret">▾</span>
           </button>
           {showAdd && (
             <div className="ds-pop vid-pop" style={{ minWidth: 340, maxHeight: '70vh', overflowY: 'auto' }}>
@@ -987,10 +1004,9 @@ function GraphEditor() {
             </div>
           )}
         </div>
-        <button className="ds-btn ds-btn-primary" onClick={() => runAll()}>▶ Run All</button>
-        <button className="ds-btn" onClick={handleAutoLayout} title="Auto-arrange nodes by topology — uses each card's actual rendered size so wide/tall cards don't overlap">Arrange</button>
+        <button className="ds-btn ds-btn-ghost" onClick={handleAutoLayout} title="Auto-arrange nodes by topology — uses each card's actual rendered size so wide/tall cards don't overlap">Arrange</button>
         <button
-          className="ds-btn ds-btn-danger"
+          className="ds-btn ds-btn-ghost ds-btn-danger"
           onClick={handleReset}
           title="Reset graph for a new video. Keeps App Screenshot and (optionally) your character Image Gen."
         >Reset</button>
@@ -1001,7 +1017,7 @@ function GraphEditor() {
             eat toolbar space. */}
         <div style={{ position: 'relative' }}>
           <button
-            className={`ds-btn${showActivity ? ' on' : ''}`}
+            className={`ds-btn ds-btn-ghost${showActivity ? ' on' : ''}`}
             onClick={() => setShowActivity((v) => !v)}
             title="Canvas history — Undo/Redo + recent actions"
           >
@@ -1010,7 +1026,7 @@ function GraphEditor() {
           </button>
           {showActivity && (
             <div className="ds-pop vid-pop vid-pop-right" style={{ width: 380, maxHeight: 520, display: 'flex', flexDirection: 'column', padding: 0 }}>
-              <div style={{ display: 'flex', gap: 8, padding: 10, borderBottom: '1px solid var(--ds-hairline)' }}>
+              <div style={{ display: 'flex', gap: 8, padding: 10, background: 'var(--ds-panel-2)' }}>
                 <button
                   className="ds-btn ds-btn-sm"
                   onClick={async () => {
@@ -1072,14 +1088,15 @@ function GraphEditor() {
             } catch {}
           }}
         />
-        <span className="vid-meta" style={{ fontSize: 13 }}>Total ${(graph?.meta.totalCost ?? 0).toFixed(3)}</span>
+        <span className="vid-meta vid-total" title="Total spend on this graph">Total ${(graph?.meta.totalCost ?? 0).toFixed(3)}</span>
         <button
-          className="ds-btn"
+          className="ds-btn ds-btn-ghost vid-toolbar-icon"
           onClick={() => setSettingsOpen(true)}
           title="API keys & settings"
           aria-label="Settings"
-          style={{ width: 40, padding: 0 }}
         >⚙</button>
+        {/* The one solid primary action sits at the end of the row, away from Reset. */}
+        <button className="ds-btn ds-btn-primary" onClick={() => runAll()}>▶ Run All</button>
       </div>
 
       {editorMode === 'nodes' ? <ReactFlow
@@ -1154,10 +1171,9 @@ function LiveIndicator({ lastSseAt, onForceSync }: { lastSseAt: number; onForceS
   // manually re-sync even when the indicator says "live".
   return (
     <button
-      className="ds-btn ds-btn-ghost"
+      className="ds-btn ds-btn-ghost vid-live"
       onClick={onForceSync}
       title={`Last SSE event ${Math.round(ageMs/1000)}s ago — click to force-sync`}
-      style={{ padding: '0 10px', color: 'var(--ds-muted)' }}
     >
       <span className="vid-dot" style={{ background: color }} />
       {label}
@@ -1248,9 +1264,6 @@ export function App() {
           height: calc(100% - 8px);
           max-height: 570px;
           max-width: calc(100% - 8px);
-        }
-        .timeline-inspector {
-          border-left: 1px solid var(--ds-border);
         }
         @media (max-height: 720px) {
           .timeline-editor {

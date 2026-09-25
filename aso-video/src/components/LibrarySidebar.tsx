@@ -220,7 +220,7 @@ function Thumb({ item, onDeleted }: { item: LibItem; onDeleted: () => void }) {
     <div
       onClick={onClick}
       title={tooltip}
-      style={{ ...thumbBox, borderTop: `3px solid ${accent}` }}
+      style={thumbBox}
     >
       <div style={mediaWrap}>
         {item.kind === 'image' && (
@@ -240,21 +240,24 @@ function Thumb({ item, onDeleted }: { item: LibItem; onDeleted: () => void }) {
           style={deleteBtn}
         >×</button>
       </div>
-      <div style={thumbCaption}>{item.filename}</div>
+      <div style={thumbCaption}>
+        <span className="vid-dot" style={{ background: accent }} />
+        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.filename}</span>
+      </div>
     </div>
   );
 }
 
 const collapsedRail: React.CSSProperties = {
-  position: 'absolute', top: 80, left: 0, bottom: 0, width: 40,
-  background: 'var(--ds-panel)', borderRight: '1px solid var(--ds-border)',
+  position: 'absolute', top: 'var(--vid-chrome-top, 76px)', left: 0, bottom: 0, width: 40,
+  background: 'var(--ds-panel)', boxShadow: 'var(--ds-shadow)',
   display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8,
   zIndex: 9,
 };
 
 const panel: React.CSSProperties = {
-  position: 'absolute', top: 80, left: 0, bottom: 0, width: 320,
-  background: 'var(--ds-panel)', borderRight: '1px solid var(--ds-border)',
+  position: 'absolute', top: 'var(--vid-chrome-top, 76px)', left: 0, bottom: 0, width: 320,
+  background: 'var(--ds-panel)',
   display: 'flex', flexDirection: 'column',
   zIndex: 9,
   boxShadow: 'var(--ds-shadow)',
@@ -262,7 +265,7 @@ const panel: React.CSSProperties = {
 
 const header: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 4,
-  padding: '8px 8px 8px 16px', borderBottom: '1px solid var(--ds-hairline)',
+  padding: '8px 8px 4px 16px',
 };
 
 const grid: React.CSSProperties = {
@@ -274,12 +277,11 @@ const grid: React.CSSProperties = {
   gridAutoRows: 'min-content',
 };
 
-// Thumbs are small cards: no outline, DS shadow, category shown as a 3px top rule
-// (same language as node cards on the canvas).
+// Thumbs are small cards: no outline, DS shadow, category shown as a dot next to
+// the filename (node cards show it as a tinted header band).
 const thumbBox: React.CSSProperties = {
   cursor: 'zoom-in', borderRadius: 'var(--ds-radius-card)', overflow: 'hidden',
   background: 'var(--ds-panel)', boxShadow: 'var(--ds-shadow)',
-  borderTop: '3px solid var(--ds-border)',
   display: 'flex', flexDirection: 'column',
 };
 
@@ -296,8 +298,9 @@ const thumbMedia: React.CSSProperties = {
 };
 
 const thumbCaption: React.CSSProperties = {
-  fontSize: 12, color: 'var(--ds-muted)', padding: '6px 8px',
-  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  display: 'flex', alignItems: 'center', gap: 6,
+  fontSize: 12, lineHeight: '16px', color: 'var(--ds-muted)', padding: '8px 8px',
+  whiteSpace: 'nowrap', overflow: 'hidden',
 };
 
 // Sits on top of arbitrary media, so it keeps a dark scrim instead of DS tokens.
@@ -310,6 +313,6 @@ const deleteBtn: React.CSSProperties = {
 };
 
 const footer: React.CSSProperties = {
-  padding: '10px 16px', borderTop: '1px solid var(--ds-hairline)',
-  fontSize: 12, color: 'var(--ds-muted)',
+  padding: '10px 16px', background: 'var(--ds-panel-2)',
+  fontSize: 12, color: 'var(--ds-muted)', fontVariantNumeric: 'tabular-nums',
 };

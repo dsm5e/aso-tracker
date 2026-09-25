@@ -129,8 +129,8 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
   return (
     <div
       className="vid-node"
-      // Category shows as a thin top rule; the card itself stays neutral.
-      style={{ borderTop: `3px solid ${headerColor}` }}
+      // Category tints the header band (see polish.css); the card body stays neutral.
+      style={{ '--vid-node-cat': headerColor } as React.CSSProperties}
     >
       {blocked && (
         // Barely-noticeable amber wash — signals the card is waiting on an

@@ -30,8 +30,8 @@ export function GroupNode({ id, data }: { id: string; data: Data }) {
       style={{
         position: 'relative',
         width: '100%', height: '100%',
-        background: `color-mix(in srgb, ${tint} 6%, transparent)`,
-        border: `2px dashed color-mix(in srgb, ${tint} 33%, transparent)`,    // dashed to read as "container, not card"
+        // A soft tinted area reads as "container, not card" without an outline.
+        background: `color-mix(in srgb, ${tint} 8%, transparent)`,
         borderRadius: 'var(--ds-radius-card)',
         boxSizing: 'border-box',
       }}

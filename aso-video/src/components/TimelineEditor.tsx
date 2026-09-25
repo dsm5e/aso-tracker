@@ -262,9 +262,9 @@ export function TimelineEditor({
     .sort((a, b) => a.timeline.track - b.timeline.track);
 
   return (
-    <div className="timeline-editor" style={{ position: 'absolute', top: 80, right: 0, bottom: 0, left: 'var(--aso-library-width, 40px)', display: 'grid', background: 'var(--ds-bg)', minHeight: 0 }}>
+    <div className="timeline-editor" style={{ position: 'absolute', top: 'var(--vid-chrome-top, 76px)', right: 0, bottom: 0, left: 'var(--aso-library-width, 40px)', display: 'grid', background: 'var(--ds-bg)', minHeight: 0 }}>
       <div className="timeline-preview-row" style={{ minHeight: 0 }}>
-        <div style={{ display: 'grid', placeItems: 'center', padding: 16, overflow: 'hidden', background: 'var(--ds-panel-2)' }}>
+        <div style={{ display: 'grid', placeItems: 'center', padding: 16, overflow: 'hidden' }}>
           <div className="timeline-stage" style={{ aspectRatio: '9 / 16', position: 'relative', overflow: 'hidden', background: '#050505', boxShadow: 'var(--ds-shadow-pop)', borderRadius: 8 }}>
             {active.length === 0 && (
               <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', color: 'var(--ds-subtle)', fontSize: 12 }}>Move the playhead onto a clip</div>
@@ -382,11 +382,11 @@ export function TimelineEditor({
             })}
           </div>
         </div>
-        <div className="timeline-inspector" style={{ padding: 14, overflowY: 'auto', background: 'var(--ds-panel)', minWidth: 0 }}>
+        <div className="timeline-inspector" style={{ padding: 16, overflowY: 'auto', background: 'var(--ds-panel)', borderRadius: 'var(--ds-radius-card)', boxShadow: 'var(--ds-shadow)', minWidth: 0 }}>
           <div className="ds-card-title" style={{ marginBottom: 8 }}>Inspector</div>
           {!selected || !selectedTimeline ? <div className="ds-note">Select a clip.</div> : (
             <>
-              <div style={{ fontSize: 14, color: 'var(--ds-strong)', fontWeight: 600, marginBottom: 12 }}>{selectedTimeline.label ?? String(selected.node.data.label ?? selected.node.type)}</div>
+              <div style={{ fontSize: 14, color: 'var(--ds-strong)', fontWeight: 600, marginBottom: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedTimeline.label ?? String(selected.node.data.label ?? selected.node.type)}</div>
               {linkedVideo && selectedPhotoUrl && (
                 <div style={{ padding: 12, marginBottom: 12, borderRadius: 'var(--ds-radius-card)', background: 'var(--ds-panel-2)' }}>
                   <div className="ds-seg" role="tablist" style={{ display: 'flex', marginBottom: 10 }}>
@@ -453,7 +453,7 @@ export function TimelineEditor({
               <Field label="Start" value={selectedTimeline.start} step={0.1} onChange={(v) => commit(selected.node, { ...selectedTimeline, start: Math.max(0, v) })} />
               <Field label="Duration" value={selectedTimeline.duration} step={0.1} onChange={(v) => commit(selected.node, { ...selectedTimeline, duration: Math.max(0.1, v) })} />
               <Field label="Track" value={selectedTimeline.track + 1} step={1} onChange={(v) => commit(selected.node, { ...selectedTimeline, track: Math.max(0, Math.min(TRACKS.length - 1, Math.round(v) - 1)) })} />
-              <div style={{ height: 1, background: 'var(--ds-hairline)', margin: '14px 0' }} />
+              <div className="vid-label" style={{ margin: '16px 0 8px' }}>Layout</div>
               {(['x', 'y', 'width', 'height', 'opacity'] as const).map((key) => (
                 <Field
                   key={key}
@@ -469,8 +469,8 @@ export function TimelineEditor({
         </div>
       </div>
 
-      <div className="timeline-tracks" style={{ borderTop: '1px solid var(--ds-border)', background: 'var(--ds-panel)', display: 'grid', gridTemplateRows: '48px 1fr', minWidth: 0, minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', borderBottom: '1px solid var(--ds-border)' }}>
+      <div className="timeline-tracks" style={{ background: 'var(--ds-panel)', borderRadius: 'var(--ds-radius-card)', boxShadow: 'var(--ds-shadow)', overflow: 'hidden', display: 'grid', gridTemplateRows: '48px 1fr', minWidth: 0, minHeight: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
           <button className="ds-btn ds-btn-sm" onClick={() => setPlaying((v) => !v)} title={playing ? 'Pause' : 'Play'} style={{ width: 32, padding: 0 }}>{playing ? 'Ⅱ' : '▶'}</button>
           <button className="ds-btn ds-btn-sm" onClick={() => { setPlaying(false); setPlayhead(0); }} title="Stop" style={{ width: 32, padding: 0 }}>■</button>
           <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 14, fontWeight: 500, color: 'var(--ds-text)', minWidth: 70 }}>{playhead.toFixed(2)}s</span>
@@ -478,15 +478,15 @@ export function TimelineEditor({
           <span className="vid-meta">30 fps · {duration.toFixed(1)}s</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '116px 1fr', minHeight: 0, overflow: 'auto' }}>
-          <div style={{ paddingTop: 26, borderRight: '1px solid var(--ds-border)', background: 'var(--ds-panel-2)', position: 'sticky', left: 0, zIndex: 5 }}>
-            <div style={{ height: 30, padding: '9px 10px', boxSizing: 'border-box', borderBottom: '1px solid var(--ds-hairline)', color: 'var(--ds-warn)', fontSize: 11, fontWeight: 600 }}>FX · Transitions</div>
-            {TRACKS.map((track) => <div key={track} style={{ height: TRACK_HEIGHT, padding: '17px 10px', boxSizing: 'border-box', borderBottom: '1px solid var(--ds-hairline)', fontSize: 12, fontWeight: 500, color: 'var(--ds-muted)' }}>{track}</div>)}
+          <div style={{ paddingTop: 26, background: 'var(--ds-panel-2)', position: 'sticky', left: 0, zIndex: 5 }}>
+            <div style={{ height: 30, padding: '9px 10px', boxSizing: 'border-box', color: 'var(--ds-warn)', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>FX · Transitions</div>
+            {TRACKS.map((track, i) => <div key={track} style={{ height: TRACK_HEIGHT, padding: '17px 10px', boxSizing: 'border-box', background: i % 2 ? 'var(--vid-row-alt-2)' : undefined, fontSize: 12, fontWeight: 500, color: 'var(--ds-muted)', whiteSpace: 'nowrap' }}>{track}</div>)}
           </div>
           <div ref={timelineSurfaceRef} style={{ position: 'relative', minWidth: duration * PX_PER_SECOND, paddingTop: 26 }}>
-            <div onPointerDown={beginPlayheadDrag} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 26, cursor: 'ew-resize', touchAction: 'none', background: 'var(--ds-panel-2)', borderBottom: '1px solid var(--ds-border)' }}>
+            <div onPointerDown={beginPlayheadDrag} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 26, cursor: 'ew-resize', touchAction: 'none', background: 'var(--ds-panel-2)' }}>
               {Array.from({ length: Math.ceil(duration) + 1 }, (_, i) => <span key={i} style={{ position: 'absolute', left: i * PX_PER_SECOND, top: 6, fontSize: 11, color: 'var(--ds-subtle)', borderLeft: '1px solid var(--ds-axis)', paddingLeft: 3 }}>{i}s</span>)}
             </div>
-            <div style={{ height: 30, position: 'relative', borderBottom: '1px solid var(--ds-hairline)', background: 'var(--ds-panel-2)' }}>
+            <div style={{ height: 30, position: 'relative', background: 'color-mix(in srgb, var(--ds-panel-2) 50%, var(--ds-panel))' }}>
               {clips.map(({ node, timeline: original }) => {
                 const transition = transitionOf(node);
                 if (!transition) return null;
@@ -520,7 +520,7 @@ export function TimelineEditor({
               })}
             </div>
             {TRACKS.map((_, track) => (
-              <div key={track} style={{ height: TRACK_HEIGHT, position: 'relative', borderBottom: '1px solid var(--ds-hairline)', backgroundImage: `repeating-linear-gradient(90deg, transparent 0, transparent ${PX_PER_SECOND - 1}px, var(--ds-grid) ${PX_PER_SECOND}px)` }}>
+              <div key={track} style={{ height: TRACK_HEIGHT, position: 'relative', backgroundColor: track % 2 ? 'var(--vid-row-alt)' : undefined, backgroundImage: `repeating-linear-gradient(90deg, transparent 0, transparent ${PX_PER_SECOND - 1}px, var(--ds-grid) ${PX_PER_SECOND}px)` }}>
                 {clips.filter((x) => effective(x.node.id, x.timeline).track === track).map(({ node, timeline: original }) => {
                   const timeline = effective(node.id, original);
                   return (
