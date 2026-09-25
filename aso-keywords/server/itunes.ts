@@ -136,8 +136,13 @@ export function parseMzSearch(json: unknown): { ids: string[]; lockups: Map<stri
     pageData?: { bubbles?: Array<{ name?: string; results?: Array<{ id?: unknown }> }> };
     storePlatformData?: { 'native-search-lockup'?: { results?: Record<string, MzLockup> } };
   } | null;
-  const bubble = root?.pageData?.bubbles?.find((b) => b?.name === 'software');
-  if (!bubble || !Array.isArray(bubble.results)) return null;
+  const bubbles = root?.pageData?.bubbles;
+  if (!Array.isArray(bubbles)) return null;
+  const bubble = bubbles.find((b) => b?.name === 'software');
+  // A query nothing matches comes back as a page without the software bubble —
+  // that is «not in the results», not a schema change.
+  if (!bubble) return { ids: [], lockups: new Map() };
+  if (!Array.isArray(bubble.results)) return null;
   const ids = bubble.results.map((r) => String(r?.id ?? '')).filter((id) => /^\d+$/.test(id));
   const lockups = new Map<string, RankLockup>();
   for (const [id, l] of Object.entries(root?.storePlatformData?.['native-search-lockup']?.results ?? {})) {
@@ -219,7 +224,7 @@ export async function searchAppStore(
   if (!parsed) {
     if (!schemaWarned) {
       schemaWarned = true;
-      console.warn('[appstore] ⚠️ MZStore response schema changed: pageData.bubbles[name=software].results missing — ranks fail until fixed');
+      console.warn('[appstore] ⚠️ MZStore response schema changed: pageData missing or software bubble without results — ranks fail until fixed');
     }
     throw new Error('App Store response schema changed');
   }

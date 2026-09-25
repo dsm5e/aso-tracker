@@ -584,10 +584,17 @@ export function hostGate(host: GateHost): HostGate {
   let gate = gates.get(host);
   if (!gate) {
     envEgresses ??= egressesFromEnv();
-    // search.itunes.apple.com gets a small burst so a UI suggestions request
-    // (up to 12 hint seeds) is not spread over half a minute; the average rate
-    // is still the AIMD rate.
-    const config = host === 'search.itunes.apple.com' ? { ...DEFAULT_GATE_CONFIG, burst: 4 } : DEFAULT_GATE_CONFIG;
+    // search.itunes.apple.com (ranks + hints) has its own budget, measured
+    // 2026-09-26 from this IP: 60/min clean for a minute, 90/min → 403 after
+    // ~20 s, the block lifted within ~2 min. So: start at 45, climb +5 per 20
+    // successes to 55 (below the clean 60), pause 5 min on 403/429 (a block seen
+    // lasted 2–14 min; hitting it while blocked seems to extend it). A small burst
+    // keeps a UI hints request (≤12 seeds) from being spread over half a minute.
+    // Override the ceiling with KEYWORDS_SEARCH_MAX_PER_MIN.
+    const searchMax = Number(process.env.KEYWORDS_SEARCH_MAX_PER_MIN) || 55;
+    const config = host === 'search.itunes.apple.com'
+      ? { ...DEFAULT_GATE_CONFIG, startPerMin: Math.min(45, searchMax), maxPerMin: searchMax, stepPerMin: 5, successesPerStep: 20, pauseMs: 5 * 60_000, burst: 4 }
+      : DEFAULT_GATE_CONFIG;
     gate = new HostGate(host, config, realClock, envEgresses);
     gates.set(host, gate);
   }

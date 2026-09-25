@@ -28,7 +28,7 @@ test('parseMzSearch reads ordered ids and lockups', () => {
 
 test('parseMzSearch returns null when the schema changed', () => {
   assert.equal(parseMzSearch({ storePlatformData: {} }), null);
-  assert.equal(parseMzSearch({ pageData: { bubbles: [{ name: 'editorial', results: [] }] } }), null);
+  assert.deepEqual(parseMzSearch({ pageData: { bubbles: [{ name: 'editorial', results: [] }] } })?.ids, [], 'no software bubble = nothing matched');
   assert.equal(parseMzSearch(null), null);
 });
 
@@ -50,4 +50,11 @@ test('storefront header has no language suffix', () => {
   assert.equal(storeFrontHeader('in-hi'), '143467,29');
   assert.equal(storefrontCountry('es-ca'), 'es');
   assert.equal(storeFrontHeader('xx'), null);
+});
+
+test('parseMzSearch: a page without the software bubble is an empty result, a missing page is a schema change', () => {
+  assert.deepEqual(parseMzSearch({ pageData: { bubbles: [] } })?.ids, []);
+  assert.equal(parseMzSearch({ pageData: {} }), null);
+  assert.equal(parseMzSearch({ something: 1 }), null);
+  assert.equal(parseMzSearch({ pageData: { bubbles: [{ name: 'software' }] } }), null);
 });
