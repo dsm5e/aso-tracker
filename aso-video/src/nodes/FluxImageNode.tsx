@@ -88,7 +88,7 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
       stage={data.stage}
       wide={(data.prompt?.length ?? 0) > 120}
       // Visually separate: character = orange, asset = amber.
-      accentColor={usage === 'asset' ? '#EAB308' : '#F97316'}
+      accentColor={usage === 'asset' ? 'var(--vid-cat-asset)' : 'var(--vid-cat-gen)'}
       outputs={[{ id: 'image', label: 'image' }]}
       onRun={() => triggerRun(id)}
       runLabel={`Generate (${estimateCost(model, quality)})`}
@@ -166,18 +166,18 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
           </select>
         </div>
       )}
-      {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{data.error}</div>}
       {data.status === 'done' && data.outputUrl && (
         <>
           <img
             src={data.outputUrl}
             alt="output"
             onClick={() => openLightbox({ kind: 'image', src: data.outputUrl! })}
-            style={{ width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 6, background: '#0a0a0a', cursor: 'zoom-in' }}
+            style={{ width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 'var(--ds-radius-control)', background: 'var(--ds-panel-2)', cursor: 'zoom-in' }}
           />
           <div className="nodrag" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
             {typeof data.cost === 'number' && (
-              <span style={{ fontSize: 10, color: '#9CA3AF' }}>cost ${data.cost.toFixed(3)}</span>
+              <span style={{ fontSize: 10, color: 'var(--ds-muted)' }}>cost ${data.cost.toFixed(3)}</span>
             )}
             <div style={{ flex: 1 }} />
             {usage === 'character' && (
@@ -185,7 +185,7 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
                 onClick={handleSave}
                 disabled={saving}
                 title="Save prompt + image as a reusable influencer preset"
-                style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontSize: 11 }}
+                style={{ background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontSize: 11 }}
               >{saving ? '…saving' : '💾 Save Influencer'}</button>
             )}
           </div>

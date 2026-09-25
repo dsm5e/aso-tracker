@@ -27,7 +27,7 @@ export function OutputNode({ id, data }: { id: string; data: Data }) {
           <label
             className="nodrag"
             title="Overlay TikTok UI chrome on the preview — visual only, not baked into mp4"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#a3a3a3', cursor: 'pointer', marginBottom: 6 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--ds-muted)', cursor: 'pointer', marginBottom: 6 }}
           >
             <input
               type="checkbox"
@@ -43,18 +43,18 @@ export function OutputNode({ id, data }: { id: string; data: Data }) {
               other Output nodes (rare but possible) can have their own mockup state. */}
           <MockupProvider enabled={mockup}>
             <MockupFrame>
-              <video key={upstreamUrl} src={upstreamUrl} controls style={{ width: '100%', height: 'auto', borderRadius: 6, background: '#000', display: 'block' }} />
+              <video key={upstreamUrl} src={upstreamUrl} controls style={{ width: '100%', height: 'auto', borderRadius: 'var(--ds-radius-control)', background: '#000', display: 'block' }} />
             </MockupFrame>
           </MockupProvider>
           <button
             className="nodrag"
             onClick={() => openLightbox({ kind: 'video', src: upstreamUrl })}
             title="open fullscreen"
-            style={{ marginTop: 4, background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '4px 10px', cursor: 'zoom-in', fontSize: 11, alignSelf: 'flex-start' }}
+            style={{ marginTop: 4, background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '4px 10px', cursor: 'zoom-in', fontSize: 11, alignSelf: 'flex-start' }}
           >⛶ fullscreen</button>
         </>
       ) : (
-        <div style={{ ...labelStyle, padding: 16, textAlign: 'center', border: '1px dashed #2a2a2a', borderRadius: 6 }}>
+        <div style={{ ...labelStyle, padding: 16, textAlign: 'center', border: '1px dashed var(--ds-border)', borderRadius: 6 }}>
           connect a video output here
         </div>
       )}

@@ -1,0 +1,64 @@
+/* Maps the keywords app's own variables (legacy + "Clarity") onto the shared
+   design system (../../shared/ds.css). Imported after styles.css; the selector
+   list matches the specificity of styles.css's dark block so both themes follow. */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --canvas: var(--ds-bg);
+  --rail: var(--ds-panel);
+  --surface: var(--ds-panel);
+  --surface-2: var(--ds-panel-2);
+  --surface-subtle: var(--ds-panel-2);
+  --surface-hover: var(--ds-hover);
+  --surface-selected: var(--ds-selected);
+  --sidebar: var(--ds-panel);
+  --row: var(--ds-panel);
+  --toolbar: var(--ds-panel);
+  --chip: var(--ds-panel-2);
+  --hover: var(--ds-hover);
+  --selected: var(--ds-selected);
+
+  --line: var(--ds-border);
+  --border-control: var(--ds-border);
+  --border-strong: var(--ds-axis);
+  --input-border: var(--ds-border);
+  --overlay-border: var(--ds-border);
+  --chart-grid: var(--ds-grid);
+
+  --ink: var(--ds-text);
+  --text: var(--ds-text);
+  --ink-secondary: var(--ds-text);
+  --text-strong2: var(--ds-text);
+  --ink-muted: var(--ds-muted);
+  --text-mid: var(--ds-muted);
+  --muted: var(--ds-muted);
+  --ink-subtle: var(--ds-subtle);
+
+  --accent: var(--ds-accent);
+  --accent-hover: var(--ds-accent-hover);
+  --accent-soft: var(--ds-accent-soft);
+  --purple: var(--ds-accent);
+
+  --positive: var(--ds-good);
+  --negative: var(--ds-bad);
+  --warning: var(--ds-warn);
+  --green: var(--ds-s-good);
+  --red: var(--ds-s-critical);
+  --orange: var(--ds-c2);
+  --yellow: var(--ds-c4);
+  --ok-soft: var(--ds-good-soft);
+  --danger-soft: var(--ds-bad-soft);
+  --warn-soft: var(--ds-warn-soft);
+
+  --chart-violet: var(--ds-c1);
+  --chart-coral: var(--ds-c2);
+  --chart-green: var(--ds-c3);
+  --chart-blue: var(--ds-c4);
+
+  --card-shadow: var(--ds-shadow);
+  --radius-card: var(--ds-radius-card);
+  --radius-control: var(--ds-radius-control);
+  --radius-overlay: var(--ds-radius-card);
+}
+body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-font); }
+.brand-mark { background: var(--ds-accent); box-shadow: none; }

@@ -313,7 +313,7 @@ function IconVariantCard({ variant }: { variant: IconVariant }) {
 
         <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }} />
-        {uploadError && <div style={{ color: 'var(--danger, #ef4444)', fontSize: 11 }}>{uploadError}</div>}
+        {uploadError && <div style={{ color: 'var(--danger)', fontSize: 11 }}>{uploadError}</div>}
 
         {/* Prompt */}
         <textarea

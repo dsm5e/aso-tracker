@@ -25,7 +25,7 @@ export function ImageEditNode({ id, data }: { id: string; data: Data }) {
       status={data.status}
       progress={data.progress}
       stage={data.stage}
-      accentColor="#14B8A6"
+      accentColor="var(--vid-cat-gen)"
       inputs={[{ id: 'image', label: 'master image' }]}
       outputs={[{ id: 'image', label: 'edited image' }]}
       onRun={() => triggerRun(id)}
@@ -60,11 +60,11 @@ export function ImageEditNode({ id, data }: { id: string; data: Data }) {
           style={{ ...inputStyle, minHeight: 84, resize: 'vertical' }}
         />
       </div>
-      {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{data.error}</div>}
       {data.outputUrl && (
         <>
-          <img src={data.outputUrl} alt="" onClick={() => openLightbox({ kind: 'image', src: data.outputUrl! })} style={{ width: '100%', maxHeight: 180, objectFit: 'contain', borderRadius: 6, background: '#080808', cursor: 'zoom-in' }} />
-          {typeof data.cost === 'number' && <div style={{ color: '#9CA3AF', fontSize: 10 }}>cost ${data.cost.toFixed(3)}</div>}
+          <img src={data.outputUrl} alt="" onClick={() => openLightbox({ kind: 'image', src: data.outputUrl! })} style={{ width: '100%', maxHeight: 180, objectFit: 'contain', borderRadius: 'var(--ds-radius-control)', background: 'var(--ds-panel-2)', cursor: 'zoom-in' }} />
+          {typeof data.cost === 'number' && <div style={{ color: 'var(--ds-muted)', fontSize: 10 }}>cost ${data.cost.toFixed(3)}</div>}
         </>
       )}
     </NodeShell>

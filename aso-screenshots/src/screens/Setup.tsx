@@ -136,7 +136,7 @@ export function SetupScreen() {
             each gets its own entry section rather than a cramped button row. */}
         <ToolCard
           title="Product Page Optimization"
-          gradient="linear-gradient(135deg, #14B8A6, #5EEAD4)"
+          gradient="var(--ds-accent-soft)"
           icon={<FlaskConical size={34} />}
           heading="Run multi-strategy screenshot A/B tests"
           description="Upload source screens once, generate N treatments via different AI prompts, and export each ready for an App Store Connect PPO experiment."
@@ -146,7 +146,7 @@ export function SetupScreen() {
         />
         <ToolCard
           title="Icon Generator"
-          gradient="linear-gradient(135deg, #7C3AED, #A78BFA)"
+          gradient="var(--ds-accent-soft)"
           icon={<Shapes size={34} />}
           heading="Generate 1024 app-icon variants"
           description="Render square iOS icon variants from a base image + prompt. Icons ship inside the app binary as alternate icons, then get selected as PPO icon treatments."
@@ -226,8 +226,7 @@ function ToolCard({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
-              boxShadow: '0 8px 24px -8px rgba(0,0,0,0.4)',
+              color: 'var(--ds-accent)',
             }}
           >
             {icon}

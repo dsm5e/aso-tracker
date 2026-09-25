@@ -63,14 +63,14 @@ export function ReferenceVideoNode({ id, data }: { id: string; data: Data }) {
           style={inputStyle}
         />
       </div>
-      {err && <div style={{ color: '#EF4444', fontSize: 11 }}>{err}</div>}
+      {err && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{err}</div>}
       {data.url && (
         <video
           key={data.url}
           src={data.url}
           controls muted
           onClick={() => openLightbox({ kind: 'video', src: data.url! })}
-          style={{ width: '100%', maxHeight: 200, borderRadius: 6, background: '#000', cursor: 'zoom-in' }}
+          style={{ width: '100%', maxHeight: 200, borderRadius: 'var(--ds-radius-control)', background: '#000', cursor: 'zoom-in' }}
         />
       )}
     </NodeShell>

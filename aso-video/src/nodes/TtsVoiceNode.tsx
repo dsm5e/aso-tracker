@@ -45,7 +45,7 @@ export function TtsVoiceNode({ id, data }: { id: string; data: Data }) {
           {VOICES.map((v) => <option key={v} value={v}>{v}</option>)}
         </select>
       </div>
-      {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{data.error}</div>}
       {data.status === 'done' && data.outputUrl && (
         <audio src={data.outputUrl} controls style={{ width: '100%' }} />
       )}

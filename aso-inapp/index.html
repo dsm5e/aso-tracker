@@ -4,65 +4,194 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>ASO Studio — In-App Events</title>
+<script>
+  // Theme: ?theme=dark|light, else saved choice, else light (shared ASO Studio convention).
+  (function(){try{var q=new URLSearchParams(location.search).get("theme");
+    var t=q==="dark"||q==="light"?q:(localStorage.getItem("theme")==="dark"?"dark":"light");
+    document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#f4f5f8; --panel:#ffffff; --panel2:#f0f1f4; --line:#e3e4ea; --line2:#d2d4dc;
-    --text:#1c1d22; --muted:#71727d; --accent:#ff5d7d; --accent-d:#e23e60;
-    --ok:#1ca64c; --bad:#e0322c; --amber:#f59e0b;
-    --shadow:0 8px 30px rgba(20,20,40,.10);
-    --radius:16px; --card-radius:22px;
+  /* ===== Design-system tokens — synced from shared/ds.css (keep in sync) =====
+     Inlined because this page is served standalone by `python3 -m http.server`
+     rooted in aso-inapp/, which cannot reach ../shared/. */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ds-font: Inter, -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --ds-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+
+  /* surfaces */
+  --ds-bg: #fafaf9;
+  --ds-panel: #ffffff;
+  --ds-panel-2: #f6f6f3;
+  --ds-hover: #f1f1ed;
+  --ds-selected: #f1ebff;
+  --ds-input-bg: #ffffff;
+  --ds-tip-bg: #ffffff;
+  --ds-row-total: #faf9fc;
+
+  /* lines */
+  --ds-border: #e5e5df;
+  --ds-hairline: #ececE7;
+  --ds-grid: #efefea;
+  --ds-axis: #d6d6cf;
+  --ds-ctl-border: #b8b8b8;
+
+  /* ink */
+  --ds-text: #363630;
+  --ds-strong: #111111;
+  --ds-muted: #696969;
+  --ds-subtle: #9a9a93;
+
+  /* accent — one purple action color */
+  --ds-accent: #6720ff;
+  --ds-accent-hover: #5516e0;
+  --ds-accent-soft: #f1ebff;
+  --ds-on-accent: #ffffff;
+
+  /* semantic */
+  --ds-good: #2f8f14;
+  --ds-bad: #e0401f;
+  --ds-warn: #b7791f;
+  --ds-good-soft: #e8f6e1;
+  --ds-bad-soft: #fde9e4;
+  --ds-warn-soft: #fbf1dc;
+  --ds-s-good: #4cbb17;
+  --ds-s-serious: #f5a078;
+  --ds-s-critical: #f13a13;
+  --ds-s-neutral: #c9c9c2;
+
+  /* categorical series */
+  --ds-c1: #7b5cff;
+  --ds-c2: #eb6834;
+  --ds-c3: #18a0a0;
+  --ds-c4: #e0a100;
+  --ds-dim: #e3e3dd;
+
+  /* shape */
+  --ds-radius-card: 14px;
+  --ds-radius-control: 8px;
+  --ds-radius-pill: 999px;
+  --ds-shadow: 0 1px 8px rgba(1, 0, 48, .10);
+  --ds-shadow-pop: 0 12px 36px rgba(1, 0, 48, .18);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ds-bg: #121216;
+  --ds-panel: #1b1b21;
+  --ds-panel-2: #212129;
+  --ds-hover: #26262d;
+  --ds-selected: #2a2342;
+  --ds-input-bg: #1b1b21;
+  --ds-tip-bg: #23232a;
+  --ds-row-total: #212129;
+
+  --ds-border: #2c2c34;
+  --ds-hairline: #2a2a31;
+  --ds-grid: #26262d;
+  --ds-axis: #3a3a43;
+  --ds-ctl-border: #44444e;
+
+  --ds-text: #ececf1;
+  --ds-strong: #ffffff;
+  --ds-muted: #9a9aa5;
+  --ds-subtle: #6b6b75;
+
+  --ds-accent: #8f76ff;
+  --ds-accent-hover: #a28dff;
+  --ds-accent-soft: #2a2342;
+  --ds-on-accent: #ffffff;
+
+  --ds-good: #5fd33a;
+  --ds-bad: #ff6a4d;
+  --ds-warn: #e0a100;
+  --ds-good-soft: #1b2e16;
+  --ds-bad-soft: #3a1f1a;
+  --ds-warn-soft: #362b14;
+  --ds-s-good: #4cbb17;
+  --ds-s-serious: #c9764f;
+  --ds-s-critical: #e0401f;
+  --ds-s-neutral: #4a4a53;
+
+  --ds-c1: #8f76ff;
+  --ds-c2: #d95926;
+  --ds-c3: #199e70;
+  --ds-c4: #c98500;
+  --ds-dim: #34343d;
+
+  --ds-shadow: 0 1px 8px rgba(0, 0, 0, .45);
+  --ds-shadow-pop: 0 12px 36px rgba(0, 0, 0, .5);
+}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme]){color-scheme:dark;color-scheme: dark; --ds-bg: #121216; --ds-panel: #1b1b21; --ds-panel-2: #212129; --ds-hover: #26262d; --ds-selected: #2a2342; --ds-input-bg: #1b1b21; --ds-tip-bg: #23232a; --ds-row-total: #212129; --ds-border: #2c2c34; --ds-hairline: #2a2a31; --ds-grid: #26262d; --ds-axis: #3a3a43; --ds-ctl-border: #44444e; --ds-text: #ececf1; --ds-strong: #ffffff; --ds-muted: #9a9aa5; --ds-subtle: #6b6b75; --ds-accent: #8f76ff; --ds-accent-hover: #a28dff; --ds-accent-soft: #2a2342; --ds-on-accent: #ffffff; --ds-good: #5fd33a; --ds-bad: #ff6a4d; --ds-warn: #e0a100; --ds-good-soft: #1b2e16; --ds-bad-soft: #3a1f1a; --ds-warn-soft: #362b14; --ds-s-good: #4cbb17; --ds-s-serious: #c9764f; --ds-s-critical: #e0401f; --ds-s-neutral: #4a4a53; --ds-c1: #8f76ff; --ds-c2: #d95926; --ds-c3: #199e70; --ds-c4: #c98500; --ds-dim: #34343d; --ds-shadow: 0 1px 8px rgba(0, 0, 0, .45); --ds-shadow-pop: 0 12px 36px rgba(0, 0, 0, .5);}
+  }
+  /* ===== end synced tokens ===== */
+
+  /* legacy page variables → design-system tokens */
+  :root,:root[data-theme="light"],:root[data-theme="dark"]{
+    --bg:var(--ds-bg); --panel:var(--ds-panel); --panel2:var(--ds-panel-2); --line:var(--ds-border); --line2:var(--ds-border);
+    --text:var(--ds-text); --muted:var(--ds-muted); --accent:var(--ds-accent); --accent-d:var(--ds-accent-hover);
+    --ok:var(--ds-good); --bad:var(--ds-bad); --amber:var(--ds-warn);
+    --shadow:var(--ds-shadow);
+    --radius:var(--ds-radius-card); --card-radius:22px; /* 22px = App Store card corner, not a DS radius */
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);
-    font-family:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    font-size:16.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+    font-family:var(--ds-font);
+    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 
   /* ---- top bar ---- */
-  header{padding:12px 22px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;flex-wrap:wrap;
-    position:sticky;top:0;background:rgba(244,245,248,.9);backdrop-filter:blur(14px);z-index:20}
+  header{padding:10px 22px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+    position:sticky;top:0;background:var(--ds-panel);z-index:20}
   .switcher{position:relative}
   .switcher>button{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
-    border-radius:11px;padding:6px 10px;cursor:pointer;box-shadow:var(--shadow)}
-  .chip{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;flex:none}
+    border-radius:var(--ds-radius-control);padding:5px 10px 5px 6px;cursor:pointer;font:inherit;color:var(--text)}
+  .switcher>button:hover{background:var(--ds-hover)}
+  .chip{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex:none}
   .switcher .lbl{display:flex;flex-direction:column;line-height:1.15;text-align:left}
-  .switcher .lbl small{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
-  .switcher .lbl b{font-size:14.5px;font-weight:700;color:var(--accent-d)}
+  .switcher .lbl small{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+  .switcher .lbl b{font-size:14px;font-weight:600;color:var(--ds-strong)}
   .menu{position:absolute;top:calc(100% + 6px);left:0;width:248px;background:var(--panel);border:1px solid var(--line);
-    border-radius:13px;box-shadow:0 18px 44px rgba(20,20,40,.18);padding:5px;z-index:50;display:none}
+    border-radius:var(--ds-radius-control);box-shadow:var(--ds-shadow-pop);padding:5px;z-index:50;display:none}
   .menu.open{display:block}
-  .menu a{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;text-decoration:none;color:var(--text);border-left:2px solid transparent}
-  .menu a:hover{background:var(--panel2)}
-  .menu a.active{background:var(--panel2);border-left-color:var(--accent)}
+  .menu a{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:6px;text-decoration:none;color:var(--text);border-left:2px solid transparent}
+  .menu a:hover{background:var(--ds-hover)}
+  .menu a.active{background:var(--ds-selected);border-left-color:var(--accent)}
   .menu a .t{display:flex;flex-direction:column;line-height:1.25;flex:1}
   .menu a .t small{color:var(--muted);font-size:10.5px}
   .menu a .tick{color:var(--accent);font-weight:700}
-  header h1{font-size:17px;margin:0;font-weight:700}
+  header h1{font-size:16px;margin:0;font-weight:600;color:var(--ds-strong)}
   header .sub{color:var(--muted);font-size:13px}
   .spacer{flex:1}
   .ctrl{display:flex;gap:7px;align-items:center;color:var(--muted);font-size:13.5px}
-  select,input[type=text]{background:var(--panel);color:var(--text);border:1px solid var(--line2);border-radius:9px;padding:8px 11px;font:inherit;font-size:14.5px}
+  select,input[type=text]{background:var(--ds-input-bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--ds-radius-control);padding:7px 10px;font:inherit;font-size:13.5px}
+  select:focus,input[type=text]:focus,.field textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--ds-accent-soft)}
+  .theme-btn{background:var(--panel);border:1px solid var(--line2);color:var(--muted);border-radius:var(--ds-radius-control);width:34px;height:34px;cursor:pointer;font-size:15px;line-height:1}
+  .theme-btn:hover{background:var(--ds-hover);color:var(--text)}
   input#appId{width:140px}
   .seg{display:flex;gap:6px;flex-wrap:wrap}
-  .seg button{background:var(--panel);border:1px solid var(--line2);color:var(--muted);border-radius:10px;padding:8px 13px;font:inherit;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px}
-  .seg button.active{color:var(--text);border-color:var(--accent);background:#fff;box-shadow:0 2px 10px rgba(255,93,125,.15)}
+  .seg button{background:var(--panel);border:1px solid var(--line2);color:var(--muted);border-radius:var(--ds-radius-control);padding:6px 12px;font:inherit;font-size:13.5px;cursor:pointer;display:flex;align-items:center;gap:7px}
+  .seg button:hover{background:var(--ds-hover)}
+  .seg button.active{color:var(--ds-strong);border-color:var(--accent);background:var(--ds-selected);font-weight:500}
   .state{font-size:9.5px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:5px;text-transform:uppercase}
-  .state.DRAFT{background:rgba(245,158,11,.16);color:#a96a06}
-  .state.READY{background:rgba(28,166,76,.16);color:#157a39}
+  .state.DRAFT{background:var(--ds-warn-soft);color:var(--ds-warn)}
+  .state.READY{background:var(--ds-good-soft);color:var(--ds-good)}
 
   main{display:grid;grid-template-columns:1fr 340px 360px;gap:26px;padding:26px;align-items:start}
   @media(max-width:1240px){main{grid-template-columns:1fr}}
   .stage{display:flex;flex-direction:column;gap:11px}
-  .stage h2{font-size:12.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted);font-weight:700;margin:0}
+  .stage h2{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;margin:0}
 
   /* ---- event card 16:9 ---- */
   .card{width:100%;max-width:560px;aspect-ratio:16/9;border-radius:var(--card-radius);overflow:hidden;position:relative;
-    background:#e9eaf0;box-shadow:var(--shadow)}
+    background:var(--ds-panel-2);box-shadow:var(--shadow)}
   .media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9aa;
-    background:repeating-linear-gradient(45deg,#e9eaf0,#e9eaf0 12px,#e3e4ea 12px,#e3e4ea 24px);font-size:12.5px}
+  .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ds-subtle);
+    background:repeating-linear-gradient(45deg,var(--ds-panel-2),var(--ds-panel-2) 12px,var(--ds-hover) 12px,var(--ds-hover) 24px);font-size:12.5px}
   .scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.74) 0%,rgba(0,0,0,.26) 40%,rgba(0,0,0,0) 66%)}
   .badge{position:absolute;top:13px;left:15px;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
     color:#fff;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);padding:5px 10px;border-radius:7px}
@@ -75,31 +204,32 @@
 
   /* ---- detail 9:16 ---- */
   .detail{width:300px;aspect-ratio:9/16;border-radius:30px;overflow:hidden;position:relative;background:var(--panel);box-shadow:var(--shadow);border:1px solid var(--line)}
-  .detail .hero{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:#e9eaf0}
-  .detail .hero .scrim{background:linear-gradient(to top,var(--panel) 1%,rgba(255,255,255,0) 42%)}
+  .detail .hero{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:var(--ds-panel-2)}
+  .detail .hero .scrim{background:linear-gradient(to top,var(--panel) 1%,transparent 42%)}
   .detail .body{padding:0 16px 16px;margin-top:-30px;position:relative}
-  .detail .ev-name{color:var(--text);font-size:21px;text-shadow:none;margin:0 0 10px}
+  .detail .ev-name{color:var(--ds-strong);font-size:21px;text-shadow:none;margin:0 0 10px}
   .approw{display:flex;align-items:center;gap:10px;margin:12px 0 14px}
   .approw .icon{width:44px;height:44px}
   .approw .nm{font-size:14px;font-weight:700;flex:1;min-width:0;line-height:1.2}
   .approw .nm small{display:block;color:var(--muted);font-weight:500;font-size:12px}
-  .approw .get{background:var(--accent);color:#fff;border:none;border-radius:16px;padding:6px 18px;font-weight:800;font-size:14px;font-family:inherit;cursor:default}
-  .ev-long{font-size:14px;color:#3a3b42;margin:0;white-space:pre-wrap}
+  .approw .get{background:var(--accent);color:var(--ds-on-accent);border:none;border-radius:var(--ds-radius-pill);padding:6px 18px;font-weight:700;font-size:14px;font-family:inherit;cursor:default}
+  .ev-long{font-size:14px;color:var(--text);margin:0;white-space:pre-wrap}
   .dates{font-size:12px;color:var(--muted);margin:12px 0 0}
 
   /* ---- editor ---- */
-  .editor{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);position:sticky;top:80px}
-  .editor h3{margin:0 0 2px;font-size:15.5px;display:flex;align-items:center;gap:8px}
+  .editor{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);position:sticky;top:76px}
+  .editor h3{margin:0 0 2px;font-size:15px;font-weight:600;color:var(--ds-strong);display:flex;align-items:center;gap:8px}
   .editor .ref{color:var(--muted);font-size:13px;margin:0 0 14px}
   .field{margin-bottom:14px}
-  .field label{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;font-weight:700}
+  .field label{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px;font-weight:600}
   .count{font-variant-numeric:tabular-nums}
   .count.over{color:var(--bad)} .count.ok{color:var(--ok)}
-  .field textarea{width:100%;background:#fff;color:var(--text);border:1px solid var(--line2);border-radius:9px;padding:10px 11px;font:inherit;font-size:14.5px;resize:vertical}
+  .field textarea{width:100%;background:var(--ds-input-bg);color:var(--text);border:1px solid var(--line2);border-radius:var(--ds-radius-control);padding:9px 11px;font:inherit;font-size:14px;resize:vertical}
   .field .hint{font-size:11.5px;color:var(--muted);margin-top:3px}
-  .indexed{font-size:9px;background:rgba(28,166,76,.14);color:var(--ok);border-radius:5px;padding:1px 6px;letter-spacing:.3px;text-transform:none;font-weight:700}
-  .drop{border:1.5px dashed var(--line2);border-radius:11px;padding:16px;text-align:center;color:var(--muted);font-size:13.5px;cursor:pointer}
-  .drop.hot{border-color:var(--accent);color:var(--text);background:#fff5f7}
+  .indexed{font-size:9.5px;background:var(--ds-good-soft);color:var(--ok);border-radius:5px;padding:1px 6px;letter-spacing:.3px;text-transform:none;font-weight:700}
+  .drop{border:1.5px dashed var(--ds-axis);border-radius:var(--ds-radius-control);padding:16px;text-align:center;color:var(--muted);font-size:13.5px;cursor:pointer}
+  .drop:hover{border-color:var(--accent);color:var(--text)}
+  .drop.hot{border-color:var(--accent);color:var(--text);background:var(--ds-accent-soft)}
   .note{font-size:12px;color:var(--muted);line-height:1.55;border-top:1px solid var(--line);padding-top:11px;margin-top:6px}
 </style>
 </head>
@@ -107,7 +237,7 @@
 <header>
   <div class="switcher" id="switcher">
     <button id="swBtn">
-      <span class="chip" style="background:linear-gradient(135deg,#ff8aa0,#ff5d7d)">✦</span>
+      <span class="chip" style="background:var(--ds-accent)">✦</span>
       <span class="lbl"><small>ASO Studio</small><b>In-App Events</b></span>
       <span style="color:var(--muted);font-size:10px">▾</span>
     </button>
@@ -116,7 +246,7 @@
       <a href="http://localhost:5173/studio/"><span class="chip" style="background:linear-gradient(135deg,#7C3AED,#A78BFA)">▤</span><span class="t">Screenshots<small>App Store visuals</small></span></a>
       <a href="http://localhost:5173/video/"><span class="chip" style="background:linear-gradient(135deg,#14B8A6,#5EEAD4)">▶</span><span class="t">Video<small>Ad video pipeline</small></span></a>
       <a href="http://localhost:5173/asa/"><span class="chip" style="background:linear-gradient(135deg,#FFB000,#B87D00)">$</span><span class="t">ASA Ads<small>Search Ads ROI</small></span></a>
-      <a href="http://localhost:5196/" class="active"><span class="chip" style="background:linear-gradient(135deg,#ff8aa0,#ff5d7d)">✦</span><span class="t">In-App Events<small>Event cards &amp; detail</small></span><span class="tick">✓</span></a>
+      <a href="http://localhost:5196/" class="active"><span class="chip" style="background:var(--ds-accent)">✦</span><span class="t">In-App Events<small>Event cards &amp; detail</small></span><span class="tick">✓</span></a>
     </div>
   </div>
   <div>
@@ -126,6 +256,7 @@
   <div class="spacer"></div>
   <div class="ctrl">App ID <input type="text" id="appId" value="6771391236" /></div>
   <div class="ctrl">Locale <select id="locale"></select></div>
+  <button class="theme-btn" id="themeBtn" title="Toggle dark theme">◐</button>
 </header>
 
 <div style="padding:16px 26px 0"><div class="seg" id="eventTabs"></div></div>
@@ -206,6 +337,10 @@ let cur=0,locale="en-US",appMeta=null,cardOverride=null;
 const $=id=>document.getElementById(id);
 
 // ---- studio switcher dropdown ----
+// ---- theme toggle (same localStorage key as the other studio products) ----
+$("themeBtn").onclick=()=>{const t=document.documentElement.dataset.theme==="dark"?"light":"dark";
+  document.documentElement.dataset.theme=t;try{localStorage.setItem("theme",t);}catch(e){}};
+
 $("swBtn").onclick=e=>{e.stopPropagation();$("swMenu").classList.toggle("open");};
 document.addEventListener("click",()=>$("swMenu").classList.remove("open"));
 

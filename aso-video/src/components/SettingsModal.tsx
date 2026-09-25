@@ -92,7 +92,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 100,
-        background: 'rgba(0,0,0,0.55)',
+        background: 'color-mix(in srgb, var(--ds-strong) 30%, transparent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         backdropFilter: 'blur(2px)',
       }}
@@ -103,21 +103,21 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           width: 'min(560px, 92vw)',
           maxHeight: '88vh',
           overflowY: 'auto',
-          background: 'var(--bg-raised, #1a1a1f)',
-          color: 'var(--text, #fff)',
-          borderRadius: 14,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-          border: '1px solid var(--border, rgba(255,255,255,0.1))',
+          background: 'var(--ds-panel)',
+          color: 'var(--ds-text)',
+          borderRadius: 'var(--ds-radius-card)',
+          boxShadow: 'var(--ds-shadow-pop)',
+          border: '1px solid var(--ds-border)',
         }}
       >
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
             <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>API Keys</h2>
-            <span style={{ fontSize: 11, color: 'var(--text-muted, #888)' }}>
+            <span style={{ fontSize: 11, color: 'var(--ds-muted)' }}>
               stored at <code style={{ fontSize: 11 }}>~/.aso-studio/keys.json</code> (mode 0600)
             </span>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted, #888)', lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: 'var(--ds-muted)', lineHeight: 1.5 }}>
             Keys are local-only — never sent anywhere except the API endpoints they belong to. Inputs are masked while you type;
             click 👁 to reveal a draft.
           </div>
@@ -125,7 +125,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
           {error && (
             <div style={{
               padding: 12, borderRadius: 8,
-              background: 'rgba(239,68,68,0.1)', color: '#f87171',
+              background: 'var(--ds-bad-soft)', color: 'var(--ds-bad)',
               fontSize: 12, lineHeight: 1.5,
             }}>
               {error}
@@ -139,7 +139,7 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
             const isRevealed = revealed.has(name);
             return (
               <div key={name} style={{
-                border: '1px solid var(--border-subtle, rgba(255,255,255,0.08))',
+                border: '1px solid var(--ds-border)',
                 borderRadius: 10,
                 padding: 14,
                 display: 'flex',
@@ -149,13 +149,13 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{info.label}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted, #888)' }}>{info.description}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ds-muted)' }}>{info.description}</div>
                   </div>
                   <a
                     href={info.getUrl}
                     target="_blank"
                     rel="noreferrer"
-                    style={{ fontSize: 11.5, color: 'var(--accent, #6ee7b7)', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                    style={{ fontSize: 11.5, color: 'var(--ds-accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}
                   >
                     Get key ↗
                   </a>
@@ -167,19 +167,19 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                       <span style={{
                         padding: '2px 8px',
                         borderRadius: 999,
-                        background: 'rgba(110,231,183,0.12)',
-                        color: '#6ee7b7',
+                        background: 'var(--ds-good-soft)',
+                        color: 'var(--ds-good)',
                         fontSize: 11,
                       }}>● configured</span>
                       <code style={{ fontSize: 11.5 }}>{cur.masked}</code>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted, #888)' }}>({cur.source})</span>
+                      <span style={{ fontSize: 11, color: 'var(--ds-muted)' }}>({cur.source})</span>
                     </>
                   ) : (
                     <span style={{
                       padding: '2px 8px',
                       borderRadius: 999,
-                      background: 'rgba(248,113,113,0.12)',
-                      color: '#f87171',
+                      background: 'var(--ds-bad-soft)',
+                      color: 'var(--ds-bad)',
                       fontSize: 11,
                     }}>○ not set</span>
                   )}
@@ -197,9 +197,9 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                       fontFamily: 'JetBrains Mono, monospace',
                       fontSize: 12,
                       borderRadius: 6,
-                      border: '1px solid var(--border, rgba(255,255,255,0.12))',
-                      background: 'var(--bg-sunken, rgba(0,0,0,0.2))',
-                      color: 'var(--text, #fff)',
+                      border: '1px solid var(--ds-border)',
+                      background: 'var(--ds-input-bg)',
+                      color: 'var(--ds-text)',
                     }}
                   />
                   <button
@@ -216,8 +216,8 @@ export default function SettingsModal({ open, onClose }: { open: boolean; onClos
                     onClick={() => save(name, draft.trim())}
                     className="btn btn-sm"
                     style={{
-                      background: !draft.trim() ? 'var(--bg-sunken)' : 'var(--accent, #6ee7b7)',
-                      color: !draft.trim() ? 'var(--text-muted)' : '#000',
+                      background: !draft.trim() ? 'var(--ds-panel-2)' : 'var(--ds-accent)',
+                      color: !draft.trim() ? 'var(--ds-muted)' : 'var(--ds-on-accent)',
                       fontWeight: 600,
                     }}
                   >

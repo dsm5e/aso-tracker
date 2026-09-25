@@ -42,16 +42,16 @@ function fmtDate(ms: number): string {
 // the thumbnail border colour matches the node colour in the graph editor.
 // Mirrors COLORS in nodes/common.tsx.
 const NODE_COLORS = {
-  captions: '#EC4899',         // captions — pink
-  videoGen: '#3B82F6',         // video-gen — blue
-  fluxImage: '#F97316',        // image-gen (character) — orange
-  tts: '#10B981',              // tts-voice — green
-  ref: '#7C3AED',              // reference-image / video — purple
-  splitScreen: '#06B6D4',      // split-screen — cyan
-  imageOverlay: '#A855F7',     // image-overlay — violet
-  endCard: '#B4A0E5',          // end-card — lavender (Dream brand)
-  stitch: '#14B8A6',           // stitch — teal
-  unknown: '#3a3a3a',
+  captions: 'var(--vid-cat-compose)',
+  videoGen: 'var(--vid-cat-gen)',
+  fluxImage: 'var(--vid-cat-gen)',
+  tts: 'var(--vid-cat-gen)',
+  ref: 'var(--vid-cat-source)',
+  splitScreen: 'var(--vid-cat-compose)',
+  imageOverlay: 'var(--vid-cat-compose)',
+  endCard: 'var(--vid-cat-compose)',
+  stitch: 'var(--vid-cat-compose)',
+  unknown: 'var(--ds-border)',
 };
 function categoryColor(filename: string): string {
   const f = filename.toLowerCase();
@@ -139,7 +139,7 @@ export function LibrarySidebar() {
           title="Open library"
           style={railBtn}
         >▶</button>
-        <div style={{ writingMode: 'vertical-rl', fontSize: 10, color: '#9CA3AF', marginTop: 8, letterSpacing: 1 }}>
+        <div style={{ writingMode: 'vertical-rl', fontSize: 10, color: 'var(--ds-muted)', marginTop: 8, letterSpacing: 1 }}>
           LIBRARY · {items.length}
         </div>
       </div>
@@ -167,7 +167,7 @@ export function LibrarySidebar() {
       </div>
       <div style={grid}>
         {filtered.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', padding: 24, textAlign: 'center', fontSize: 11, color: '#6B7280' }}>
+          <div style={{ gridColumn: '1 / -1', padding: 24, textAlign: 'center', fontSize: 11, color: 'var(--ds-subtle)' }}>
             no files
           </div>
         )}
@@ -219,7 +219,7 @@ function Thumb({ item, onDeleted }: { item: LibItem; onDeleted: () => void }) {
     <div
       onClick={onClick}
       title={tooltip}
-      style={{ ...thumbBox, borderColor: accent, boxShadow: `0 0 0 1px ${accent}66` }}
+      style={{ ...thumbBox, borderColor: accent, boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 40%, transparent)` }}
     >
       <div style={mediaWrap}>
         {item.kind === 'image' && (
@@ -229,7 +229,7 @@ function Thumb({ item, onDeleted }: { item: LibItem; onDeleted: () => void }) {
           <video src={item.url} muted preload="metadata" style={thumbMedia} />
         )}
         {item.kind === 'audio' && (
-          <div style={{ ...thumbMedia, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, background: '#1f1f1f' }}>
+          <div style={{ ...thumbMedia, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, background: 'var(--ds-hover)' }}>
             🔊
           </div>
         )}
@@ -246,46 +246,46 @@ function Thumb({ item, onDeleted }: { item: LibItem; onDeleted: () => void }) {
 
 const collapsedRail: React.CSSProperties = {
   position: 'absolute', top: 64, left: 0, bottom: 0, width: 40,
-  background: 'rgba(15,15,15,0.92)', borderRight: '1px solid #2a2a2a',
+  background: 'var(--ds-panel)', borderRight: '1px solid var(--ds-border)',
   display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8,
   zIndex: 9,
 };
 
 const railBtn: React.CSSProperties = {
-  background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a',
-  borderRadius: 6, padding: '6px 8px', cursor: 'pointer', fontSize: 12, width: 28,
+  background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)',
+  borderRadius: 'var(--ds-radius-control)', padding: '6px 8px', cursor: 'pointer', fontSize: 12, width: 28,
 };
 
 const panel: React.CSSProperties = {
   position: 'absolute', top: 64, left: 0, bottom: 0, width: 320,
-  background: 'rgba(15,15,15,0.96)', borderRight: '1px solid #2a2a2a',
+  background: 'var(--ds-panel)', borderRight: '1px solid var(--ds-border)',
   display: 'flex', flexDirection: 'column',
   zIndex: 9,
-  boxShadow: '4px 0 12px rgba(0,0,0,0.4)',
+  boxShadow: 'var(--ds-shadow)',
 };
 
 const header: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 6,
-  padding: '10px 12px', borderBottom: '1px solid #2a2a2a',
+  padding: '10px 12px', borderBottom: '1px solid var(--ds-border)',
 };
 
 const iconBtn: React.CSSProperties = {
-  background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a',
+  background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)',
   borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 12,
 };
 
 const tabs: React.CSSProperties = {
-  display: 'flex', gap: 4, padding: '8px 10px', borderBottom: '1px solid #1f1f1f',
+  display: 'flex', gap: 4, padding: '8px 10px', borderBottom: '1px solid var(--ds-hairline)',
 };
 
 const tabBtn: React.CSSProperties = {
-  flex: 1, background: 'transparent', color: '#9CA3AF',
-  border: '1px solid #2a2a2a', borderRadius: 4, padding: '4px 6px',
+  flex: 1, background: 'transparent', color: 'var(--ds-muted)',
+  border: '1px solid var(--ds-border)', borderRadius: 4, padding: '4px 6px',
   cursor: 'pointer', fontSize: 11,
 };
 
 const tabActive: React.CSSProperties = {
-  background: '#3B82F6', color: '#fff', borderColor: '#3B82F6',
+  background: 'var(--ds-accent)', color: 'var(--ds-on-accent)', borderColor: 'var(--ds-accent)',
 };
 
 const grid: React.CSSProperties = {
@@ -298,10 +298,10 @@ const grid: React.CSSProperties = {
 };
 
 const thumbBox: React.CSSProperties = {
-  cursor: 'zoom-in', borderRadius: 6, overflow: 'hidden',
-  background: '#0a0a0a',
+  cursor: 'zoom-in', borderRadius: 'var(--ds-radius-control)', overflow: 'hidden',
+  background: 'var(--ds-panel)',
   // borderColor is overridden per-thumb based on file category.
-  borderWidth: 2, borderStyle: 'solid', borderColor: '#2a2a2a',
+  borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--ds-border)',
   display: 'flex', flexDirection: 'column',
 };
 
@@ -318,7 +318,7 @@ const thumbMedia: React.CSSProperties = {
 };
 
 const thumbCaption: React.CSSProperties = {
-  fontSize: 10, color: '#9CA3AF', padding: '4px 6px',
+  fontSize: 10, color: 'var(--ds-muted)', padding: '4px 6px',
   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
 };
 
@@ -332,6 +332,6 @@ const deleteBtn: React.CSSProperties = {
 };
 
 const footer: React.CSSProperties = {
-  padding: '8px 12px', borderTop: '1px solid #2a2a2a',
-  fontSize: 11, color: '#9CA3AF',
+  padding: '8px 12px', borderTop: '1px solid var(--ds-border)',
+  fontSize: 11, color: 'var(--ds-muted)',
 };

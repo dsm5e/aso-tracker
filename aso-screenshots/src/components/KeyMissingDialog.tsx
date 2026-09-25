@@ -25,11 +25,10 @@ export function KeyMissingDialog() {
       }}>
         <div style={{
           width: 56, height: 56, borderRadius: 14,
-          background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
+          background: 'var(--ds-accent-soft)',
           display: 'grid', placeItems: 'center',
-          boxShadow: '0 10px 30px -10px rgba(124, 58, 237, 0.5)',
         }}>
-          <Sparkles size={26} color="#fff" />
+          <Sparkles size={26} color="var(--ds-accent)" />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

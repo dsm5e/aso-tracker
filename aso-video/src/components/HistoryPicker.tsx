@@ -59,9 +59,9 @@ export function HistoryPicker({ kind, onPick }: Props) {
         onClick={() => setOpen((v) => !v)}
         title={`Pick a previously rendered ${kind} from output/`}
         style={{
-          background: '#171717',
-          color: '#e5e5e5',
-          border: '1px solid #2a2a2a',
+          background: 'var(--ds-panel)',
+          color: 'var(--ds-text)',
+          border: '1px solid var(--ds-border)',
           borderRadius: 4,
           padding: '4px 8px',
           fontSize: 11,
@@ -75,18 +75,18 @@ export function HistoryPicker({ kind, onPick }: Props) {
           top: 'calc(100% + 4px)',
           left: 0,
           right: 0,
-          background: '#0e0e0e',
-          border: '1px solid #2a2a2a',
+          background: 'var(--ds-panel-2)',
+          border: '1px solid var(--ds-border)',
           borderRadius: 8,
           padding: 6,
           zIndex: 100,
           maxHeight: 360,
           overflowY: 'auto',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+          boxShadow: 'var(--ds-shadow-pop)',
         }}>
-          {loading && <div style={{ padding: 12, fontSize: 11, color: '#9ca3af' }}>Loading…</div>}
+          {loading && <div style={{ padding: 12, fontSize: 11, color: 'var(--ds-muted)' }}>Loading…</div>}
           {!loading && items.length === 0 && (
-            <div style={{ padding: 12, fontSize: 11, color: '#9ca3af' }}>No {kind}s in output yet.</div>
+            <div style={{ padding: 12, fontSize: 11, color: 'var(--ds-muted)' }}>No {kind}s in output yet.</div>
           )}
           {!loading && items.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
@@ -97,9 +97,9 @@ export function HistoryPicker({ kind, onPick }: Props) {
                   onClick={() => { onPick(it.url); setOpen(false); }}
                   title={`${it.filename}\n${new Date(it.mtime).toLocaleString()}`}
                   style={{
-                    background: '#171717',
-                    border: '1px solid #2a2a2a',
-                    borderRadius: 6,
+                    background: 'var(--ds-panel)',
+                    border: '1px solid var(--ds-border)',
+                    borderRadius: 'var(--ds-radius-control)',
                     padding: 0,
                     overflow: 'hidden',
                     cursor: 'pointer',
@@ -117,7 +117,7 @@ export function HistoryPicker({ kind, onPick }: Props) {
                     inset: 'auto 0 0 0',
                     padding: '3px 4px',
                     fontSize: 9,
-                    color: '#e5e5e5',
+                    color: '#fff',
                     background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
                     textShadow: '0 1px 2px rgba(0,0,0,0.9)',
                     whiteSpace: 'nowrap',

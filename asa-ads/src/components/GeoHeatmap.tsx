@@ -7,13 +7,14 @@ interface GeoRow {
   impressions: number;
   taps: number;
   installs: number;
-  spend: number;
-  cpi: number;
+  spend: number | null;
+  cpi: number | null;
   campaigns: number;
   trials: number;
 }
 
-function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
+// The API reports unavailable money as null (partial data stays visible), not 0.
+function fmtUsd(n: number | null | undefined): string { return n == null ? "—" : `$${n.toFixed(2)}`; }
 
 const FLAGS: Record<string, string> = {
   US: "🇺🇸", GB: "🇬🇧", CA: "🇨🇦", AU: "🇦🇺", DE: "🇩🇪", FR: "🇫🇷", IT: "🇮🇹", ES: "🇪🇸",
@@ -81,7 +82,7 @@ export default function GeoHeatmap({ days }: Props) {
                 <span className="muted" style={{ fontSize: 9, marginLeft: "auto" }}>×{r.campaigns}</span>
               </div>
               <div style={{ fontSize: 13, color: "var(--bone)", fontVariantNumeric: "tabular-nums" }}>
-                {metric === "spend" ? fmtUsd(r.spend) : metric === "cpi" ? (r.cpi > 0 ? fmtUsd(r.cpi) : "—") : metric === "installs" ? r.installs : r.trials}
+                {metric === "spend" ? fmtUsd(r.spend) : metric === "cpi" ? (r.cpi != null && r.cpi > 0 ? fmtUsd(r.cpi) : "—") : metric === "installs" ? r.installs : r.trials}
               </div>
             </div>
           );

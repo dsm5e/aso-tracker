@@ -170,7 +170,7 @@ export function ExportScreen() {
   if (archived) {
     return (
       <div style={{ padding: 'var(--s-9)', maxWidth: 600, margin: '0 auto', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-        <CheckCircle2 size={56} style={{ color: 'var(--ok, #10B981)' }} />
+        <CheckCircle2 size={56} style={{ color: 'var(--ok)' }} />
         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Archived ✓</h1>
         <p style={{ color: 'var(--fg-2)', fontSize: 13, margin: 0 }}>
           {appName || 'Untitled'} saved to Recent. Returning to Setup…
@@ -282,7 +282,7 @@ export function ExportScreen() {
             }
           >
             <div style={{ fontSize: 12, color: 'var(--fg-1)' }}>
-              <CheckCircle2 size={14} style={{ verticalAlign: 'middle', color: 'var(--ok, #10B981)', marginRight: 6 }} />
+              <CheckCircle2 size={14} style={{ verticalAlign: 'middle', color: 'var(--ok)', marginRight: 6 }} />
               {renderResult.rendered} rendered{renderResult.failed > 0 ? ` · ` : ''}
               {renderResult.failed > 0 && (
                 <span style={{ color: 'var(--neg)' }}>{renderResult.failed} failed</span>

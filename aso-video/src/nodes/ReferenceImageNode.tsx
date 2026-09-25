@@ -54,13 +54,13 @@ export function ReferenceImageNode({ id, data }: { id: string; data: Data }) {
           style={inputStyle}
         />
       </div>
-      {err && <div style={{ color: '#EF4444', fontSize: 11 }}>{err}</div>}
+      {err && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{err}</div>}
       {data.url && (
         <img
           src={data.url}
           alt="ref"
           onClick={() => openLightbox({ kind: 'image', src: data.url! })}
-          style={{ width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 6, background: '#0a0a0a', cursor: 'zoom-in' }}
+          style={{ width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 'var(--ds-radius-control)', background: 'var(--ds-panel-2)', cursor: 'zoom-in' }}
         />
       )}
     </NodeShell>

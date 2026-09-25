@@ -102,7 +102,7 @@ function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {
           minWidth: 240, padding: 6,
           background: 'var(--bg-1)',
           borderRadius: 12,
-          boxShadow: 'inset 0 0 0 1px var(--line-1), 0 18px 40px -12px rgba(0,0,0,0.35)',
+          boxShadow: 'inset 0 0 0 1px var(--line-1), var(--ds-shadow-pop)',
           zIndex: 1000,
         }}>
           {SWITCHER_ITEMS.map((it) => {

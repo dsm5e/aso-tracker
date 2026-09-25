@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Theme follows the studio-wide choice (localStorage "theme", shared by all
+      // products on this origin); ?theme=dark|light overrides. Light by default.
+      (function(){try{var q=new URLSearchParams(location.search).get("theme");
+      var t=q==="dark"||q==="light"?q:(localStorage.getItem("theme")==="dark"?"dark":"light");
+      document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}})();
+    </script>
     <title>ASO Studio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

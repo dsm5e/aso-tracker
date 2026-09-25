@@ -99,17 +99,17 @@ export function CaptionsNode({ id, data }: { id: string; data: Data }) {
           />
         </div>
       </div>
-      {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{data.error}</div>}
       {data.status === 'done' && data.outputUrl && (
         <>
-          <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 6, background: '#000' }} />
-          <div className="nodrag" style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: '#9CA3AF' }}>
+          <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 'var(--ds-radius-control)', background: '#000' }} />
+          <div className="nodrag" style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--ds-muted)' }}>
             <span>burned</span>
             <div style={{ flex: 1 }} />
             <button
               onClick={() => openLightbox({ kind: 'video', src: data.outputUrl! })}
               title="open fullscreen"
-              style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 8px', cursor: 'zoom-in', fontSize: 11 }}
+              style={{ background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '2px 8px', cursor: 'zoom-in', fontSize: 11 }}
             >⛶ fullscreen</button>
           </div>
         </>

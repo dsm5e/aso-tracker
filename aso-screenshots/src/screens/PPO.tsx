@@ -197,7 +197,7 @@ export function PPOScreen() {
                   borderRadius: 'var(--r-1)',
                   border: 'none',
                   background: device === d ? 'var(--accent)' : 'transparent',
-                  color: device === d ? '#fff' : 'var(--fg-2)',
+                  color: device === d ? 'var(--accent-fg)' : 'var(--fg-2)',
                   fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -346,7 +346,7 @@ export function PPOScreen() {
               </div>
             )}
             {uploadError && (
-              <div style={{ marginTop: 10, color: 'var(--danger, #ef4444)', fontSize: 12 }}>
+              <div style={{ marginTop: 10, color: 'var(--danger)', fontSize: 12 }}>
                 {uploadError}
               </div>
             )}
@@ -450,12 +450,11 @@ export function PPOScreen() {
                   height: 72,
                   borderRadius: 18,
                   flex: 'none',
-                  background: 'linear-gradient(135deg, #7C3AED, #A78BFA)',
+                  background: 'var(--ds-accent-soft)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  color: '#fff',
-                  boxShadow: '0 8px 24px -8px rgba(124,58,237,0.6)',
+                  color: 'var(--ds-accent)',
                 }}
               >
                 <Shapes size={34} />
@@ -506,15 +505,15 @@ export function PPOScreen() {
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            background: savedAt ? 'var(--accent-2, #10b981)' : 'var(--accent)',
-            color: '#fff',
+            background: savedAt ? 'var(--ds-good)' : 'var(--accent)',
+            color: 'var(--accent-fg)',
             border: 'none',
             borderRadius: 999,
             padding: '12px 18px',
             fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+            boxShadow: 'var(--ds-shadow-pop)',
             transition: 'background .15s, transform .12s',
           }}
         >
@@ -689,7 +688,7 @@ function StrategyCard({
                       style={{
                         padding: '4px 10px', borderRadius: 'var(--r-1)', border: 'none',
                         background: device === d ? 'var(--accent)' : 'transparent',
-                        color: device === d ? '#fff' : 'var(--fg-2)',
+                        color: device === d ? 'var(--accent-fg)' : 'var(--fg-2)',
                         fontSize: 11, fontWeight: 600, cursor: 'pointer',
                       }}
                     >
@@ -1104,7 +1103,7 @@ function PPOTile({
           onClick={onRegenerate}
           style={{
             background: prompt.trim().length === 0 || isGenerating ? 'var(--bg-2)' : 'var(--accent)',
-            color: prompt.trim().length === 0 || isGenerating ? 'var(--fg-3)' : '#fff',
+            color: prompt.trim().length === 0 || isGenerating ? 'var(--fg-3)' : 'var(--accent-fg)',
             border: 'none',
             borderRadius: 'var(--r-2)',
             padding: '6px 10px',

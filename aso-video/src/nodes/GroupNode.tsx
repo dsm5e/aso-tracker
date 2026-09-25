@@ -17,7 +17,7 @@ interface Data {
 export function GroupNode({ id, data }: { id: string; data: Data }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(data.label ?? 'Group');
-  const tint = data.color ?? '#A855F7';
+  const tint = data.color ?? 'var(--vid-cat-source)';
 
   async function saveLabel() {
     setEditing(false);
@@ -30,8 +30,8 @@ export function GroupNode({ id, data }: { id: string; data: Data }) {
       style={{
         position: 'relative',
         width: '100%', height: '100%',
-        background: `${tint}10`,           // 6% tint
-        border: `2px dashed ${tint}55`,    // dashed to read as "container, not card"
+        background: `color-mix(in srgb, ${tint} 6%, transparent)`,
+        border: `2px dashed color-mix(in srgb, ${tint} 33%, transparent)`,    // dashed to read as "container, not card"
         borderRadius: 14,
         boxSizing: 'border-box',
       }}
@@ -44,8 +44,8 @@ export function GroupNode({ id, data }: { id: string; data: Data }) {
         <div style={{
           position: 'absolute', right: 4, bottom: 4,
           width: 10, height: 10,
-          borderRight: `2px solid ${tint}99`,
-          borderBottom: `2px solid ${tint}99`,
+          borderRight: `2px solid color-mix(in srgb, ${tint} 60%, transparent)`,
+          borderBottom: `2px solid color-mix(in srgb, ${tint} 60%, transparent)`,
           borderBottomRightRadius: 2,
           pointerEvents: 'none',
         }} />
@@ -59,8 +59,8 @@ export function GroupNode({ id, data }: { id: string; data: Data }) {
           position: 'absolute', top: 8, left: 14,
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '4px 10px',
-          background: 'rgba(15,15,15,0.7)',
-          border: `1px solid ${tint}66`,
+          background: 'var(--ds-panel)',
+          border: `1px solid color-mix(in srgb, ${tint} 40%, transparent)`,
           borderRadius: 8,
           fontSize: 11, fontWeight: 600,
           color: tint,
@@ -79,7 +79,7 @@ export function GroupNode({ id, data }: { id: string; data: Data }) {
               if (e.key === 'Escape') setEditing(false);
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            style={{ background: '#0a0a0a', color: '#fff', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 6px', fontSize: 11, fontWeight: 600 }}
+            style={{ background: 'var(--ds-input-bg)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '2px 6px', fontSize: 11, fontWeight: 600 }}
           />
         ) : (
           <span

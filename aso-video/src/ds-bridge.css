@@ -1,0 +1,80 @@
+/* aso-video on the shared design system (../../shared/ds.css).
+   Components use var(--ds-*) in their inline styles; this file adds the
+   node-category palette and themes React Flow through its --xy-* variables.
+   Theme follows <html data-theme="light|dark">; light is the default. */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  /* Node categories — role, not per-type hue. Derived from the DS series. */
+  --vid-cat-source: var(--ds-c1);   /* uploads: reference image / video */
+  --vid-cat-gen: var(--ds-c2);      /* AI generation: image, edit, video, tts */
+  --vid-cat-asset: var(--ds-c4);    /* image-gen in "asset" usage */
+  --vid-cat-compose: var(--ds-c3);  /* compositors: captions, overlays, stitch… */
+  --vid-cat-output: var(--ds-muted);
+
+  /* Canvas — same surface as the rest of the studio. */
+  --vid-canvas: var(--ds-bg);
+  --vid-canvas-dots: var(--ds-axis);
+
+  /* React Flow */
+  --xy-background-color: var(--vid-canvas);
+  --xy-background-pattern-color: var(--vid-canvas-dots);
+  --xy-edge-stroke: var(--ds-axis);
+  --xy-edge-stroke-selected: var(--ds-accent);
+  --xy-connectionline-stroke: var(--ds-accent);
+  --xy-handle-background-color: var(--ds-muted);
+  --xy-handle-border-color: var(--ds-panel);
+  --xy-node-color: var(--ds-text);
+  --xy-node-background-color: var(--ds-panel);
+  --xy-node-border: 1px solid var(--ds-border);
+  --xy-node-boxshadow-selected: 0 0 0 2px var(--ds-accent);
+  --xy-minimap-background-color: var(--ds-panel);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--ds-bg) 70%, transparent);
+  --xy-minimap-mask-stroke-color: var(--ds-border);
+  --xy-minimap-node-background-color: var(--ds-dim);
+  --xy-controls-button-background-color: var(--ds-panel);
+  --xy-controls-button-background-color-hover: var(--ds-hover);
+  --xy-controls-button-color: var(--ds-text);
+  --xy-controls-button-color-hover: var(--ds-strong);
+  --xy-controls-button-border-color: var(--ds-border);
+  --xy-controls-box-shadow: var(--ds-shadow);
+  --xy-edge-label-background-color: var(--ds-panel);
+  --xy-edge-label-color: var(--ds-text);
+  --xy-resize-background-color: var(--ds-accent);
+  --xy-selection-background-color: color-mix(in srgb, var(--ds-accent) 8%, transparent);
+  --xy-selection-border: 1px dotted var(--ds-accent);
+}
+
+/* In dark theme the canvas sits a notch below the panels so cards float. */
+:root[data-theme="dark"] {
+  --vid-canvas: #0e0e12;
+  --vid-canvas-dots: var(--ds-axis);
+}
+
+html, body {
+  margin: 0;
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+}
+button, input, select, textarea { font-family: inherit; }
+select, input, textarea { color-scheme: inherit; }
+
+.react-flow__controls { border: 1px solid var(--ds-border); border-radius: var(--ds-radius-control); overflow: hidden; }
+.react-flow__minimap { border: 1px solid var(--ds-border); border-radius: var(--ds-radius-control); overflow: hidden; }
+.react-flow__edge.selected .react-flow__edge-path { stroke: var(--ds-accent) !important; }
+
+/* Buttons the settings modal marks with .btn classes. */
+.btn {
+  border: 1px solid var(--ds-border);
+  background: var(--ds-panel);
+  color: var(--ds-text);
+  border-radius: var(--ds-radius-control);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn:hover:not(:disabled) { background: var(--ds-hover); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-ghost { background: transparent; }
+.btn-sm { padding: 5px 9px; font-size: 12px; }

@@ -1,0 +1,101 @@
+/* Maps the screenshots studio's own chrome tokens (tokens.css) onto the shared
+   design system (../../../shared/ds.css). Imported last in main.tsx.
+
+   Selector list beats tokens.css's [data-flavor] / [data-accent] blocks
+   (same or higher specificity, later in the cascade), so both themes follow
+   <html data-theme>. Only app chrome is mapped: screenshot artwork, device
+   frames and the /render export page use their own hard-coded colours. */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  /* surfaces */
+  --bg-0: var(--ds-bg);
+  --bg-1: var(--ds-panel);
+  --bg-2: var(--ds-panel-2);
+  --bg-3: var(--ds-hover);
+  --bg-4: var(--ds-panel);          /* active segment / step = raised white chip */
+  --bg-canvas: var(--ds-panel-2);   /* backdrop around the artwork, not the artwork */
+
+  /* lines */
+  --line-1: var(--ds-border);
+  --line-2: var(--ds-border);
+  --line-3: var(--ds-axis);
+  --line-strong: var(--ds-ctl-border);
+  --line: var(--ds-border);          /* used by Inspector but never defined */
+
+  /* ink */
+  --fg-0: var(--ds-strong);
+  --fg-1: var(--ds-text);
+  --fg-2: var(--ds-muted);
+  --fg-3: var(--ds-subtle);
+  --fg-4: var(--ds-subtle);
+
+  /* accent — one purple action colour */
+  --accent: var(--ds-accent);
+  --accent-hover: var(--ds-accent-hover);
+  --accent-active: var(--ds-accent-hover);
+  --accent-soft: var(--ds-accent-soft);
+  --accent-ring: color-mix(in srgb, var(--ds-accent) 28%, transparent);
+  --accent-fg: var(--ds-on-accent);
+
+  /* status */
+  --success: var(--ds-good);
+  --ok: var(--ds-good);
+  --warn: var(--ds-warn);
+  --danger: var(--ds-bad);
+  --ai: var(--ds-accent);
+  --ai-soft: var(--ds-accent-soft);
+  --pos: var(--ds-good);
+  --neg: var(--ds-bad);
+  --neg-soft: var(--ds-bad-soft);
+  --accent-2: var(--ds-good);
+
+  /* shape / type */
+  --r-2: var(--ds-radius-control);
+  --r-3: var(--ds-radius-control);
+  --r-4: var(--ds-radius-card);
+  --r-5: var(--ds-radius-card);
+  --font-sans: var(--ds-font);
+  --font-display: var(--ds-font);
+  --font-mono: var(--ds-font-mono);
+  --shadow-1: none;
+  --shadow-2: var(--ds-shadow);
+  --shadow-3: var(--ds-shadow-pop);
+  --shadow-pop: var(--ds-shadow-pop);
+}
+
+html, body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-font); }
+
+/* Controls sit white on the grey page, like the admin dashboard. */
+.btn { background: var(--ds-panel); border-color: var(--ds-border); color: var(--ds-text); }
+.btn:hover { background: var(--ds-hover); border-color: var(--ds-axis); color: var(--ds-strong); }
+.btn--primary { background: var(--ds-accent); color: var(--ds-on-accent); border-color: transparent; }
+.btn--primary:hover { background: var(--ds-accent-hover); color: var(--ds-on-accent); }
+.btn--ghost { background: transparent; border-color: transparent; }
+.btn--ai { background: var(--ds-accent); color: var(--ds-on-accent); box-shadow: none; }
+.btn--ai:hover { background: var(--ds-accent-hover); color: var(--ds-on-accent); filter: none; }
+.btn--danger:hover { background: var(--ds-bad-soft); }
+.input, .select, .textarea { background: var(--ds-input-bg); border-color: var(--ds-border); color: var(--ds-strong); }
+
+/* Cards: white on #fafaf9, thin border, 14px radius. */
+.panel { background: var(--ds-panel); border-color: var(--ds-border); border-radius: var(--ds-radius-card); }
+
+/* Raised chips on grey tracks (topbar steps, segmented controls). */
+.step.active, .seg button.active { background: var(--ds-panel); box-shadow: var(--ds-shadow); }
+.step.done .num { color: var(--ds-on-accent); }
+.toggle { background: var(--ds-dim); border-color: var(--ds-border); }
+.toggle i { background: var(--ds-panel); box-shadow: 0 1px 2px rgba(0, 0, 0, .2); }
+.slider::-webkit-slider-thumb { background: var(--ds-panel); border-color: var(--ds-ctl-border); }
+.slider::-moz-range-thumb { background: var(--ds-panel); border-color: var(--ds-ctl-border); }
+
+.pill--success { background: var(--ds-good-soft); color: var(--ds-good); }
+.pill--warn { background: var(--ds-warn-soft); color: var(--ds-warn); }
+
+.topbar-brand .logo { background: var(--ds-accent); box-shadow: none; }
+
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb:hover { background: var(--ds-axis); background-clip: content-box; }
+
+.kbd-hint-btn { box-shadow: var(--ds-shadow); }
+.kbd-hint-popover { background: rgba(1, 0, 48, .12); }
+.kbd-hint-card { box-shadow: var(--ds-shadow-pop); }

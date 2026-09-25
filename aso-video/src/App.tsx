@@ -696,8 +696,8 @@ function GraphEditor() {
           type: 'default',
           animated: !!isRunning || flashingEdgeIds.has(e.id),
           style: flashingEdgeIds.has(e.id)
-            ? { stroke: '#D97757', strokeWidth: 3 }
-            : { stroke: '#6B7280', strokeWidth: 2 },
+            ? { stroke: 'var(--ds-c2)', strokeWidth: 3 }
+            : { stroke: 'var(--ds-axis)', strokeWidth: 2 },
         };
       }).concat(
         // Ghost edges — recently removed, fading out red so deletions are visible.
@@ -711,7 +711,7 @@ function GraphEditor() {
           interactionWidth: 0,
           className: 'edge-ghost',
           animated: false,
-          style: { stroke: '#ff5050', strokeWidth: 3 },
+          style: { stroke: 'var(--ds-bad)', strokeWidth: 3 },
           selectable: false,
         })),
       ),
@@ -894,20 +894,20 @@ function GraphEditor() {
   }
 
   return (
-    <div style={{ height: '100vh', width: '100vw', background: '#0a0a0a', color: '#e5e5e5', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ height: '100vh', width: '100vw', background: 'var(--ds-bg)', color: 'var(--ds-text)', fontFamily: 'var(--ds-font)' }}>
       {/* toolbar — wraps to multiple lines when the viewport gets narrow so
           buttons stay reachable instead of overflowing off-screen. */}
       <div style={{
         position: 'absolute', top: 12, left: 12, right: 12, zIndex: 10,
         display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-        background: 'rgba(23,23,23,0.92)', padding: '8px 12px', borderRadius: 10, border: '1px solid #2a2a2a',
+        background: 'var(--ds-panel)', padding: '8px 12px', borderRadius: 'var(--ds-radius-card)', border: '1px solid var(--ds-border)', boxShadow: 'var(--ds-shadow)',
       }}>
         <BrandSwitcher current="vid" />
-        <div style={{ width: 1, height: 22, background: '#2a2a2a' }} />
+        <div style={{ width: 1, height: 22, background: 'var(--ds-border)' }} />
         <strong style={{ fontSize: 13, opacity: 0.7 }}>graph</strong>
-        <div style={{ display: 'flex', border: '1px solid #30343b', borderRadius: 7, overflow: 'hidden' }}>
-          <button onClick={() => setEditorMode('nodes')} style={{ ...tbBtn, border: 0, borderRadius: 0, background: editorMode === 'nodes' ? '#334155' : '#171717' }}>Nodes</button>
-          <button onClick={() => setEditorMode('timeline')} style={{ ...tbBtn, border: 0, borderRadius: 0, background: editorMode === 'timeline' ? '#0F766E' : '#171717' }}>Timeline</button>
+        <div style={{ display: 'flex', border: '1px solid var(--ds-border)', borderRadius: 'var(--ds-radius-control)', overflow: 'hidden' }}>
+          <button onClick={() => setEditorMode('nodes')} style={{ ...tbBtn, border: 0, borderRadius: 0, background: editorMode === 'nodes' ? 'var(--ds-selected)' : 'var(--ds-panel)', color: editorMode === 'nodes' ? 'var(--ds-accent)' : 'var(--ds-text)' }}>Nodes</button>
+          <button onClick={() => setEditorMode('timeline')} style={{ ...tbBtn, border: 0, borderRadius: 0, background: editorMode === 'timeline' ? 'var(--ds-selected)' : 'var(--ds-panel)', color: editorMode === 'timeline' ? 'var(--ds-accent)' : 'var(--ds-text)' }}>Timeline</button>
         </div>
         <div style={{ position: 'relative' }}>
           <button onClick={() => setShowLoad((v) => !v)} style={tbBtn}>Load Workflow ▼</button>
@@ -954,7 +954,7 @@ function GraphEditor() {
                   onClick={() => handleLoadInfluencer(inf)}
                   style={{ ...dropdownItem, display: 'flex', alignItems: 'center', gap: 8 }}
                 >
-                  <img src={inf.imageUrl} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover', background: '#000' }} />
+                  <img src={inf.imageUrl} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover', background: 'var(--ds-panel-2)' }} />
                   <span style={{ flex: 1 }}>{inf.name}</span>
                   <span
                     onClick={(e) => handleDeleteInfluencer(inf.name, e)}
@@ -973,9 +973,9 @@ function GraphEditor() {
               {NODE_MENU_SECTIONS.map((section, si) => (
                 <div key={section.title}>
                   <div style={{
-                    padding: '6px 12px 4px', fontSize: 9, color: '#6B7280',
+                    padding: '6px 12px 4px', fontSize: 9, color: 'var(--ds-subtle)',
                     textTransform: 'uppercase', letterSpacing: 1,
-                    background: '#0a0a0a', borderTop: si === 0 ? 'none' : '1px solid #222',
+                    background: 'var(--ds-panel-2)', borderTop: si === 0 ? 'none' : '1px solid var(--ds-hairline)',
                   }}>{section.title}</div>
                   {section.items.map((it) => (
                     <div
@@ -984,7 +984,7 @@ function GraphEditor() {
                       style={{ ...dropdownItem, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
                     >
                       <span>{it.label}</span>
-                      {it.hint && <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 400 }}>{it.hint}</span>}
+                      {it.hint && <span style={{ fontSize: 10, color: 'var(--ds-subtle)', fontWeight: 400 }}>{it.hint}</span>}
                     </div>
                   ))}
                 </div>
@@ -992,12 +992,12 @@ function GraphEditor() {
             </div>
           )}
         </div>
-        <button onClick={() => runAll()} style={{ ...tbBtn, background: '#3B82F6', color: '#fff' }}>▶ Run All</button>
+        <button onClick={() => runAll()} style={{ ...tbBtn, background: 'var(--ds-accent)', borderColor: 'var(--ds-accent)', color: 'var(--ds-on-accent)' }}>▶ Run All</button>
         <button onClick={handleAutoLayout} title="Auto-arrange nodes by topology — uses each card's actual rendered size so wide/tall cards don't overlap" style={tbBtn}>⫯ Auto-arrange</button>
         <button
           onClick={handleReset}
           title="Reset graph for a new video. Keeps App Screenshot and (optionally) your character Image Gen."
-          style={{ ...tbBtn, color: '#FCA5A5' }}
+          style={{ ...tbBtn, color: 'var(--ds-bad)' }}
         >🗑 Reset</button>
         {/* TikTok mockup toggle relocated into the Output node itself. */}
         <div style={{ flex: 1 }} />
@@ -1019,16 +1019,16 @@ function GraphEditor() {
               maxHeight: 520,
               display: 'flex',
               flexDirection: 'column',
-              background: '#171717',
-              border: '1px solid #2a2a2a',
+              background: 'var(--ds-panel)',
+              border: '1px solid var(--ds-border)',
               borderRadius: 10,
               zIndex: 1000,
-              boxShadow: '0 12px 32px rgba(0,0,0,0.7)',
+              boxShadow: 'var(--ds-shadow-pop)',
             }}>
               {/* Header — Undo / Redo / Refresh as pill row */}
               <div style={{
                 display: 'flex', gap: 6, padding: 8,
-                borderBottom: '1px solid #232323', alignItems: 'center',
+                borderBottom: '1px solid var(--ds-hairline)', alignItems: 'center',
               }}>
                 <button
                   onClick={async () => {
@@ -1058,23 +1058,23 @@ function GraphEditor() {
               {/* Log */}
               <div style={{ overflowY: 'auto', padding: 4, flex: 1 }}>
                 {activityLog.length === 0 ? (
-                  <div style={{ padding: 12, color: '#6b7280', fontSize: 12 }}>No actions yet. Move a node, edit a value, or have Claude touch the graph.</div>
+                  <div style={{ padding: 12, color: 'var(--ds-subtle)', fontSize: 12 }}>No actions yet. Move a node, edit a value, or have Claude touch the graph.</div>
                 ) : (
                   activityLog.map((a) => (
                     <div key={a.id} style={{
                       padding: '8px 10px',
-                      borderBottom: '1px solid #232323',
+                      borderBottom: '1px solid var(--ds-hairline)',
                       fontSize: 12,
-                      color: '#e5e5e5',
+                      color: 'var(--ds-text)',
                     }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: a.type === 'agent' ? '#D97757' : '#9ca3af', fontWeight: 600 }}>{a.summary}</span>
-                        <span style={{ color: '#6b7280', fontSize: 10 }}>{new Date(a.ts).toLocaleTimeString()}</span>
+                        <span style={{ color: a.type === 'agent' ? 'var(--ds-c2)' : 'var(--ds-muted)', fontWeight: 600 }}>{a.summary}</span>
+                        <span style={{ color: 'var(--ds-subtle)', fontSize: 10 }}>{new Date(a.ts).toLocaleTimeString()}</span>
                       </div>
                       {a.details.length > 0 && (
-                        <ul style={{ margin: '4px 0 0 0', padding: '0 0 0 16px', color: '#a3a3a3' }}>
+                        <ul style={{ margin: '4px 0 0 0', padding: '0 0 0 16px', color: 'var(--ds-muted)' }}>
                           {a.details.slice(0, 6).map((d, i) => (<li key={i} style={{ fontSize: 11 }}>{d}</li>))}
-                          {a.details.length > 6 && <li style={{ fontSize: 11, color: '#6b7280' }}>+{a.details.length - 6} more</li>}
+                          {a.details.length > 6 && <li style={{ fontSize: 11, color: 'var(--ds-subtle)' }}>+{a.details.length - 6} more</li>}
                         </ul>
                       )}
                     </div>
@@ -1114,7 +1114,7 @@ function GraphEditor() {
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
           type: 'default',
-          style: { stroke: '#6B7280', strokeWidth: 2 },
+          style: { stroke: 'var(--ds-axis)', strokeWidth: 2 },
           interactionWidth: 20,
         }}
         edgesReconnectable
@@ -1123,34 +1123,34 @@ function GraphEditor() {
         deleteKeyCode={['Backspace', 'Delete']}
         minZoom={0.05}
         maxZoom={2.5}
-        style={{ background: '#111418' }}
+        style={{ background: 'var(--vid-canvas)' }}
       >
-        <Background variant={'dots' as never} color="#3b3f47" gap={24} size={1.4} />
-        <Controls style={{ background: '#171717', border: '1px solid #2a2a2a' }} />
+        <Background variant={'dots' as never} color="var(--vid-canvas-dots)" gap={24} size={1.4} />
+        <Controls />
         <MiniMap
           nodeColor={(n) => {
             const colors: Record<string, string> = {
-              'reference-image': '#7C3AED',
-              'reference-video': '#7C3AED',
-              'flux-image': '#F97316',
-              'image-gen': '#F97316',
-              'image-edit': '#14B8A6',
-              'video-gen': '#3B82F6',
-              'tts-voice': '#10B981',
-              captions: '#EC4899',
-              'split-screen': '#06B6D4',
-              'image-overlay': '#A855F7',
-              'end-card': '#B4A0E5',
-              stitch: '#14B8A6',
-              'video-overlay': '#0EA5E9',
-              transcribe: '#38BDF8',
-              group: '#A855F7',
-              output: '#6B7280',
+              'reference-image': 'var(--vid-cat-source)',
+              'reference-video': 'var(--vid-cat-source)',
+              'flux-image': 'var(--vid-cat-gen)',
+              'image-gen': 'var(--vid-cat-gen)',
+              'image-edit': 'var(--vid-cat-gen)',
+              'video-gen': 'var(--vid-cat-gen)',
+              'tts-voice': 'var(--vid-cat-gen)',
+              captions: 'var(--vid-cat-compose)',
+              'split-screen': 'var(--vid-cat-compose)',
+              'image-overlay': 'var(--vid-cat-compose)',
+              'end-card': 'var(--vid-cat-compose)',
+              stitch: 'var(--vid-cat-compose)',
+              'video-overlay': 'var(--vid-cat-compose)',
+              transcribe: 'var(--vid-cat-compose)',
+              group: 'var(--ds-dim)',
+              output: 'var(--vid-cat-output)',
             };
-            return colors[n.type ?? 'output'] ?? '#444';
+            return colors[n.type ?? 'output'] ?? 'var(--ds-dim)';
           }}
-          maskColor="rgba(0,0,0,0.6)"
-          style={{ background: '#171717', border: '1px solid #2a2a2a' }}
+          maskColor="color-mix(in srgb, var(--ds-bg) 70%, transparent)"
+          bgColor="var(--ds-panel)"
         />
       </ReactFlow> : graph ? (
         <TimelineEditor graph={graph} changedIds={lastChangedIds} onPatch={(id, data) => patchNode(id, { data })} />
@@ -1168,7 +1168,7 @@ function LiveIndicator({ lastSseAt, onForceSync }: { lastSseAt: number; onForceS
   const [, force] = useState(0);
   useEffect(() => { const t = setInterval(() => force((x) => x + 1), 2000); return () => clearInterval(t); }, []);
   const ageMs = Date.now() - lastSseAt;
-  const color = ageMs < 18_000 ? '#22C55E' : ageMs < 45_000 ? '#FACC15' : '#EF4444';
+  const color = ageMs < 18_000 ? 'var(--ds-good)' : ageMs < 45_000 ? 'var(--ds-warn)' : 'var(--ds-bad)';
   const label = ageMs < 18_000 ? 'live' : ageMs < 45_000 ? `stale ${Math.round(ageMs/1000)}s` : `offline ${Math.round(ageMs/1000)}s`;
   // Click-to-resync: when SSE goes stale the dot turns yellow/red — tapping
   // it pulls a fresh graph via REST. Always clickable so the user can also
@@ -1179,22 +1179,22 @@ function LiveIndicator({ lastSseAt, onForceSync }: { lastSseAt: number; onForceS
       title={`Last SSE event ${Math.round(ageMs/1000)}s ago — click to force-sync`}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, opacity: 0.85,
-        background: 'transparent', border: 'none', color: '#e5e5e5', cursor: 'pointer', padding: '4px 6px', borderRadius: 4,
+        background: 'transparent', border: 'none', color: 'var(--ds-text)', cursor: 'pointer', padding: '4px 6px', borderRadius: 4,
       }}
-      onMouseOver={(e) => (e.currentTarget.style.background = '#1f1f1f')}
+      onMouseOver={(e) => (e.currentTarget.style.background = 'var(--ds-hover)')}
       onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
     >
-      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: color, boxShadow: ageMs < 18_000 ? `0 0 4px ${color}` : 'none' }} />
+      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: color, boxShadow: 'none' }} />
       {label}
     </button>
   );
 }
 
 const tbBtn: React.CSSProperties = {
-  background: '#171717',
-  color: '#e5e5e5',
-  border: '1px solid #2a2a2a',
-  borderRadius: 6,
+  background: 'var(--ds-panel)',
+  color: 'var(--ds-text)',
+  border: '1px solid var(--ds-border)',
+  borderRadius: 'var(--ds-radius-control)',
   padding: '6px 10px',
   cursor: 'pointer',
   fontSize: 12,
@@ -1205,12 +1205,12 @@ const dropdown: React.CSSProperties = {
   position: 'absolute',
   top: '110%',
   left: 0,
-  background: '#171717',
-  border: '1px solid #2a2a2a',
-  borderRadius: 6,
+  background: 'var(--ds-panel)',
+  border: '1px solid var(--ds-border)',
+  borderRadius: 'var(--ds-radius-control)',
   minWidth: 180,
   zIndex: 20,
-  boxShadow: '0 6px 18px rgba(0,0,0,0.5)',
+  boxShadow: 'var(--ds-shadow-pop)',
   overflow: 'hidden',
 };
 
@@ -1218,7 +1218,7 @@ const dropdownItem: React.CSSProperties = {
   padding: '8px 12px',
   fontSize: 12,
   cursor: 'pointer',
-  borderBottom: '1px solid #222',
+  borderBottom: '1px solid var(--ds-hairline)',
 };
 
 export function App() {
@@ -1250,19 +1250,19 @@ export function App() {
         /* External-edit highlight: pulsing outline that wraps the whole card. */
         @keyframes asov-flash {
           0%   {
-            outline: 4px solid rgba(217, 119, 87, 0.95);
+            outline: 4px solid color-mix(in srgb, var(--ds-c2) 95%, transparent);
             outline-offset: 6px;
-            filter: drop-shadow(0 0 12px rgba(217, 119, 87, 0.85));
+            filter: drop-shadow(0 0 12px color-mix(in srgb, var(--ds-c2) 85%, transparent));
           }
           50%  {
-            outline: 4px solid rgba(217, 119, 87, 0.6);
+            outline: 4px solid color-mix(in srgb, var(--ds-c2) 60%, transparent);
             outline-offset: 14px;
-            filter: drop-shadow(0 0 24px rgba(217, 119, 87, 0.4));
+            filter: drop-shadow(0 0 24px color-mix(in srgb, var(--ds-c2) 40%, transparent));
           }
           100% {
-            outline: 4px solid rgba(217, 119, 87, 0);
+            outline: 4px solid transparent;
             outline-offset: 6px;
-            filter: drop-shadow(0 0 0 rgba(217, 119, 87, 0));
+            filter: drop-shadow(0 0 0 transparent);
           }
         }
         .react-flow__node.node-flash {
@@ -1274,8 +1274,8 @@ export function App() {
         }
         /* Ghost node = recently deleted, fading out red. */
         @keyframes asov-ghost {
-          0%   { opacity: 0.95; outline: 4px solid rgba(255, 80, 80, 0.95); outline-offset: 6px; transform: scale(1); filter: drop-shadow(0 0 16px rgba(255, 80, 80, 0.8)); }
-          100% { opacity: 0;    outline: 4px solid rgba(255, 80, 80, 0);    outline-offset: 6px; transform: scale(0.92); filter: drop-shadow(0 0 0 rgba(255, 80, 80, 0)); }
+          0%   { opacity: 0.95; outline: 4px solid color-mix(in srgb, var(--ds-bad) 95%, transparent); outline-offset: 6px; transform: scale(1); filter: drop-shadow(0 0 16px color-mix(in srgb, var(--ds-bad) 80%, transparent)); }
+          100% { opacity: 0;    outline: 4px solid transparent;    outline-offset: 6px; transform: scale(0.92); filter: drop-shadow(0 0 0 transparent); }
         }
         .react-flow__node.node-ghost {
           animation: asov-ghost 1.4s ease-out forwards;
@@ -1306,7 +1306,7 @@ export function App() {
           max-width: calc(100% - 8px);
         }
         .timeline-inspector {
-          border-left: 1px solid #252a31;
+          border-left: 1px solid var(--ds-border);
         }
         @media (max-height: 720px) {
           .timeline-editor {

@@ -37,8 +37,8 @@ function EditableTitle({ id, title }: { id: string; title: string }) {
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          flex: 1, background: 'rgba(0,0,0,0.3)', color: '#fff',
-          border: '1px solid rgba(255,255,255,0.4)', borderRadius: 4,
+          flex: 1, background: 'var(--ds-input-bg)', color: 'var(--ds-strong)',
+          border: '1px solid var(--ds-accent)', borderRadius: 4,
           padding: '2px 6px', fontWeight: 600, fontSize: 12,
           fontFamily: 'inherit', minWidth: 0,
         }}
@@ -55,27 +55,30 @@ function EditableTitle({ id, title }: { id: string; title: string }) {
 }
 
 export const COLORS: Record<string, string> = {
-  'reference-image': '#7C3AED',
-  'reference-video': '#7C3AED',
-  'flux-image': '#F97316',
-  'image-gen': '#F97316',
-  'video-gen': '#3B82F6',
-  'tts-voice': '#10B981',
-  captions: '#EC4899',
-  'split-screen': '#06B6D4',
-  'image-overlay': '#A855F7',
-  'end-card': '#B4A0E5',
-  stitch: '#14B8A6',
-  transcribe: '#38BDF8',
-  group: '#A855F7',
-  output: '#6B7280',
+  // Role categories (see ds-bridge.css): source / AI generation / compositor / output.
+  'reference-image': 'var(--vid-cat-source)',
+  'reference-video': 'var(--vid-cat-source)',
+  'flux-image': 'var(--vid-cat-gen)',
+  'image-gen': 'var(--vid-cat-gen)',
+  'image-edit': 'var(--vid-cat-gen)',
+  'video-gen': 'var(--vid-cat-gen)',
+  'tts-voice': 'var(--vid-cat-gen)',
+  captions: 'var(--vid-cat-compose)',
+  'split-screen': 'var(--vid-cat-compose)',
+  'image-overlay': 'var(--vid-cat-compose)',
+  'video-overlay': 'var(--vid-cat-compose)',
+  'end-card': 'var(--vid-cat-compose)',
+  stitch: 'var(--vid-cat-compose)',
+  transcribe: 'var(--vid-cat-compose)',
+  group: 'var(--vid-cat-source)',
+  output: 'var(--vid-cat-output)',
 };
 
 const STATUS_DOT: Record<string, string> = {
-  idle: '#6B7280',
-  loading: '#FACC15',
-  done: '#22C55E',
-  error: '#EF4444',
+  idle: 'var(--ds-s-neutral)',
+  loading: 'var(--ds-warn)',
+  done: 'var(--ds-good)',
+  error: 'var(--ds-bad)',
 };
 
 export function StatusDot({ status }: { status?: string }) {
@@ -129,25 +132,27 @@ export interface NodeShellProps {
 export function NodeShell({ id, type, title, status, inputs = [], outputs = [], children, onRun, runLabel, progress, stage, wide, accentColor, blocked }: NodeShellProps) {
   void wide;
   const [open, setOpen] = useState(true);
-  const headerColor = accentColor ?? COLORS[type] ?? '#444';
+  const headerColor = accentColor ?? COLORS[type] ?? 'var(--ds-muted)';
 
   return (
     <div
       style={{
         position: 'relative',
-        background: '#171717',
-        color: '#e5e5e5',
+        background: 'var(--ds-panel)',
+        color: 'var(--ds-text)',
         borderRadius: 12,
-        boxShadow: '0 6px 20px rgba(0,0,0,0.4)',
+        boxShadow: 'var(--ds-shadow)',
         // Fill the React Flow wrapper exactly so NodeResizeControl bounds and
         // visible card edges match. The wrapper's width is set by App.tsx
         // (default per type) and updated by NodeResizeControl on drag.
         width: '100%',
         height: '100%',
         minWidth: 200,
-        border: '1px solid #2a2a2a',
+        border: '1px solid var(--ds-border)',
+        // Category shows as a thin top rule; the card itself stays neutral.
+        borderTop: `3px solid ${headerColor}`,
         overflow: 'hidden',
-        fontFamily: 'system-ui, sans-serif',
+        fontFamily: 'var(--ds-font)',
         fontSize: 12,
         // Flex column so the body can grow to fill the resized card height.
         // Without this, content sat at the top with empty space at the bottom
@@ -161,7 +166,7 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
         // upstream without screaming for attention.
         <div style={{
           position: 'absolute', inset: 0,
-          background: 'rgba(250, 204, 21, 0.06)',
+          background: 'color-mix(in srgb, var(--ds-warn) 6%, transparent)',
           borderRadius: 12,
           pointerEvents: 'none',
           zIndex: 1,
@@ -185,8 +190,8 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
         <div style={{
           position: 'absolute', right: 4, bottom: 4,
           width: 10, height: 10,
-          borderRight: '2px solid rgba(255,255,255,0.35)',
-          borderBottom: '2px solid rgba(255,255,255,0.35)',
+          borderRight: '2px solid var(--ds-axis)',
+          borderBottom: '2px solid var(--ds-axis)',
           borderBottomRightRadius: 2,
           pointerEvents: 'none',
         }} />
@@ -198,7 +203,7 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
           id={h.id}
           type="target"
           position={Position.Left}
-          style={{ top: 60 + i * 24, background: h.color ?? '#9CA3AF', width: 10, height: 10, border: h.color ? `2px solid ${h.color}` : undefined }}
+          style={{ top: 60 + i * 24, background: h.color ?? 'var(--ds-muted)', width: 10, height: 10, border: h.color ? `2px solid ${h.color}` : '2px solid var(--ds-panel)' }}
         />
       ))}
       {/* output handles */}
@@ -208,18 +213,19 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
           id={h.id}
           type="source"
           position={Position.Right}
-          style={{ top: 60 + i * 24, background: h.color ?? '#9CA3AF', width: 10, height: 10, border: h.color ? `2px solid ${h.color}` : undefined }}
+          style={{ top: 60 + i * 24, background: h.color ?? 'var(--ds-muted)', width: 10, height: 10, border: h.color ? `2px solid ${h.color}` : '2px solid var(--ds-panel)' }}
         />
       ))}
 
       <div
         style={{
-          background: headerColor,
+          background: 'var(--ds-panel)',
+          borderBottom: '1px solid var(--ds-hairline)',
           padding: '8px 10px',
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          color: '#fff',
+          color: 'var(--ds-strong)',
           fontWeight: 600,
         }}
       >
@@ -247,11 +253,11 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
           {children}
           {status === 'loading' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#9CA3AF' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ds-muted)' }}>
                 <span>{stage ?? 'working…'}</span>
                 <span>{typeof progress === 'number' ? `${Math.round(progress * 100)}%` : ''}</span>
               </div>
-              <div style={{ height: 6, background: '#0a0a0a', borderRadius: 3, overflow: 'hidden', border: '1px solid #2a2a2a' }}>
+              <div style={{ height: 6, background: 'var(--ds-panel-2)', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--ds-border)' }}>
                 <div
                   style={{
                     height: '100%',
@@ -271,9 +277,10 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
               disabled={status === 'loading' || blocked}
               title={blocked ? 'Upstream node hasn\'t finished yet — run it first' : undefined}
               style={{
-                ...btnStyle(headerColor),
-                opacity: blocked ? 0.4 : 1,
-                background: blocked ? '#3a3a3a' : btnStyle(headerColor).background,
+                ...btnStyle(),
+                opacity: blocked ? 0.6 : 1,
+                background: blocked ? 'var(--ds-dim)' : btnStyle().background,
+                color: blocked ? 'var(--ds-muted)' : btnStyle().color,
                 cursor: blocked ? 'not-allowed' : 'pointer',
               }}
             >
@@ -288,10 +295,10 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
 
 export const inputStyle: CSSProperties = {
   width: '100%',
-  background: '#0a0a0a',
-  color: '#e5e5e5',
-  border: '1px solid #2a2a2a',
-  borderRadius: 6,
+  background: 'var(--ds-input-bg)',
+  color: 'var(--ds-text)',
+  border: '1px solid var(--ds-border)',
+  borderRadius: 'var(--ds-radius-control)',
   padding: '6px 8px',
   fontFamily: 'inherit',
   fontSize: 12,
@@ -303,17 +310,17 @@ export const stopProp = (e: React.MouseEvent | React.PointerEvent) => e.stopProp
 
 export const labelStyle: CSSProperties = {
   fontSize: 10,
-  color: '#9CA3AF',
+  color: 'var(--ds-muted)',
   textTransform: 'uppercase',
   letterSpacing: 0.5,
 };
 
-export function btnStyle(accent = '#3B82F6'): CSSProperties {
+export function btnStyle(accent = 'var(--ds-accent)'): CSSProperties {
   return {
     background: accent,
-    color: '#fff',
+    color: 'var(--ds-on-accent)',
     border: 'none',
-    borderRadius: 6,
+    borderRadius: 'var(--ds-radius-control)',
     padding: '6px 10px',
     cursor: 'pointer',
     fontWeight: 600,
@@ -387,9 +394,9 @@ function showRunError(msg: string): void {
   const item = document.createElement('div');
   item.textContent = `⚠ ${msg}`;
   Object.assign(item.style, {
-    background: '#3b0a0a', border: '1px solid #7a1f1f', color: '#fecaca',
+    background: 'var(--ds-bad-soft)', border: '1px solid var(--ds-bad)', color: 'var(--ds-bad)',
     padding: '10px 14px', borderRadius: '8px', fontSize: '13px',
-    boxShadow: '0 8px 24px rgba(0,0,0,0.4)', maxWidth: '100%',
+    boxShadow: 'var(--ds-shadow-pop)', maxWidth: '100%',
     wordBreak: 'break-word', whiteSpace: 'pre-wrap',
     transition: 'opacity 320ms ease, transform 320ms ease',
     opacity: '0', transform: 'translateY(8px)',

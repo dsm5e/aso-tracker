@@ -855,7 +855,7 @@ export function Inspector({ screenshot: ss }: Props) {
                 style={{ flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
                   border: '1px solid var(--line)', fontSize: 12,
                   background: (ss.textAlignOverride ?? '') === a ? 'var(--ai)' : 'transparent',
-                  color: (ss.textAlignOverride ?? '') === a ? '#fff' : 'var(--fg-2)' }}>
+                  color: (ss.textAlignOverride ?? '') === a ? 'var(--accent-fg)' : 'var(--fg-2)' }}>
                 {a === 'left' ? 'Слева' : a === 'center' ? 'По центру' : 'Справа'}
               </button>
             ))}
@@ -972,7 +972,7 @@ export function Inspector({ screenshot: ss }: Props) {
                     style={{ flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
                       border: '1px solid var(--line)', fontSize: 12,
                       background: style === v ? 'var(--ai)' : 'transparent',
-                      color: style === v ? '#fff' : 'var(--fg-2)' }}>
+                      color: style === v ? 'var(--accent-fg)' : 'var(--fg-2)' }}>
                     {label}
                   </button>
                 ))}

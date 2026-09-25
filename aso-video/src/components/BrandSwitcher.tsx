@@ -54,13 +54,13 @@ export function BrandSwitcher({ current = 'vid' as Item['id'] }: { current?: Ite
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 10,
           padding: '4px 10px 4px 4px', height: 32,
-          background: open ? '#1f1f1f' : 'transparent',
+          background: open ? 'var(--ds-hover)' : 'transparent',
           border: 0, borderRadius: 8, cursor: 'pointer',
-          color: '#e5e5e5',
+          color: 'var(--ds-text)',
         }}
       >
         <span style={{
-          width: 22, height: 22, borderRadius: 6,
+          width: 22, height: 22, borderRadius: 'var(--ds-radius-control)',
           background: COLORS[active.id],
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontSize: 12, fontWeight: 700,
@@ -77,10 +77,10 @@ export function BrandSwitcher({ current = 'vid' as Item['id'] }: { current?: Ite
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0,
           minWidth: 220, padding: 6,
-          background: '#171717',
+          background: 'var(--ds-panel)',
           borderRadius: 10,
-          border: '1px solid #2a2a2a',
-          boxShadow: '0 18px 40px -12px rgba(0,0,0,0.6)',
+          border: '1px solid var(--ds-border)',
+          boxShadow: 'var(--ds-shadow-pop)',
           zIndex: 1000,
         }}>
           {ITEMS.map((it) => {
@@ -91,16 +91,16 @@ export function BrandSwitcher({ current = 'vid' as Item['id'] }: { current?: Ite
                 href={it.href}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 10px', borderRadius: 6,
+                  padding: '8px 10px', borderRadius: 'var(--ds-radius-control)',
                   textDecoration: 'none',
-                  background: isActive ? '#1f1f1f' : 'transparent',
-                  color: '#e5e5e5',
+                  background: isActive ? 'var(--ds-hover)' : 'transparent',
+                  color: 'var(--ds-text)',
                 }}
-                onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.background = '#1f1f1f'; }}
+                onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.background = 'var(--ds-hover)'; }}
                 onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
               >
                 <span style={{
-                  width: 22, height: 22, borderRadius: 6,
+                  width: 22, height: 22, borderRadius: 'var(--ds-radius-control)',
                   background: COLORS[it.id],
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: '#fff', fontSize: 12, fontWeight: 700,
@@ -110,7 +110,7 @@ export function BrandSwitcher({ current = 'vid' as Item['id'] }: { current?: Ite
                   <span style={{ fontSize: 12, fontWeight: 500 }}>{it.label}</span>
                   <span style={{ fontSize: 10.5, opacity: 0.6 }}>{it.hint}</span>
                 </span>
-                {isActive && <span style={{ fontSize: 10, color: '#10B981' }}>●</span>}
+                {isActive && <span style={{ fontSize: 10, color: 'var(--ds-accent)' }}>●</span>}
               </a>
             );
           })}

@@ -297,7 +297,7 @@ export function EditorScreen() {
           {sourceDimensionsMismatch && (
             <span
               title={`Uploaded screenshot is ${active.sourcePixelWidth} × ${active.sourcePixelHeight}; selected model expects ${formatDimensions(activeProfile.canvas)}.`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--warn, #F59E0B)', fontSize: 11 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--warn)', fontSize: 11 }}
             >
               <AlertTriangle size={13} />
               Source size differs
@@ -462,7 +462,7 @@ export function EditorScreen() {
                 inset: 0,
                 display: 'grid',
                 placeItems: 'center',
-                background: 'rgba(0,0,0,0.45)',
+                background: 'rgba(1, 0, 48, 0.18)',
                 backdropFilter: 'blur(4px)',
                 zIndex: 5,
               }}
@@ -476,7 +476,7 @@ export function EditorScreen() {
                   padding: '20px 28px',
                   background: 'var(--bg-1)',
                   borderRadius: 'var(--r-3)',
-                  boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+                  boxShadow: 'var(--ds-shadow-pop)',
                   border: '1px solid var(--line-1)',
                 }}
               >
@@ -502,9 +502,9 @@ export function EditorScreen() {
               style={{
                 position: 'absolute',
                 top: 12, left: 12, right: 12,
-                background: 'rgba(220, 38, 38, 0.12)',
-                border: '1px solid rgba(220, 38, 38, 0.4)',
-                color: '#fca5a5',
+                background: 'var(--ds-bad-soft)',
+                border: '1px solid var(--ds-bad)',
+                color: 'var(--ds-bad)',
                 borderRadius: 'var(--r-3)',
                 padding: '10px 14px',
                 fontSize: 12,
