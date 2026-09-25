@@ -297,6 +297,8 @@
   .drop.hot{border-color:var(--ds-accent);border-style:solid;color:var(--ds-accent);background:var(--ds-accent-soft)}
   .editor .foot{border-top:1px solid var(--ds-hairline);padding-top:12px;margin:0}
 </style>
+<!-- Adapty-style polish layer — keep it the last stylesheet -->
+<link rel="stylesheet" href="polish.css" />
 </head>
 <body>
 <header>
@@ -422,6 +424,10 @@ $("swMenu").addEventListener("keydown",e=>{if(e.key!=="ArrowDown"&&e.key!=="Arro
   rows[e.key==="ArrowDown"?(i+1)%rows.length:(i-1+rows.length)%rows.length].focus();});
 document.addEventListener("mousedown",e=>{if(!e.target.closest(".studio-sw"))swSet(false);});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("swMenu").classList.contains("open")){swSet(false);$("swBtn").focus();}});
+
+// ---- header gets a soft shadow only once content scrolls under it ----
+const syncHeader=()=>document.querySelector("header").classList.toggle("is-scrolled",window.scrollY>2);
+window.addEventListener("scroll",syncHeader,{passive:true});syncHeader();
 
 // ---- iTunes lookup (JSONP → real icon + name, avoids CORS) ----
 function loadApp(id){

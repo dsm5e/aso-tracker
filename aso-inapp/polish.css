@@ -1,0 +1,71 @@
+/* Adapty-style polish for the In-App product (linked after the inline <style>).
+   Chrome only: the App Store mocks (.card, .detail and everything inside them)
+   are deliberately left alone — they must keep looking like Apple's UI.
+   No hard dividers: surfaces separate by tone, shadow and spacing; real control
+   outlines (inputs, selects, segmented tabs) keep --ds-control-border. */
+
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --ia-head-h: 56px;
+}
+body { --ds-hairline: transparent; }
+
+/* ---------- header: one slim row on the page tone, shadow only once content scrolls under ---------- */
+header {
+  height: var(--ia-head-h); padding: 0 24px; gap: 16px;
+  background: var(--ds-bg); box-shadow: none;
+  transition: box-shadow .15s ease;
+}
+header.is-scrolled { box-shadow: 0 8px 16px -14px rgba(1, 0, 48, .35); }
+:root[data-theme="dark"] header.is-scrolled { box-shadow: 0 8px 16px -12px rgba(0, 0, 0, .8); }
+.ctrl { gap: 8px; color: var(--ds-muted); font-size: 13px; font-weight: 500; }
+.ctrl .ds-input, .ctrl .ds-select { height: var(--ds-control-h); }
+input#appId { font-variant-numeric: tabular-nums; }
+input#appId { width: 128px; }
+#locale { min-width: 104px; }
+.theme-btn { width: var(--ds-control-h); height: var(--ds-control-h); padding: 0; }
+
+/* ---------- page head: title + event tabs in one row, meta line under it ---------- */
+.page-head { display: grid; grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "title tabs" "sub sub"; align-items: center; column-gap: 20px; row-gap: 4px; padding: 16px 24px 0; }
+.page-head > div:first-child { display: contents; }
+.page-head .ds-page-title { grid-area: title; margin: 0; font-size: 20px; line-height: 28px; white-space: nowrap; }
+.page-head .ds-page-sub { grid-area: sub; font-size: 13px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page-head #eventTabs { grid-area: tabs; justify-self: start; max-width: 100%; overflow-x: auto; }
+#eventTabs > button { flex: none; white-space: nowrap; }
+#eventTabs .ds-badge { height: 18px; padding: 0 6px; font-size: 10px; letter-spacing: .02em; }
+
+/* ---------- layout: card column caps at the 560px mock, detail column is the
+   300px mock, the editor takes the rest — no dead gaps between the columns ---------- */
+main { grid-template-columns: minmax(0, 560px) 300px minmax(360px, 1fr); gap: 24px; padding: 20px 24px 32px; }
+/* mid widths: both previews stacked on the left, the editor stays beside them */
+@media (max-width: 1240px) {
+  main { grid-template-columns: minmax(0, 1fr) 360px; }
+  main > .editor { grid-column: 2; grid-row: 1 / span 2; }
+}
+@media (max-width: 820px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+  main > .editor { grid-column: auto; grid-row: auto; position: static; }
+}
+.stage { gap: 10px; min-width: 0; }
+.stage > h2.ds-card-title { font-size: 14px; line-height: 20px; color: var(--ds-muted); font-weight: 600; }
+.stage > .ds-note { max-width: 560px; }
+
+/* ---------- editor card ---------- */
+.editor { top: calc(var(--ia-head-h) + 16px); gap: 18px; padding: 20px; }
+.editor .head { gap: 2px; min-width: 0; }
+.editor h3 { font-size: 16px; line-height: 24px; }
+.editor .ref { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.field { gap: 6px; min-width: 0; }
+.field label { min-height: 20px; font-size: 13px; line-height: 20px; color: var(--ds-text); }
+.field label .ds-badge { height: 18px; padding: 0 6px; font-size: 10px; }
+.field label .count { color: var(--ds-muted); font-size: 12px; }
+.field label .count.ok { color: var(--ds-good); }
+.field label .count.over { color: var(--ds-bad); font-weight: 600; }
+.field .ds-note { font-size: 12px; line-height: 17px; color: var(--ds-muted); }
+.field .ds-textarea { line-height: 20px; }
+.drop { padding: 18px 16px; background: var(--ds-panel-2); border-color: var(--ds-ctl-border); line-height: 20px; }
+.drop small { margin-top: 2px; color: var(--ds-subtle); font-size: 12px; }
+.drop:hover small, .drop.hot small { color: inherit; }
+/* footnote: a soft tone block instead of a rule above it */
+.editor .foot { margin: 0; padding: 10px 12px; border-top: 0; border-radius: var(--ds-radius-inner); background: var(--ds-panel-2); font-size: 12px; line-height: 17px; }
