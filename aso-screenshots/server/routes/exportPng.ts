@@ -8,6 +8,7 @@ import { dirname, isAbsolute, join, resolve } from 'node:path';
 import sharp from 'sharp';
 
 const execFileAsync = promisify(execFile);
+const SCREENSHOTS_ROOT = resolve(import.meta.dirname, '..', '..');
 
 interface SavePngBody {
   /** PNG data URI from html-to-image. */
@@ -38,7 +39,9 @@ export async function exportSavePng(req: Request, res: Response) {
   }
   try {
     const expanded = expandHome(body.folder);
-    const root = isAbsolute(expanded) ? expanded : resolve(process.cwd(), expanded);
+    // Relative folders resolve against the package root (aso-screenshots/), not the
+    // process cwd — the studio gateway runs from the monorepo root.
+    const root = isAbsolute(expanded) ? expanded : resolve(SCREENSHOTS_ROOT, expanded);
     // Sanitize filename — strip path separators and weird chars.
     const safeName = body.filename.replace(/[\\/:*?"<>|]/g, '_').replace(/\s+/g, ' ').trim();
     const safeSub = body.subPath

@@ -1,5 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Relative paths (DATA_DIR, *_PRIVATE_KEY_PATH) resolve against the package root,
+// not the process cwd — the studio gateway runs from the monorepo root.
+const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 export interface AsaConfig {
   clientId: string;
@@ -39,7 +44,7 @@ function need(name: string): string {
 }
 
 function readPem(path: string): string {
-  return readFileSync(resolve(path), "utf-8");
+  return readFileSync(resolve(PACKAGE_ROOT, path), "utf-8");
 }
 
 export function loadConfig(): AppConfig {
@@ -62,7 +67,7 @@ export function loadConfig(): AppConfig {
     },
     host: process.env.HOST ?? "127.0.0.1",
     port: Number(process.env.PORT ?? 5181),
-    dataDir: process.env.DATA_DIR ?? "./data",
+    dataDir: resolve(PACKAGE_ROOT, process.env.DATA_DIR ?? "./data"),
     allowAppleAdsMutations: process.env.ASA_MUTATIONS_ENABLED === "true",
   };
 }

@@ -18,7 +18,7 @@ const ITEMS: Item[] = [
   { id: 'shot', label: 'Screenshots', hint: 'App Store visuals',   href: `${TRACKER_ORIGIN}/studio/`, glyph: '▤' },
   { id: 'vid',  label: 'Video',       hint: 'Ad video pipeline',   href: `${TRACKER_ORIGIN}/video/`,  glyph: '▶' },
   { id: 'asa',  label: 'Ads',         hint: 'Search Ads ROI',      href: `${TRACKER_ORIGIN}/asa/`,    glyph: '$' },
-  { id: 'inapp', label: 'In-App',     hint: 'In-App Events',       href: 'http://localhost:5196/', glyph: '✦' },
+  { id: 'inapp', label: 'In-App',     hint: 'In-App Events',       href: '/inapp/', glyph: '✦' },
 ];
 
 const COLORS: Record<Item['id'], string> = {

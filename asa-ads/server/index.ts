@@ -1,4 +1,7 @@
-import "dotenv/config";
+import "./env.ts";
+import { realpathSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import express from "express";
 import { ADAPTY_ANALYTICS_APP_ID, loadConfig } from "./config.ts";
 import { openDb, getDb } from "./db.ts";
@@ -443,8 +446,14 @@ app.post("/api/sync", (req, res) => {
   res.json({ ok: true, started: true });
 });
 
-app.listen(cfg.port, cfg.host, () => {
-  console.log(`ASA Ads API on http://${cfg.host}:${cfg.port}`);
+/** The API app — mounted by the studio gateway (studio/server.ts) or served standalone below. */
+export { app };
+
+let started = false;
+/** Background jobs (traffic sync scheduler, alert polling). Idempotent. */
+export function start(): void {
+  if (started) return;
+  started = true;
   trafficSyncScheduler.start();
   const alertCfg = loadAlertsConfig();
   if (alertCfg.enabled) {
@@ -456,4 +465,13 @@ app.listen(cfg.port, cfg.host, () => {
         .catch((e) => console.error("alert check failed:", e));
     }, intervalMin * 60_000);
   }
-});
+}
+
+// Standalone entry (`tsx server/index.ts`); skipped when imported by the gateway.
+const entry = process.argv[1] ? realpathSync(resolve(process.argv[1])) : "";
+if (entry === realpathSync(fileURLToPath(import.meta.url))) {
+  app.listen(cfg.port, cfg.host, () => {
+    console.log(`ASA Ads API on http://${cfg.host}:${cfg.port}`);
+    start();
+  });
+}

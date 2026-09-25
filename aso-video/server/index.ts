@@ -1,6 +1,7 @@
 import express from 'express';
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { resolve, join } from 'node:path';
 import tiktokTts from './routes/tiktok-tts.js';
 import falTts from './routes/fal-tts.js';
@@ -92,6 +93,17 @@ app.post('/api/render', (_req, res) => {
   res.json({ ok: true, message: `render spawned pid=${child.pid}` });
 });
 
-app.listen(PORT, () => {
-  console.log(`[aso-video] api on :${PORT}`);
-});
+/** The API app — mounted by the studio gateway (studio/server.ts) or served standalone below. */
+export { app };
+
+/** Listen-time side effects. Video has none (its job/graph timers live with the modules). */
+export function start(): void {}
+
+// Standalone entry (`tsx server/index.ts`); skipped when imported by the gateway.
+const entry = process.argv[1] ? realpathSync(resolve(process.argv[1])) : '';
+if (entry === realpathSync(fileURLToPath(import.meta.url))) {
+  app.listen(PORT, () => {
+    console.log(`[aso-video] api on :${PORT}`);
+    start();
+  });
+}

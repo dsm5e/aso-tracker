@@ -1,11 +1,10 @@
 // Graph client — REST + SSE subscription. Server is source of truth.
 import type { GraphPayload } from './types';
 
-// When the app is served via the keywords vite (:5173/video/), `/api` would
-// hit the wrong service — keywords' own backend. The vite proxy on :5173
-// exposes our backend as `/video-api`. Detect that by looking at base URL.
-const isProxied = typeof window !== 'undefined' && window.location.port === '5173';
-export const API = isProxied ? '/video-api' : '/api';
+// Served under /video/ (studio gateway, or standalone :5190/video/), `/api`
+// belongs to Keywords — our backend is exposed as `/video-api` on both
+// origins. Decide by base URL, not by port (the gateway port is configurable).
+export const API = import.meta.env.BASE_URL === '/' ? '/api' : '/video-api';
 
 export async function fetchGraph(): Promise<GraphPayload> {
   const r = await fetch(`${API}/graph`);

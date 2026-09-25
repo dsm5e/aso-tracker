@@ -1,5 +1,6 @@
 import express from 'express';
-import { existsSync, unlinkSync } from 'node:fs';
+import { existsSync, realpathSync, unlinkSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { KEYWORDS_FILES_DIR } from './paths.js';
@@ -836,22 +837,34 @@ app.get('/api/snapshot/stream', (req, res) => {
   });
 });
 
-// Production serves the built React application from the same origin as the API.
-// Keeping one origin avoids CORS and ensures Basic Auth also protects the UI.
-const staticDir = resolve(process.cwd(), 'dist');
-if (existsSync(staticDir)) {
-  app.use(express.static(staticDir, { index: false, maxAge: '1h' }));
-  app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));
-  app.use((_req, res) => res.sendFile(join(staticDir, 'index.html')));
-}
-
 export function serverHost(password = process.env.APP_PASSWORD): string | undefined {
   // Node binds to every interface when host is omitted. Passwordless mode is
   // explicitly local development, therefore make that boundary real.
   return password ? undefined : '127.0.0.1';
 }
 
-const PORT = Number(process.env.PORT) || 5174;
-app.listen(PORT, serverHost(), () => {
-  console.log(`ASO Keywords listening on http://localhost:${PORT}`);
-});
+/** The API app — mounted by the studio gateway (studio/server.ts) or served standalone below. */
+export { app };
+
+/** Listen-time side effects. Keywords has no background jobs; kept for a uniform product contract. */
+export function start(): void {}
+
+// Standalone entry (`tsx server/index.ts`, `npm start` in production): serve the
+// built React app from the same origin and listen. Skipped when imported by the gateway.
+const entry = process.argv[1] ? realpathSync(resolve(process.argv[1])) : '';
+if (entry === realpathSync(fileURLToPath(import.meta.url))) {
+  // Production serves the built React application from the same origin as the API.
+  // Keeping one origin avoids CORS and ensures Basic Auth also protects the UI.
+  const staticDir = resolve(fileURLToPath(new URL('..', import.meta.url)), 'dist');
+  if (existsSync(staticDir)) {
+    app.use(express.static(staticDir, { index: false, maxAge: '1h' }));
+    app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));
+    app.use((_req, res) => res.sendFile(join(staticDir, 'index.html')));
+  }
+
+  const PORT = Number(process.env.PORT) || 5174;
+  app.listen(PORT, serverHost(), () => {
+    console.log(`ASO Keywords listening on http://localhost:${PORT}`);
+    start();
+  });
+}

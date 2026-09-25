@@ -20,7 +20,7 @@ const ITEMS: Item[] = [
   { id: "shot", label: "Screenshots", hint: "Визуалы App Store", glyph: "▤", href: `${TRACKER_ORIGIN}/studio/` },
   { id: "vid",  label: "Video",       hint: "Производство рекламных видео", glyph: "▶", href: `${TRACKER_ORIGIN}/video/` },
   { id: "asa",  label: "Ads",         hint: "Экономика поисковой рекламы", glyph: "$", href: `${TRACKER_ORIGIN}/asa/` },
-  { id: "inapp", label: "In-App",     hint: "In-App Events", glyph: "✦", href: "http://localhost:5196/" },
+  { id: "inapp", label: "In-App",     hint: "In-App Events", glyph: "✦", href: "/inapp/" },
 ];
 
 export default function StudioSwitcher() {
