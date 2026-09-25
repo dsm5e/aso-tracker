@@ -11,6 +11,12 @@ export interface AppConfig {
   iconBg?: string;     // css gradient fallback
   iconUrl?: string;    // real App Store artwork URL
   tagline?: string;
+  // Live App Store metadata, refreshed by own-app-meta.ts (US storefront, else the first tracked one).
+  storeName?: string;
+  developer?: string;
+  version?: string;
+  metaCountry?: string;
+  metaUpdatedAt?: string;
 }
 
 /** App ids are used in a filesystem filename; never let an HTTP route turn

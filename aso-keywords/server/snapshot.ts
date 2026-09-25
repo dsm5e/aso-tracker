@@ -1,3 +1,4 @@
+import { refreshOwnAppMeta } from './own-app-meta.js';
 import { RateLimited, findPosition, searchItunes } from './itunes.js';
 import { loadApps, loadKeywords, type AppConfig } from './config.js';
 import { insertSnapshot, type SnapshotRow, db } from './db.js';
@@ -99,6 +100,9 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export async function runSnapshot(opts: SnapshotOptions = {}) {
   const { appIds, locales, workers = 1, sleepMs = 3250, skipExisting = false, onProgress, isCancelled } = opts;
 
+  // Every refresh also pulls our apps' current icon/name/subtitle from the App Store,
+  // so a new icon or title shows up with the new positions (best-effort, ~1–2 s per app).
+  await refreshOwnAppMeta(appIds).catch(() => {});
   const allApps = loadApps();
   const apps: AppConfig[] = appIds ? allApps.filter((a) => appIds.includes(a.id)) : allApps;
   const today = new Date().toISOString().slice(0, 10);

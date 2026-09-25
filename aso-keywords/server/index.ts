@@ -1,3 +1,4 @@
+import { refreshOwnAppMeta, refreshStaleOwnAppMeta } from './own-app-meta.js';
 import express from 'express';
 import { existsSync, realpathSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -627,6 +628,16 @@ app.post('/api/itunes/artworks', async (req, res) => {
 });
 
 // --- Refresh a single keyword (on-demand from UI) ---
+// Re-read our app's icon, name and subtitle from the App Store (US, else first tracked storefront).
+app.post('/api/apps/:id/refresh-meta', async (req, res) => {
+  try {
+    const changed = await refreshOwnAppMeta([assertSafeAppId(req.params.id)]);
+    res.json({ ok: true, changed: changed[req.params.id] ?? [], app: loadApps().find((a) => a.id === req.params.id) });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 app.post('/api/apps/:id/refresh-keyword', async (req, res) => {
   const appId = req.params.id;
   const { locale, keyword } = req.body || {};
@@ -854,7 +865,10 @@ export function serverHost(password = process.env.APP_PASSWORD): string | undefi
 export { app };
 
 /** Listen-time side effects. Keywords has no background jobs; kept for a uniform product contract. */
-export function start(): void {}
+// Listen-time side effects: refresh our apps' App Store icon/name/subtitle if older than a day.
+export function start(): void {
+  refreshStaleOwnAppMeta();
+}
 
 // Standalone entry (`tsx server/index.ts`, `npm start` in production): serve the
 // built React app from the same origin and listen. Skipped when imported by the gateway.

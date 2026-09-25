@@ -177,7 +177,7 @@ export interface SpyAppMeta {
 
 const metaCache = new Map<string, { expiresAt: number; value: SpyAppMeta | null }>();
 
-async function productPageSubtitle(trackId: number, country: string, genre: string | undefined): Promise<string | null> {
+export async function productPageSubtitle(trackId: number, country: string, genre: string | undefined): Promise<string | null> {
   try {
     const response = await fetch(`https://apps.apple.com/${country}/app/id${trackId}`, {
       headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36' },
