@@ -36,14 +36,14 @@ export default function App() {
   const { connected } = useSse((event, data) => {
     if (event === "sync:start") {
       setSyncing(true);
-      setPhase({ label: "Starting", progress: 0.02 });
+        setPhase({ label: "Запуск синхронизации", progress: 0.02 });
     }
     if (event === "sync:phase") {
       const d = data as { label: string; progress: number };
       setPhase(d);
     }
     if (event === "sync:done") {
-      setPhase({ label: "Complete", progress: 1 });
+      setPhase({ label: "Синхронизировано", progress: 1 });
       setLastSync(new Date().toLocaleTimeString());
       setReloadKey((k) => k + 1);
       setTimeout(() => {
@@ -52,7 +52,7 @@ export default function App() {
       }, 800);
     }
     if (event === "sync:error") {
-      setPhase({ label: "Error — see console", progress: 1 });
+      setPhase({ label: "Ошибка синхронизации", progress: 1 });
       setTimeout(() => { setSyncing(false); setPhase(null); }, 2000);
     }
     if (event === "action:applied" || event === "action:failed") {
@@ -63,18 +63,18 @@ export default function App() {
   async function doSync(): Promise<void> {
     if (syncing) return;
     setSyncing(true);
-    setPhase({ label: "Connecting to ASA…", progress: 0.02 });
+    setPhase({ label: "Подключение к Apple Ads…", progress: 0.02 });
     try {
       await api.sync(14);
     } catch (e) {
       console.error(e);
-      setPhase({ label: `Error: ${(e as Error).message}`, progress: 1 });
+      setPhase({ label: `Ошибка: ${(e as Error).message}`, progress: 1 });
       setTimeout(() => { setSyncing(false); setPhase(null); }, 3000);
     }
   }
 
   useEffect(() => {
-    document.title = "ASA Ads";
+    document.title = "Apple Ads · MedScan";
   }, []);
 
   return (
@@ -83,20 +83,20 @@ export default function App() {
         <StudioSwitcher />
         <AppSwitcher />
         <nav>
-          <NavLink to="/" end>Dashboard</NavLink>
-          <NavLink to="/command">Command Center</NavLink>
-          <NavLink to="/profitability">Profitability</NavLink>
-          <NavLink to="/keywords">Keywords</NavLink>
-          <NavLink to="/search-terms">Search Terms</NavLink>
-          <NavLink to="/negatives">Negatives</NavLink>
-          <NavLink to="/actions">Actions</NavLink>
-          <NavLink to="/alerts">Alerts</NavLink>
-          <NavLink to="/settings">Settings</NavLink>
+          <NavLink to="/" end>Обзор</NavLink>
+          <NavLink to="/command">Матрица решений</NavLink>
+          <NavLink to="/profitability">Экономика</NavLink>
+          <NavLink to="/keywords">Ключевые слова</NavLink>
+          <NavLink to="/search-terms">Поисковые запросы</NavLink>
+          <NavLink to="/negatives">Минус-слова</NavLink>
+          <NavLink to="/actions">Очередь действий</NavLink>
+          <NavLink to="/alerts">Оповещения</NavLink>
+          <NavLink to="/settings">Настройки и API</NavLink>
         </nav>
         <div className="spacer" />
         <div className="status">
-          <div className={`live ${connected ? "" : "off"}`}>{connected ? "Live" : "Offline"}</div>
-          {lastSync && <div className="meta">Last sync · {lastSync}</div>}
+          <div className={`live ${connected ? "" : "off"}`}>{connected ? "Онлайн" : "Нет соединения"}</div>
+          {lastSync && <div className="meta">Обновлено · {lastSync}</div>}
         </div>
         {syncing && phase ? (
           <div className="sync-progress">
@@ -108,7 +108,7 @@ export default function App() {
           </div>
         ) : (
           <button className="sync-btn primary" onClick={doSync} disabled={syncing}>
-            Sync now
+            Обновить данные
           </button>
         )}
       </aside>

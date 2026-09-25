@@ -1,0 +1,362 @@
+[
+  {
+    "slot": "pdfsign-acrobat-1",
+    "locale": "en",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-acrobat-2",
+    "locale": "en",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-acrobat-3",
+    "locale": "en",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-acrobat-1",
+    "locale": "ru",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-acrobat-2",
+    "locale": "ru",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-acrobat-3",
+    "locale": "ru",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-acrobat-1",
+    "locale": "de-DE",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-acrobat-2",
+    "locale": "de-DE",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-acrobat-3",
+    "locale": "de-DE",
+    "titlePx": "151px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-1",
+    "locale": "en",
+    "titlePx": "181px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-2",
+    "locale": "en",
+    "titlePx": "144px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-3",
+    "locale": "en",
+    "titlePx": "144px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-1",
+    "locale": "ru",
+    "titlePx": "178px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-2",
+    "locale": "ru",
+    "titlePx": "144px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-3",
+    "locale": "ru",
+    "titlePx": "114px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-1",
+    "locale": "de-DE",
+    "titlePx": "178px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-2",
+    "locale": "de-DE",
+    "titlePx": "144px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-pdf-expert-3",
+    "locale": "de-DE",
+    "titlePx": "135px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-1",
+    "locale": "en",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-2",
+    "locale": "en",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-3",
+    "locale": "en",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-1",
+    "locale": "ru",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-2",
+    "locale": "ru",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-3",
+    "locale": "ru",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-1",
+    "locale": "de-DE",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-2",
+    "locale": "de-DE",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signeasy-3",
+    "locale": "de-DE",
+    "titlePx": "118px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-1",
+    "locale": "en",
+    "titlePx": "153px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-2",
+    "locale": "en",
+    "titlePx": "153px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-3",
+    "locale": "en",
+    "titlePx": "153px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-1",
+    "locale": "ru",
+    "titlePx": "153px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-2",
+    "locale": "ru",
+    "titlePx": "153px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-3",
+    "locale": "ru",
+    "titlePx": "141px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-1",
+    "locale": "de-DE",
+    "titlePx": "153px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-2",
+    "locale": "de-DE",
+    "titlePx": "153px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-signnow-3",
+    "locale": "de-DE",
+    "titlePx": "153px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-1",
+    "locale": "en",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-2",
+    "locale": "en",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-3",
+    "locale": "en",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-1",
+    "locale": "ru",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-2",
+    "locale": "ru",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-3",
+    "locale": "ru",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-1",
+    "locale": "de-DE",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-2",
+    "locale": "de-DE",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  },
+  {
+    "slot": "pdfsign-docusign-3",
+    "locale": "de-DE",
+    "titlePx": "143px",
+    "overflow": false,
+    "horizontalOverflow": false,
+    "images": true
+  }
+]

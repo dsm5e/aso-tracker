@@ -76,42 +76,42 @@ export default function Profitability({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <h2>Profitability</h2>
+        <div><h2>Экономика</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Все страны выбранного приложения · факт выручки и прогноз показываются раздельно</div></div>
         <div className="controls">
-          <span className="meta">{hasRevenue ? "spend × Adapty revenue (real ROAS)" : "spend × trials · ASC"}</span>
+          <span className="meta">{hasRevenue ? "Расход × выручка Adapty · факт" : "Расход × триалы · ASC"}</span>
           <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={7}>7D</option>
-            <option value={14}>14D</option>
-            <option value={30}>30D</option>
-            <option value={90}>90D</option>
+            <option value={7}>7 дней</option>
+            <option value={14}>14 дней</option>
+            <option value={30}>30 дней</option>
+            <option value={90}>90 дней</option>
           </select>
         </div>
       </div>
 
       <div className="spark-row">
-        <Sparkline title="Spend" value={fmtUsd(t.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--amber)" format={fmtUsd} />
+        <Sparkline title="Расход" value={fmtUsd(t.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--amber)" format={fmtUsd} />
         {hasRevenue ? (
-          <Sparkline title="Revenue" value={fmtUsd(t.revenue)} data={daily.map((d) => d.spend)} labels={dates} color="var(--green)" format={fmtUsd} />
+          <Sparkline title="Выручка" value={fmtUsd(t.revenue)} data={daily.map((d) => d.spend)} labels={dates} color="var(--green)" format={fmtUsd} />
         ) : (
-          <Sparkline title="Trials" value={String(t.trials)} data={daily.map((d) => d.trial_starts)} labels={dates} color="var(--green)" format={(n) => String(Math.round(n))} />
+          <Sparkline title="Старты триала" value={String(t.trials)} data={daily.map((d) => d.trial_starts)} labels={dates} color="var(--green)" format={(n) => String(Math.round(n))} />
         )}
         {hasRevenue ? (
           <Sparkline title="ROAS" value={t.roas > 0 ? `${(t.roas * 100).toFixed(0)}%` : "—"} data={dailyCpt} labels={dates} color="var(--cyan)" format={fmtUsd} />
         ) : (
-          <Sparkline title="Cost / trial" value={t.cpt > 0 ? fmtUsd(t.cpt) : "—"} data={dailyCpt} labels={dates} color="var(--cyan)" format={fmtUsd} />
+          <Sparkline title="Цена триала" value={t.cpt > 0 ? fmtUsd(t.cpt) : "—"} data={dailyCpt} labels={dates} color="var(--cyan)" format={fmtUsd} />
         )}
-        <Sparkline title={hasRevenue ? "Paid" : "Installs"} value={String(hasRevenue ? t.paid : t.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--red)" format={(n) => String(Math.round(n))} />
+        <Sparkline title={hasRevenue ? "Оплаты" : "Установки"} value={String(hasRevenue ? t.paid : t.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--red)" format={(n) => String(Math.round(n))} />
       </div>
 
-      <div className="divider">Payback trend</div>
+      <div className="divider">Динамика</div>
       <HeroChart daily={daily} />
 
       {hasRevenue && (
         <>
-          <div className="divider">ROAS by geo</div>
+          <div className="divider">ROAS по странам</div>
           <RoasByGeoBars rows={merged.map((r) => ({ country: r.country, spend: r.spend, revenue: r.revenue, roas: r.roas }))} />
 
-          <div className="divider">Payback projector</div>
+          <div className="divider">Калькулятор сценария</div>
           <div className="card" style={{ padding: "14px 16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
               <span className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em" }}>Pour</span>
@@ -160,23 +160,23 @@ export default function Profitability({ reloadKey }: Props) {
         </>
       )}
 
-      <div className="divider">Cost per trial by geo</div>
+      <div className="divider">Цена триала по странам</div>
       {geo.length === 0 ? (
-        <div className="empty">{loading ? "loading" : "no data · run sync"}</div>
+        <div className="data-state">{loading ? "Загружаем данные…" : "Нет данных за этот период."}</div>
       ) : (
         <CostPerTrialBars rows={geo} blended={t.cpt || 1} />
       )}
 
-      <div className="divider">Efficiency map</div>
+      <div className="divider">Карта эффективности</div>
       {geo.length > 0 && <EfficiencyScatter rows={geo} blended={t.cpt || 1} />}
 
       <div className="divider" style={{ justifyContent: "space-between" }}>
-        Geo breakdown · {merged.length}{hasRevenue ? " · real ROAS" : ""}
+        Разбивка по странам · {merged.length}{hasRevenue ? " · фактический ROAS" : ""}
         <button className="compact" onClick={() => exportRows(
           `profitability-${new Date().toISOString().slice(0, 10)}.csv`,
           ["country", "spend", "installs", "trials", "paid", "revenue", "roas", "cpi", "cpt"],
           merged.map((r) => ({ ...r, cpt: r.cpt ?? "" })) as unknown as Array<Record<string, unknown>>,
-        )}>export csv</button>
+        )}>Экспорт CSV</button>
       </div>
 
       {merged.length > 0 && (

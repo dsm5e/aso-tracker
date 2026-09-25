@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import InfoTooltip from "../components/InfoTooltip.tsx";
 import CredentialsCard from "../components/CredentialsCard.tsx";
+import PlatformApiExplorer from "../components/PlatformApiExplorer.tsx";
 import { useApp } from "../lib/AppContext.tsx";
 import { apiUrl, sseUrl } from "../lib/apiBase.ts";
 
@@ -32,9 +33,9 @@ interface LabelDef {
 const LABELS: LabelDef[] = [
   {
     key: "ltv_per_paid",
-    label: "LTV per paying user ($)",
+    label: "LTV на платящего пользователя ($)",
     hint: "Сколько денег приносит один платный подписчик",
-    group: "ROI Engine",
+    group: "Экономика и прогноз",
     autoSuggestable: true,
     details: (
       <>
@@ -46,9 +47,9 @@ const LABELS: LabelDef[] = [
   },
   {
     key: "trial_to_paid_rate",
-    label: "Trial → paid CR (0–1)",
+    label: "Конверсия триал → оплата (0–1)",
     hint: "Доля триалов которая стала платными",
-    group: "ROI Engine",
+    group: "Экономика и прогноз",
     autoSuggestable: true,
     details: (
       <>
@@ -59,9 +60,9 @@ const LABELS: LabelDef[] = [
   },
   {
     key: "target_cpi_tier1",
-    label: "Target CPI tier-1 ($)",
+    label: "Целевой CPI, Tier-1 ($)",
     hint: "Бюджет на установку в богатых странах",
-    group: "ROI Engine",
+    group: "Экономика и прогноз",
     autoSuggestable: true,
     details: (
       <>
@@ -73,9 +74,9 @@ const LABELS: LabelDef[] = [
   },
   {
     key: "target_cpi_tier2",
-    label: "Target CPI tier-2/3 ($)",
+    label: "Целевой CPI, Tier-2/3 ($)",
     hint: "То же для развивающихся рынков",
-    group: "ROI Engine",
+    group: "Экономика и прогноз",
     autoSuggestable: true,
     details: (
       <>
@@ -86,9 +87,9 @@ const LABELS: LabelDef[] = [
   },
   {
     key: "min_spend_for_signal",
-    label: "Min spend for signal ($)",
+    label: "Минимальные траты для сигнала ($)",
     hint: "Меньше — данные ненадёжны",
-    group: "Confidence gates",
+    group: "Достоверность данных",
     autoSuggestable: false,
     details: (
       <>
@@ -99,25 +100,25 @@ const LABELS: LabelDef[] = [
   },
   {
     key: "min_installs_for_signal",
-    label: "Min installs for signal",
+    label: "Минимум установок для сигнала",
     hint: "Минимум installs",
-    group: "Confidence gates",
+    group: "Достоверность данных",
     autoSuggestable: false,
     details: <p style={{ margin: 0 }}>1 install = случайность. 5 = тренд. 15+ = надёжная статистика. Default 5 → medium confidence.</p>,
   },
   {
     key: "min_days_for_signal",
-    label: "Min days for signal",
+    label: "Минимум дней для сигнала",
     hint: "Минимум дней работы",
-    group: "Confidence gates",
+    group: "Достоверность данных",
     autoSuggestable: false,
     details: <p style={{ margin: 0 }}>Apple ASA имеет learning period 24-72ч. Меньше — данные нестабильные.</p>,
   },
   {
     key: "alert_cpi_threshold",
-    label: "Alert: CPI threshold ($)",
+    label: "Порог оповещения по CPI ($)",
     hint: "Выше — Telegram alert",
-    group: "Alerts",
+    group: "Оповещения",
     autoSuggestable: true,
     details: (
       <>
@@ -128,9 +129,9 @@ const LABELS: LabelDef[] = [
   },
   {
     key: "alert_spend_no_install",
-    label: "Alert: burn threshold ($)",
+    label: "Порог слива бюджета ($)",
     hint: "Spend без installs",
-    group: "Alerts",
+    group: "Оповещения",
     autoSuggestable: true,
     details: (
       <>
@@ -141,9 +142,9 @@ const LABELS: LabelDef[] = [
   },
   {
     key: "alert_interval_min",
-    label: "Alert check interval (min)",
+    label: "Интервал проверки оповещений (мин)",
     hint: "Как часто проверять",
-    group: "Alerts",
+    group: "Оповещения",
     autoSuggestable: false,
     details: <p style={{ margin: 0 }}>Default 30 мин — баланс между скоростью реакции и нагрузкой.</p>,
   },
@@ -166,7 +167,7 @@ export default function SettingsPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   const appQuery = selected === "all" ? "" : `?app_id=${selected}`;
-  const currentAppName = selected === "all" ? "Global defaults" : apps.find((a) => a.app_id === selected)?.app_name?.split(":")[0] || `App ${selected}`;
+  const currentAppName = selected === "all" ? "Все приложения" : apps.find((a) => a.app_id === selected)?.app_name?.split(":")[0] || `Приложение ${selected}`;
 
   async function loadAll(): Promise<void> {
     const [a, b] = await Promise.all([
@@ -202,7 +203,7 @@ export default function SettingsPage() {
     };
   }, []);
 
-  if (!s) return <div className="loading">loading settings</div>;
+  if (!s) return <div className="data-state loading">Загружаем настройки…</div>;
 
   const groups = [...new Set(LABELS.map((l) => l.group))];
 
@@ -247,28 +248,28 @@ export default function SettingsPage() {
     <>
       <div className="topbar">
         <div>
-          <h2>Settings · <span style={{ color: "var(--amber)" }}>{currentAppName}</span></h2>
+          <h2>Настройки · <span className="accent-text">{currentAppName}</span></h2>
           <div className="muted" style={{ fontSize: 11, marginTop: 4, letterSpacing: "0.05em" }}>
             {selected === "all"
-              ? "Global defaults — applied when no app-specific override exists. Confidence gates always global."
-              : `Per-app override. Falls back to global if not set. Switch app in sidebar to edit different config.`}
+              ? "Общие значения применяются, когда для конкретного приложения нет переопределения. Пороги достоверности общие."
+              : "Переопределение для приложения. Если значение не задано, используется общее; переключите приложение слева для редактирования другого профиля."}
           </div>
         </div>
         <div className="controls">
           <button onClick={recomputeSuggestions} disabled={refreshing} title="Recompute suggestions from latest data">
-            {refreshing ? "computing…" : "↺ recompute"}
+            {refreshing ? "Считаем…" : "↺ Пересчитать"}
           </button>
           {autoCount > 0 ? (
             <button onClick={applyAllSuggestions} className="primary" title="Apply all auto-suggested values">
-              apply {autoCount} suggestion{autoCount > 1 ? "s" : ""}
+              Принять {autoCount} рекомендац{autoCount === 1 ? "ию" : "ии"}
             </button>
           ) : (
-            <span className="meta good">✓ all in sync with auto</span>
+            <span className="meta good">✓ значения синхронизированы</span>
           )}
-          {savedAt && !dirty && <span className="meta">saved · {savedAt}</span>}
-          {dirty && <span className="meta warn">{Object.keys(pending).length} pending</span>}
+          {savedAt && !dirty && <span className="meta">сохранено · {savedAt}</span>}
+          {dirty && <span className="meta warn">изменений: {Object.keys(pending).length}</span>}
           <button className="primary" onClick={save} disabled={!dirty || saving}>
-            {saving ? "saving…" : "save changes"}
+            {saving ? "Сохраняем…" : "Сохранить изменения"}
           </button>
         </div>
       </div>
@@ -279,7 +280,7 @@ export default function SettingsPage() {
             ✅ <strong>автосчитается</strong> из реальных данных · ⚙ <strong>твой бизнес-выбор</strong> · <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", border: "1px solid var(--bone-ghost)", color: "var(--bone-mute)", fontSize: 9 }}>?</span> детали
           </div>
           <div className="muted" style={{ fontSize: 11 }}>
-            suggestions: {suggestedAt.toLocaleTimeString()} · auto-refresh on sync
+            рекомендации: {suggestedAt.toLocaleTimeString()} · обновляются после синхронизации
           </div>
         </div>
       </div>
@@ -298,17 +299,17 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="divider">API Credentials</div>
+      <div className="divider">Учётные данные API</div>
       <CredentialsCard
         provider="asa"
-        title="Apple Search Ads"
-        description="OAuth client credentials + ES256 private key for the ads.apple.com API"
+        title="Apple Ads"
+        description="OAuth-учётные данные и ES256-ключ для Apple Ads API"
         helpUrl="https://developer.apple.com/documentation/apple_search_ads/implementing_oauth_for_the_apple_search_ads_api"
       />
       <CredentialsCard
         provider="asc"
         title="App Store Connect"
-        description="API key for Sales Reports (SUBSCRIPTION_EVENT, SUBSCRIBER, etc) — required for ASC trial cross-match"
+        description="Ключ API для отчётов подписок; нужен для сверки триалов и оплат"
         helpUrl="https://developer.apple.com/documentation/appstoreconnectapi/creating_api_keys_for_app_store_connect_api"
       />
 
@@ -318,9 +319,9 @@ export default function SettingsPage() {
           <table style={{ marginBottom: 24 }}>
             <thead>
               <tr>
-                <th style={{ width: "45%" }}>Parameter</th>
-                <th className="num" style={{ width: 130 }}>Current</th>
-                <th className="num" style={{ width: 130 }}>Auto-suggested</th>
+                <th style={{ width: "45%" }}>Параметр</th>
+                <th className="num" style={{ width: 130 }}>Текущее</th>
+                <th className="num" style={{ width: 130 }}>Рекомендация</th>
                 <th style={{ width: 60 }}></th>
               </tr>
             </thead>
@@ -364,7 +365,7 @@ export default function SettingsPage() {
                           className="compact"
                           onClick={() => setPending((p) => ({ ...p, [l.key]: su.value }))}
                           title={`Apply suggested ${su.value}`}
-                        >↺ use</button>
+                        >↺ Принять</button>
                       )}
                     </td>
                   </tr>
@@ -378,6 +379,9 @@ export default function SettingsPage() {
       <div className="hint">
         <strong>Auto-suggested values</strong> пересчитываются на каждое открытие страницы из <code>asc_events_daily</code> + текущего LTV. Не применяются автоматически — ты решаешь.
       </div>
+
+      <div className="divider">Подключённые возможности API</div>
+      <PlatformApiExplorer />
     </>
   );
 }

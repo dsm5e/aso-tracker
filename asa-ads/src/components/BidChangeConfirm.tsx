@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Keyword, type Projection } from "../api.ts";
+import { campaignDisplayName } from "../lib/campaignNames.ts";
 
 interface Props {
   keyword: Keyword;
@@ -72,23 +73,23 @@ export default function BidChangeConfirm({ keyword, newBid, reason, onConfirm, o
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingBottom: 14, marginBottom: 16, borderBottom: "1px solid var(--line)" }}>
           <div>
             <div style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: direction === "up" ? "var(--amber)" : "var(--red)" }}>
-              {direction === "up" ? "▲ raise bid" : direction === "down" ? "▼ lower bid" : "≡ set bid"}
+              {direction === "up" ? "▲ повысить ставку" : direction === "down" ? "▼ снизить ставку" : "≡ изменить ставку"}
             </div>
             <div style={{ fontSize: 16, marginTop: 4, color: "var(--bone)" }}>{keyword.text}</div>
-            <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{keyword.campaign_name}</div>
+            <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{campaignDisplayName(keyword.campaign_name)}</div>
           </div>
-          <button className="compact" onClick={onCancel}>esc</button>
+          <button className="compact" onClick={onCancel}>Esc</button>
         </div>
 
-        <div className="divider" style={{ margin: "0 0 12px" }}>Change</div>
+        <div className="divider" style={{ margin: "0 0 12px" }}>Изменение</div>
         <table style={{ marginBottom: 16 }}>
           <tbody>
             <tr>
-              <td className="muted">Current bid</td>
+              <td className="muted">Текущая ставка</td>
               <td className="num">{fmtUsd(keyword.bid)}</td>
             </tr>
             <tr>
-              <td className="muted">New bid</td>
+              <td className="muted">Новая ставка</td>
               <td className={`num ${direction === "up" ? "good" : direction === "down" ? "bad" : ""}`}>
                 {fmtUsd(newBid)}{" "}
                 <span style={{ fontSize: 10 }}>({deltaPct > 0 ? "+" : ""}{deltaPct.toFixed(0)}%)</span>
@@ -97,15 +98,15 @@ export default function BidChangeConfirm({ keyword, newBid, reason, onConfirm, o
           </tbody>
         </table>
 
-        <div className="divider" style={{ margin: "0 0 12px" }}>Spend impact (estimated)</div>
+        <div className="divider" style={{ margin: "0 0 12px" }}>Изменение расхода (оценка)</div>
         <table style={{ marginBottom: 16 }}>
           <tbody>
             <tr>
-              <td className="muted">Past 14d daily avg</td>
-              <td className="num">{fmtUsd(avgDailySpend)} <span className="muted" style={{ fontSize: 10 }}>({avgDailyTaps.toFixed(1)} taps/day)</span></td>
+              <td className="muted">Среднее за 14 дней</td>
+              <td className="num">{fmtUsd(avgDailySpend)} <span className="muted" style={{ fontSize: 10 }}>({avgDailyTaps.toFixed(1)} тапов в день)</span></td>
             </tr>
             <tr>
-              <td className="muted">Projected daily after change</td>
+              <td className="muted">Прогноз в день после изменения</td>
               <td className={`num ${dailySpendDelta > 0 ? "warn" : ""}`}>
                 ≈ {fmtUsd(newDailySpend)}
                 <span style={{ fontSize: 10, marginLeft: 4 }}>
@@ -114,31 +115,31 @@ export default function BidChangeConfirm({ keyword, newBid, reason, onConfirm, o
               </td>
             </tr>
             <tr>
-              <td className="muted">Projected weekly</td>
+              <td className="muted">Прогноз в неделю</td>
               <td className="num">≈ {fmtUsd(weeklySpend)}</td>
             </tr>
             <tr>
-              <td className="muted">Projected monthly</td>
+              <td className="muted">Прогноз в месяц</td>
               <td className="num">≈ {fmtUsd(monthlySpend)}</td>
             </tr>
           </tbody>
         </table>
 
-        <div className="divider" style={{ margin: "0 0 12px" }}>ROI prediction</div>
-        {loading ? <div className="loading">computing</div> : projAvailable && proj ? (
+        <div className="divider" style={{ margin: "0 0 12px" }}>Прогноз ROI</div>
+        {loading ? <div className="loading">Считаем…</div> : projAvailable && proj ? (
           <div style={{ marginBottom: 16 }}>
             <div className="row" style={{ gap: 12, marginBottom: 8 }}>
               <span className={`roi ${proj.verdict.kind}`} style={{ fontSize: 13 }}>{proj.verdict.label}</span>
               <span className="muted" style={{ fontSize: 11 }}>{proj.verdict.reason}</span>
             </div>
             <div className="muted" style={{ fontSize: 11, lineHeight: 1.5 }}>
-              At ${100} additional spend → ≈{proj.projected_installs.toFixed(0)} installs, ≈{proj.projected_paid.toFixed(1)} paid, ≈{fmtUsd(proj.projected_revenue)} revenue (ROI {fmtPct(proj.projected_roi)}).
+              При дополнительных ${100} → примерно {proj.projected_installs.toFixed(0)} установок, {proj.projected_paid.toFixed(1)} оплат и {fmtUsd(proj.projected_revenue)} выручки (ROI {fmtPct(proj.projected_roi)}).
               <br />
               <strong className={direction === "up" ? "good" : "bad"}>
                 {direction === "up"
-                  ? "↑ Higher bid → больше impressions, выше CPI per install, но в SCALE-зоне может оправдаться."
+                  ? "↑ Более высокая ставка даёт больше показов и обычно повышает CPI; это оправдано только при подтверждённой экономике."
                   : direction === "down"
-                  ? "↓ Lower bid → меньше impressions, рискуешь потерять долю аукциона."
+                  ? "↓ Более низкая ставка даёт меньше показов и может снизить долю аукциона."
                   : ""}
               </strong>
             </div>
@@ -152,7 +153,7 @@ export default function BidChangeConfirm({ keyword, newBid, reason, onConfirm, o
 
         {reason && (
           <div style={{ padding: "8px 12px", background: "var(--bg-3)", fontSize: 11, color: "var(--bone-dim)", borderLeft: "2px solid var(--cyan)", marginBottom: 16 }}>
-            <strong style={{ color: "var(--cyan)" }}>Why:</strong> {reason}
+            <strong style={{ color: "var(--cyan)" }}>Причина:</strong> {reason}
           </div>
         )}
 
@@ -161,11 +162,11 @@ export default function BidChangeConfirm({ keyword, newBid, reason, onConfirm, o
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span className="muted" style={{ fontSize: 10 }}>⌘ + Enter to confirm · Esc to cancel</span>
+          <span className="muted" style={{ fontSize: 10 }}>⌘ + Enter — подтвердить · Esc — отменить</span>
           <div className="btn-group">
-            <button onClick={onCancel}>cancel</button>
+            <button onClick={onCancel}>Отменить</button>
             <button className={`primary ${direction === "up" ? "up" : "down"}`} onClick={onConfirm}>
-              {direction === "up" ? "↑" : direction === "down" ? "↓" : "→"} apply {fmtUsd(newBid)}
+              {direction === "up" ? "↑" : direction === "down" ? "↓" : "→"} Применить {fmtUsd(newBid)}
             </button>
           </div>
         </div>

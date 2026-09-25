@@ -65,14 +65,14 @@ export function loadSettings(appId?: number): Settings {
     const k = r.key as keyof Settings;
     if (k in merged) {
       const v = Number(r.value);
-      if (Number.isFinite(v)) (merged as Record<string, number>)[k] = v;
+      if (Number.isFinite(v)) merged[k] = v;
     }
   }
   for (const r of perApp) {
     const k = r.key as keyof Settings;
     if (k in merged && !GLOBAL_ONLY.includes(k)) {
       const v = Number(r.value);
-      if (Number.isFinite(v)) (merged as Record<string, number>)[k] = v;
+      if (Number.isFinite(v)) merged[k] = v;
     }
   }
 
@@ -98,45 +98,6 @@ export function updateSettings(patch: Partial<Settings>, appId?: number): Settin
   })();
   cache.clear();
   return loadSettings(appId);
-}
-
-export const GLOBAL_ONLY_KEYS = GLOBAL_ONLY;
-
-export interface AlertRule {
-  id: number;
-  name: string;
-  kind: "burn" | "high_cpi" | "stalled" | "spend_spike" | "low_ttr" | "custom_roi";
-  enabled: number;
-  params: string;
-  created_at: string;
-}
-
-export function listAlertRules(): AlertRule[] {
-  return getDb().prepare(`SELECT * FROM alert_rules ORDER BY id`).all() as AlertRule[];
-}
-
-export function createAlertRule(name: string, kind: AlertRule["kind"], params: Record<string, unknown>): AlertRule {
-  const db = getDb();
-  const r = db.prepare(`INSERT INTO alert_rules (name, kind, params, created_at) VALUES (?, ?, ?, ?)`)
-    .run(name, kind, JSON.stringify(params), new Date().toISOString());
-  return db.prepare(`SELECT * FROM alert_rules WHERE id = ?`).get(r.lastInsertRowid) as AlertRule;
-}
-
-export function updateAlertRule(id: number, patch: Partial<{ enabled: boolean; params: Record<string, unknown>; name: string }>): void {
-  const db = getDb();
-  if (typeof patch.enabled === "boolean") {
-    db.prepare(`UPDATE alert_rules SET enabled = ? WHERE id = ?`).run(patch.enabled ? 1 : 0, id);
-  }
-  if (patch.params !== undefined) {
-    db.prepare(`UPDATE alert_rules SET params = ? WHERE id = ?`).run(JSON.stringify(patch.params), id);
-  }
-  if (patch.name !== undefined) {
-    db.prepare(`UPDATE alert_rules SET name = ? WHERE id = ?`).run(patch.name, id);
-  }
-}
-
-export function deleteAlertRule(id: number): void {
-  getDb().prepare(`DELETE FROM alert_rules WHERE id = ?`).run(id);
 }
 
 export interface SuggestedSettings {

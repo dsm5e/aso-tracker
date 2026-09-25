@@ -1,0 +1,63 @@
+{
+  "id": "pdfsign-real-acrobat",
+  "name": "01 · Acrobat — Red Cards · Real iPhone",
+  "kind": "real",
+  "description": "Красный фон, крупные карточки и увеличенные фрагменты интерфейса.",
+  "recommendedFor": "PDFSign / PDF signing",
+  "background": {
+    "type": "solid",
+    "css": "#eb1000"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 850,
+    "color": "#fff",
+    "align": "left",
+    "uppercase": false
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "decorationsHint": "Reference-derived layout. Keep headline zones empty in artwork; all marketing copy is a live localized layer.",
+  "samples": [
+    {
+      "verb": "All your PDFs.\nReady to sign.",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-polish/artwork/acrobat-1.png",
+      "text": {
+        "yFraction": 0.055,
+        "titlePx": 151,
+        "subPx": 70,
+        "color": "#fff",
+        "safeBottomFraction": 0.25
+      }
+    },
+    {
+      "verb": "Your documents.\nOne place.",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-polish/artwork/acrobat-2.png",
+      "text": {
+        "yFraction": 0.055,
+        "titlePx": 151,
+        "subPx": 70,
+        "color": "#fff",
+        "safeBottomFraction": 0.25
+      }
+    },
+    {
+      "verb": "Add your\nsignature.",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-polish/artwork/acrobat-3.png",
+      "text": {
+        "yFraction": 0.055,
+        "titlePx": 151,
+        "subPx": 70,
+        "color": "#171717",
+        "safeBottomFraction": 0.25
+      }
+    }
+  ]
+}

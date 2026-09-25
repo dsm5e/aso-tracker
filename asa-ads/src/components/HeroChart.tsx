@@ -8,10 +8,10 @@ interface Props {
 type Metric = "spend" | "installs" | "cpi" | "trial_starts" | "ttr";
 
 const METRICS: { key: Metric; label: string; color: string; format: (n: number) => string }[] = [
-  { key: "spend", label: "Spend", color: "#ffb000", format: (n) => `$${n.toFixed(2)}` },
-  { key: "installs", label: "Installs", color: "#5ce1e6", format: (n) => String(Math.round(n)) },
+  { key: "spend", label: "Расход", color: "var(--amber)", format: (n) => `$${n.toFixed(2)}` },
+  { key: "installs", label: "Установки", color: "var(--cyan)", format: (n) => String(Math.round(n)) },
   { key: "cpi", label: "CPI", color: "#ff5c5c", format: (n) => `$${n.toFixed(2)}` },
-  { key: "trial_starts", label: "Trials", color: "#88c87a", format: (n) => String(Math.round(n)) },
+  { key: "trial_starts", label: "Старты триала", color: "var(--green)", format: (n) => String(Math.round(n)) },
   { key: "ttr", label: "TTR", color: "#a78bfa", format: (n) => `${(n * 100).toFixed(2)}%` },
 ];
 
@@ -69,7 +69,7 @@ export default function HeroChart({ daily }: Props) {
 
   return (
     <div className="card" style={{ padding: "14px 18px 8px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
         <div className="btn-group">
           {METRICS.map((mm) => (
             <button
@@ -82,16 +82,10 @@ export default function HeroChart({ daily }: Props) {
           ))}
         </div>
         <div className="muted" style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          {hover !== null ? `${dates[hover]} · ${m.format(values[hover])}` : `last ${m.format(values[values.length - 1] ?? 0)}`}
+          {hover !== null ? `${dates[hover]} · ${m.format(values[hover])}` : `Последняя точка · ${m.format(values[values.length - 1] ?? 0)}`}
         </div>
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" onMouseMove={handleMove} onMouseLeave={() => setHover(null)} style={{ display: "block", width: "100%", height: "auto" }}>
-        <defs>
-          <linearGradient id={`hero-${metric}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={m.color} stopOpacity="0.25" />
-            <stop offset="100%" stopColor={m.color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
         {/* Grid */}
         {ticks.map((t, i) => {
           const y = padT + innerH - ((t - min) / range) * innerH;
@@ -117,8 +111,8 @@ export default function HeroChart({ daily }: Props) {
         {/* WoW overlay (lighter) */}
         {wowPath && <path d={wowPath} fill="none" stroke={m.color} strokeWidth="1" strokeDasharray="3 3" opacity="0.35" />}
         {/* Main */}
-        <path d={fill} fill={`url(#hero-${metric})`} />
-        <path d={path} fill="none" stroke={m.color} strokeWidth="1.75" />
+        <path d={fill} fill={m.color} opacity="0.10" />
+        <path d={path} fill="none" stroke={m.color} strokeWidth="1.35" />
         {/* Hover */}
         {hover !== null && (
           <>
@@ -128,7 +122,7 @@ export default function HeroChart({ daily }: Props) {
         )}
       </svg>
       <div className="muted" style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 4 }}>
-        — solid = current period · — dashed = same metric 7 days earlier (WoW)
+        Сплошная линия — текущий период; пунктир — те же дни неделей ранее. Это сравнение тренда, а не прогноз.
       </div>
     </div>
   );

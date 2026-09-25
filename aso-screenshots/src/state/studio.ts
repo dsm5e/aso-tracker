@@ -863,10 +863,11 @@ export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioStat
           const merged: Screenshot[] = preset.samples.map((sample, i) => {
             const old = existingRegulars[i];
             return {
-              id: old?.id ?? newId(),
+              id: sample.sourceLayout === 'full-bleed' ? `${id}-${i + 1}` : old?.id ?? newId(),
               filename: old?.filename ?? `screenshot-${i + 1}.png`,
-              sourceUrl: old?.sourceUrl ?? null,
-              enhancedUrl: old?.enhancedUrl ?? null,
+              sourceUrl: sample.sourceLayout === 'full-bleed' ? (sample.screenSrc ?? null) : (old?.sourceLayout === 'full-bleed' ? null : old?.sourceUrl ?? sample.screenSrc ?? null),
+              sourceLayout: sample.sourceLayout ?? 'device',
+              enhancedUrl: sample.sourceLayout === 'full-bleed' ? null : old?.enhancedUrl ?? null,
               presetId: id,
               // pickPreset = clean apply: take the new sample's bgColor as the slot
               // background, ignoring whatever the previous preset / user override was.
@@ -891,6 +892,8 @@ export const useStudio: UseBoundStore<StoreApi<StudioState>> = create<StudioStat
               textYFraction: sample.text?.yFraction,
               titlePx: sample.text?.titlePx,
               subPx: sample.text?.subPx,
+              textColorOverride: sample.text?.color,
+              headlineSafeBottomFraction: sample.text?.safeBottomFraction,
               sampleIndex: i,
               groupId: sample.groupId,
               breakout: false,

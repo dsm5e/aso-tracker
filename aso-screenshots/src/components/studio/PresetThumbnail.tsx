@@ -31,6 +31,7 @@ interface Props {
   descriptor?: string;
   /** Sample app screenshot inside the device frame (optional URL). */
   sourceUrl?: string | null;
+  sourceLayout?: 'device' | 'full-bleed';
   accentOverride?: string;
   /** Per-sample device override (positionOffset, rotation, scale from .butterkit). */
   device?: PresetSample['device'];
@@ -56,6 +57,7 @@ export function PresetThumbnail({
   verb = 'YOUR VERB',
   descriptor = 'YOUR DESCRIPTOR',
   sourceUrl,
+  sourceLayout,
   accentOverride,
   device,
   text,
@@ -186,6 +188,9 @@ export function PresetThumbnail({
           {parametricKind === 'dots' && (
             <DotsBackground bgColor={dotsBg} dotColor={dotsColor} width={CANVAS_W} height={CANVAS_H} />
           )}
+          {sourceLayout === 'full-bleed' && sourceUrl && (
+            <img src={sourceUrl} alt="" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+          )}
           {/* Headline — vertical position, title px, subtitle px all per-sample */}
           {(() => {
             const top = textTop;
@@ -199,7 +204,7 @@ export function PresetThumbnail({
                   padding: '0 60px',
                   textAlign: preset.text.align || 'center',
                   fontFamily: `"${preset.text.font}", Inter, sans-serif`,
-                  color: preset.text.color,
+                  color: text?.color ?? preset.text.color,
                   pointerEvents: 'none',
                 }}
               >
@@ -226,6 +231,7 @@ export function PresetThumbnail({
                   style={{
                     fontSize: titleSize,
                     fontWeight: preset.text.weight,
+                    whiteSpace: 'pre-wrap',
                     lineHeight: 1.02,
                     letterSpacing: '-0.02em',
                     overflowWrap: 'break-word',
@@ -252,7 +258,7 @@ export function PresetThumbnail({
           })()}
 
           {/* Device with per-sample transform */}
-          <div
+          {sourceLayout !== 'full-bleed' && <div
             style={{
               position: 'absolute',
               left: deviceLeft,
@@ -279,7 +285,7 @@ export function PresetThumbnail({
                 />
               )}
             </DeviceFrame>
-          </div>
+          </div>}
         </div>
       )}
     </div>

@@ -9,8 +9,15 @@
     "dev:vite": "vite",
     "dev:api": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
+    "test": "node --import tsx --test server/*.test.ts cli/lib/*.test.ts",
     "start": "tsx server/index.ts",
     "sync": "tsx cli/sync.ts",
+    "sync:structure": "tsx cli/sync-structure.ts",
+    "prepare:medscan-rebuild": "tsx cli/prepare-medscan-rebuild.ts",
+    "stage:medscan-rebuild": "tsx cli/stage-medscan-rebuild.ts",
+    "reconcile:medscan-rebuild": "tsx cli/reconcile-medscan-rebuild.ts",
+    "cutover:medscan-rebuild": "tsx cli/cutover-medscan-rebuild.ts",
+    "preserve:medscan-discovery-volume": "tsx cli/preserve-medscan-discovery-volume.ts",
     "lint": "eslint ."
   },
   "dependencies": {

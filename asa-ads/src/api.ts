@@ -54,7 +54,7 @@ export interface Projection {
   projected_cpa_paid: number;
   verdict: { kind: "scale" | "hold" | "cut" | "unknown"; label: string; reason: string };
   next_step?: string;
-  /** "real" = driven by deterministic AdServices attribution; "estimated" = country-average. */
+  /** "real" = driven by native Adapty Apple Ads attribution; "estimated" = country-average. */
   revenue_source: "real" | "estimated";
   /** Measured so far from ASA-attributed users (not projected). */
   paid_so_far: number;
@@ -98,6 +98,43 @@ export interface AppRow {
   installs_14d: number;
 }
 
+export interface PlatformApiMethod {
+  id: string;
+  group: string;
+  name: string;
+  method: string;
+  path: string;
+  kind: "read" | "mutation";
+  access: "read" | "write";
+  integration: "traffic-intelligence" | "catalog-only";
+  integrated: boolean;
+  status: "live-read" | "not-integrated-read-only" | "catalog-only";
+  docsUrl: string;
+}
+
+export interface PlatformApiMethodsPayload {
+  api: string;
+  version: string;
+  baseUrl: string;
+  generatedFromOfficialDocs: string;
+  mode: "read-only";
+  totals: { methods: number; integrated: number; catalogOnly: number; reads: number; mutations: number; sections: number };
+  integrationLegend: Record<string, string>;
+  methods: PlatformApiMethod[];
+}
+
+export interface PlatformSource {
+  status: "live" | "fresh" | "stale-if-error" | "unavailable" | "error" | string;
+  data?: unknown;
+  meta?: { fetchedAt?: string; cachedAt?: string; source?: string; [key: string]: unknown };
+  error?: string;
+}
+
+export interface PlatformInventoryPayload {
+  sources: Record<string, PlatformSource>;
+  partialErrors?: Array<{ source?: string; error?: string }>;
+}
+
 function appQ(appId?: number | "all"): string {
   return appId && appId !== "all" ? `&app_id=${appId}` : "";
 }
@@ -129,6 +166,10 @@ export interface AccountHealth {
 
 export const api = {
   apps: () => get<AppRow[]>("/api/apps"),
+  platformMethods: () => get<PlatformApiMethodsPayload>("/api/platform/methods"),
+  platformInventory: (appId: number) => get<PlatformInventoryPayload>(`/api/platform/inventory?app_id=${appId}`),
+  platformReports: (appId: number, days = 30) => get<{ sources?: Record<string, PlatformSource>; partialErrors?: Array<{ source?: string; error?: string }> }>(`/api/platform/reports?app_id=${appId}&days=${days}`),
+  platformSuggestions: (appId: number, country = "US") => get<{ sources?: Record<string, PlatformSource>; partialErrors?: Array<{ source?: string; error?: string }> }>(`/api/platform/suggestions?app_id=${appId}&country=${encodeURIComponent(country)}`),
   commandCenter: (appId: number, days = 30) => get<CommandCenterData>(`/api/command-center?app_id=${appId}&days=${days}`),
   accountHealth: () => get<AccountHealth>("/api/account-health"),
   negatives: (appId?: number | "all") => get<Array<{ id: number; campaign_id: number; campaign_name: string; country: string; text: string; match_type: string; remote_id: number | null; added_at: string }>>(`/api/negatives${appId && appId !== "all" ? `?app_id=${appId}` : ""}`),

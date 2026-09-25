@@ -1,5 +1,6 @@
 import { db } from './db.js';
-import { loadKeywords } from './config.js';
+import { loadApps, loadKeywords } from './config.js';
+import { hasMedScanMedicalIntent, isMedScanCompetitorEvidence } from './medical-intent.js';
 
 export interface KeywordSuggestion {
   keyword: string;
@@ -64,8 +65,16 @@ function normalized(value: string) {
 }
 
 function competitorCandidates(appId: string, locale: string) {
+  const selectedApp = loadApps().find((app) => app.id === appId);
+  const selfTid = Number(selectedApp?.iTunesId);
+  const selfBundle = selectedApp?.bundle.toLocaleLowerCase() ?? '';
+  const isSelf = (app: { id?: string; tid?: number }) => {
+    if (Number.isFinite(selfTid) && app.tid === selfTid) return true;
+    const bundle = app.id?.toLocaleLowerCase() ?? '';
+    return Boolean(selfBundle && (bundle === selfBundle || bundle.startsWith(selfBundle)));
+  };
   const rows = db.prepare(
-    `SELECT s.top5_json
+    `SELECT s.keyword, s.top5_json
        FROM snapshots s
        JOIN (
          SELECT locale, keyword, MAX(id) AS max_id
@@ -73,19 +82,23 @@ function competitorCandidates(appId: string, locale: string) {
          WHERE app = ? AND locale = ?
          GROUP BY locale, keyword
        ) latest ON s.id = latest.max_id`
-  ).all(appId, locale) as Array<{ top5_json: string }>;
+  ).all(appId, locale) as Array<{ keyword: string; top5_json: string }>;
 
   const counts = new Map<string, number>();
   for (const row of rows) {
-    let apps: Array<{ name?: string }> = [];
-    try { apps = JSON.parse(row.top5_json) as Array<{ name?: string }>; } catch { continue; }
+    let apps: Array<{ name?: string; id?: string; tid?: number }> = [];
+    try { apps = JSON.parse(row.top5_json) as Array<{ name?: string; id?: string; tid?: number }>; } catch { continue; }
     for (const app of apps) {
-      const segments = String(app.name || '').split(/[:|–—-]/g);
+      if (isSelf(app)) continue;
+      const appName = String(app.name || '');
+      if (!isMedScanCompetitorEvidence(row.keyword, appName)) continue;
+      const segments = appName.split(/[:|–—-]/g);
       for (const segment of segments) {
         const candidate = normalized(segment);
         const words = candidate.split(/\s+/).filter(Boolean);
         if (candidate.length < 4 || words.length > 5) continue;
         if (words.every((word) => STOP_WORDS.has(word))) continue;
+        if (!hasMedScanMedicalIntent(candidate) && !hasMedScanMedicalIntent(appName)) continue;
         counts.set(candidate, (counts.get(candidate) ?? 0) + 1);
       }
     }
@@ -117,6 +130,7 @@ export async function keywordSuggestions(appId: string, locale: string): Promise
     for (const rawHint of hintGroups[index]) {
       const keyword = normalized(rawHint);
       if (!keyword || keyword === seed || tracked.has(keyword)) continue;
+      if (!hasMedScanMedicalIntent(keyword) && !(hasMedScanMedicalIntent(seed) && keyword.includes(seed))) continue;
       const existing = result.get(keyword);
       result.set(keyword, {
         keyword,

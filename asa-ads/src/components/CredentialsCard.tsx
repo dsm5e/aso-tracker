@@ -10,18 +10,18 @@ interface FieldDef {
 }
 
 const ASA_FIELDS: FieldDef[] = [
-  { key: "client_id", label: "Client ID", hint: "SEARCHADS.xxxx… from ads.apple.com → Settings → API", placeholder: "SEARCHADS.00000000-0000-…" },
-  { key: "team_id", label: "Team ID", hint: "Often same as Client ID", placeholder: "SEARCHADS.00000000-0000-…" },
-  { key: "key_id", label: "Key ID", hint: "UUID from API certificate" },
-  { key: "org_id", label: "Org ID", hint: "Numeric org identifier (org_acls tool)" },
-  { key: "private_key", label: "Private key (.p8)", hint: "Paste full PEM content including -----BEGIN…", multiline: true, placeholder: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----" },
+  { key: "client_id", label: "Client ID", hint: "SEARCHADS.xxxx… из ads.apple.com → Settings → API", placeholder: "SEARCHADS.00000000-0000-…" },
+  { key: "team_id", label: "Team ID", hint: "Часто совпадает с Client ID", placeholder: "SEARCHADS.00000000-0000-…" },
+  { key: "key_id", label: "Key ID", hint: "UUID из сертификата API" },
+  { key: "org_id", label: "Org ID", hint: "Числовой идентификатор организации (org_acls)" },
+  { key: "private_key", label: "Закрытый ключ (.p8)", hint: "Вставьте весь PEM, включая -----BEGIN…", multiline: true, placeholder: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----" },
 ];
 
 const ASC_FIELDS: FieldDef[] = [
-  { key: "key_id", label: "Key ID", hint: "10-char from appstoreconnect.apple.com → Users → Keys" },
-  { key: "issuer_id", label: "Issuer ID", hint: "UUID from the same page (Issuer ID at top)" },
-  { key: "vendor_number", label: "Vendor Number", hint: "From Sales and Trends → Reports" },
-  { key: "private_key", label: "Private key (.p8)", hint: "AuthKey_XXXXXXXXXX.p8 content", multiline: true, placeholder: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----" },
+  { key: "key_id", label: "Key ID", hint: "10 символов из appstoreconnect.apple.com → Users → Keys" },
+  { key: "issuer_id", label: "Issuer ID", hint: "UUID с той же страницы (Issuer ID вверху)" },
+  { key: "vendor_number", label: "Номер поставщика", hint: "Раздел Sales and Trends → Reports" },
+  { key: "private_key", label: "Закрытый ключ (.p8)", hint: "Содержимое AuthKey_XXXXXXXXXX.p8", multiline: true, placeholder: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----" },
 ];
 
 interface Props {
@@ -78,11 +78,11 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
         <div>
           <h3 style={{ margin: 0 }}>
-            {title} {allConfigured ? <span className="badge ok">configured</span> : <span className="badge warn">not set</span>}
+            {title} {allConfigured ? <span className="badge ok">настроено</span> : <span className="badge warn">не настроено</span>}
           </h3>
-          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{description} · <a href={helpUrl} target="_blank" rel="noreferrer">docs ↗</a></div>
+          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{description} · <a href={helpUrl} target="_blank" rel="noreferrer">документация ↗</a></div>
         </div>
-        <button onClick={() => setOpen((v) => !v)}>{open ? "− collapse" : "+ edit"}</button>
+        <button onClick={() => setOpen((v) => !v)}>{open ? "− Свернуть" : "+ Редактировать"}</button>
       </div>
 
       {!open && (
@@ -96,13 +96,13 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
                   <td style={{ width: 60 }}>
                     {c?.source === "db" && <span className="badge ok">db</span>}
                     {c?.source === "env" && <span className="badge cyan">.env</span>}
-                    {c?.source === "none" && <span className="badge bad">none</span>}
+                    {c?.source === "none" && <span className="badge bad">нет</span>}
                   </td>
                   <td>
                     {c?.present ? (
                       <span style={{ color: "var(--bone)", fontSize: 11 }}>{c.preview}</span>
                     ) : (
-                      <span className="bad">— not set —</span>
+                      <span className="bad">— не задано —</span>
                     )}
                   </td>
                 </tr>
@@ -122,12 +122,12 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
                     {f.label}
                   </label>
                   {current[f.key]?.present && (
-                    <span className="muted" style={{ fontSize: 10 }}>current: {current[f.key]!.preview}</span>
+                    <span className="muted" style={{ fontSize: 10 }}>текущее: {current[f.key]!.preview}</span>
                   )}
                 </div>
                 {f.multiline ? (
                   <textarea
-                    placeholder={f.placeholder ?? "paste here…"}
+                    placeholder={f.placeholder ?? "вставьте значение…"}
                     value={edits[f.key] ?? ""}
                     onChange={(e) => setEdits((p) => ({ ...p, [f.key]: e.target.value }))}
                     style={{
@@ -158,15 +158,15 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
           <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div className="hint" style={{ fontSize: 11 }}>
               {dirty
-                ? <><strong className="warn">{Object.keys(edits).length} pending</strong> · после save нужно перезапустить API чтобы клиенты подхватили</>
+                ? <><strong className="warn">изменений: {Object.keys(edits).length}</strong> · после сохранения перезапустите API, чтобы клиенты подхватили значения</>
                 : savedAt
-                  ? <><span className="good">saved at {savedAt}</span> · restart API to apply</>
-                  : <>Filled-in fields are stored encrypted-at-rest in <code style={{ color: "var(--cyan)" }}>data/asa-ads.db</code>. Empty fields are ignored (existing values stay).</>
+                  ? <><span className="good">сохранено · {savedAt}</span> · перезапустите API для применения</>
+                  : <>Заполненные поля хранятся в зашифрованном виде в <code style={{ color: "var(--cyan)" }}>data/asa-ads.db</code>. Пустые поля игнорируются, существующие значения сохраняются.</>
               }
             </div>
             <div className="btn-group">
-              <button onClick={() => { setEdits({}); setOpen(false); }}>cancel</button>
-              <button className="primary" disabled={!dirty || saving} onClick={save}>{saving ? "saving…" : "save"}</button>
+              <button onClick={() => { setEdits({}); setOpen(false); }}>Отменить</button>
+              <button className="primary" disabled={!dirty || saving} onClick={save}>{saving ? "Сохраняем…" : "Сохранить"}</button>
             </div>
           </div>
         </>

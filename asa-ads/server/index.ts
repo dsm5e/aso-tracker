@@ -1,25 +1,46 @@
 import "dotenv/config";
 import express from "express";
-import { loadConfig } from "./config.ts";
+import { ADAPTY_ANALYTICS_APP_ID, loadConfig } from "./config.ts";
 import { openDb, getDb } from "./db.ts";
 import { AsaClient } from "./asa-client.ts";
 import { AscClient } from "./asc-client.ts";
 import { fullSync, getSyncStatus } from "./sync.ts";
 import { listCampaignsWithMetrics, listKeywordsWithMetrics, listSearchTerms, listActions, dailyTotals, listApps } from "./queries.ts";
 import { recommend, suggestSearchTermActions } from "./bid-engine.ts";
-import { projectCampaign, projectKeyword, quickVerdict } from "./roi-engine.ts";
+import { projectCampaign, projectKeyword } from "./roi-engine.ts";
 import { enqueue, apply, cancel, type Action } from "./actions.ts";
 import { attach, broadcast } from "./sse.ts";
 import { checkAndSendAlerts, listAlerts, loadAlertsConfig } from "./alerts.ts";
-import { loadSettings, updateSettings, listAlertRules, createAlertRule, updateAlertRule, deleteAlertRule, suggestSettings } from "./settings.ts";
+import { loadSettings, updateSettings, suggestSettings } from "./settings.ts";
 import { getCredentialsMasked, setCredentials, type Provider } from "./credentials.ts";
 import { fetchRevenueRows } from "./revenue.ts";
 import { commandCenter, accountHealth } from "./command-center.ts";
+import { PlatformApiClient } from "./platform-api-client.ts";
+import { PLATFORM_API_METHODS } from "./platform-api-methods.ts";
+import { PlatformReadService } from "./platform-read-service.ts";
+import { parseTrafficQuery, TrafficIntelligenceService } from "./traffic-intelligence.ts";
+import { TrafficSyncScheduler } from "./traffic-sync-scheduler.ts";
+import { dataQuality } from "./data-quality.ts";
+import { AscAnalyticsService } from "./asc-analytics.ts";
+import { AdaptyAnalyticsService } from "./adapty-analytics.ts";
+import { getDecisionMatrix } from "./decision-matrix.ts";
+import { getCachedTop5Batch } from "./aso-ranking-batch.ts";
 
 const cfg = loadConfig();
 openDb(cfg.dataDir);
 const asa = new AsaClient(cfg.asa);
 const asc = new AscClient(cfg.asc);
+const platform = new PlatformApiClient(asa, cfg.asa.orgId);
+const platformReads = new PlatformReadService(getDb(), platform);
+const trafficIntelligence = new TrafficIntelligenceService(getDb(), platform);
+const trafficSyncScheduler = new TrafficSyncScheduler(getDb(), trafficIntelligence, {
+  enabled: process.env.TRAFFIC_SYNC_ENABLED !== "false",
+  concurrency: Number(process.env.TRAFFIC_SYNC_CONCURRENCY ?? 1),
+  prioritySpendThreshold: Number(process.env.TRAFFIC_SYNC_PRIORITY_SPEND ?? 25),
+  nightlyHourUtc: Number(process.env.TRAFFIC_SYNC_HOUR_UTC ?? 2),
+});
+const ascAnalytics = new AscAnalyticsService(asc);
+const adaptyAnalytics = new AdaptyAnalyticsService(getDb(), ADAPTY_ANALYTICS_APP_ID || 6762091560);
 
 const app = express();
 app.use(express.json({ limit: "1mb" }));
@@ -29,6 +50,184 @@ app.get("/sse", (_req, res) => attach(res));
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.get("/api/apps", (_req, res) => res.json(listApps()));
+
+app.get("/api/platform/methods", (_req, res) => {
+  const sections = [...new Set(PLATFORM_API_METHODS.map((method) => method.section))];
+  const methods = platformReads.catalog().map((method) => ({
+    ...method,
+    group: method.section,
+    name: method.title,
+    access: method.kind === "read" ? "read" : "write",
+    integrated: method.collector !== null,
+    docsUrl: method.documentationUrl,
+  }));
+  res.json({
+    api: "Apple Ads Platform API",
+    version: "v1",
+    baseUrl: "https://api.ads.apple.com/v1",
+    generatedFromOfficialDocs: "2026-09-04",
+    mode: "read-only",
+    totals: {
+      methods: PLATFORM_API_METHODS.length,
+      integrated: methods.filter((method) => method.integrated).length,
+      catalogOnly: PLATFORM_API_METHODS.filter((method) => method.integration === "catalog-only").length,
+      reads: PLATFORM_API_METHODS.filter((method) => method.kind === "read").length,
+      mutations: PLATFORM_API_METHODS.filter((method) => method.kind === "mutation").length,
+      sections: sections.length,
+    },
+    integrationLegend: {
+      "typed-collector": "Collected by an explicit read-only Platform endpoint and saved as a durable snapshot",
+      "generic-read-ready": "Can be queried through the constrained read-only executor",
+      "blocked-in-audit-mode": "Mutation endpoint; never callable unless the server is explicitly switched out of audit mode",
+    },
+    methods,
+  });
+});
+
+app.post("/api/platform/read", async (req, res) => {
+  try {
+    const appId = req.body?.appId === undefined ? undefined : Number(req.body.appId);
+    if (appId !== undefined && (!Number.isSafeInteger(appId) || appId <= 0)) throw new Error("appId must be a positive integer");
+    res.json(await platformReads.executeGeneric({
+      methodId: String(req.body?.methodId ?? ""),
+      pathParams: req.body?.pathParams,
+      body: req.body?.body,
+      appId,
+      force: req.body?.force === true,
+    }));
+  } catch (error) {
+    const status = error instanceof Error && /read-only|Unknown|Missing path|Invalid path|body|filters/i.test(error.message) ? 400 : 502;
+    res.status(status).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get("/api/platform/inventory", async (req, res) => {
+  const appId = Number(req.query.app_id ?? req.query.appId ?? 0);
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "app_id must be a positive integer" });
+  try { res.json(await platformReads.inventory(appId, req.query.force === "1" || req.query.force === "true")); }
+  catch (error) { res.status(502).json({ error: error instanceof Error ? error.message : String(error) }); }
+});
+
+app.get("/api/platform/reports", async (req, res) => {
+  const appId = Number(req.query.app_id ?? req.query.appId ?? 0);
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "app_id must be a positive integer" });
+  try { res.json(await platformReads.reports(appId, Number(req.query.days ?? 30), req.query.force === "1" || req.query.force === "true")); }
+  catch (error) { res.status(502).json({ error: error instanceof Error ? error.message : String(error) }); }
+});
+
+app.get("/api/platform/suggestions", async (req, res) => {
+  const appId = Number(req.query.app_id ?? req.query.appId ?? 0);
+  const country = String(req.query.country ?? "");
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "app_id must be a positive integer" });
+  try { res.json(await platformReads.suggestions(appId, country, req.query.force === "1" || req.query.force === "true")); }
+  catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : String(error) }); }
+});
+
+app.get("/api/traffic-intelligence", async (req, res) => {
+  try {
+    const input = parseTrafficQuery(req.query as Record<string, unknown>);
+    res.json(await trafficIntelligence.get(input));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get("/api/decision-matrix", async (req, res) => {
+  const appId = Number(req.query.app_id ?? req.query.appId ?? req.query.itunesId ?? 0);
+  if (!Number.isSafeInteger(appId) || appId <= 0) {
+    res.status(400).json({ error: "app_id must be a positive integer" });
+    return;
+  }
+  try {
+    res.json(await getDecisionMatrix(getDb(), {
+      appId,
+      country: req.query.country ? String(req.query.country) : undefined,
+      days: Number(req.query.days ?? 30),
+      forceRefresh: req.query.force === "true" || req.query.force === "1",
+    }));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// Cached cross-store ASO result cards for visible Traffic/Matrix rows. This
+// performs one bounded SQLite read; live App Store refresh remains exclusively
+// in the ASO tracker where its conservative Apple throttle is enforced.
+app.post("/api/aso/rankings/top5-batch", (req, res) => {
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(getCachedTop5Batch(req.body));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get("/api/traffic-intelligence/sync/status", (_req, res) => {
+  res.json(trafficSyncScheduler.getStatus());
+});
+
+app.get("/api/data-quality", (req, res) => {
+  const appId = Number(req.query.app_id ?? req.query.itunesId ?? 0);
+  const country = req.query.country ? String(req.query.country) : undefined;
+  if (!Number.isSafeInteger(appId) || appId <= 0) {
+    res.status(400).json({ error: "app_id must be a positive integer" });
+    return;
+  }
+  res.json(dataQuality(appId, country));
+});
+
+app.get("/api/app-store-analytics/status", async (req, res) => {
+  const appId = Number(req.query.app_id ?? 0);
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "app_id must be a positive integer" });
+  try { res.json(await ascAnalytics.status(appId)); }
+  catch (error) { res.status(502).json({ error: error instanceof Error ? error.message : String(error), local: ascAnalytics.localStatus(appId) }); }
+});
+
+app.get("/api/app-store-analytics/funnel", (req, res) => {
+  const appId = Number(req.query.app_id ?? 0);
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "app_id must be a positive integer" });
+  res.json(ascAnalytics.funnel(appId, req.query.country ? String(req.query.country) : undefined, Number(req.query.days ?? 30)));
+});
+
+app.get("/api/adapty/funnel", async (req, res) => {
+  const appId = Number(req.query.app_id ?? 0);
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "app_id must be a positive integer" });
+  const days = Math.max(1, Math.min(180, Number(req.query.days ?? 30)));
+  const end = new Date().toISOString().slice(0, 10);
+  const start = new Date(Date.now() - days * 86_400_000).toISOString().slice(0, 10);
+  try {
+    res.json(await adaptyAnalytics.get({ appId, start, end, country: req.query.country ? String(req.query.country) : undefined, force: req.query.force === "true" }));
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get("/api/adapty/cohorts", async (req, res) => {
+  const appId = Number(req.query.app_id ?? 0);
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "app_id must be a positive integer" });
+  const months = Math.max(1, Math.min(12, Number(req.query.months ?? 3)));
+  try {
+    res.json(await adaptyAnalytics.getCohorts({ appId, months, force: req.query.force === "true" }));
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post("/api/app-store-analytics/sync", async (req, res) => {
+  const appId = Number(req.body?.appId ?? req.query.app_id ?? 0);
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "appId must be a positive integer" });
+  try { res.json(await ascAnalytics.sync(appId)); }
+  catch (error) { res.status(502).json({ error: error instanceof Error ? error.message : String(error) }); }
+});
+
+app.post("/api/app-store-analytics/request", async (req, res) => {
+  const appId = Number(req.body?.appId ?? 0);
+  const accessType = req.body?.accessType;
+  if (!Number.isSafeInteger(appId) || appId <= 0) return res.status(400).json({ error: "appId must be a positive integer" });
+  if (accessType !== "ONE_TIME_SNAPSHOT" && accessType !== "ONGOING") return res.status(400).json({ error: "accessType must be ONE_TIME_SNAPSHOT or ONGOING" });
+  try { res.json(await ascAnalytics.createRequest(appId, accessType)); }
+  catch (error) { res.status(502).json({ error: error instanceof Error ? error.message : String(error) }); }
+});
 
 app.get("/api/negatives", (req, res) => {
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
@@ -157,10 +356,6 @@ app.get("/api/roi/keyword/:id", (req, res) => {
   if (!p) { res.status(404).json({ error: "not found" }); return; }
   res.json(p);
 });
-app.get("/api/roi/verdict/:campaignId", (req, res) => {
-  res.json(quickVerdict(Number(req.params.campaignId), Number(req.query.days ?? 14)));
-});
-
 app.get("/api/recommendations/bids", (req, res) => {
   const days = Number(req.query.days ?? 7);
   const cid = req.query.campaign_id ? Number(req.query.campaign_id) : undefined;
@@ -180,7 +375,7 @@ app.post("/api/actions", (req, res) => {
 });
 
 app.post("/api/actions/:id/apply", async (req, res) => {
-  const r = await apply(asa, Number(req.params.id));
+  const r = await apply(asa, Number(req.params.id), cfg.allowAppleAdsMutations && req.get("x-asa-approval") === "explicit-user-approved");
   res.json(r);
 });
 
@@ -217,21 +412,6 @@ app.put("/api/credentials/:provider", (req, res) => {
   res.json({ ok: true, restartRequired: true });
 });
 
-app.get("/api/alert-rules", (_req, res) => res.json(listAlertRules()));
-app.post("/api/alert-rules", (req, res) => {
-  const { name, kind, params } = req.body || {};
-  if (!name || !kind) { res.status(400).json({ error: "name and kind required" }); return; }
-  res.json(createAlertRule(name, kind, params || {}));
-});
-app.patch("/api/alert-rules/:id", (req, res) => {
-  updateAlertRule(Number(req.params.id), req.body || {});
-  res.json({ ok: true });
-});
-app.delete("/api/alert-rules/:id", (req, res) => {
-  deleteAlertRule(Number(req.params.id));
-  res.json({ ok: true });
-});
-
 app.get("/api/alerts", (_req, res) => res.json(listAlerts()));
 app.post("/api/alerts/check", async (_req, res) => {
   try {
@@ -253,14 +433,15 @@ app.post("/api/sync", (req, res) => {
   broadcast("sync:start", { days });
   // Fire and forget — sync continues in background even if client navigates away.
   // Progress tracked in currentSync (in-memory) + sync_log table.
-  fullSync(asa, asc, days, { fnUrl: cfg.keywordRevenueFnUrl, app: cfg.keywordRevenueAppSlug ?? "", pullToken: cfg.keywordRevenuePullToken })
+  fullSync(asa, asc, days)
     .then((r) => broadcast("sync:done", r))
     .catch((e) => broadcast("sync:error", { error: (e as Error).message }));
   res.json({ ok: true, started: true });
 });
 
-app.listen(cfg.port, () => {
-  console.log(`ASA Ads API on :${cfg.port}`);
+app.listen(cfg.port, cfg.host, () => {
+  console.log(`ASA Ads API on http://${cfg.host}:${cfg.port}`);
+  trafficSyncScheduler.start();
   const alertCfg = loadAlertsConfig();
   if (alertCfg.enabled) {
     const intervalMin = Number(process.env.ALERT_INTERVAL_MIN ?? 30);

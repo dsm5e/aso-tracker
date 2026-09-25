@@ -4,6 +4,7 @@ import { api, type Campaign, type DailyTotals, type Keyword, type BidRec } from 
 import Sparkline from "../components/Sparkline.tsx";
 import CampaignControls from "../components/CampaignControls.tsx";
 import BidChangeConfirm from "../components/BidChangeConfirm.tsx";
+import { campaignDisplayName, campaignTechnicalName } from "../lib/campaignNames.ts";
 
 function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
 function fmtPct(n: number): string { return `${(n * 100).toFixed(1)}%`; }
@@ -72,8 +73,8 @@ export default function CampaignDetail() {
     }
   }
 
-  if (loading && !campaign) return <div className="empty">Loading…</div>;
-  if (!campaign) return <div className="empty">Campaign not found. <Link to="/">Back</Link></div>;
+  if (loading && !campaign) return <div className="data-state loading">Загружаем кампанию…</div>;
+  if (!campaign) return <div className="data-state">Кампания не найдена. <Link to="/">Вернуться к обзору</Link></div>;
 
   return (
     <>
@@ -88,47 +89,48 @@ export default function CampaignDetail() {
       )}
       <div className="topbar">
         <div>
-          <Link to="/" className="muted" style={{ fontSize: 12 }}>← Dashboard</Link>
-          <h2 style={{ marginTop: 4 }}>{campaign.name}</h2>
+          <Link to="/" className="muted" style={{ fontSize: 12 }}>← Обзор</Link>
+          <h2 style={{ marginTop: 4 }}>{campaignDisplayName(campaign.name)}</h2>
+          {campaignTechnicalName(campaign.name) && <div className="muted" style={{ fontSize: 11 }}>{campaign.name}</div>}
           <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-            {campaign.country} · {campaign.bidding_strategy} · daily {fmtUsd(campaign.daily_budget)} · lifetime {fmtUsd(campaign.lifetime_budget)} · {campaign.status}
+            {campaign.country} · {campaign.bidding_strategy} · дневной лимит {fmtUsd(campaign.daily_budget)} · лимит на весь срок {fmtUsd(campaign.lifetime_budget)} · {campaign.status}
           </div>
         </div>
         <div className="controls" style={{ alignItems: "center" }}>
           <CampaignControls campaign={campaign} onChange={() => void load()} />
           <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={7}>7 days</option>
-            <option value={14}>14 days</option>
-            <option value={30}>30 days</option>
+            <option value={7}>7 дней</option>
+            <option value={14}>14 дней</option>
+            <option value={30}>30 дней</option>
           </select>
         </div>
       </div>
 
       <div className="spark-row">
-        <Sparkline title="Spend / day" value={fmtUsd(campaign.spend)} data={daily.map((d) => d.spend)} labels={dates} color="#4ade80" format={fmtUsd} />
-        <Sparkline title="Installs / day" value={String(campaign.installs)} data={daily.map((d) => d.installs)} labels={dates} color="#60a5fa" format={(n) => String(Math.round(n))} />
+        <Sparkline title="Расход" value={fmtUsd(campaign.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--amber)" format={fmtUsd} />
+        <Sparkline title="Установки" value={String(campaign.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--cyan)" format={(n) => String(Math.round(n))} />
         <Sparkline title="CPI" value={campaign.cpi > 0 ? fmtUsd(campaign.cpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="#facc15" format={fmtUsd} />
-        <Sparkline title="Impressions / day" value={String(campaign.impressions)} data={daily.map((d) => d.impressions)} labels={dates} color="#a78bfa" format={(n) => String(Math.round(n))} />
+        <Sparkline title="Показы" value={String(campaign.impressions)} data={daily.map((d) => d.impressions)} labels={dates} color="var(--amber)" format={(n) => String(Math.round(n))} />
       </div>
 
       <div className="card">
-        <h3>Keywords ({keywords.length}) · {recs.length} recommendations</h3>
+        <h3>Ключевые слова ({keywords.length}) · рекомендаций: {recs.length}</h3>
       </div>
 
       <table>
         <thead>
           <tr>
-            <th>Keyword</th>
-            <th>Match</th>
-            <th>Status</th>
-            <th className="num">Bid</th>
-            <th className="num">Imp</th>
+            <th>Ключевое слово</th>
+            <th>Тип соответствия</th>
+            <th>Статус</th>
+            <th className="num">Ставка</th>
+            <th className="num">Показы</th>
             <th className="num">Taps</th>
-            <th className="num">Inst</th>
+            <th className="num">Установки</th>
             <th className="num">CPT</th>
-            <th className="num">Spend</th>
-            <th>Recommendation</th>
-            <th style={{ minWidth: 200 }}>Quick bid</th>
+            <th className="num">Расход</th>
+            <th>Рекомендация</th>
+            <th style={{ minWidth: 200 }}>Ставка</th>
           </tr>
         </thead>
         <tbody>
@@ -162,8 +164,8 @@ export default function CampaignDetail() {
                 </td>
                 <td>
                   <div className="btn-group">
-                    <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Lower bid 10%")} title={`Lower 10% → ${fmtUsd(down10)}`}>−10%</button>
-                    <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Raise bid 10%")} title={`Raise 10% → ${fmtUsd(up10)}`}>+10%</button>
+                    <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Контролируемое снижение ставки на 10%")} title={`Снизить на 10% → ${fmtUsd(down10)}`}>−10%</button>
+                    <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Контролируемое повышение ставки на 10%")} title={`Повысить на 10% → ${fmtUsd(up10)}`}>+10%</button>
                     {rec && !alreadyAtRec && (
                       <button className={`compact ${delta > 0 ? "primary up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={rec.reason}>
                         → {fmtUsd(rec.recommended_bid)}
@@ -177,18 +179,18 @@ export default function CampaignDetail() {
         </tbody>
       </table>
 
-      <div className="divider">Daily breakdown</div>
+      <div className="divider">Разбивка по дням</div>
       <div style={{ fontSize: 12, color: "var(--bone-dim)" }}>
         <table style={{ marginTop: 8, fontSize: 12 }}>
           <thead>
             <tr>
-              <th>Date</th>
-              <th className="num">Imp</th>
+              <th>Дата</th>
+              <th className="num">Показы</th>
               <th className="num">Taps</th>
               <th className="num">TTR</th>
-              <th className="num">Inst</th>
+              <th className="num">Установки</th>
               <th className="num">CPI</th>
-              <th className="num">Spend</th>
+              <th className="num">Расход</th>
             </tr>
           </thead>
           <tbody>

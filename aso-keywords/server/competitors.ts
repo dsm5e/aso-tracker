@@ -1,6 +1,6 @@
 import { db } from './db.js';
-import { lookupItunes } from './itunes.js';
 import { loadApps } from './config.js';
+import { isMedScanCompetitorEvidence } from './medical-intent.js';
 
 export interface CompetitorInfo {
   bundleId: string;
@@ -14,15 +14,30 @@ export interface CompetitorInfo {
   description?: string;
   storeUrl?: string;
   screenshotUrls?: string[];
+  version?: string;
+  releaseDate?: string;
+  currentVersionReleaseDate?: string;
+  languages?: string[];
+  formattedPrice?: string;
+  sellerName?: string;
 }
 
 export interface CompetitorSummary {
   bundleId: string;
   name: string;
   dev: string;
-  appearances: number;        // how many (locale,keyword) tuples
-  localesCount: number;       // distinct locales
-  avgRank: number;            // avg rank in top5 across all appearances
+  appearances: number;
+  localesCount: number;
+  avgRank: number;
+  top1Count: number;
+  top3Count: number;
+  bestRank: number;
+  lastSeen: string | null;
+}
+
+export interface CompetitorRankPoint {
+  date: string;
+  rank: number | null;
 }
 
 export interface CompetitorKeywordRow {
@@ -30,29 +45,70 @@ export interface CompetitorKeywordRow {
   keyword: string;
   theirRank: number;
   yourRank: number | null;
+  previousRank: number | null;
+  snapshotDate: string;
+  history: CompetitorRankPoint[];
+}
+
+type SearchResult = {
+  name?: string;
+  id?: string;
+  dev?: string;
+  pos?: number;
+};
+
+type Snapshot = {
+  locale: string;
+  keyword: string;
+  date: string;
+  position: number | null;
+  top5_json: string;
+};
+
+function parseResults(raw: string): SearchResult[] {
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed as SearchResult[] : [];
+  } catch {
+    return [];
+  }
+}
+
+function resultRank(result: SearchResult, index: number): number {
+  return typeof result.pos === 'number' && result.pos > 0 ? result.pos : index + 1;
+}
+
+/** Latest successfully stored row for every independent storefront/query pair. */
+function latestKeywordRows(appId: string): Snapshot[] {
+  return db.prepare(`
+    WITH latest_date AS (
+      SELECT locale, keyword, MAX(date) AS date
+        FROM snapshots
+       WHERE app = ? AND top5_json IS NOT NULL
+    GROUP BY locale, keyword
+    ), latest_id AS (
+      SELECT s.locale, s.keyword, MAX(s.id) AS id
+        FROM snapshots s
+        JOIN latest_date d
+          ON d.locale = s.locale
+         AND d.keyword = s.keyword
+         AND d.date = s.date
+       WHERE s.app = ? AND s.top5_json IS NOT NULL
+    GROUP BY s.locale, s.keyword
+    )
+    SELECT s.locale, s.keyword, s.date, s.position, s.top5_json
+      FROM snapshots s
+      JOIN latest_id l ON l.id = s.id
+  `).all(appId, appId) as Snapshot[];
 }
 
 /**
- * Top competitors across all snapshots for one of our tracked apps.
- * Groups by bundleId, counts appearances in top-5, computes avg rank.
+ * Competitors visible in the newest available snapshot of each tracked
+ * storefront/query pair. This is observed organic search, not private installs.
  */
 export function topCompetitors(appId: string, limit = 20): CompetitorSummary[] {
-  // Most recent snapshot date with data for this app
-  const { d: latestDate } = db
-    .prepare(`SELECT MAX(date) AS d FROM snapshots WHERE app = ?`)
-    .get(appId) as { d: string | null };
-  if (!latestDate) return [];
-
-  // Pull only latest-per-(locale,keyword) rows on that date
-  const rows = db
-    .prepare(
-      `SELECT locale, keyword, top5_json
-         FROM snapshots
-        WHERE app = ? AND date = ?
-     GROUP BY locale, keyword
-       HAVING MAX(id)`
-    )
-    .all(appId, latestDate) as Array<{ locale: string; keyword: string; top5_json: string }>;
+  const rows = latestKeywordRows(appId);
+  if (rows.length === 0) return [];
 
   interface Agg {
     bundleId: string;
@@ -61,122 +117,130 @@ export function topCompetitors(appId: string, limit = 20): CompetitorSummary[] {
     appearances: number;
     locales: Set<string>;
     rankSum: number;
+    top1Count: number;
+    top3Count: number;
+    bestRank: number;
+    lastSeen: string | null;
   }
-  const agg = new Map<string, Agg>();
-  const ownBundles = loadApps().map((a) => a.bundle.toLowerCase());
 
-  for (const r of rows) {
-    let list: Array<{ name: string; id: string; dev: string }> = [];
-    try {
-      list = JSON.parse(r.top5_json);
-    } catch {
-      continue;
-    }
-    list.forEach((c, idx) => {
-      if (!c.id) return;
-      const key = c.id;
-      const lower = key.toLowerCase();
-      if (ownBundles.some((b) => lower === b || lower.startsWith(b))) return;
-      const existing = agg.get(key) ?? {
-        bundleId: key,
-        name: c.name,
-        dev: c.dev,
+  const aggregate = new Map<string, Agg>();
+  const ownBundles = new Set(loadApps().map((app) => app.bundle.toLowerCase()));
+
+  for (const row of rows) {
+    parseResults(row.top5_json).forEach((competitor, index) => {
+      if (!competitor.id || ownBundles.has(competitor.id.toLowerCase())) return;
+      if (!isMedScanCompetitorEvidence(row.keyword, competitor.name || '', competitor.dev || '')) return;
+      const rank = resultRank(competitor, index);
+      const current = aggregate.get(competitor.id) ?? {
+        bundleId: competitor.id,
+        name: competitor.name || competitor.id,
+        dev: competitor.dev || '',
         appearances: 0,
         locales: new Set<string>(),
         rankSum: 0,
+        top1Count: 0,
+        top3Count: 0,
+        bestRank: rank,
+        lastSeen: null,
       };
-      existing.appearances++;
-      existing.locales.add(r.locale);
-      existing.rankSum += idx + 1;
-      if (c.name) existing.name = c.name;
-      if (c.dev) existing.dev = c.dev;
-      agg.set(key, existing);
+      current.appearances += 1;
+      current.locales.add(row.locale);
+      current.rankSum += rank;
+      current.top1Count += rank === 1 ? 1 : 0;
+      current.top3Count += rank <= 3 ? 1 : 0;
+      current.bestRank = Math.min(current.bestRank, rank);
+      current.lastSeen = !current.lastSeen || row.date > current.lastSeen ? row.date : current.lastSeen;
+      if (competitor.name) current.name = competitor.name;
+      if (competitor.dev) current.dev = competitor.dev;
+      aggregate.set(competitor.id, current);
     });
   }
 
-  const out: CompetitorSummary[] = [];
-  for (const v of agg.values()) {
-    out.push({
-      bundleId: v.bundleId,
-      name: v.name,
-      dev: v.dev,
-      appearances: v.appearances,
-      localesCount: v.locales.size,
-      avgRank: +(v.rankSum / v.appearances).toFixed(2),
-    });
-  }
+  const result = Array.from(aggregate.values()).map((item) => ({
+    bundleId: item.bundleId,
+    name: item.name,
+    dev: item.dev,
+    appearances: item.appearances,
+    localesCount: item.locales.size,
+    avgRank: +(item.rankSum / item.appearances).toFixed(2),
+    top1Count: item.top1Count,
+    top3Count: item.top3Count,
+    bestRank: item.bestRank,
+    lastSeen: item.lastSeen,
+  }));
 
-  // Primary sort by appearances DESC; tiebreak by avgRank ASC (lower rank = better).
-  out.sort((a, b) => b.appearances - a.appearances || a.avgRank - b.avgRank);
-  return out.slice(0, limit);
+  result.sort((a, b) => b.appearances - a.appearances || a.avgRank - b.avgRank);
+  return result.slice(0, Math.max(1, Math.min(limit, 200)));
 }
 
-/**
- * All keywords where this competitor is in top-5 of our snapshots (latest per key).
- * Joined with our own rank for the same keyword/locale.
- */
-export function competitorKeywords(
-  appId: string,
-  bundleId: string
-): CompetitorKeywordRow[] {
-  const { d: latestDate } = db
-    .prepare(`SELECT MAX(date) AS d FROM snapshots WHERE app = ?`)
-    .get(appId) as { d: string | null };
-  if (!latestDate) return [];
+/** Keywords where the competitor is present in the latest observed result set. */
+export function competitorKeywords(appId: string, bundleId: string): CompetitorKeywordRow[] {
+  const latestRows = latestKeywordRows(appId);
+  if (latestRows.length === 0) return [];
 
-  const rows = db
-    .prepare(
-      `SELECT locale, keyword, position, top5_json
-         FROM snapshots
-        WHERE app = ? AND date = ?
-     GROUP BY locale, keyword
-       HAVING MAX(id)`
+  const dailyRows = db.prepare(`
+    WITH daily AS (
+      SELECT locale, keyword, date, MAX(id) AS id
+        FROM snapshots
+       WHERE app = ? AND top5_json IS NOT NULL
+    GROUP BY locale, keyword, date
     )
-    .all(appId, latestDate) as Array<{
-      locale: string;
-      keyword: string;
-      position: number | null;
-      top5_json: string;
-    }>;
+    SELECT s.locale, s.keyword, s.date, s.top5_json
+      FROM snapshots s
+      JOIN daily d ON d.id = s.id
+  ORDER BY s.locale, s.keyword, s.date
+  `).all(appId) as Array<Pick<Snapshot, 'locale' | 'keyword' | 'date' | 'top5_json'>>;
 
-  const out: CompetitorKeywordRow[] = [];
-  for (const r of rows) {
-    let list: Array<{ name: string; id: string; dev: string }> = [];
-    try {
-      list = JSON.parse(r.top5_json);
-    } catch {
-      continue;
-    }
-    const idx = list.findIndex((c) => c.id === bundleId);
-    if (idx === -1) continue;
-    out.push({
-      locale: r.locale,
-      keyword: r.keyword,
-      theirRank: idx + 1,
-      yourRank: r.position ?? null,
+  const historyByKey = new Map<string, CompetitorRankPoint[]>();
+  for (const row of dailyRows) {
+    const results = parseResults(row.top5_json);
+    const index = results.findIndex((candidate) => candidate.id === bundleId);
+    const rank = index < 0 ? null : resultRank(results[index], index);
+    const key = `${row.locale}\u0000${row.keyword.toLocaleLowerCase()}`;
+    const history = historyByKey.get(key) ?? [];
+    history.push({ date: row.date, rank });
+    historyByKey.set(key, history);
+  }
+
+  const result: CompetitorKeywordRow[] = [];
+  for (const row of latestRows) {
+    const results = parseResults(row.top5_json);
+    const index = results.findIndex((candidate) => candidate.id === bundleId);
+    if (index < 0) continue;
+    const competitor = results[index];
+    if (!isMedScanCompetitorEvidence(row.keyword, competitor.name || '', competitor.dev || '')) continue;
+    const key = `${row.locale}\u0000${row.keyword.toLocaleLowerCase()}`;
+    const history = (historyByKey.get(key) ?? []).slice(-12);
+    result.push({
+      locale: row.locale,
+      keyword: row.keyword,
+      theirRank: resultRank(results[index], index),
+      yourRank: row.position ?? null,
+      previousRank: history.length > 1 ? history[history.length - 2].rank : null,
+      snapshotDate: row.date,
+      history,
     });
   }
 
-  // sort by their rank asc
-  out.sort((a, b) => a.theirRank - b.theirRank);
-  return out;
+  result.sort((a, b) => a.theirRank - b.theirRank || a.locale.localeCompare(b.locale) || a.keyword.localeCompare(b.keyword));
+  return result;
 }
 
-/**
- * Fetch competitor metadata from iTunes lookup. Tries bundleId first.
- */
-export async function competitorInfo(bundleId: string): Promise<CompetitorInfo | null> {
-  const res = await fetch(
-    `https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(bundleId)}`,
-    { signal: AbortSignal.timeout(15_000) }
-  );
-  if (!res.ok) return null;
-  const data = (await res.json()) as {
+/** Public storefront metadata. Subtitle and hidden keyword field are not exposed. */
+export async function competitorInfo(bundleId: string, country = 'us'): Promise<CompetitorInfo | null> {
+  const storefront = /^[a-z]{2}$/i.test(country) ? country.toLowerCase() : 'us';
+  const query = new URLSearchParams({ bundleId, country: storefront });
+  const response = await fetch(`https://itunes.apple.com/lookup?${query}`, {
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) return null;
+  const data = (await response.json()) as {
     results?: Array<{
       bundleId?: string;
       trackName?: string;
       trackId?: number;
       artistName?: string;
+      sellerName?: string;
       primaryGenreName?: string;
       averageUserRating?: number;
       userRatingCount?: number;
@@ -185,27 +249,32 @@ export async function competitorInfo(bundleId: string): Promise<CompetitorInfo |
       trackViewUrl?: string;
       screenshotUrls?: string[];
       ipadScreenshotUrls?: string[];
+      version?: string;
+      releaseDate?: string;
+      currentVersionReleaseDate?: string;
+      languageCodesISO2A?: string[];
+      formattedPrice?: string;
     }>;
   };
-  const r = data.results?.[0];
-  if (!r) return null;
+  const item = data.results?.[0];
+  if (!item) return null;
   return {
-    bundleId: r.bundleId || bundleId,
-    name: r.trackName || '',
-    dev: r.artistName || '',
-    iTunesId: r.trackId ? String(r.trackId) : undefined,
-    category: r.primaryGenreName,
-    rating: r.averageUserRating,
-    ratingCount: r.userRatingCount,
-    iconUrl: r.artworkUrl100,
-    description: r.description,
-    storeUrl: r.trackViewUrl,
-    screenshotUrls: r.screenshotUrls?.length ? r.screenshotUrls : r.ipadScreenshotUrls,
+    bundleId: item.bundleId || bundleId,
+    name: item.trackName || '',
+    dev: item.artistName || '',
+    iTunesId: item.trackId ? String(item.trackId) : undefined,
+    category: item.primaryGenreName,
+    rating: item.averageUserRating,
+    ratingCount: item.userRatingCount,
+    iconUrl: item.artworkUrl100,
+    description: item.description,
+    storeUrl: item.trackViewUrl,
+    screenshotUrls: item.screenshotUrls?.length ? item.screenshotUrls : item.ipadScreenshotUrls,
+    version: item.version,
+    releaseDate: item.releaseDate,
+    currentVersionReleaseDate: item.currentVersionReleaseDate,
+    languages: item.languageCodesISO2A,
+    formattedPrice: item.formattedPrice,
+    sellerName: item.sellerName,
   };
-}
-
-// Load our own bundles so we can exclude ourselves from competitor lists.
-export async function loadOwnBundles(): Promise<string[]> {
-  const { loadApps } = await import('./config.js');
-  return loadApps().map((a) => a.bundle);
 }

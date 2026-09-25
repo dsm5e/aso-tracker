@@ -1,5 +1,5 @@
 import { getDb } from "./db.ts";
-import type { AsaClient, RawCampaign, RawAdGroup, RawKeyword, RawCampaignReport, RawKeywordReport, RawSearchTermReport, ReportTotals } from "./asa-client.ts";
+import type { AsaClient, RawCampaign, RawAdGroup, RawKeyword, RawKeywordReport, RawSearchTermReport, ReportTotals } from "./asa-client.ts";
 import type { AscClient } from "./asc-client.ts";
 import { fetchKeywordRevenue } from "./revenue-client.ts";
 import { broadcast } from "./sse.ts";
@@ -32,12 +32,12 @@ export async function syncCampaigns(asa: AsaClient): Promise<RawCampaign[]> {
   const campaigns = await asa.listCampaigns();
   const upsert = db.prepare(`
     INSERT INTO asa_campaigns
-      (id, org_id, app_id, name, country, status, serving_status, display_status,
+      (id, org_id, app_id, name, country, countries_json, status, serving_status, display_status,
        daily_budget, lifetime_budget, bidding_strategy, target_cpa, start_time, end_time, updated_at, synced_at)
-    VALUES (@id, @org_id, @app_id, @name, @country, @status, @serving_status, @display_status,
+    VALUES (@id, @org_id, @app_id, @name, @country, @countries_json, @status, @serving_status, @display_status,
             @daily_budget, @lifetime_budget, @bidding_strategy, @target_cpa, @start_time, @end_time, @updated_at, @synced_at)
     ON CONFLICT(id) DO UPDATE SET
-      name=excluded.name, country=excluded.country, status=excluded.status,
+      name=excluded.name, country=excluded.country, countries_json=excluded.countries_json, status=excluded.status,
       serving_status=excluded.serving_status, display_status=excluded.display_status,
       daily_budget=excluded.daily_budget, lifetime_budget=excluded.lifetime_budget,
       bidding_strategy=excluded.bidding_strategy, target_cpa=excluded.target_cpa,
@@ -76,6 +76,7 @@ export async function syncCampaigns(asa: AsaClient): Promise<RawCampaign[]> {
         app_id: c.adamId,
         name: c.name,
         country: (c.countriesOrRegions ?? [])[0] ?? "",
+        countries_json: JSON.stringify(c.countriesOrRegions ?? []),
         status: c.status,
         serving_status: c.servingStatus ?? null,
         display_status: c.displayStatus ?? null,
@@ -256,36 +257,101 @@ export async function syncAscEvents(asc: AscClient, dates: string[]): Promise<vo
   }
 }
 
-/**
- * Pull real per-keyword ASA revenue (deterministic AdServices attribution ×
- * Adapty revenue) from the asaRevenueByKeyword Cloud Function and replace the
- * asa_kw_revenue snapshot. Soft-fails (returns 0) so a flaky function never
- * breaks the rest of the sync — the ROI engine just keeps the estimate.
- */
-export async function syncAsaRevenue(fnUrl: string, app: string, pullToken?: string): Promise<number> {
+/** Pull Apple Ads keyword economics directly from Adapty and replace the local
+ * snapshot. Soft-fails so an analytics outage never breaks the Apple sync. */
+export async function syncAsaRevenue(
+  cohortWindow: { start: string; end: string },
+): Promise<number> {
   const db = getDb();
-  let rows;
+  let payload;
   try {
-    rows = await fetchKeywordRevenue(fnUrl, app, pullToken);
+    payload = await fetchKeywordRevenue(cohortWindow);
   } catch (e) {
     console.warn(`ASA revenue pull: ${(e as Error).message}`);
     return 0;
   }
+  const keywordOwner = db.prepare(`
+    SELECT k.campaign_id AS campaignId, k.ad_group_id AS adGroupId,
+           c.country AS fallbackCountry, c.countries_json AS countriesJson
+    FROM asa_keywords k
+    JOIN asa_campaigns c ON c.id = k.campaign_id
+    WHERE k.id = ?
+    LIMIT 1
+  `);
+  const rows = payload.rows.map((row) => {
+    const owner = keywordOwner.get(row.keywordId) as
+      { campaignId: number; adGroupId: number; fallbackCountry: string | null; countriesJson: string | null } | undefined;
+    if (!owner) return row;
+    return {
+      ...row,
+      campaignId: owner.campaignId,
+      adGroupId: owner.adGroupId,
+      country: attributableCampaignCountry(owner.countriesJson, owner.fallbackCountry),
+    };
+  }).filter((row) => row.campaignId > 0 && row.keywordId > 0);
   const upsert = db.prepare(`
-    INSERT INTO asa_kw_revenue (campaign_id, keyword_id, country, trials, paid, revenue_usd, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO asa_kw_revenue (
+      campaign_id, keyword_id, country, attributed_installs, trials, paid,
+      revenue_usd, cohort_start, cohort_end, observed_through, windows_json,
+      bounded, updated_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
     ON CONFLICT(campaign_id, keyword_id) DO UPDATE SET
-      country=excluded.country, trials=excluded.trials, paid=excluded.paid,
-      revenue_usd=excluded.revenue_usd, updated_at=excluded.updated_at
+      country=excluded.country, attributed_installs=excluded.attributed_installs,
+      trials=excluded.trials, paid=excluded.paid, revenue_usd=excluded.revenue_usd,
+      cohort_start=excluded.cohort_start, cohort_end=excluded.cohort_end,
+      observed_through=excluded.observed_through, windows_json=excluded.windows_json,
+      bounded=excluded.bounded, updated_at=excluded.updated_at
   `);
   const ts = now();
   db.transaction(() => {
+    // This is a complete bounded snapshot. Deleting first prevents historical
+    // and removed keyword rows from silently surviving forever.
+    db.prepare("DELETE FROM asa_kw_revenue").run();
     for (const r of rows) {
-      if (!r.keywordId) continue;
-      upsert.run(r.campaignId, r.keywordId, r.country, r.trials, r.paid, r.revenueUsd, ts);
+      upsert.run(
+        r.campaignId,
+        r.keywordId,
+        r.country,
+        r.attributedInstalls,
+        r.trials,
+        r.paid,
+        r.revenueUsd,
+        payload.window.start,
+        payload.window.end,
+        payload.observedThrough,
+        JSON.stringify(r.windows),
+        ts,
+      );
     }
   })();
   return rows.length;
+}
+
+/**
+ * Keyword-level Adapty attribution does not include storefront. A campaign's
+ * country is therefore usable only when that campaign targets exactly one
+ * storefront. Multi-geo campaigns must stay unlabelled instead of inheriting
+ * the first item in countries_json.
+ */
+export function attributableCampaignCountry(
+  countriesJson: string | null | undefined,
+  fallbackCountry: string | null | undefined,
+): string | null {
+  if (countriesJson) {
+    try {
+      const countries = JSON.parse(countriesJson) as unknown;
+      if (Array.isArray(countries)) {
+        if (countries.length !== 1 || typeof countries[0] !== "string") return null;
+        const country = countries[0].trim().toUpperCase();
+        return /^[A-Z]{2}$/.test(country) ? country : null;
+      }
+    } catch {
+      // Older rows may predate countries_json; use the dedicated-country field.
+    }
+  }
+  const fallback = fallbackCountry?.trim().toUpperCase() ?? "";
+  return /^[A-Z]{2}$/.test(fallback) ? fallback : null;
 }
 
 export function listDates(start: string, end: string): string[] {
@@ -341,31 +407,47 @@ function setPhase(phase: string, label: string, progress: number, started: strin
   broadcast("sync:phase", { phase, label, progress });
 }
 
-export async function fullSync(asa: AsaClient, asc: AscClient, days = 14, revenue?: { fnUrl?: string; app: string; pullToken?: string }): Promise<{ campaigns: number; adGroups: number; keywords: number }> {
+/**
+ * Campaign structure and delivery reports have deliberately different scopes.
+ * Paused campaigns still need their ad groups and keywords in the local read
+ * model so a staged rebuild is inspectable before cutover. Report endpoints,
+ * however, are only useful for campaigns that can currently deliver.
+ */
+export function campaignSyncScopes(campaigns: RawCampaign[]): {
+  structureIds: number[];
+  reportIds: number[];
+} {
+  return {
+    structureIds: campaigns.map((campaign) => campaign.id),
+    reportIds: campaigns
+      .filter((campaign) => campaign.status === "ENABLED")
+      .map((campaign) => campaign.id),
+  };
+}
+
+export async function fullSync(asa: AsaClient, asc: AscClient, days = 14): Promise<{ campaigns: number; adGroups: number; keywords: number }> {
   const db = getDb();
   const startedAt = now();
   const log = db.prepare(`INSERT INTO sync_log (kind, started_at) VALUES (?, ?)`).run("full", startedAt);
   try {
     const endDate = new Date().toISOString().slice(0, 10);
-    const startDate = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
+    const startDate = new Date(Date.now() - Math.max(0, days - 1) * 86400_000).toISOString().slice(0, 10);
 
     setPhase("campaigns", "Pulling campaigns", 0.05, startedAt);
     const campaigns = await syncCampaigns(asa);
-    const activeIds = campaigns.filter((c) => c.status === "ENABLED").map((c) => c.id);
+    const { structureIds, reportIds } = campaignSyncScopes(campaigns);
 
-    setPhase("adgroups", `Loading ad groups & keywords (${activeIds.length} campaigns)`, 0.2, startedAt);
-    const { adGroups, keywords } = await syncAdGroupsAndKeywords(asa, activeIds);
+    setPhase("adgroups", `Loading ad groups & keywords (${structureIds.length} campaigns)`, 0.2, startedAt);
+    const { adGroups, keywords } = await syncAdGroupsAndKeywords(asa, structureIds);
 
-    setPhase("daily", `Fetching daily metrics + per-keyword + search terms`, 0.45, startedAt);
-    await syncDailyReports(asa, startDate, endDate, activeIds);
+    setPhase("daily", `Fetching daily metrics + per-keyword + search terms (${reportIds.length} enabled campaigns)`, 0.45, startedAt);
+    await syncDailyReports(asa, startDate, endDate, reportIds);
 
     setPhase("asc", `Pulling ${days} days of ASC subscription events`, 0.8, startedAt);
     await syncAscEvents(asc, listDates(startDate, endDate));
 
-    if (revenue?.fnUrl) {
-      setPhase("revenue", "Pulling real per-keyword ASA revenue (AdServices attribution)", 0.9, startedAt);
-      await syncAsaRevenue(revenue.fnUrl, revenue.app, revenue.pullToken);
-    }
+    setPhase("revenue", "Loading Apple Ads keyword economics from Adapty", 0.9, startedAt);
+    await syncAsaRevenue({ start: startDate, end: endDate });
 
     setPhase("done", "Complete", 1.0, startedAt);
     db.prepare(`UPDATE sync_log SET finished_at = ?, ok = 1 WHERE id = ?`).run(now(), log.lastInsertRowid);

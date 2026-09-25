@@ -1,0 +1,63 @@
+{
+  "id": "pdfsign-pdf-expert",
+  "name": "03 · PDF Expert — Diagonal",
+  "kind": "real",
+  "description": "Редакционный заголовок, контрастная диагональная лента и крупный телефон.",
+  "recommendedFor": "PDFSign / PDF signing",
+  "background": {
+    "type": "solid",
+    "css": "#fafafa"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 750,
+    "color": "#303033",
+    "align": "left",
+    "uppercase": false
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "decorationsHint": "Reference-derived layout. Keep headline zones empty in artwork; all marketing copy is a live localized layer.",
+  "samples": [
+    {
+      "verb": "Your go-to\nPDF signer",
+      "descriptor": "Sign documents\non your iPhone.",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/pdf-expert-1.png",
+      "text": {
+        "yFraction": 0.15,
+        "titlePx": 181,
+        "subPx": 86,
+        "color": "#303033",
+        "safeBottomFraction": 0.48
+      }
+    },
+    {
+      "verb": "Make it\nyour signature",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/pdf-expert-2.png",
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 144,
+        "subPx": 86,
+        "color": "#303033",
+        "safeBottomFraction": 0.245
+      }
+    },
+    {
+      "verb": "Save & reuse",
+      "descriptor": "Your signature,\nready when you need it.",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/pdf-expert-3.png",
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 144,
+        "subPx": 86,
+        "color": "#303033",
+        "safeBottomFraction": 0.245
+      }
+    }
+  ]
+}

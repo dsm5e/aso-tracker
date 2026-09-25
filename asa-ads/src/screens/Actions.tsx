@@ -28,7 +28,7 @@ export default function Actions({ reloadKey }: Props) {
 
   async function applyOne(id: number): Promise<void> {
     const r = await api.applyAction(id);
-    if (!r.ok) alert(`Failed: ${r.error}`);
+    if (!r.ok) alert(`Не удалось применить действие: ${r.error}`);
   }
   async function cancelOne(id: number): Promise<void> {
     await api.cancelAction(id);
@@ -37,15 +37,15 @@ export default function Actions({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <h2>Actions queue</h2>
+        <div><h2>Очередь действий</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Все изменения проходят через подтверждение, журнал и readback Apple Ads</div></div>
       </div>
-      {loading ? <div className="empty">Loading…</div> : rows.length === 0 ? (
-        <div className="empty">Очередь пуста. Действия будут появляться сюда после Apply на Keywords/Search Terms.</div>
+      {loading ? <div className="data-state loading">Загружаем очередь…</div> : rows.length === 0 ? (
+        <div className="empty">Очередь пуста. Действия появятся здесь после подтверждения на экранах ключевых слов и поисковых запросов.</div>
       ) : (
         <table>
           <thead>
             <tr>
-              <th>ID</th><th>Type</th><th>Payload</th><th>Status</th><th>Created</th><th>Applied</th><th>Result</th><th />
+              <th>ID</th><th>Тип</th><th>Параметры</th><th>Статус</th><th>Создано</th><th>Применено</th><th>Результат</th><th />
             </tr>
           </thead>
           <tbody>
@@ -67,8 +67,8 @@ export default function Actions({ reloadKey }: Props) {
                 <td>
                   {a.status === "pending" && (
                     <>
-                      <button onClick={() => applyOne(a.id)}>Apply</button>{" "}
-                      <button className="danger" onClick={() => cancelOne(a.id)}>Cancel</button>
+                      <button onClick={() => applyOne(a.id)}>Применить</button>{" "}
+                      <button className="danger" onClick={() => cancelOne(a.id)}>Отменить</button>
                     </>
                   )}
                 </td>

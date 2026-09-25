@@ -4,16 +4,27 @@ import { join, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { KEYWORDS_FILES_DIR } from './paths.js';
 import { getAppsWithStats, getLocaleStatsByApp, getRankings } from './queries.js';
-import { loadApps, saveApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
+import { assertSafeAppId, loadApps, saveApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
 import { db } from './db.js';
 import { runSnapshot, refreshKeyword, getLiveRuntime, setLiveSpeed } from './snapshot.js';
 import { getMovers } from './analytics.js';
-import { lookupItunes } from './itunes.js';
+import { lookupItunes, searchItunes } from './itunes.js';
 import { competitorInfo, competitorKeywords, topCompetitors } from './competitors.js';
 import { getCompetitorPricing } from './pricing.js';
 import { getCompetitorReviews } from './reviews.js';
 import { keywordRelevance, buildClaudePrompt } from './relevance.js';
 import { keywordSuggestions } from './suggestions.js';
+import { getAdRepositoryAds, type AdRepositoryDatePreset } from './ad-repository.js';
+import {
+  appendMetadataSnapshot,
+  archiveAsoExperiment,
+  capturePublicMetadata,
+  createAsoExperiment,
+  getMetadataHistory,
+  listAsoExperiments,
+  updateAsoExperiment,
+} from './metadata-history.js';
+import { createPaidObservation, getPaidObservations } from './paid-observations.js';
 
 const app = express();
 app.use(express.json());
@@ -49,13 +60,40 @@ app.use((req, res, next) => {
   res.status(401).send('Authentication required');
 });
 
+// All `/api/apps/:id` routes use the id as a database scope and some routes
+// use it in a filename. Reject traversal/ambiguous ids before any handler.
+app.param('id', (req, res, next, id) => {
+  try {
+    assertSafeAppId(id);
+    next();
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
 const appSearchCache = new Map<string, { expiresAt: number; results: any[] }>();
 const appSearchInFlight = new Map<string, Promise<any[]>>();
 
 async function searchAppStore(term: string, country: string): Promise<any[]> {
-  const key = `${country.toLowerCase()}:${term.toLocaleLowerCase()}`;
+  const normalizedCountry = country.toLowerCase();
+  const normalizedTerm = term.trim().toLocaleLowerCase();
+  const key = `${normalizedCountry}:${normalizedTerm}`;
   const cached = appSearchCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.results;
+  const persisted = db.prepare(`
+    SELECT payload, expires_at AS expiresAt
+      FROM store_search_cache
+     WHERE country = ? AND term = ?
+  `).get(normalizedCountry, normalizedTerm) as { payload: string; expiresAt: number } | undefined;
+  if (persisted && persisted.expiresAt > Date.now()) {
+    try {
+      const results = JSON.parse(persisted.payload) as any[];
+      appSearchCache.set(key, { expiresAt: persisted.expiresAt, results });
+      return results;
+    } catch {
+      db.prepare('DELETE FROM store_search_cache WHERE country = ? AND term = ?').run(normalizedCountry, normalizedTerm);
+    }
+  }
   const existing = appSearchInFlight.get(key);
   if (existing) return existing;
 
@@ -71,8 +109,20 @@ async function searchAppStore(term: string, country: string): Promise<any[]> {
       const params = new URLSearchParams({ term, country, media: 'software', entity: 'software', limit: '15' });
       url = `https://itunes.apple.com/search?${params}`;
     } else {
-      const params = new URLSearchParams({ term, country, media: 'software', entity: 'software', limit: '15' });
-      url = `https://itunes.apple.com/search?${params}`;
+      // Keyword-result checks share the conservative global iTunes gate used by
+      // snapshots. The UI loads only visible rows and this durable cache keeps
+      // page reloads from spending the rate limit again.
+      return (await searchItunes(country, term)).slice(0, 15).map((item) => ({
+        trackId: item.trackId,
+        trackName: item.trackName,
+        bundleId: item.bundleId,
+        artistName: item.artistName,
+        primaryGenreName: item.primaryGenreName,
+        artworkUrl100: item.artworkUrl100,
+        averageUserRating: item.averageUserRating,
+        userRatingCount: item.userRatingCount,
+        trackViewUrl: item.trackViewUrl,
+      }));
     }
     const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
     if (!response.ok) throw new Error(`App Store search failed (${response.status})`);
@@ -83,7 +133,15 @@ async function searchAppStore(term: string, country: string): Promise<any[]> {
   appSearchInFlight.set(key, request);
   try {
     const results = await request;
-    appSearchCache.set(key, { expiresAt: Date.now() + 10 * 60_000, results });
+    const fetchedAt = Date.now();
+    const expiresAt = fetchedAt + 24 * 60 * 60_000;
+    appSearchCache.set(key, { expiresAt, results });
+    db.prepare(`
+      INSERT INTO store_search_cache (country, term, payload, fetched_at, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(country, term) DO UPDATE SET
+        payload = excluded.payload, fetched_at = excluded.fetched_at, expires_at = excluded.expires_at
+    `).run(normalizedCountry, normalizedTerm, JSON.stringify(results), fetchedAt, expiresAt);
     return results;
   } finally {
     appSearchInFlight.delete(key);
@@ -101,6 +159,8 @@ app.post('/api/apps', async (req, res) => {
     res.status(400).json({ error: 'id, name, bundle, iTunesId required' });
     return;
   }
+  try { assertSafeAppId(body.id); }
+  catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : String(error) }); return; }
   const apps = loadApps();
   if (apps.some((a) => a.id === body.id)) {
     res.status(409).json({ error: 'app id already exists' });
@@ -122,7 +182,12 @@ app.post('/api/apps', async (req, res) => {
 
 app.delete('/api/apps/:id', (req, res) => {
   const id = req.params.id;
-  const apps = loadApps().filter((a) => a.id !== id);
+  const currentApps = loadApps();
+  if (!currentApps.some((candidate) => candidate.id === id)) {
+    res.status(404).json({ error: 'app not found' });
+    return;
+  }
+  const apps = currentApps.filter((a) => a.id !== id);
   saveApps(apps);
 
   // Delete keywords file
@@ -131,8 +196,17 @@ app.delete('/api/apps/:id', (req, res) => {
     if (existsSync(kwPath)) unlinkSync(kwPath);
   } catch {/* ignore */}
 
-  // Delete snapshot history
-  try { db.prepare('DELETE FROM snapshots WHERE app = ?').run(id); } catch {/* ignore */}
+  // Delete the complete app scope. Leaving observations or metadata behind
+  // leaks a prior app's facts if a slug is ever reused.
+  try {
+    db.transaction(() => {
+      db.prepare('DELETE FROM snapshots WHERE app = ?').run(id);
+      db.prepare('DELETE FROM paid_search_observations WHERE app_id = ?').run(id);
+      db.prepare('DELETE FROM public_metadata_snapshots WHERE app_id = ?').run(id);
+      db.prepare('DELETE FROM aso_experiment_events WHERE app_id = ?').run(id);
+      db.prepare('DELETE FROM aso_experiments WHERE app_id = ?').run(id);
+    })();
+  } catch {/* preserve app removal if an older local database lacks a new table */}
 
   res.json({ ok: true });
 });
@@ -163,6 +237,7 @@ app.get('/api/apps/:id/suggestions', async (req, res) => {
 // --- Rankings table ---
 app.get('/api/apps/:id/rankings', (req, res) => {
   const locale = req.query.locale as string | undefined;
+  res.set('Cache-Control', 'no-store');
   res.json(getRankings(req.params.id, locale));
 });
 
@@ -177,6 +252,118 @@ app.get('/api/apps/:id/competitors', (req, res) => {
   res.json(topCompetitors(req.params.id, limit));
 });
 
+// --- Competitor paid-search observations ---
+// Apple does not expose another advertiser's paid SERP, keyword, bid or SOV.
+// This endpoint is intentionally an append-only store for directly observed
+// result slots / authorized exports and labels its derived rate accordingly.
+app.get('/api/apps/:id/paid-observations', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json(getPaidObservations(req.params.id, {
+      locale: typeof req.query.locale === 'string' ? req.query.locale : undefined,
+      keyword: typeof req.query.keyword === 'string' ? req.query.keyword : undefined,
+      competitorId: typeof req.query.competitorId === 'string' ? req.query.competitorId : undefined,
+      limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+    }));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post('/api/apps/:id/paid-observations', (req, res) => {
+  if (!loadApps().some((candidate) => candidate.id === req.params.id)) {
+    res.status(404).json({ error: 'app not found' });
+    return;
+  }
+  try {
+    const result = createPaidObservation(req.params.id, req.body);
+    res.status(result.created ? 201 : 200).json(result);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// --- Public metadata timeline and ASO experiment journal ---
+app.get('/api/apps/:id/metadata-history', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json(getMetadataHistory(
+      req.params.id,
+      typeof req.query.locale === 'string' ? req.query.locale : undefined,
+      typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+    ));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post('/api/apps/:id/metadata-snapshots/capture', async (req, res) => {
+  const appConfig = loadApps().find((candidate) => candidate.id === req.params.id);
+  const locale = typeof req.body?.locale === 'string' ? req.body.locale : '';
+  if (!appConfig) { res.status(404).json({ error: 'app not found' }); return; }
+  if (!locale) { res.status(400).json({ error: 'locale required' }); return; }
+  try {
+    const result = await capturePublicMetadata(appConfig, locale, { force: req.body?.refresh === true });
+    if (!result.snapshot && result.error) {
+      res.status(502).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post('/api/apps/:id/metadata-snapshots', (req, res) => {
+  if (!loadApps().some((candidate) => candidate.id === req.params.id)) {
+    res.status(404).json({ error: 'app not found' });
+    return;
+  }
+  try {
+    const result = appendMetadataSnapshot(req.params.id, req.body);
+    res.status(result.created ? 201 : 200).json(result);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get('/api/apps/:id/aso-experiments', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ experiments: listAsoExperiments(req.params.id, req.query.includeArchived === '1') });
+});
+
+app.post('/api/apps/:id/aso-experiments', (req, res) => {
+  if (!loadApps().some((candidate) => candidate.id === req.params.id)) {
+    res.status(404).json({ error: 'app not found' });
+    return;
+  }
+  try {
+    res.status(201).json({ experiment: createAsoExperiment(req.params.id, req.body) });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.patch('/api/apps/:id/aso-experiments/:experimentId', (req, res) => {
+  const experimentId = Number(req.params.experimentId);
+  if (!Number.isInteger(experimentId) || experimentId < 1) { res.status(400).json({ error: 'numeric experimentId required' }); return; }
+  try {
+    const experiment = updateAsoExperiment(req.params.id, experimentId, req.body);
+    if (!experiment) { res.status(404).json({ error: 'experiment not found' }); return; }
+    res.json({ experiment });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.delete('/api/apps/:id/aso-experiments/:experimentId', (req, res) => {
+  const experimentId = Number(req.params.experimentId);
+  if (!Number.isInteger(experimentId) || experimentId < 1) { res.status(400).json({ error: 'numeric experimentId required' }); return; }
+  const experiment = archiveAsoExperiment(req.params.id, experimentId);
+  if (!experiment) { res.status(404).json({ error: 'experiment not found' }); return; }
+  res.json({ experiment, archived: true });
+});
+
 app.get('/api/competitors/keywords', (req, res) => {
   const app = req.query.app as string;
   const bundleId = req.query.bundleId as string;
@@ -189,15 +376,36 @@ app.get('/api/competitors/keywords', (req, res) => {
 
 app.get('/api/competitors/info', async (req, res) => {
   const bundleId = req.query.bundleId as string;
+  const country = req.query.country as string | undefined;
   if (!bundleId) {
     res.status(400).json({ error: 'bundleId required' });
     return;
   }
   try {
-    const info = await competitorInfo(bundleId);
+    const info = await competitorInfo(bundleId, country);
     res.json(info);
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.get('/api/competitors/ads', async (req, res) => {
+  const appId = String(req.query.id || '').trim();
+  const requestedPreset = String(req.query.datePreset || 'LAST_YEAR');
+  const allowedPresets = new Set<AdRepositoryDatePreset>(['LAST_90_DAYS', 'LAST_180_DAYS', 'LAST_YEAR']);
+  if (!/^\d+$/.test(appId)) {
+    res.status(400).json({ error: 'numeric id required' });
+    return;
+  }
+  if (!allowedPresets.has(requestedPreset as AdRepositoryDatePreset)) {
+    res.status(400).json({ error: 'invalid datePreset' });
+    return;
+  }
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json(await getAdRepositoryAds(appId, requestedPreset as AdRepositoryDatePreset, { force: req.query.refresh === '1' }));
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -635,7 +843,13 @@ if (existsSync(staticDir)) {
   app.use((_req, res) => res.sendFile(join(staticDir, 'index.html')));
 }
 
+export function serverHost(password = process.env.APP_PASSWORD): string | undefined {
+  // Node binds to every interface when host is omitted. Passwordless mode is
+  // explicitly local development, therefore make that boundary real.
+  return password ? undefined : '127.0.0.1';
+}
+
 const PORT = Number(process.env.PORT) || 5174;
-app.listen(PORT, () => {
+app.listen(PORT, serverHost(), () => {
   console.log(`ASO Keywords listening on http://localhost:${PORT}`);
 });

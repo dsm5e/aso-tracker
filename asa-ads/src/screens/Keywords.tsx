@@ -5,6 +5,7 @@ import KeywordExpand from "../components/KeywordExpand.tsx";
 import BidChangeConfirm from "../components/BidChangeConfirm.tsx";
 import BulkApplyConfirm from "../components/BulkApplyConfirm.tsx";
 import { exportRows } from "../lib/csv.ts";
+import { campaignDisplayName } from "../lib/campaignNames.ts";
 
 interface Props { reloadKey: number }
 
@@ -189,28 +190,28 @@ export default function Keywords({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <h2>Keywords</h2>
+        <div><h2>Ключевые слова</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Все страны выбранного приложения · ставки меняются только после подтверждения</div></div>
         <div className="controls">
-          <input type="text" placeholder="Filter" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <input type="text" aria-label="Поиск ключевых слов" placeholder="Найти ключ или кампанию" value={filter} onChange={(e) => setFilter(e.target.value)} />
           <div className="btn-group" title="Filter by keyword status">
-            <button className={`compact ${statusFilter === "all" ? "primary" : ""}`} onClick={() => setStatusFilter("all")}>All {rows.length}</button>
-            <button className={`compact ${statusFilter === "active" ? "primary" : ""}`} onClick={() => setStatusFilter("active")}>Active {counts.active}</button>
-            <button className={`compact ${statusFilter === "paused" ? "primary" : ""}`} onClick={() => setStatusFilter("paused")}>Paused {counts.paused}</button>
+            <button className={`compact ${statusFilter === "all" ? "primary" : ""}`} onClick={() => setStatusFilter("all")}>Все {rows.length}</button>
+            <button className={`compact ${statusFilter === "active" ? "primary" : ""}`} onClick={() => setStatusFilter("active")}>Активные {counts.active}</button>
+            <button className={`compact ${statusFilter === "paused" ? "primary" : ""}`} onClick={() => setStatusFilter("paused")}>Пауза {counts.paused}</button>
           </div>
           {counts.orphan > 0 && (
-            <span className="badge warn" title="Active keywords whose campaign is not RUNNING — they spend $0 even though the keyword is ACTIVE">⚠ {counts.orphan} orphan</span>
+            <span className="badge warn" title="Активные ключи в неработающих кампаниях; расходов и показов по ним не будет.">⚠ без показа: {counts.orphan}</span>
           )}
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-            <option value="spend">↓ Spend</option>
-            <option value="installs">↓ Installs</option>
+            <option value="spend">↓ Расход</option>
+            <option value="installs">↓ Установки</option>
             <option value="cpt">↓ CPT</option>
-            <option value="imp">↓ Impressions</option>
+            <option value="imp">↓ Показы</option>
           </select>
           <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={3}>3D</option>
-            <option value={7}>7D</option>
-            <option value={14}>14D</option>
-            <option value={30}>30D</option>
+            <option value={3}>3 дня</option>
+            <option value={7}>7 дней</option>
+            <option value={14}>14 дней</option>
+            <option value={30}>30 дней</option>
           </select>
           <button onClick={() => exportRows(
             `keywords-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -261,7 +262,7 @@ export default function Keywords({ reloadKey }: Props) {
         />
       )}
 
-      {loading ? <div className="empty">Loading…</div> : (
+      {loading ? <div className="data-state loading">Загружаем ключевые слова…</div> : filtered.length === 0 ? <div className="data-state">По этому фильтру нет ключевых слов.</div> : (
         <table>
           <thead>
             <tr>
@@ -275,18 +276,18 @@ export default function Keywords({ reloadKey }: Props) {
                   }}
                 />
               </th>
-              <th>Keyword</th>
-              <th>Campaign</th>
-              <th>Match</th>
-              <th>Status</th>
-              <th className="num">Bid</th>
-              <th className="num">Imp</th>
+              <th>Ключевое слово</th>
+              <th>Кампания</th>
+              <th>Тип соответствия</th>
+              <th>Статус</th>
+              <th className="num">Ставка</th>
+              <th className="num">Показы</th>
               <th className="num">Taps</th>
-              <th className="num">Inst</th>
+              <th className="num">Установки</th>
               <th className="num">CPT</th>
-              <th className="num">Spend</th>
-              <th>Recommendation</th>
-              <th style={{ minWidth: 200 }}>Quick bid</th>
+              <th className="num">Расход</th>
+              <th>Рекомендация</th>
+              <th style={{ minWidth: 200 }}>Изменение ставки</th>
             </tr>
           </thead>
           <tbody>
@@ -307,7 +308,7 @@ export default function Keywords({ reloadKey }: Props) {
                     <span className={`expand-toggle ${isExp ? "open" : ""}`} style={{ marginRight: 6 }} onClick={() => toggleExpand(k.id)}>▸</span>
                     {k.text}
                   </td>
-                  <td className="muted" style={{ fontSize: 11 }}>{k.campaign_name}</td>
+                  <td className="muted" style={{ fontSize: 11 }}>{campaignDisplayName(k.campaign_name)}</td>
                   <td><span className="badge">{k.match_type}</span></td>
                   <td>
                     <span className={`badge ${k.status === "ACTIVE" ? "ok" : "warn"}`}>{k.status.toLowerCase()}</span>
@@ -330,15 +331,15 @@ export default function Keywords({ reloadKey }: Props) {
                         <span className="muted" style={{ fontSize: 11 }}>{rec.reason}</span>
                       </span>
                     ) : flashed.has(k.id) ? (
-                      <span className="badge ok">✓ updated</span>
+                      <span className="badge ok">✓ обновлено</span>
                     ) : (
                       <span className="muted">—</span>
                     )}
                   </td>
                   <td>
                     <div className="btn-group">
-                      <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, `Lower bid 10% to test cheaper auction position`)} title={`Lower 10% → ${fmtBid(down10)}`}>−10%</button>
-                      <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, `Raise bid 10% to outbid more often`)} title={`Raise 10% → ${fmtBid(up10)}`}>+10%</button>
+                      <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Снизить ставку на 10% для контролируемого теста") } title={`Снизить на 10% → ${fmtBid(down10)}`}>−10%</button>
+                      <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Повысить ставку на 10% для контролируемого теста")} title={`Повысить на 10% → ${fmtBid(up10)}`}>+10%</button>
                       {rec && !alreadyAtRec && (
                         <button className={`compact ${delta > 0 ? "primary up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={rec.reason}>
                           → {fmtBid(rec.recommended_bid)}

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { APPS_PATH, KEYWORDS_FILES_DIR, ensureKeywordsHome, migrateLegacyData } from './paths.js';
 
@@ -11,6 +11,17 @@ export interface AppConfig {
   iconBg?: string;     // css gradient fallback
   iconUrl?: string;    // real App Store artwork URL
   tagline?: string;
+}
+
+/** App ids are used in a filesystem filename; never let an HTTP route turn
+ * them into a path. Existing projects use short slugs such as `medscan`. */
+const APP_ID_PATTERN = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
+
+export function assertSafeAppId(value: unknown): string {
+  if (typeof value !== 'string' || !APP_ID_PATTERN.test(value)) {
+    throw new Error('app id must be a 1–64 character slug (letters, digits, _ or -)');
+  }
+  return value;
 }
 
 function ensureDirs() {
@@ -35,6 +46,7 @@ export function saveApps(apps: AppConfig[]) {
 
 export function loadKeywords(appId: string): Record<string, string[]> {
   ensureDirs();
+  assertSafeAppId(appId);
   const p = join(KEYWORDS_FILES_DIR, `${appId}.json`);
   if (!existsSync(p)) return {};
   try {
@@ -46,17 +58,6 @@ export function loadKeywords(appId: string): Record<string, string[]> {
 
 export function saveKeywords(appId: string, keywords: Record<string, string[]>) {
   ensureDirs();
+  assertSafeAppId(appId);
   writeFileSync(join(KEYWORDS_FILES_DIR, `${appId}.json`), JSON.stringify(keywords, null, 2));
-}
-
-export function loadAllKeywords(): Record<string, Record<string, string[]>> {
-  ensureDirs();
-  const out: Record<string, Record<string, string[]>> = {};
-  if (!existsSync(KEYWORDS_FILES_DIR)) return out;
-  for (const f of readdirSync(KEYWORDS_FILES_DIR)) {
-    if (!f.endsWith('.json') || f.endsWith('.example.json')) continue;
-    const id = f.replace(/\.json$/, '');
-    out[id] = loadKeywords(id);
-  }
-  return out;
 }

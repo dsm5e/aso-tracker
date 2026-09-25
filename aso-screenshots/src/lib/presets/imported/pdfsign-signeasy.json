@@ -1,0 +1,63 @@
+{
+  "id": "pdfsign-signeasy",
+  "name": "04 · Signeasy — Pastel",
+  "kind": "real",
+  "description": "Голубой, мятный и сиреневый градиенты, крупный ровный телефон.",
+  "recommendedFor": "PDFSign / PDF signing",
+  "background": {
+    "type": "solid",
+    "css": "#409fdd"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 700,
+    "color": "#fff",
+    "align": "center",
+    "uppercase": false
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "decorationsHint": "Reference-derived layout. Keep headline zones empty in artwork; all marketing copy is a live localized layer.",
+  "samples": [
+    {
+      "verb": "A simpler way to\nmanage your PDFs",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/signeasy-1.png",
+      "text": {
+        "yFraction": 0.055,
+        "titlePx": 118,
+        "subPx": 70,
+        "color": "#fff",
+        "safeBottomFraction": 0.185
+      }
+    },
+    {
+      "verb": "Sign documents",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/signeasy-2.png",
+      "text": {
+        "yFraction": 0.055,
+        "titlePx": 118,
+        "subPx": 70,
+        "color": "#fff",
+        "safeBottomFraction": 0.185
+      }
+    },
+    {
+      "verb": "Share signed PDFs",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/signeasy-3.png",
+      "text": {
+        "yFraction": 0.055,
+        "titlePx": 118,
+        "subPx": 70,
+        "color": "#fff",
+        "safeBottomFraction": 0.185
+      }
+    }
+  ]
+}

@@ -16,8 +16,13 @@ interface TokenResponse {
 }
 
 export class AsaApiError extends Error {
-  constructor(message: string, public status: number, public body: string) {
+  readonly status: number;
+  readonly body: string;
+
+  constructor(message: string, status: number, body: string) {
     super(message);
+    this.status = status;
+    this.body = body;
   }
 }
 
@@ -26,7 +31,11 @@ export class AsaClient {
   private keyPromise?: Promise<KeyLike | Uint8Array>;
   private inflight?: Promise<string>;
 
-  constructor(private cfg: AsaConfig) {}
+  private readonly cfg: AsaConfig;
+
+  constructor(cfg: AsaConfig) {
+    this.cfg = cfg;
+  }
 
   private getKey(): Promise<KeyLike | Uint8Array> {
     if (!this.keyPromise) {
@@ -261,6 +270,7 @@ export interface RawCampaign {
   startTime: string;
   endTime: string | null;
   modificationTime: string;
+  servingStateReasons?: string[];
 }
 
 export interface RawAdGroup {
@@ -270,6 +280,8 @@ export interface RawAdGroup {
   defaultBidAmount: { amount: string };
   status: string;
   cpaGoal: { amount: string } | null;
+  servingStatus?: string;
+  automatedKeywordsOptIn?: boolean;
 }
 
 export interface RawKeyword {
@@ -296,7 +308,13 @@ export interface ReportTotals {
 }
 
 export interface RawCampaignReport {
-  metadata: { campaignId: number; campaignName: string; countriesOrRegions: string[] };
+  metadata: {
+    campaignId: number;
+    campaignName: string;
+    countriesOrRegions: string[];
+    campaignStatus?: string;
+    servingStatus?: string;
+  };
   total: ReportTotals;
   granularity: Array<ReportTotals & { date: string }>;
 }

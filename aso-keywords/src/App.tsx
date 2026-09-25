@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   api,
   runSnapshot,
@@ -15,9 +15,25 @@ import {
   type MoversResponse,
   type Mover,
   type LocaleAvg,
-  type CompetitorSummary,
 } from './api';
 import { APP_STORE_LOCALES } from './appStoreLocales';
+import TrafficIntelligence from './screens/TrafficIntelligence';
+import Competitors from './screens/Competitors';
+import DecisionMatrix from './screens/DecisionMatrix';
+import Overview from './screens/Overview';
+import AcquisitionFunnel from './screens/AcquisitionFunnel';
+import Experiments from './screens/Experiments';
+import { TopFiveArtwork } from './components/KeywordResultsDrawer';
+
+type TopFiveCandidate = { id: string; tid?: number };
+type SharedTopFiveStatus = 'loading' | 'ready' | 'empty' | 'error';
+
+function sharedTopFiveKey(appId: string, country: string, keyword: string) {
+  return `${appId}:${country.toLocaleLowerCase()}:${keyword.toLocaleLowerCase()}`;
+}
+
+type AppView = 'overview' | 'keywords' | 'traffic' | 'competitors' | 'matrix' | 'funnel' | 'experiments';
+type KeywordView = 'positions' | 'analytics' | 'ideas';
 
 type DialogKind = 'keywords' | 'locale' | 'app' | 'error' | 'delete-app';
 type DialogState = {
@@ -44,22 +60,15 @@ type AppStoreSearchResult = {
   averageUserRating?: number;
 };
 
-const FLAG: Record<string, string> = {
-  us: '🇺🇸', gb: '🇬🇧', ca: '🇨🇦', au: '🇦🇺', de: '🇩🇪', fr: '🇫🇷',
-  es: '🇪🇸', it: '🇮🇹', br: '🇧🇷', mx: '🇲🇽', jp: '🇯🇵', kr: '🇰🇷',
-  cn: '🇨🇳', ru: '🇷🇺', tr: '🇹🇷', pl: '🇵🇱', nl: '🇳🇱', se: '🇸🇪',
-  no: '🇳🇴', dk: '🇩🇰', fi: '🇫🇮', in: '🇮🇳', id: '🇮🇩', th: '🇹🇭',
-};
-
 const ARTWORK_SESSION_KEY = 'aso-keywords.artworks.v1';
 
 // Sibling ASO Studio tools, reverse-proxied under the same origin in dev
 // (see vite.config.ts) and by the hub in production.
 const STUDIO_LINKS = [
-  { id: 'aso', label: 'Keywords', hint: 'Rankings & suggestions', href: '/' },
-  { id: 'shot', label: 'Screenshots', hint: 'App Store visuals', href: '/studio/' },
-  { id: 'vid', label: 'Video', hint: 'Ad video pipeline', href: '/video/' },
-  { id: 'asa', label: 'ASA Ads', hint: 'Search Ads ROI', href: '/asa/' },
+  { id: 'aso', label: 'Ключевые слова', hint: 'Позиции и идеи', href: '/' },
+  { id: 'shot', label: 'Скриншоты', hint: 'Визуалы App Store', href: '/studio/' },
+  { id: 'vid', label: 'Видео', hint: 'Подготовка рекламных видео', href: '/video/' },
+  { id: 'asa', label: 'Apple Ads', hint: 'Окупаемость рекламы', href: '/asa/' },
 ];
 
 function initialArtworkCache(): Record<string, string> {
@@ -72,7 +81,19 @@ function initialArtworkCache(): Record<string, string> {
 
 function localeFlag(locale: string) {
   const country = locale.split('-')[0].toLowerCase();
-  return FLAG[country] ?? '🌐';
+  if (!/^[a-z]{2}$/.test(country)) return '🌐';
+  return String.fromCodePoint(...[...country.toUpperCase()].map((letter) => letter.charCodeAt(0) + 127397));
+}
+
+type OwnAppIdentity = Pick<AppStats, 'bundle' | 'iTunesId' | 'iconUrl' | 'name'>;
+
+function isOwnAppResult(app: { id?: string; tid?: number }, ownApp?: OwnAppIdentity) {
+  if (!ownApp) return false;
+  const ownTid = Number(ownApp.iTunesId);
+  if (Number.isFinite(ownTid) && app.tid === ownTid) return true;
+  const bundle = app.id?.toLocaleLowerCase() ?? '';
+  const ownBundle = ownApp.bundle.toLocaleLowerCase();
+  return Boolean(ownBundle && (bundle === ownBundle || bundle.startsWith(ownBundle)));
 }
 
 function delta(from: number | null, to: number | null) {
@@ -80,11 +101,49 @@ function delta(from: number | null, to: number | null) {
   return from - to;
 }
 
+function snapshotStatusText(progress: SnapshotEvent | null, fallbackTotal: number | string) {
+  const completed = progress?.completed ?? 0;
+  const total = progress?.total ?? fallbackTotal;
+  if (progress?.type === 'throttle') {
+    return `Пауза из-за лимита Apple · ${progress.cooldownSec ?? 60} с · ${completed}/${total}`;
+  }
+  if (progress?.type === 'retry') {
+    const attempt = progress.attempt && progress.maxAttempts
+      ? ` · попытка ${progress.attempt}/${progress.maxAttempts}`
+      : '';
+    return `Повтор: ${progress.keyword ?? 'запрос'}${attempt} · ${completed}/${total}`;
+  }
+  if (progress?.type === 'keyword-start' && progress.keyword) {
+    return `Запрашиваем: ${progress.keyword} · ${completed}/${total}`;
+  }
+  return `Обновление ${completed}/${total}`;
+}
+
 function rankTone(rank: number | null) {
   if (rank == null) return 'muted';
   if (rank <= 10) return 'positive';
   if (rank <= 50) return 'warning';
   return 'negative';
+}
+
+function freshnessLabel(value: string | null | undefined) {
+  if (!value) return 'Снимков пока нет';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return 'Снимок доступен';
+  return `Синхронизировано ${new Intl.DateTimeFormat('ru-RU', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsed)}`;
+}
+
+function suggestionEvidenceLabel(value: string) {
+  const competitors = value.match(/^Used by (\d+) top-ranking competitors?$/i);
+  if (competitors) return `Используют конкуренты из топа: ${competitors[1]}`;
+  const autocomplete = value.match(/^Apple autocomplete from [“"](.+)[”"]$/i);
+  if (autocomplete) return `Автоподсказка Apple для «${autocomplete[1]}»`;
+  return value;
 }
 
 function AppIcon({ app, size = 42 }: { app: AppStats; size?: number }) {
@@ -104,43 +163,158 @@ export default function App() {
   const [keywordMap, setKeywordMap] = useState<Record<string, string[]>>({});
   const [locale, setLocale] = useState('');
   const [rankings, setRankings] = useState<RankingRow[]>([]);
+  const [sharedTopFive, setSharedTopFive] = useState<Record<string, RankingRow>>({});
+  const sharedTopFiveRef = useRef(sharedTopFive);
+  const [sharedTopFiveStatus, setSharedTopFiveStatus] = useState<Record<string, SharedTopFiveStatus>>({});
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [progress, setProgress] = useState<SnapshotEvent | null>(null);
   const [artworks, setArtworks] = useState<Record<string, string>>(initialArtworkCache);
+  const artworksRef = useRef(artworks);
+  const artworkWorkRef = useRef<Promise<void>>(Promise.resolve());
+  const artworkInFlightRef = useRef(new Set<string>());
+  const artworkNegativeRef = useRef(new Map<string, number>());
+  const topFiveWorkRef = useRef<Promise<void>>(Promise.resolve());
+  const topFiveInFlightRef = useRef(new Set<string>());
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [dialogBusy, setDialogBusy] = useState(false);
   const [rowUpdates, setRowUpdates] = useState<Record<string, RowUpdateState>>({});
   const [competitorBundle, setCompetitorBundle] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<KeywordSuggestion[] | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
-  const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [relevanceOn, setRelevanceOn] = useState(false);
   const [relevance, setRelevance] = useState<Record<string, RelevanceRow>>({});
   const [snapshotSpeed, setSnapshotSpeed] = useState<SnapshotSpeed>(
     () => (localStorage.getItem('snapshotSpeed') === 'slow' ? 'slow' : 'medium')
   );
-  const [view, setView] = useState<'overview' | 'keywords'>('keywords');
+  const [view, setView] = useState<AppView>(() => {
+    const requested = window.location.hash.slice(1);
+    return requested === 'overview' || requested === 'traffic' || requested === 'competitors' || requested === 'matrix' || requested === 'funnel' ? requested : 'keywords';
+  });
+  const [keywordView, setKeywordView] = useState<KeywordView>(() => {
+    const requested = window.location.hash.slice(1);
+    return requested === 'analytics' || requested === 'ideas' ? requested : 'positions';
+  });
   const [theme, setTheme] = useState<'light' | 'dark'>(
-    () => (localStorage.getItem('theme') === 'dark' ? 'dark' : 'light')
+    () => {
+      const requested = new URLSearchParams(window.location.search).get('theme');
+      if (requested === 'dark' || requested === 'light') return requested;
+      return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
+    }
   );
   const [pageSize, setPageSize] = useState<number>(() => Number(localStorage.getItem('pageSize')) || 0); // 0 = all
   const [page, setPage] = useState(0);
   const [detailKeyword, setDetailKeyword] = useState<string | null>(null);
-  const [competitorSummary, setCompetitorSummary] = useState<CompetitorSummary[]>([]);
   const [localeAvgByApp, setLocaleAvgByApp] = useState<Record<string, LocaleAvg[]>>({});
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('theme', theme);
   }, [theme]);
+  useEffect(() => {
+    const route = view === 'keywords' ? keywordView : view;
+    if (window.location.hash !== `#${route}`) {
+      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${route}`);
+    }
+  }, [keywordView, view]);
   useEffect(() => { localStorage.setItem('pageSize', String(pageSize)); }, [pageSize]);
   useEffect(() => { setPage(0); }, [locale, query, pageSize, selectedAppID]);
 
   const selectedApp = apps.find((app) => app.id === selectedAppID) ?? apps[0];
+
+  useEffect(() => { artworksRef.current = artworks; }, [artworks]);
+
+  const ensureArtworkForTop5 = useCallback((candidates: TopFiveCandidate[], country: string) => {
+    const ids = [...new Set(candidates.map((candidate) => candidate.tid).filter((id): id is number => id != null))];
+    const bundles = [...new Set(candidates.filter((candidate) => candidate.tid == null).map((candidate) => candidate.id).filter(Boolean))];
+    const keys = [...ids.map(String), ...bundles];
+    const now = Date.now();
+    const missing = keys.filter((key) => {
+      const scoped = `${country}:${key}`;
+      const negativeUntil = artworkNegativeRef.current.get(scoped) ?? 0;
+      return !artworksRef.current[key] && negativeUntil <= now && !artworkInFlightRef.current.has(scoped);
+    });
+    if (!missing.length) return;
+    missing.forEach((key) => artworkInFlightRef.current.add(`${country}:${key}`));
+    const requestedIds = ids.filter((id) => missing.includes(String(id)));
+    const requestedBundles = bundles.filter((bundle) => missing.includes(bundle));
+    artworkWorkRef.current = artworkWorkRef.current.catch(() => undefined).then(async () => {
+      try {
+        const incoming = await api.artworks(requestedIds, requestedBundles, country);
+        const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
+        missing.filter((key) => !incoming[key]).forEach((key) => artworkNegativeRef.current.set(`${country}:${key}`, expiresAt));
+        setArtworks((current) => {
+          const next = { ...current, ...incoming };
+          artworksRef.current = next;
+          try { sessionStorage.setItem(ARTWORK_SESSION_KEY, JSON.stringify(next)); } catch { /* non-critical cache */ }
+          return next;
+        });
+      } catch { /* A stable empty slot is preferable to an invented icon. */ }
+      finally { missing.forEach((key) => artworkInFlightRef.current.delete(`${country}:${key}`)); }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedApp) return;
+    setSharedTopFive((current) => {
+      const next = { ...current };
+      for (const row of rankings) next[sharedTopFiveKey(selectedApp.id, row.locale, row.keyword)] = row;
+      sharedTopFiveRef.current = next;
+      return next;
+    });
+  }, [rankings, selectedApp]);
+
+  const resolveTopFive = useCallback((appId: string, iTunesId: string, country: string, keyword: string) => {
+    const key = sharedTopFiveKey(appId, country, keyword);
+    if (sharedTopFiveRef.current[key] || topFiveInFlightRef.current.has(key)) return;
+    topFiveInFlightRef.current.add(key);
+    setSharedTopFiveStatus((current) => ({ ...current, [key]: 'loading' }));
+    topFiveWorkRef.current = topFiveWorkRef.current.catch(() => undefined).then(async () => {
+      const makeFallback = async () => {
+        const results = await api.itunesSearch(keyword, country.toLocaleLowerCase());
+        return {
+          locale: country.toLocaleLowerCase(), keyword, today: null, yesterday: null, w1: null, w4: null, trend: [], lastUpdated: Date.now(),
+          top5: results.slice(0, 5).map((result, index) => ({ id: result.bundleId ?? String(result.trackId), name: result.trackName ?? result.bundleId ?? `Приложение ${index + 1}`, dev: result.artistName ?? '', tid: result.trackId, pos: index + 1 })),
+        } satisfies RankingRow;
+      };
+      try {
+        const cached = await api.cachedTopFiveBatch({ appId: Number(iTunesId), locales: [country.toLocaleLowerCase()], terms: [keyword], limit: 1 });
+        const item = cached.items[0];
+        const ranking: RankingRow = item ? {
+          locale: item.locale, keyword: item.term, today: item.yourRank, yesterday: null, w1: null, w4: null, trend: [], lastUpdated: item.observedAt ? new Date(item.observedAt).getTime() : null,
+          top5: item.apps.map((candidate) => {
+            const numericId = Number(candidate.iTunesId);
+            return { id: candidate.bundleId ?? String(candidate.iTunesId ?? candidate.name), name: candidate.name, dev: candidate.developer ?? '', tid: Number.isSafeInteger(numericId) && numericId > 0 ? numericId : undefined, pos: candidate.rank };
+          }),
+        } : await makeFallback();
+        setSharedTopFive((current) => {
+          const next = { ...current, [key]: ranking };
+          sharedTopFiveRef.current = next;
+          return next;
+        });
+        setSharedTopFiveStatus((current) => ({ ...current, [key]: ranking.top5.length ? 'ready' : 'empty' }));
+        if (ranking.top5.length) ensureArtworkForTop5(ranking.top5, country.toLocaleLowerCase());
+      } catch {
+        try {
+          const ranking = await makeFallback();
+          setSharedTopFive((current) => {
+            const next = { ...current, [key]: ranking };
+            sharedTopFiveRef.current = next;
+            return next;
+          });
+          setSharedTopFiveStatus((current) => ({ ...current, [key]: ranking.top5.length ? 'ready' : 'empty' }));
+          if (ranking.top5.length) ensureArtworkForTop5(ranking.top5, country.toLocaleLowerCase());
+        } catch {
+          setSharedTopFiveStatus((current) => ({ ...current, [key]: 'error' }));
+        }
+      } finally { topFiveInFlightRef.current.delete(key); }
+    });
+  }, [ensureArtworkForTop5]);
 
   // Refs so the long-lived snapshot event stream always sees the current
   // app/locale without resubscribing on every selection change.
@@ -154,7 +328,11 @@ export default function App() {
   const loadApps = useCallback(async () => {
     const result = await api.apps();
     setApps(result);
-    setSelectedAppID((current) => current || result[0]?.id || '');
+    setSelectedAppID((current) => {
+      if (current) return current;
+      const requested = new URLSearchParams(window.location.search).get('app');
+      return result.some((app) => app.id === requested) ? requested! : result[0]?.id || '';
+    });
   }, []);
 
   useEffect(() => {
@@ -169,7 +347,11 @@ export default function App() {
       .then((keywords) => {
         setKeywordMap(keywords);
         const locales = Object.keys(keywords).sort();
-        setLocale((current) => current && keywords[current] ? current : locales[0] ?? '');
+        setLocale((current) => {
+          if (current && keywords[current]) return current;
+          const requested = new URLSearchParams(window.location.search).get('locale')?.toLowerCase();
+          return requested && keywords[requested] ? requested : locales[0] ?? '';
+        });
       })
       .finally(() => setLoading(false));
   }, [selectedApp]);
@@ -177,35 +359,27 @@ export default function App() {
   useEffect(() => {
     if (!selectedApp || !locale) return;
     let cancelled = false;
+    let firstLoad = true;
     setLoading(true);
-    api.rankings(selectedApp.id, locale)
+    const loadRankings = () => api.rankings(selectedApp.id, locale)
       .then((rows) => { if (!cancelled) setRankings(rows); })
       .catch((error) => { if (!cancelled) console.error(error); })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+      .finally(() => {
+        if (!cancelled && firstLoad) setLoading(false);
+        firstLoad = false;
+      });
+    void loadRankings();
+    const timer = window.setInterval(() => { void loadRankings(); }, 30_000);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') void loadRankings();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [selectedApp, locale]);
-
-  useEffect(() => {
-    const ids = Array.from(new Set(
-      rankings.flatMap((row) => row.top5.map((app) => app.tid).filter((id): id is number => id != null))
-    ));
-    const bundles = Array.from(new Set(
-      rankings.flatMap((row) => row.top5.map((app) => app.id).filter(Boolean))
-    ));
-    if (!ids.length && !bundles.length) return;
-    let cancelled = false;
-    api.artworks(ids, bundles, locale || 'us')
-      .then((incoming) => {
-        if (cancelled) return;
-        setArtworks((current) => {
-          const next = { ...current, ...incoming };
-          try { sessionStorage.setItem(ARTWORK_SESSION_KEY, JSON.stringify(next)); } catch { /* non-critical cache */ }
-          return next;
-        });
-      })
-      .catch(() => { /* keep previously resolved artwork */ });
-    return () => { cancelled = true; };
-  }, [rankings, locale]);
 
   const rankingByKeyword = useMemo(
     () => new Map(rankings.map((row) => [row.keyword.toLocaleLowerCase(), row])),
@@ -218,6 +392,19 @@ export default function App() {
       .filter((keyword) => !needle || keyword.toLocaleLowerCase().includes(needle))
       .map((keyword) => ({ keyword, ranking: rankingByKeyword.get(keyword.toLocaleLowerCase()) }));
   }, [keywordMap, locale, query, rankingByKeyword]);
+
+  const positionSummary = useMemo(() => {
+    const ranked = rows.filter((row) => row.ranking?.today != null);
+    const top10 = ranked.filter((row) => (row.ranking?.today ?? 999) <= 10).length;
+    const average = ranked.length
+      ? ranked.reduce((sum, row) => sum + (row.ranking?.today ?? 0), 0) / ranked.length
+      : null;
+    const improved = rows.filter((row) => {
+      const change = delta(row.ranking?.yesterday ?? null, row.ranking?.today ?? null);
+      return change != null && change > 0;
+    }).length;
+    return { total: rows.length, ranked: ranked.length, top10, average, improved };
+  }, [rows]);
 
   const pageCount = pageSize > 0 ? Math.max(1, Math.ceil(rows.length / pageSize)) : 1;
   const pagedRows = useMemo(
@@ -314,12 +501,17 @@ export default function App() {
     let unsubscribe: (() => void) | null = null;
     getSnapshotState()
       .then((state) => {
-        if (!state.running) return;
+        if (!state.running) {
+          setRefreshing(false);
+          setRowUpdates({});
+          if (state.finalEvent) setProgress(state.finalEvent);
+          return;
+        }
         setRefreshing(true);
         if (state.lastProgress) setProgress(state.lastProgress);
         unsubscribe = subscribeToSnapshot(applySnapshotEvent);
       })
-      .catch(() => { /* server not up yet — the manual refresh path still works */ });
+      .catch(() => { /* server not up yet; the manual refresh path still works */ });
     return () => { if (unsubscribe) unsubscribe(); };
   }, [applySnapshotEvent]);
 
@@ -374,7 +566,7 @@ export default function App() {
       setRowUpdates((current) => ({ ...current, [keyword]: { status: 'done' } }));
     } catch (error) {
       setRowUpdates((current) => ({ ...current, [keyword]: { status: 'error' } }));
-      setDialog({ kind: 'error', title: 'Keyword update failed', message: (error as Error).message });
+      setDialog({ kind: 'error', title: 'Не удалось обновить ключевое слово', message: (error as Error).message });
     }
   };
 
@@ -384,7 +576,7 @@ export default function App() {
       const lookup = await api.itunesLookup(id.trim(), 'us') as {
         trackName?: string; bundleId?: string; artworkUrl100?: string; trackId?: number;
       };
-      if (!lookup) throw new Error('App was not found in the selected storefront.');
+      if (!lookup) throw new Error('Приложение не найдено в выбранной витрине.');
       const name = lookup.trackName ?? `App ${id.trim()}`;
       const created = await api.addApp({
         id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
@@ -399,7 +591,7 @@ export default function App() {
     } catch (error) {
       setDialog({
         kind: 'error',
-        title: 'Could not add app',
+        title: 'Не удалось добавить приложение',
         message: (error as Error).message,
       });
     }
@@ -424,49 +616,56 @@ export default function App() {
 
   const openKeywordsDialog = () => setDialog({
     kind: 'keywords',
-    title: 'Add keywords',
-    message: `Add keywords to ${locale.toUpperCase()}. Use a new line or comma between phrases.`,
+    title: 'Добавить ключевые слова',
+    message: `Добавьте ключевые слова для ${locale.toUpperCase()}. Разделяйте фразы запятой или новой строкой.`,
     placeholder: 'habit tracker\ndaily habits\nroutine planner',
   });
 
   const openLocaleDialog = () => setDialog({
     kind: 'locale',
-    title: 'Add locale',
-    message: 'Enter an App Store storefront code.',
+    title: 'Добавить регион',
+    message: 'Выберите код витрины App Store.',
     placeholder: 'us',
   });
 
   const openAppDialog = () => setDialog({
     kind: 'app',
-    title: 'Add app',
-    message: 'Search the App Store by name, bundle ID, or paste a numeric App Store ID.',
-    placeholder: 'Search apps or enter App Store ID',
+    title: 'Добавить приложение',
+    message: 'Найдите приложение по названию, bundle ID или вставьте числовой App Store ID.',
+    placeholder: 'Найти приложение или ввести App Store ID',
   });
 
   const findSuggestions = async () => {
     if (!selectedApp || !locale || suggestionsLoading) return;
     setSuggestionsLoading(true);
+    setSuggestionsError(null);
     try {
       setSuggestions(await api.suggestions(selectedApp.id, locale));
     } catch (error) {
-      setDialog({ kind: 'error', title: 'Suggestions unavailable', message: (error as Error).message });
+      setSuggestionsError((error as Error).message);
     } finally {
       setSuggestionsLoading(false);
     }
   };
 
-  // Top competitors across all tracked keywords of the selected app.
-  useEffect(() => {
-    if (!selectedApp) return;
-    let cancelled = false;
-    setCompetitorSummary([]);
-    api.competitors(selectedApp.id)
-      .then((rows) => { if (!cancelled) setCompetitorSummary(rows); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [selectedApp]);
+  const openKeywordView = (next: KeywordView) => {
+    setView('keywords');
+    setKeywordView(next);
+    setMobileNavOpen(false);
+  };
 
-  // Per-locale averages for the Overview grid — one request per app, cached.
+  useEffect(() => {
+    if (view === 'keywords' && keywordView === 'ideas' && !suggestions && !suggestionsLoading && selectedApp && locale) {
+      void findSuggestions();
+    }
+  }, [keywordView, locale, selectedAppID, view]);
+
+  useEffect(() => {
+    setSuggestions(null);
+    setSuggestionsError(null);
+  }, [locale, selectedAppID]);
+
+  // Per-locale averages for the Overview grid, one request per app, cached.
   useEffect(() => {
     if (view !== 'overview' || !apps.length) return;
     let cancelled = false;
@@ -482,9 +681,9 @@ export default function App() {
         event.preventDefault();
         setDialog({
           kind: 'app',
-          title: 'Add app',
-          message: 'Search the App Store by name, bundle ID, or paste a numeric App Store ID.',
-          placeholder: 'Search apps or enter App Store ID',
+          title: 'Добавить приложение',
+          message: 'Найдите приложение по названию, bundle ID или вставьте числовой App Store ID.',
+          placeholder: 'Найти приложение или ввести App Store ID',
         });
       }
     };
@@ -494,8 +693,8 @@ export default function App() {
 
   const requestDeleteApp = (app: AppStats) => setDialog({
     kind: 'delete-app',
-    title: `Delete “${app.name}”?`,
-    message: 'This permanently removes all keyword lists, snapshot history, and the app itself from tracking. This cannot be undone.',
+    title: `Удалить «${app.name}»?`,
+    message: 'Будут навсегда удалены списки ключевых слов, история снимков и само приложение из отслеживания. Отменить действие нельзя.',
     value: app.id,
   });
 
@@ -530,6 +729,7 @@ export default function App() {
     const current = keywordMap[locale] ?? [];
     await saveKeywords({ ...keywordMap, [locale]: Array.from(new Set([...current, ...selected])) });
     setSuggestions(null);
+    setKeywordView('positions');
   };
 
   if (!loading && apps.length === 0) {
@@ -538,8 +738,8 @@ export default function App() {
         <div className="empty-card">
           <div className="brand-mark">K</div>
           <h1>ASO Keywords</h1>
-          <p>Add an App Store app to start tracking keyword positions.</p>
-          <button className="button button-primary" onClick={openAppDialog}>Add first app</button>
+          <p>Добавьте приложение из App Store, чтобы отслеживать позиции по ключевым словам.</p>
+          <button className="button button-primary" onClick={openAppDialog}>Добавить первое приложение</button>
           {dialog && <InputDialog dialog={dialog} busy={dialogBusy} existingLocales={Object.keys(keywordMap)} onClose={() => setDialog(null)} onSubmit={submitDialog} />}
         </div>
       </main>
@@ -547,13 +747,13 @@ export default function App() {
   }
 
   return (
-    <main className="workspace">
-      <aside className="sidebar">
+    <div className="workspace">
+      <aside className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-titlebar">
-          <button className="brand-mark brand-button" onClick={() => setStudioMenuOpen((open) => !open)} aria-label="Switch studio">K</button>
-          <div>
-            <strong>Keywords</strong>
-            <span>ASO workspace</span>
+          <button className="brand-mark brand-button" onClick={() => setStudioMenuOpen((open) => !open)} aria-label="Переключить инструмент студии">K</button>
+          <div className="brand-copy">
+            <strong>ASO Studio</strong>
+            <span>Аналитика ключевых слов</span>
           </div>
           {studioMenuOpen && (
             <div className="menu studio-menu" onMouseLeave={() => setStudioMenuOpen(false)}>
@@ -569,63 +769,112 @@ export default function App() {
           )}
         </div>
 
-        <nav className="utility-nav">
-          <button className={view === 'overview' ? 'selected' : ''} onClick={() => setView('overview')}>
-            <span>▦</span> Overview
+        <nav className="utility-nav" aria-label="Рабочая область">
+          <button className={view === 'overview' ? 'selected' : ''} onClick={() => { setView('overview'); setMobileNavOpen(false); }}>
+            <span className="nav-label">Обзор</span>
           </button>
-          <button className={view === 'keywords' ? 'selected' : ''} onClick={() => setView('keywords')}>
-            <span>≣</span> Keywords
+          <button className={view === 'funnel' ? 'selected' : ''} onClick={() => { setView('funnel'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
+            <span className="nav-label">Воронка</span>
+          </button>
+          <button className={view === 'matrix' ? 'selected' : ''} onClick={() => { setView('matrix'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
+            <span className="nav-label">Матрица решений</span>
+          </button>
+          <button className={view === 'keywords' && keywordView === 'positions' ? 'selected' : ''} onClick={() => openKeywordView('positions')}>
+            <span className="nav-label">Ключевые слова</span>
+          </button>
+          <button className={view === 'traffic' ? 'selected' : ''} onClick={() => { setView('traffic'); setMobileNavOpen(false); }}>
+            <span className="nav-label">Аналитика трафика</span>
+          </button>
+          <button className={view === 'competitors' ? 'selected' : ''} onClick={() => { setView('competitors'); setMobileNavOpen(false); }} disabled={!selectedApp}>
+            <span className="nav-label">Конкуренты</span>
+          </button>
+          <button className={view === 'experiments' ? 'selected' : ''} onClick={() => { setView('experiments'); setMobileNavOpen(false); }} disabled={!selectedApp}>
+            <span className="nav-label">Эксперименты</span>
+          </button>
+          <button className={view === 'keywords' && keywordView === 'ideas' ? 'selected' : ''} onClick={() => openKeywordView('ideas')} disabled={!selectedApp || !locale}>
+            <span className="nav-label">Идеи</span>
+          </button>
+          <button className={view === 'keywords' && keywordView === 'analytics' ? 'selected' : ''} onClick={() => openKeywordView('analytics')} disabled={!selectedApp}>
+            <span className="nav-label">Аналитика</span>
           </button>
         </nav>
 
-        <div className="sidebar-section-label sidebar-apps-label">Apps</div>
-        <div className="app-list">
-          {apps.map((app) => (
-            <div className={`app-item ${view === 'keywords' && selectedApp?.id === app.id ? 'selected' : ''}`} key={app.id}>
-              <button className="app-item-main" onClick={() => { setSelectedAppID(app.id); setView('keywords'); }}>
-                <AppIcon app={app} />
-                <span className="app-item-copy">
-                  <strong>{app.name}</strong>
-                  <small> iPhone · {app.keywords} keywords</small>
-                </span>
-              </button>
-              <button className="app-item-delete" title={`Delete ${app.name}`} onClick={() => requestDeleteApp(app)}>×</button>
-            </div>
-          ))}
-        </div>
-
+        <div className="rail-spacer" />
+        <a className="rail-link" href="/asa/">Apple Ads</a>
         <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
-          {theme === 'dark' ? '☀︎ Light mode' : '☾ Dark mode'}
+          {theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
         </button>
-        <button className="add-app-button" onClick={openAppDialog}>Add App <span>＋</span></button>
       </aside>
 
+      {mobileNavOpen && <button className="mobile-nav-scrim" onClick={() => setMobileNavOpen(false)} aria-label="Закрыть навигацию" />}
+
+      <div className="main-shell">
+        <header className="context-bar">
+          <button className="mobile-nav-toggle" onClick={() => setMobileNavOpen(true)} aria-label="Открыть навигацию">Меню</button>
+          {selectedApp && (
+            <label className="app-context-control">
+              <AppIcon app={selectedApp} size={24} />
+              <span className="sr-only">Приложение</span>
+              <select value={selectedApp.id} onChange={(event) => setSelectedAppID(event.target.value)} aria-label="Выбранное приложение">
+                {apps.map((app) => <option key={app.id} value={app.id}>{app.name}</option>)}
+              </select>
+            </label>
+          )}
+          {locale && view !== 'overview' && view !== 'funnel' && view !== 'matrix' && view !== 'traffic' && view !== 'experiments' && (
+            <label className="context-control">
+              <span className="sr-only">Витрина</span>
+              <select value={locale} onChange={(event) => setLocale(event.target.value)} aria-label="Витрина">
+                {Object.keys(keywordMap).sort().map((code) => (
+                  <option key={code} value={code}>{localeFlag(code)} {code.toUpperCase()}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <span className="context-freshness" aria-live="polite">
+            {freshnessLabel(selectedApp?.lastSnapshot)}
+          </span>
+          <span className="context-spacer" />
+          <button className="context-action" onClick={openAppDialog}>Добавить приложение</button>
+        </header>
+
       {view === 'overview' ? (
-        <OverviewScreen
+        <Overview
           apps={apps}
           localeAvgByApp={localeAvgByApp}
-          onOpenApp={(id) => { setSelectedAppID(id); setView('keywords'); }}
+          onOpenApp={(id) => { setSelectedAppID(id); setKeywordView('positions'); setView('keywords'); }}
           onDeleteApp={requestDeleteApp}
           onRunAll={() => startSnapshot('all')}
           refreshing={refreshing}
           progress={progress}
         />
-      ) : (
+      ) : view === 'keywords' ? (
       <section className="content">
-        <header className="toolbar">
+        <header className="view-header">
+          <div className="page-title-row">
+            <div>
+              <h1>{keywordView === 'positions' ? 'Ключевые слова' : keywordView === 'analytics' ? 'Динамика позиций' : 'Идеи ключевых слов'}</h1>
+              <p>{keywordView === 'positions'
+                ? 'Отслеживайте позиции, релевантность и приложения, лидирующие по каждому запросу.'
+                : keywordView === 'analytics'
+                  ? 'Сравнивайте рост, падение и видимость ключевых слов за выбранный период.'
+                  : 'Проверяйте подсказки Apple и запросы конкурентов перед добавлением в отслеживание.'}</p>
+            </div>
+            {keywordView === 'positions' ? <button className="button button-primary" onClick={openKeywordsDialog}>Добавить ключевые слова</button> : null}
+          </div>
+        {keywordView === 'positions' && <div className="toolbar">
           <div className="update-cluster">
-            <button className="toolbar-labeled" onClick={refresh} disabled={refreshing} aria-label="Update rankings">
-              <span className={refreshing ? 'spinning' : ''}>↻</span> Update
+            <button className="toolbar-labeled" onClick={refresh} disabled={refreshing} aria-label="Обновить позиции">
+              <span className={refreshing ? 'spinning' : ''}>↻</span> Обновить
             </button>
-            <button className="toolbar-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Snapshot options">▾</button>
+            <button className="toolbar-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Параметры снимка">▾</button>
             {updateMenuOpen && (
               <div className="menu update-menu" onMouseLeave={() => setUpdateMenuOpen(false)}>
-                <div className="menu-label">Update rankings — what to check</div>
-                <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>This locale ({locale.toUpperCase()})</strong><small>keywords of the current locale only</small></button>
-                <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Whole app ({selectedApp?.name})</strong><small>every locale of this app</small></button>
-                <button onClick={() => startSnapshot('all')} disabled={refreshing}><strong>All apps</strong><small>every app, every locale</small></button>
+                <div className="menu-label">Область обновления позиций</div>
+                <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>Этот регион ({locale.toUpperCase()})</strong><small>только ключевые слова текущего региона</small></button>
+                <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Всё приложение ({selectedApp?.name})</strong><small>все регионы этого приложения</small></button>
+                <button onClick={() => startSnapshot('all')} disabled={refreshing}><strong>Все приложения</strong><small>каждое приложение и каждый регион</small></button>
                 <div className="menu-separator" />
-                <div className="menu-label">Update speed</div>
+                <div className="menu-label">Скорость обновления</div>
                 {(Object.keys(SPEED_PRESETS) as SnapshotSpeed[]).map((speed) => (
                   <button key={speed} onClick={() => changeSpeed(speed)}>
                     <strong>{SPEED_PRESETS[speed].label}</strong>
@@ -633,68 +882,57 @@ export default function App() {
                     {snapshotSpeed === speed && <b>✓</b>}
                   </button>
                 ))}
-                {refreshing && (
-                  <>
-                    <div className="menu-separator" />
-                    <button className="menu-danger" onClick={() => { abortSnapshot().catch(() => {}); setUpdateMenuOpen(false); }}>
-                      <strong>Stop update</strong><small>finishes the current keyword and exits</small>
-                    </button>
-                  </>
-                )}
               </div>
             )}
           </div>
-          <div className="toolbar-title">Keywords</div>
-          <select className="toolbar-pill locale-select" value={locale} onChange={(event) => setLocale(event.target.value)}>
-            {Object.keys(keywordMap).sort().map((code) => (
-              <option key={code} value={code}>{localeFlag(code)} {code.toUpperCase()}</option>
-            ))}
-          </select>
-          <button className="toolbar-labeled" onClick={openLocaleDialog} aria-label="Add locale">＋ Locale</button>
+          <button className="toolbar-labeled" onClick={openLocaleDialog} aria-label="Добавить регион">＋ Регион</button>
 
           <span className="toolbar-spacer" />
 
           {refreshing && (
             <span className="snapshot-status">
-              <i /> Updating {progress?.completed ?? 0}/{progress?.total ?? rows.length}
-              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Stop update">■ Stop</button>
+              <i /> {snapshotStatusText(progress, rows.length)}
+              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Остановить обновление">■ Стоп</button>
             </span>
           )}
           <button
             className={`toolbar-labeled relevance-toggle ${relevanceOn ? 'active' : ''}`}
             onClick={() => setRelevanceOn((on) => !on)}
-            title="Show whether each keyword's top-5 apps match your genre"
-          >◎ Relevance</button>
-          <button className="toolbar-labeled" onClick={() => setAnalyticsOpen(true)} title="Position movement across all keywords">∿ Analytics</button>
-          <button className="button button-primary" onClick={openKeywordsDialog}>Add Keywords <span>＋</span></button>
-          <button className="button button-suggestion" onClick={findSuggestions} disabled={suggestionsLoading}>
-            {suggestionsLoading ? 'Finding…' : suggestions ? `${suggestions.length} Suggestions` : 'Find Suggestions'} <span>✦</span>
-          </button>
+            title="Показывает, совпадает ли жанр приложений из топ-5 с жанром вашего приложения"
+          >◎ Релевантность</button>
           <label className="search-field">
             <span>⌕</span>
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search keywords" />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск ключевых слов" />
           </label>
+        </div>}
         </header>
 
-        <div className="table-wrap">
+        {keywordView === 'positions' ? <>
+        <section className="rankings-summary" aria-label="Сводка позиций">
+          <div><span>Отслеживается</span><strong>{positionSummary.total}</strong><small>ключевых слов</small></div>
+          <div><span>В выдаче</span><strong>{positionSummary.ranked}</strong><small>из {positionSummary.total}</small></div>
+          <div><span>В топ-10</span><strong>{positionSummary.top10}</strong><small>Рост за сутки: {positionSummary.improved}</small></div>
+          <div><span>Средняя позиция</span><strong>{positionSummary.average == null ? 'Нет данных' : `#${positionSummary.average.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`}</strong><small>по найденным ключам</small></div>
+        </section>
+        <div className="table-wrap rankings-table-wrap">
           <table className="keyword-table">
             <thead>
               <tr>
-                <th className="keyword-column">Keyword <span>ⓘ</span></th>
-                <th>Last update</th>
-                <th>Position <span>ⓘ</span></th>
-                <th>24 hours</th>
-                <th>7 days</th>
-                <th>Trend</th>
-                <th>Apps in ranking <span>ⓘ</span></th>
-                <th aria-label="Actions" />
+                <th className="keyword-column">Ключевое слово <span title="Поисковый запрос, по которому отслеживается приложение">ⓘ</span></th>
+                <th>Обновлено</th>
+                <th>Позиция <span title="Место приложения в результатах поиска App Store; меньше — лучше">ⓘ</span></th>
+                <th>24 часа</th>
+                <th>7 дней</th>
+                <th>Тренд</th>
+                <th>Приложения в выдаче <span title="Первые пять приложений в выдаче; нажмите иконку, чтобы открыть карточку конкурента">ⓘ</span></th>
+                <th aria-label="Действия" />
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 14 }).map((_, index) => <SkeletonRow key={index} />)
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8}><div className="table-empty">No keywords in this locale yet.</div></td></tr>
+                <tr><td colSpan={8}><div className="table-empty">В этом регионе пока нет ключевых слов.</div></td></tr>
               ) : pagedRows.map(({ keyword, ranking }) => (
                 <KeywordRow
                   key={keyword}
@@ -702,35 +940,21 @@ export default function App() {
                   ranking={ranking}
                   onRemove={() => removeKeyword(keyword)}
                   artworks={artworks}
+                  onEnsureArtworks={ensureArtworkForTop5}
                   updateState={rowUpdates[keyword]}
                   onRefresh={() => refreshOne(keyword)}
                   onOpenCompetitor={setCompetitorBundle}
                   onOpenDetail={() => setDetailKeyword(keyword)}
                   relevance={relevanceOn ? relevance[`${locale}|${keyword.toLocaleLowerCase()}`] : undefined}
-                  onCopyPrompt={() => copyClaudePrompt(keyword)}
+                  ownApp={selectedApp}
                 />
               ))}
             </tbody>
           </table>
-
-          {competitorSummary.length > 0 && (
-            <div className="competitor-strip">
-              <div className="sidebar-section-label">Top competitors across your tracked keywords</div>
-              <div className="competitor-strip-chips">
-                {competitorSummary.slice(0, 20).map((competitor) => (
-                  <button key={competitor.bundleId} onClick={() => setCompetitorBundle(competitor.bundleId)}>
-                    <strong>{competitor.name}</strong>
-                    <span>{competitor.appearances}×</span>
-                    <small>avg #{competitor.avgRank}</small>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <footer className="statusbar">
-          <span>{rows.length} keywords</span>
+          <span>{rows.length} ключевых слов</span>
           <span>{localeFlag(locale)} {locale.toUpperCase()}</span>
           {pageSize > 0 && pageCount > 1 && (
             <span className="pager">
@@ -740,17 +964,52 @@ export default function App() {
             </span>
           )}
           <select className="page-size" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
-            <option value={0}>All rows</option>
-            <option value={25}>25 / page</option>
-            <option value={50}>50 / page</option>
-            <option value={100}>100 / page</option>
+            <option value={0}>Все строки</option>
+            <option value={25}>25 / стр.</option>
+            <option value={50}>50 / стр.</option>
+            <option value={100}>100 / стр.</option>
           </select>
           <span className="statusbar-spacer" />
-          <span>Top 10: <strong>{rows.filter((row) => (row.ranking?.today ?? 999) <= 10).length}</strong></span>
-          <span>Ranked: <strong>{rows.filter((row) => row.ranking?.today != null).length}</strong></span>
+          <span>Последний снимок: <strong>{freshnessLabel(selectedApp?.lastSnapshot)}</strong></span>
         </footer>
+        </> : keywordView === 'ideas' ? (
+          <SuggestionsPanel
+            locale={locale}
+            suggestions={suggestions ?? []}
+            loading={suggestionsLoading}
+            error={suggestionsError}
+            onReload={() => void findSuggestions()}
+            onAdd={addSelectedSuggestions}
+          />
+        ) : (
+          <AnalyticsPanel apps={apps} initialApp={selectedApp?.id ?? ''} />
+        )}
       </section>
+      ) : view === 'competitors' ? (
+        selectedApp ? <Competitors app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} /> : null
+      ) : view === 'matrix' ? (
+        selectedApp ? <DecisionMatrix app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId, bundle: selectedApp.bundle, iconUrl: selectedApp.iconUrl }} locale={locale} artworks={artworks} sharedTopFive={sharedTopFive} sharedTopFiveStatus={sharedTopFiveStatus} onResolveTopFive={resolveTopFive} onEnsureArtworks={ensureArtworkForTop5} /> : null
+      ) : view === 'funnel' ? (
+        selectedApp ? <AcquisitionFunnel app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} countries={Object.keys(keywordMap)} /> : null
+      ) : view === 'experiments' ? (
+        selectedApp ? <Experiments app={{ id: selectedApp.id, name: selectedApp.name }} locales={Object.keys(keywordMap)} activeLocale={locale} /> : null
+      ) : (
+        selectedApp ? (
+          <TrafficIntelligence
+            className="content"
+            app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId, bundle: selectedApp.bundle, iconUrl: selectedApp.iconUrl }}
+            locale={locale}
+            rankings={rankings}
+            artworks={artworks}
+            sharedTopFive={sharedTopFive}
+            sharedTopFiveStatus={sharedTopFiveStatus}
+            onResolveTopFive={resolveTopFive}
+            onEnsureArtworks={ensureArtworkForTop5}
+            onOpenCompetitor={(bundleID) => setCompetitorBundle(bundleID)}
+          />
+        ) : null
       )}
+      </div>
       {dialog && <InputDialog dialog={dialog} busy={dialogBusy} existingLocales={Object.keys(keywordMap)} onClose={() => setDialog(null)} onSubmit={submitDialog} />}
       {detailKeyword && selectedApp && (
         <KeywordDrawer
@@ -759,6 +1018,7 @@ export default function App() {
           relevance={relevance[`${locale}|${detailKeyword.toLocaleLowerCase()}`]}
           locale={locale}
           artworks={artworks}
+          ownApp={selectedApp}
           onClose={() => setDetailKeyword(null)}
           onRefresh={() => refreshOne(detailKeyword)}
           onCopyPrompt={() => copyClaudePrompt(detailKeyword)}
@@ -773,29 +1033,14 @@ export default function App() {
           onClose={() => setCompetitorBundle(null)}
         />
       )}
-      {suggestions && (
-        <SuggestionsDialog
-          locale={locale}
-          suggestions={suggestions}
-          onClose={() => setSuggestions(null)}
-          onAdd={addSelectedSuggestions}
-        />
-      )}
-      {analyticsOpen && (
-        <AnalyticsDialog
-          apps={apps}
-          initialApp={selectedApp?.id ?? ''}
-          onClose={() => setAnalyticsOpen(false)}
-        />
-      )}
-    </main>
+    </div>
   );
 }
 
 const RELEVANCE_LABEL: Record<RelevanceRow['flag'], string> = {
-  match: 'Relevant',
-  ambiguous: 'Mixed',
-  mismatch: 'Off-genre',
+  match: 'Релевантно',
+  ambiguous: 'Смешанно',
+  mismatch: 'Не по жанру',
   unknown: '?',
 };
 
@@ -808,8 +1053,9 @@ function KeywordRow({
   onRefresh,
   onOpenCompetitor,
   onOpenDetail,
+  onEnsureArtworks,
   relevance,
-  onCopyPrompt,
+  ownApp,
 }: {
   keyword: string;
   ranking?: RankingRow;
@@ -819,53 +1065,40 @@ function KeywordRow({
   onRefresh: () => void;
   onOpenCompetitor: (bundleID: string) => void;
   onOpenDetail: () => void;
+  onEnsureArtworks: (candidates: TopFiveCandidate[], country: string) => void;
   relevance?: RelevanceRow;
-  onCopyPrompt: () => Promise<void>;
+  ownApp?: OwnAppIdentity;
 }) {
-  const [promptState, setPromptState] = useState<'idle' | 'copying' | 'copied'>('idle');
   const dayDelta = delta(ranking?.yesterday ?? null, ranking?.today ?? null);
   const weekDelta = delta(ranking?.w1 ?? null, ranking?.today ?? null);
   const tone = rankTone(ranking?.today ?? null);
 
-  const copyPrompt = async () => {
-    if (promptState !== 'idle') return;
-    setPromptState('copying');
-    try {
-      await onCopyPrompt();
-      setPromptState('copied');
-      window.setTimeout(() => setPromptState('idle'), 1500);
-    } catch {
-      setPromptState('idle');
-    }
-  };
-
   return (
     <tr>
-      <td className="keyword-cell" onClick={onOpenDetail} style={{ cursor: 'pointer' }}>
+      <td className="keyword-cell">
+        <button className="keyword-open" type="button" onClick={onOpenDetail} aria-label={`Открыть аналитику ключевого слова ${keyword}`}>
         <strong>{keyword}</strong>
         {ranking?.today != null && ranking.today <= 10 && <span className="keyword-dot" />}
         {relevance && (
           <span
             className={`relevance-chip relevance-${relevance.flag}`}
-            title={`Top-5 genre match: ${relevance.matchCount}/5 · ${relevance.genreHistogram.map((g) => `${g.genre} ×${g.count}`).join(', ')}`}
+            title={`Совпадение жанра в топ-5: ${relevance.matchCount}/5 · ${relevance.genreHistogram.map((g) => `${g.genre} ×${g.count}`).join(', ')}`}
           >
             {RELEVANCE_LABEL[relevance.flag]}
           </span>
         )}
+        </button>
       </td>
       <td><UpdateStatus state={updateState} timestamp={ranking?.lastUpdated} /></td>
-      <td><span className={`rank rank-${tone}`}>{ranking?.today ? `# ${ranking.today}` : '# —'}</span></td>
+      <td><span className={`rank rank-${tone}`}>{ranking?.today ? `#${ranking.today}` : 'Нет в выдаче'}</span></td>
       <td><Delta value={dayDelta} /></td>
       <td><Delta value={weekDelta} /></td>
       <td><MiniTrend values={ranking?.trend ?? []} /></td>
-      <td><TopApps apps={ranking?.top5 ?? []} artworks={artworks} onOpen={onOpenCompetitor} /></td>
+      <td><TopApps apps={ranking?.top5 ?? []} artworks={artworks} onOpen={onOpenCompetitor} ownApp={ownApp} country={ranking?.locale ?? 'us'} onEnsureArtworks={onEnsureArtworks} /></td>
       <td>
         <div className="row-actions">
-          <button className="row-action row-prompt" onClick={copyPrompt} title="Copy Claude research prompt for this keyword">
-            {promptState === 'copied' ? '✓' : '✦'}
-          </button>
-          <button className="row-action row-refresh" onClick={onRefresh} title="Update this keyword">↻</button>
-          <button className="row-action row-remove" onClick={onRemove} title="Remove keyword">×</button>
+          <button className="row-action row-refresh" onClick={onRefresh} title="Обновить это ключевое слово" aria-label={`Обновить ${keyword}`}>↻</button>
+          <button className="row-action row-remove" onClick={onRemove} title="Удалить ключевое слово" aria-label={`Удалить ${keyword}`}>×</button>
         </div>
       </td>
     </tr>
@@ -874,25 +1107,25 @@ function KeywordRow({
 
 function UpdateStatus({ state, timestamp }: { state?: RowUpdateState; timestamp?: number | null }) {
   if (!state) return <span className="muted-cell">{formatRelativeTime(timestamp)}</span>;
-  if (state.status === 'queued') return <span className="update-status update-queued"><i /> Queued</span>;
-  if (state.status === 'updating') return <span className="update-status update-running"><i /> Updating</span>;
+  if (state.status === 'queued') return <span className="update-status update-queued"><i /> В очереди</span>;
+  if (state.status === 'updating') return <span className="update-status update-running"><i /> Обновление</span>;
   if (state.status === 'retrying') return (
-    <span className="update-status update-retry"><i /> Retry {state.attempt}/{state.maxAttempts}</span>
+    <span className="update-status update-retry"><i /> Повтор {state.attempt}/{state.maxAttempts}</span>
   );
-  if (state.status === 'error') return <span className="update-status update-error"><i /> Failed</span>;
-  return <span className="update-status update-done"><i /> Just now</span>;
+  if (state.status === 'error') return <span className="update-status update-error"><i /> Ошибка</span>;
+  return <span className="update-status update-done"><i /> Только что</span>;
 }
 
 function formatRelativeTime(timestamp?: number | null) {
-  if (!timestamp) return 'Not updated';
+  if (!timestamp) return 'Не обновлялось';
   const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
-  if (seconds < 60) return 'Just now';
+  if (seconds < 60) return 'Только что';
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min ago`;
+  if (minutes < 60) return `${minutes} мин назад`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hr ago`;
+  if (hours < 24) return `${hours} ч назад`;
   const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
+  return `${days} дн. назад`;
 }
 
 function Delta({ value }: { value: number | null }) {
@@ -901,68 +1134,84 @@ function Delta({ value }: { value: number | null }) {
 }
 
 function MiniTrend({ values }: { values: number[] }) {
-  if (values.length < 2) return <span className="muted-cell">—</span>;
-  const width = 76;
-  const height = 22;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  const titleId = useId();
+  const cleanValues = values.filter((value) => Number.isFinite(value) && value > 0).slice(-16);
+  if (cleanValues.length < 2) return <span className="muted-cell">—</span>;
+  const width = 104;
+  const height = 30;
+  const inset = 3;
+  const min = Math.min(...cleanValues);
+  const max = Math.max(...cleanValues);
   const range = max - min || 1;
-  const points = values.map((value, index) => {
-    const x = index * (width / (values.length - 1));
-    const y = 3 + ((value - min) / range) * (height - 6);
-    return `${x},${y}`;
-  }).join(' ');
-  return <svg className="mini-trend" viewBox={`0 0 ${width} ${height}`}><polyline points={points} /></svg>;
+  const points = cleanValues.map((value, index) => ({
+    x: inset + index * ((width - inset * 2) / (cleanValues.length - 1)),
+    y: inset + ((value - min) / range) * (height - inset * 2),
+  }));
+  const line = points.slice(1).reduce((path, point, index) => {
+    const previous = points[index];
+    const dx = point.x - previous.x;
+    return `${path} C ${previous.x + dx * .45},${previous.y} ${point.x - dx * .45},${point.y} ${point.x},${point.y}`;
+  }, `M ${points[0].x},${points[0].y}`);
+  const area = `${line} L ${points.at(-1)!.x},${height - 1} L ${points[0].x},${height - 1} Z`;
+  const start = cleanValues[0];
+  const end = cleanValues.at(-1)!;
+  const tone = end < start ? 'positive' : end > start ? 'negative' : 'neutral';
+  const label = `Позиция изменилась с ${start} на ${end}. Меньше значит лучше.`;
+  return (
+    <svg className={`position-trend position-trend-${tone}`} viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={titleId}>
+      <title id={titleId}>{label}</title>
+      <path className="position-trend-area" d={area} />
+      <path className="position-trend-line" d={line} />
+      <circle className="position-trend-end" cx={points.at(-1)!.x} cy={points.at(-1)!.y} r="2" />
+    </svg>
+  );
 }
 
-function TopApps({ apps, artworks, onOpen }: {
-  apps: Array<{ name: string; id: string; dev: string; tid?: number }>;
+function TopApps({ apps, artworks, onOpen, ownApp, country, onEnsureArtworks }: {
+  apps: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
   artworks: Record<string, string>;
   onOpen: (bundleID: string) => void;
+  ownApp?: OwnAppIdentity;
+  country: string;
+  onEnsureArtworks: (candidates: TopFiveCandidate[], country: string) => void;
 }) {
-  if (!apps.length) return <span className="muted-cell">No data</span>;
+  const rootRef = useRef<HTMLDivElement>(null);
+  const ensureRef = useRef(onEnsureArtworks);
+  useEffect(() => { ensureRef.current = onEnsureArtworks; }, [onEnsureArtworks]);
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    const load = () => ensureRef.current(apps, country);
+    if (typeof IntersectionObserver === 'undefined') { load(); return; }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) { load(); observer.disconnect(); }
+    }, { rootMargin: '240px 0px' });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [apps, country]);
+  if (!apps.length) return <span className="muted-cell">Нет данных</span>;
   return (
-    <div className="top-apps">
+    <div className="top-apps" ref={rootRef}>
       {apps.slice(0, 5).map((app, index) => {
-        const artwork = (app.tid ? artworks[String(app.tid)] : undefined) ?? artworks[app.id];
+        const own = isOwnAppResult(app, ownApp);
+        const artwork = (own ? ownApp?.iconUrl : undefined) ?? (app.tid ? artworks[String(app.tid)] : undefined) ?? artworks[app.id];
+        const position = app.pos ?? index + 1;
         return (
-          <button className="competitor-button" key={`${app.id}-${index}`} title={`${index + 1}. ${app.name}`} onClick={() => onOpen(app.id)}>
-            {artwork ? (
-              <ArtworkIcon url={artwork} fallback={app.name.trim().slice(0, 1).toUpperCase()} />
-            ) : (
-              <span className="competitor-icon">{app.name.trim().slice(0, 1).toUpperCase()}</span>
-            )}
+          <button
+            type="button"
+            className={`competitor-button ${own ? 'own-app' : ''}`}
+            key={`${app.id}-${index}`}
+            title={`#${position} ${app.name}${own ? ' · Наше приложение' : ''}`}
+            aria-label={`Позиция ${position}: ${app.name}${own ? ', наше приложение' : ''}`}
+            onClick={own ? undefined : () => onOpen(app.id)}
+          >
+            <TopFiveArtwork url={artwork} label={`Иконка ${app.name}`} fallback={app.name} className="competitor-icon" />
+            {own ? <span className="own-app-check" aria-hidden="true">✓</span> : null}
           </button>
         );
       })}
       {apps.length > 5 && <small>+{apps.length - 5}</small>}
     </div>
-  );
-}
-
-function ArtworkIcon({ url, fallback }: { url: string; fallback: string }) {
-  const [loaded, setLoaded] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  useEffect(() => {
-    setLoaded(false);
-    setFailed(false);
-    const image = new Image();
-    image.onload = () => setLoaded(true);
-    image.onerror = () => setFailed(true);
-    image.src = url;
-    if (image.complete && image.naturalWidth > 0) setLoaded(true);
-    return () => {
-      image.onload = null;
-      image.onerror = null;
-    };
-  }, [url]);
-
-  return (
-    <span className="competitor-icon artwork-shell">
-      <span className="artwork-fallback">{fallback}</span>
-      {!failed && <img className={loaded ? 'loaded' : ''} src={url} alt="" />}
-    </span>
   );
 }
 
@@ -1013,7 +1262,7 @@ function CompetitorDetail({
         <header className="competitor-header">
           {info?.iconUrl ? <img src={info.iconUrl} alt="" /> : <span>{(info?.name || bundleID).slice(0, 1)}</span>}
           <div>
-            <h2>{loading ? 'Loading…' : info?.name || bundleID}</h2>
+            <h2>{loading ? 'Загрузка…' : info?.name || bundleID}</h2>
             <p>{info?.dev || bundleID}</p>
             <div className="competitor-badges">
               {info?.category && <b>{info.category}</b>}
@@ -1026,30 +1275,30 @@ function CompetitorDetail({
         <div className="competitor-content">
           {info?.screenshotUrls && info.screenshotUrls.length > 0 && (
             <section>
-              <div className="sheet-section-title">Screenshots</div>
+              <div className="sheet-section-title">Скриншоты</div>
               <div className="screenshot-strip">
-                {info.screenshotUrls.map((url) => <img key={url} src={url} alt="App Store screenshot" />)}
+                {info.screenshotUrls.map((url) => <img key={url} src={url} alt="Скриншот App Store" />)}
               </div>
             </section>
           )}
 
           <div className="competitor-stats">
-            <div><strong>{keywords.length}</strong><span>shared keywords</span></div>
-            <div><strong>{new Set(keywords.map((row) => row.locale)).size}</strong><span>locales</span></div>
-            <div><strong>{keywords.length ? (keywords.reduce((sum, row) => sum + row.theirRank, 0) / keywords.length).toFixed(1) : '—'}</strong><span>average rank</span></div>
+            <div><strong>{keywords.length}</strong><span>общих ключевых слов</span></div>
+            <div><strong>{new Set(keywords.map((row) => row.locale)).size}</strong><span>регионов</span></div>
+            <div><strong>{keywords.length ? (keywords.reduce((sum, row) => sum + row.theirRank, 0) / keywords.length).toFixed(1) : '—'}</strong><span>средняя позиция</span></div>
           </div>
 
           {info?.description && (
             <section>
-              <div className="sheet-section-title">About</div>
+              <div className="sheet-section-title">О приложении</div>
               <p className="competitor-description">{info.description}</p>
             </section>
           )}
 
           <section>
-            <div className="sheet-section-title">Subscriptions & purchases · {country.toUpperCase()}</div>
+            <div className="sheet-section-title">Подписки и покупки · {country.toUpperCase()}</div>
             {!pricing || pricing.subscriptions.length + pricing.iap.length === 0 ? (
-              <p className="sheet-empty">No products are visible in this storefront.</p>
+              <p className="sheet-empty">В этой витрине нет доступных продуктов.</p>
             ) : (
               <div className="product-list">
                 {[...pricing.subscriptions, ...pricing.iap].map((product, index) => (
@@ -1060,11 +1309,11 @@ function CompetitorDetail({
           </section>
 
           <section>
-            <div className="sheet-section-title">Recent reviews · {country.toUpperCase()}</div>
-            {!reviews || reviews.reviews.length === 0 ? <p className="sheet-empty">No recent reviews in this storefront.</p> : (
+            <div className="sheet-section-title">Свежие отзывы · {country.toUpperCase()}</div>
+            {!reviews || reviews.reviews.length === 0 ? <p className="sheet-empty">В этой витрине нет свежих отзывов.</p> : (
               <div className="review-list">
                 {reviews.reviews.slice(0, 6).map((review) => (
-                  <article key={review.id}><div><strong>{review.title || 'Review'}</strong><span>{'★'.repeat(review.rating)}</span></div><p>{review.content}</p><small>{review.author}{review.version ? ` · v${review.version}` : ''}</small></article>
+                  <article key={review.id}><div><strong>{review.title || 'Отзыв'}</strong><span>{'★'.repeat(review.rating)}</span></div><p>{review.content}</p><small>{review.author}{review.version ? ` · v${review.version}` : ''}</small></article>
                 ))}
               </div>
             )}
@@ -1072,8 +1321,8 @@ function CompetitorDetail({
         </div>
 
         <footer className="competitor-footer">
-          {info?.storeUrl && <a href={info.storeUrl} target="_blank" rel="noreferrer">Open in App Store ↗</a>}
-          <button onClick={onClose}>Done</button>
+          {info?.storeUrl && <a href={info.storeUrl} target="_blank" rel="noreferrer">Открыть в App Store ↗</a>}
+          <button onClick={onClose}>Готово</button>
         </footer>
       </aside>
     </div>
@@ -1135,9 +1384,9 @@ function InputDialog({
       try {
         const results = await api.itunesSearch(term, 'us', controller.signal);
         setAppResults(results.slice(0, 8));
-        if (!results.length) setAppSearchError('No apps found in the US App Store.');
+        if (!results.length) setAppSearchError('В App Store США приложения не найдены.');
       } catch (error) {
-        if ((error as Error).name !== 'AbortError') setAppSearchError('Search is temporarily unavailable.');
+        if ((error as Error).name !== 'AbortError') setAppSearchError('Поиск временно недоступен.');
       } finally {
         if (!controller.signal.aborted) setAppSearching(false);
       }
@@ -1177,7 +1426,7 @@ function InputDialog({
           <div className="locale-picker">
             <label className="dialog-search">
               <span>⌕</span>
-              <input autoFocus value={localeSearch} onChange={(event) => setLocaleSearch(event.target.value)} placeholder="Search country or code" />
+            <input autoFocus value={localeSearch} onChange={(event) => setLocaleSearch(event.target.value)} placeholder="Найти страну или код" />
             </label>
             <div className="locale-options">
               {localeOptions.map((locale) => (
@@ -1225,7 +1474,7 @@ function InputDialog({
                   </button>
                 ))}
                 {appSearchError && <div className="app-search-empty">{appSearchError}</div>}
-                {!value.trim() && <div className="app-search-empty">Start typing to search the US App Store.</div>}
+                {!value.trim() && <div className="app-search-empty">Начните вводить, чтобы искать в App Store США.</div>}
               </div>
             )}
           </div>
@@ -1235,13 +1484,13 @@ function InputDialog({
           <input autoFocus value={value} onChange={(event) => setValue(event.target.value)} placeholder={dialog.placeholder} inputMode={dialog.kind === 'app' ? 'numeric' : 'text'} />
         ))}
         <div className="dialog-actions">
-          {!isError && <button className="dialog-button dialog-button-secondary" onClick={onClose}>Cancel</button>}
+          {!isError && <button className="dialog-button dialog-button-secondary" onClick={onClose}>Отмена</button>}
           <button
             className={`dialog-button ${isDelete ? 'dialog-button-danger' : 'dialog-button-primary'}`}
             disabled={busy || (!isError && (!value.trim() || (isApp && !appCanSubmit)))}
             onClick={() => onSubmit(value)}
           >
-            {busy ? 'Working…' : isError ? 'Done' : isDelete ? 'Delete app' : dialog.kind === 'keywords' ? 'Add keywords' : dialog.kind === 'locale' ? 'Add locale' : 'Add app'}
+            {busy ? 'Выполняется…' : isError ? 'Готово' : isDelete ? 'Удалить приложение' : dialog.kind === 'keywords' ? 'Добавить ключевые слова' : dialog.kind === 'locale' ? 'Добавить регион' : 'Добавить приложение'}
           </button>
         </div>
       </section>
@@ -1249,15 +1498,19 @@ function InputDialog({
   );
 }
 
-function SuggestionsDialog({
+function SuggestionsPanel({
   locale,
   suggestions,
-  onClose,
+  loading,
+  error,
+  onReload,
   onAdd,
 }: {
   locale: string;
   suggestions: KeywordSuggestion[];
-  onClose: () => void;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
   onAdd: (keywords: string[]) => Promise<void>;
 }) {
   const [query, setQuery] = useState('');
@@ -1283,39 +1536,45 @@ function SuggestionsDialog({
   };
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <section className="suggestions-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
-        <header>
-          <div className="dialog-symbol suggestion-symbol">✦</div>
-          <div>
-            <h2>Keyword suggestions</h2>
-            <p>{localeFlag(locale)} {locale.toUpperCase()} · Apple discovery and top-ranking competitors</p>
-          </div>
-          <button onClick={onClose}>×</button>
-        </header>
+      <section className="suggestions-page" aria-labelledby="suggestions-title">
+        <h2 id="suggestions-title" className="sr-only">Идеи ключевых слов</h2>
+        <div className="page-commandbar">
+          <span className="page-scope">{localeFlag(locale)} {locale.toUpperCase()} · автоподсказки Apple и слова из названий конкурентов</span>
+          <button className="toolbar-labeled" onClick={onReload} disabled={loading} title="Обновить идеи" aria-label="Обновить идеи">↻ Обновить</button>
         <label className="dialog-search suggestion-search">
           <span>⌕</span>
-          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search suggestions" />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск идей" />
         </label>
+        </div>
         <div className="suggestion-list">
-          {filtered.length === 0 ? (
-            <div className="suggestions-empty">No new suggestions found. Add more seed keywords or run a fresh snapshot first.</div>
+          <div className="suggestion-table-head" role="row">
+            <span aria-label="Выбор" />
+            <span>Ключевое слово <button type="button" className="traffic-info-button" data-tooltip="Фраза-кандидат, которой ещё нет в отслеживаемых ключах выбранной страны. Перед добавлением проверьте её релевантность приложению." aria-label="Как читать колонку «Ключевое слово»">?</button></span>
+            <span>Источник <button type="button" className="traffic-info-button" data-tooltip="Apple — реальная автоподсказка App Store для одного из ваших исходных запросов. Конкурент — фраза, извлечённая из названий приложений в сохранённом топе выдачи." aria-label="Как читать колонку «Источник»">?</button></span>
+            <span>Приоритет <button type="button" className="traffic-info-button" data-tooltip="Внутренний балл 0–100 для сортировки идей. Для слов конкурентов: 42 + 8 за каждое появление в топе, максимум 95; автоподсказка Apple получает 90. Это не объём трафика, не сложность и не прогноз конверсии." aria-label="Как читать колонку «Приоритет»">?</button></span>
+          </div>
+          {loading ? (
+            <div className="suggestions-empty">Ищем релевантные идеи…</div>
+          ) : error ? (
+            <div className="suggestions-empty"><span>{error}</span><button className="dialog-button dialog-button-secondary" onClick={onReload}>Повторить</button></div>
+          ) : filtered.length === 0 ? (
+            <div className="suggestions-empty">Новых идей нет. Добавьте больше исходных ключевых слов или сначала обновите снимок.</div>
           ) : filtered.map((suggestion) => (
-            <button className={selected.has(suggestion.keyword) ? 'selected' : ''} key={suggestion.keyword} onClick={() => toggle(suggestion.keyword)}>
+            <button className={selected.has(suggestion.keyword) ? 'selected' : ''} key={suggestion.keyword} onClick={() => toggle(suggestion.keyword)} aria-pressed={selected.has(suggestion.keyword)}>
               <span className="suggestion-check">{selected.has(suggestion.keyword) ? '✓' : ''}</span>
-              <span className="suggestion-copy"><strong>{suggestion.keyword}</strong><small>{suggestion.evidence}</small></span>
-              <span className={`suggestion-source source-${suggestion.source}`}>{suggestion.source === 'apple_autocomplete' ? 'Apple' : 'Competitor'}</span>
-              <b>{suggestion.score}</b>
+              <span className="suggestion-copy"><strong>{suggestion.keyword}</strong><small>{suggestionEvidenceLabel(suggestion.evidence)}</small></span>
+              <span className={`suggestion-source source-${suggestion.source}`}>{suggestion.source === 'apple_autocomplete' ? 'Apple' : 'Конкурент'}</span>
+              <span className="suggestion-score" title="Внутренний приоритет идеи; это не объём поиска Apple">
+                <b>{suggestion.score}</b><i><em style={{ width: `${Math.max(0, Math.min(100, suggestion.score))}%` }} /></i>
+              </span>
             </button>
           ))}
         </div>
         <footer>
-          <span>{selected.size} selected</span>
-          <button className="dialog-button dialog-button-secondary" onClick={onClose}>Cancel</button>
-          <button className="dialog-button dialog-button-primary" disabled={!selected.size || saving} onClick={add}>{saving ? 'Adding…' : `Add ${selected.size || ''} keywords`}</button>
+          <span>Выбрано: {selected.size}</span>
+          <button className="dialog-button dialog-button-primary" disabled={!selected.size || saving} onClick={add}>{saving ? 'Добавляем…' : `Добавить ключевые слова: ${selected.size || ''}`}</button>
         </footer>
       </section>
-    </div>
   );
 }
 
@@ -1333,100 +1592,13 @@ function Sparkline({ values, width = 120, height = 26 }: { values: number[]; wid
   return <svg className="mini-trend sparkline" viewBox={`0 0 ${width} ${height}`}><polyline points={points} /></svg>;
 }
 
-function OverviewScreen({
-  apps,
-  localeAvgByApp,
-  onOpenApp,
-  onDeleteApp,
-  onRunAll,
-  refreshing,
-  progress,
-}: {
-  apps: AppStats[];
-  localeAvgByApp: Record<string, LocaleAvg[]>;
-  onOpenApp: (id: string) => void;
-  onDeleteApp: (app: AppStats) => void;
-  onRunAll: () => void;
-  refreshing: boolean;
-  progress: SnapshotEvent | null;
-}) {
-  return (
-    <section className="content">
-      <header className="toolbar">
-        <div className="toolbar-title">Overview</div>
-        <span className="toolbar-spacer" />
-        {refreshing && (
-          <span className="snapshot-status">
-            <i /> Updating {progress?.completed ?? 0}/{progress?.total ?? '…'}
-          </span>
-        )}
-        <button className="button button-primary" onClick={onRunAll} disabled={refreshing}>
-          {refreshing ? 'Updating rankings…' : 'Update all rankings'} <span>↻</span>
-        </button>
-      </header>
-
-      <div className="overview-wrap">
-        <div className="overview-grid">
-          {apps.map((app) => {
-            const locales = localeAvgByApp[app.id] ?? [];
-            return (
-              <article className="overview-card" key={app.id}>
-                <header onClick={() => onOpenApp(app.id)}>
-                  <AppIcon app={app} size={46} />
-                  <div>
-                    <strong>{app.name}</strong>
-                    <small>{app.keywords} keywords · {app.locales.length} locales</small>
-                  </div>
-                  <button className="overview-delete" title={`Delete ${app.name}`} onClick={(event) => { event.stopPropagation(); onDeleteApp(app); }}>×</button>
-                </header>
-
-                <div className="overview-metrics" onClick={() => onOpenApp(app.id)}>
-                  <div><strong>{app.avgPos ? `#${Math.round(app.avgPos)}` : '—'}</strong><span>avg pos</span><Delta value={app.weekDelta?.avg ? Math.round(app.weekDelta.avg) : null} /></div>
-                  <div><strong>{app.top10}</strong><span>top 10</span><Delta value={app.weekDelta?.top10 || null} /></div>
-                  <div><strong>{app.top50}</strong><span>top 50</span><Delta value={app.weekDelta?.top50 || null} /></div>
-                </div>
-
-                <div className="overview-spark" onClick={() => onOpenApp(app.id)}>
-                  <Sparkline values={app.history?.top10 ?? []} />
-                  <small>top-10 keywords over snapshots</small>
-                </div>
-
-                {locales.length > 0 && (
-                  <div className="overview-locales">
-                    {locales.slice(0, 10).map((entry) => (
-                      <span key={entry.code} title={`${entry.code.toUpperCase()} — avg ${entry.avg != null ? `#${Math.round(entry.avg)}` : 'unranked'}`}>
-                        {localeFlag(entry.code)} {entry.avg != null ? `#${Math.round(entry.avg)}` : '—'}
-                      </span>
-                    ))}
-                    {locales.length > 10 && <span>+{locales.length - 10}</span>}
-                  </div>
-                )}
-
-                {(app.winners?.length > 0 || app.losers?.length > 0) && (
-                  <div className="overview-movers">
-                    {app.winners?.slice(0, 2).map((mover) => (
-                      <div key={`w-${mover.kw}`}><b className="mover-positive">↑{mover.delta}</b> {mover.kw} <small>#{mover.from} → #{mover.to}</small></div>
-                    ))}
-                    {app.losers?.slice(0, 2).map((mover) => (
-                      <div key={`l-${mover.kw}`}><b className="mover-negative">↓{Math.abs(mover.delta)}</b> {mover.kw} <small>#{mover.from} → #{mover.to}</small></div>
-                    ))}
-                  </div>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function KeywordDrawer({
   keyword,
   ranking,
   relevance,
   locale,
   artworks,
+  ownApp,
   onClose,
   onRefresh,
   onCopyPrompt,
@@ -1437,6 +1609,7 @@ function KeywordDrawer({
   relevance?: RelevanceRow;
   locale: string;
   artworks: Record<string, string>;
+  ownApp?: OwnAppIdentity;
   onClose: () => void;
   onRefresh: () => void;
   onCopyPrompt: () => Promise<void>;
@@ -1462,11 +1635,11 @@ function KeywordDrawer({
           <span className={`drawer-rank rank rank-${rankTone(ranking?.today ?? null)}`}>{ranking?.today ? `#${ranking.today}` : '—'}</span>
           <div>
             <h2>{keyword}</h2>
-            <p>{localeFlag(locale)} {locale.toUpperCase()} · updated {formatRelativeTime(ranking?.lastUpdated).toLowerCase()}</p>
+            <p>{localeFlag(locale)} {locale.toUpperCase()} · обновлено {formatRelativeTime(ranking?.lastUpdated).toLowerCase()}</p>
             {relevance && (
               <div className="competitor-badges">
                 <b className={`relevance-chip relevance-${relevance.flag}`} style={{ marginLeft: 0 }}>{RELEVANCE_LABEL[relevance.flag]}</b>
-                <b>{relevance.matchCount}/5 same genre</b>
+                <b>{relevance.matchCount}/5 того же жанра</b>
               </div>
             )}
           </div>
@@ -1475,32 +1648,38 @@ function KeywordDrawer({
 
         <div className="competitor-content">
           <div className="competitor-stats">
-            <div><strong><Delta value={dayDelta} /></strong><span>24 hours</span></div>
-            <div><strong><Delta value={weekDelta} /></strong><span>7 days</span></div>
-            <div><strong><Delta value={monthDelta} /></strong><span>30 days</span></div>
+            <div><strong><Delta value={dayDelta} /></strong><span>24 часа</span></div>
+            <div><strong><Delta value={weekDelta} /></strong><span>7 дней</span></div>
+            <div><strong><Delta value={monthDelta} /></strong><span>30 дней</span></div>
           </div>
 
           {(ranking?.trend?.length ?? 0) >= 2 && (
             <section>
-              <div className="sheet-section-title">Position trend</div>
+              <div className="sheet-section-title">Динамика позиции</div>
               <div className="drawer-trend"><Sparkline values={ranking!.trend} width={380} height={64} /></div>
             </section>
           )}
 
           <section>
-            <div className="sheet-section-title">Top apps in this ranking</div>
+            <div className="sheet-section-title">Топ приложений в выдаче</div>
             {!ranking?.top5?.length ? (
-              <p className="sheet-empty">No snapshot data yet — run an update for this keyword.</p>
+              <p className="sheet-empty">Данных снимка пока нет. Запустите обновление для этого ключевого слова.</p>
             ) : (
               <div className="drawer-top5">
                 {ranking.top5.map((app, index) => {
-                  const artwork = (app.tid ? artworks[String(app.tid)] : undefined) ?? artworks[app.id];
+                  const own = isOwnAppResult(app, ownApp);
+                  const artwork = (own ? ownApp?.iconUrl : undefined) ?? (app.tid ? artworks[String(app.tid)] : undefined) ?? artworks[app.id];
                   const genre = relevance?.top5?.find((r) => (r.bundleId ?? r.id) === app.id)?.genre;
                   return (
-                    <button key={`${app.id}-${index}`} onClick={() => onOpenCompetitor(app.id)}>
+                    <button
+                      type="button"
+                      className={own ? 'own-app-row' : ''}
+                      key={`${app.id}-${index}`}
+                      onClick={own ? undefined : () => onOpenCompetitor(app.id)}
+                    >
                       <b>#{app.pos ?? index + 1}</b>
                       {artwork ? <img src={artwork} alt="" /> : <span className="competitor-icon">{app.name.trim().slice(0, 1).toUpperCase()}</span>}
-                      <span><strong>{app.name}</strong><small>{app.dev}{genre ? ` · ${genre}` : ''}</small></span>
+                      <span><strong>{app.name}{own ? <em>Наше приложение</em> : null}</strong><small>{app.dev}{genre ? ` · ${genre}` : ''}</small></span>
                     </button>
                   );
                 })}
@@ -1510,7 +1689,7 @@ function KeywordDrawer({
 
           {relevance && relevance.genreHistogram.length > 0 && (
             <section>
-              <div className="sheet-section-title">Genres in top 5</div>
+              <div className="sheet-section-title">Жанры в топ-5</div>
               <div className="drawer-genres">
                 {relevance.genreHistogram.map((genre) => (
                   <span key={genre.genre}>{genre.genre} <b>×{genre.count}</b></span>
@@ -1521,9 +1700,9 @@ function KeywordDrawer({
         </div>
 
         <footer className="competitor-footer">
-          <button onClick={copy}>{copied ? '✓ Copied' : '✦ Copy Claude prompt'}</button>
-          <button onClick={onRefresh}>↻ Update keyword</button>
-          <button onClick={onClose}>Done</button>
+          <button onClick={copy}>{copied ? 'Скопировано' : 'Скопировать запрос для анализа'}</button>
+          <button onClick={onRefresh}>↻ Обновить ключевое слово</button>
+          <button onClick={onClose}>Готово</button>
         </footer>
       </aside>
     </div>
@@ -1531,19 +1710,17 @@ function KeywordDrawer({
 }
 
 const PERIOD_LABEL: Record<'day' | 'week' | 'month', string> = {
-  day: 'vs yesterday',
-  week: 'vs 7 days ago',
-  month: 'vs 30 days ago',
+  day: 'сравнение со вчера',
+  week: 'сравнение с 7 днями назад',
+  month: 'сравнение с 30 днями назад',
 };
 
-function AnalyticsDialog({
+function AnalyticsPanel({
   apps,
   initialApp,
-  onClose,
 }: {
   apps: AppStats[];
   initialApp: string;
-  onClose: () => void;
 }) {
   const [period, setPeriod] = useState<'day' | 'week' | 'month'>('week');
   const [appFilter, setAppFilter] = useState(initialApp);
@@ -1565,57 +1742,75 @@ function AnalyticsDialog({
   const summary = data?.summary;
 
   return (
-    <div className="dialog-backdrop" onMouseDown={onClose}>
-      <section className="analytics-dialog" role="dialog" aria-modal="true" onMouseDown={(event) => event.stopPropagation()}>
-        <header>
-          <div className="dialog-symbol analytics-symbol">∿</div>
-          <div>
-            <h2>Analytics</h2>
-            <p>Movement across tracked keywords · {PERIOD_LABEL[period]}</p>
-          </div>
+      <section className="analytics-page" aria-labelledby="analytics-title">
+        <h2 id="analytics-title" className="sr-only">Динамика позиций</h2>
+        <div className="page-commandbar">
+          <span className="page-scope">Отслеживаемые ключевые слова · {PERIOD_LABEL[period]} · все регионы</span>
           <div className="analytics-controls">
             <div className="segmented">
               {(['day', 'week', 'month'] as const).map((value) => (
                 <button key={value} className={period === value ? 'selected' : ''} onClick={() => setPeriod(value)}>
-                  {value[0].toUpperCase() + value.slice(1)}
+                  {{ day: 'День', week: 'Неделя', month: 'Месяц' }[value]}
                 </button>
               ))}
             </div>
             <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)}>
-              <option value="">All apps</option>
+              <option value="">Все приложения</option>
               {apps.map((app) => <option key={app.id} value={app.id}>{app.name}</option>)}
             </select>
           </div>
-          <button className="analytics-close" onClick={onClose}>×</button>
-        </header>
+        </div>
 
         {error ? (
           <div className="analytics-empty">{error}</div>
         ) : loading || !data ? (
-          <div className="analytics-empty">Loading…</div>
+          <div className="analytics-empty">Загрузка…</div>
         ) : (
           <div className="analytics-content">
             {summary && (
+              <>
               <div className="analytics-summary">
-                <div><strong>{summary.totalRanked}</strong><span>ranked</span><Delta value={summary.rankedDelta} /></div>
-                <div><strong>{summary.top10}</strong><span>top 10</span><Delta value={summary.top10Delta} /></div>
-                <div><strong>{summary.top50}</strong><span>top 50</span><Delta value={summary.top50Delta} /></div>
+                <div><strong>{summary.totalRanked}</strong><span>в выдаче</span><Delta value={summary.rankedDelta} /></div>
+                <div><strong>{summary.top10}</strong><span>топ-10</span><Delta value={summary.top10Delta} /></div>
+                <div><strong>{summary.top50}</strong><span>топ-50</span><Delta value={summary.top50Delta} /></div>
                 <div>
                   <strong>{summary.avgPosition != null ? `#${summary.avgPosition.toFixed(0)}` : '—'}</strong>
-                  <span>avg position</span>
+                  <span>ср. позиция</span>
                   <Delta value={summary.avgDelta != null ? Math.round(summary.avgDelta) : null} />
                 </div>
               </div>
+              <AnalyticsComparison summary={summary} />
+              </>
             )}
             <div className="movers-grid">
-              <MoversList title="Gainers" tone="positive" movers={data.gainers} />
-              <MoversList title="Losers" tone="negative" movers={data.losers} />
-              <MoversList title="Newly ranked" tone="positive" movers={data.newlyRanked} />
-              <MoversList title="Dropouts" tone="negative" movers={data.dropouts} />
+              <MoversList title="Рост" tone="positive" movers={data.gainers} />
+              <MoversList title="Падение" tone="negative" movers={data.losers} />
+              <MoversList title="Новые в выдаче" tone="positive" movers={data.newlyRanked} />
+              <MoversList title="Вышли из выдачи" tone="negative" movers={data.dropouts} />
             </div>
           </div>
         )}
       </section>
+  );
+}
+
+function AnalyticsComparison({ summary }: { summary: MoversResponse['summary'] }) {
+  const metrics = [
+    { label: 'В выдаче', current: summary.totalRanked, previous: summary.prevRanked },
+    { label: 'Топ-50', current: summary.top50, previous: summary.prevTop50 },
+    { label: 'Топ-10', current: summary.top10, previous: summary.prevTop10 },
+  ];
+  const max = Math.max(1, ...metrics.flatMap((metric) => [metric.current, metric.previous]));
+  return (
+    <div className="analytics-comparison" aria-label="Сравнение текущего и прошлого периода">
+      <header><strong>Изменение видимости</strong><span><i /> Сейчас <i /> Прошлый период</span></header>
+      {metrics.map((metric) => (
+        <div key={metric.label}>
+          <span>{metric.label}</span>
+          <div><i style={{ width: `${(metric.current / max) * 100}%` }} /><i style={{ width: `${(metric.previous / max) * 100}%` }} /></div>
+          <b>{metric.current}</b>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1625,7 +1820,7 @@ function MoversList({ title, tone, movers }: { title: string; tone: 'positive' |
     <section className="movers-list">
       <div className="sheet-section-title">{title}</div>
       {movers.length === 0 ? (
-        <p className="sheet-empty">Nothing here for this period.</p>
+        <p className="sheet-empty">За этот период данных нет.</p>
       ) : (
         <div className="movers-rows">
           {movers.slice(0, 12).map((mover) => (

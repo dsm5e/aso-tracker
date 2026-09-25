@@ -1,0 +1,188 @@
+{
+  "appName": "PDFSign",
+  "appColor": "#6258eb",
+  "appIconUrl": null,
+  "devices": "iphone",
+  "iphoneModel": "iphone-17-pro-max",
+  "outputFolder": "/Users/qwar49/Developer/screenshots/PDFSign/polish-v2/variants/signeasy",
+  "agentNav": null,
+  "agentPolishCommand": null,
+  "selectedPresetId": "pdfsign-real-signeasy",
+  "catalogFilter": "all",
+  "screenshots": [
+    {
+      "id": "pdfsign-real-signeasy-1",
+      "filename": "signeasy-1.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/signeasy-1.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-signeasy",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "A simpler way to\nmanage your PDFs",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 118,
+      "subPx": 70,
+      "textYFraction": 0.055,
+      "headlineSafeBottomFraction": 0.185,
+      "textColorOverride": "#fff",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 0
+    },
+    {
+      "id": "pdfsign-real-signeasy-2",
+      "filename": "signeasy-2.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/signeasy-2.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-signeasy",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Sign documents",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 118,
+      "subPx": 70,
+      "textYFraction": 0.055,
+      "headlineSafeBottomFraction": 0.185,
+      "textColorOverride": "#fff",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 1
+    },
+    {
+      "id": "pdfsign-real-signeasy-3",
+      "filename": "signeasy-3.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/signeasy-3.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-signeasy",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Share signed PDFs",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 118,
+      "subPx": 70,
+      "textYFraction": 0.055,
+      "headlineSafeBottomFraction": 0.185,
+      "textColorOverride": "#fff",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 2
+    }
+  ],
+  "activeScreenshotId": "pdfsign-real-signeasy-1",
+  "viewMode": "scaffold",
+  "previewDevice": "iphone",
+  "locales": [
+    {
+      "id": "ru",
+      "code": "ru",
+      "flag": "🇷🇺",
+      "name": "Русский",
+      "translations": {
+        "pdfsign-real-signeasy-1": {
+          "verb": "Удобная работа\nс вашими PDF",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-signeasy-2": {
+          "verb": "Подписывайте\nдокументы",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-signeasy-3": {
+          "verb": "Отправляйте\nподписанные PDF",
+          "descriptor": "",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    },
+    {
+      "id": "de-DE",
+      "code": "de-DE",
+      "flag": "🇩🇪",
+      "name": "Deutsch",
+      "translations": {
+        "pdfsign-real-signeasy-1": {
+          "verb": "Ihre PDFs\neinfach verwalten",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-signeasy-2": {
+          "verb": "Dokumente\nunterschreiben",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-signeasy-3": {
+          "verb": "Signierte PDFs\nversenden",
+          "descriptor": "",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    }
+  ],
+  "activeLocaleId": "ru"
+}

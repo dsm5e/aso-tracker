@@ -93,11 +93,11 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
  * Run a snapshot across apps × locales × keywords.
- * Conservative defaults: 2 workers, 500ms sleep. Auto-throttles down on iTunes rate limit
+ * Conservative defaults: 1 worker, 3250ms sleep. Auto-throttles down on iTunes rate limit
  * instead of aborting — only gives up after consecutive failures at the slowest preset.
  */
 export async function runSnapshot(opts: SnapshotOptions = {}) {
-  const { appIds, locales, workers = 2, sleepMs = 500, skipExisting = false, onProgress, isCancelled } = opts;
+  const { appIds, locales, workers = 1, sleepMs = 3250, skipExisting = false, onProgress, isCancelled } = opts;
 
   const allApps = loadApps();
   const apps: AppConfig[] = appIds ? allApps.filter((a) => appIds.includes(a.id)) : allApps;
@@ -275,7 +275,20 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             maxAttempts: MAX_TASK_ATTEMPTS,
           });
           const currentSleep = liveRuntime?.sleepMs ?? sleepMs;
-          const results = await searchItunes(task.locale, task.keyword, { sleepMs: currentSleep });
+          const results = await searchItunes(task.locale, task.keyword, {
+            sleepMs: currentSleep,
+            onRetry: ({ attempt, maxAttempts, delayMs, reason }) => emit({
+              type: 'retry',
+              completed,
+              total: totalCombos,
+              locale: task.locale,
+              keyword: task.keyword,
+              attempt,
+              maxAttempts,
+              cooldownSec: Math.ceil(delayMs / 1000),
+              reason,
+            }),
+          });
           const { position, total, top5 } = findPosition(results, task.app.bundle);
           if (liveRuntime) {
             liveRuntime.consecutiveThrottles = 0;
@@ -326,7 +339,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
               locale: task.locale,
               keyword: task.keyword,
               error: (e as Error).message || 'unknown',
-              attempt,
+              attempt: attempt + 1,
               maxAttempts: MAX_TASK_ATTEMPTS,
             });
             await sleep([1000, 3000, 8000][attempt - 1] ?? 8000);
@@ -387,7 +400,7 @@ export async function refreshKeyword(
   if (!app) throw new Error(`unknown app ${appId}`);
   const today = new Date().toISOString().slice(0, 10);
   try {
-    const results = await searchItunes(locale, keyword, { sleepMs: 0 });
+    const results = await searchItunes(locale, keyword);
     const { position, total, top5 } = findPosition(results, app.bundle);
     const rec: SnapshotRow = {
       date: today,

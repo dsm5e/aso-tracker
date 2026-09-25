@@ -32,7 +32,7 @@ export default function Sparkline({
           <div className="spark-label">{title}</div>
           <div className="spark-value muted">—</div>
         </div>
-        <div className="spark-empty" style={{ height }}>no data</div>
+        <div className="spark-empty" style={{ height }}>Нет данных</div>
       </div>
     );
   }
@@ -65,8 +65,6 @@ export default function Sparkline({
     setHover(idx);
   }
 
-  const gradId = `grad-${title.replace(/[^a-zA-Z0-9]/g, "")}-${color.replace(/[^a-zA-Z0-9]/g, "")}`;
-
   return (
     <div className="spark" onClick={onClick} style={{ cursor: onClick ? "pointer" : "default" }}>
       <div className="spark-head">
@@ -85,14 +83,8 @@ export default function Sparkline({
         onMouseMove={handleMove}
         onMouseLeave={() => setHover(null)}
       >
-        <defs>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.22" />
-            <stop offset="100%" stopColor={color} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        <path d={fillPath} fill={`url(#${gradId})`} vectorEffect="non-scaling-stroke" />
-        <path d={path} fill="none" stroke={color} strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        <path d={fillPath} fill={color} opacity="0.10" vectorEffect="non-scaling-stroke" />
+        <path d={path} fill="none" stroke={color} strokeWidth="1.25" vectorEffect="non-scaling-stroke" />
         {hover !== null && (
           <>
             <line x1={points[hover][0]} y1={pad} x2={points[hover][0]} y2={height - pad}

@@ -61,7 +61,18 @@ export interface PresetCtx {
   decorationsHint?: string;
 }
 
+const IMAGE_EDIT_MODELS = {
+  'gpt-image-2': 'openai/gpt-image-2/edit',
+  'gpt-image-2.5-flare': 'openai/gpt-image-2.5/flare/edit',
+  'gpt-image-2.5-sunburst': 'openai/gpt-image-2.5/sunburst/edit',
+} as const;
+
 export interface HeroGenerateBody {
+  /** Explicit opt-in keeps existing projects on their original model/cost. */
+  model?: keyof typeof IMAGE_EDIT_MODELS;
+  quality?: 'medium' | 'high';
+  /** Same-sized PNG: opaque regions are protected; transparent regions editable. */
+  maskDataUri?: string;
   appName: string;
   appColor: string;
   themeHint: string;
@@ -233,6 +244,15 @@ export async function heroGenerate(req: Request, res: Response) {
       return;
     }
 
+    const model = body.model ?? 'gpt-image-2';
+    if (!Object.prototype.hasOwnProperty.call(IMAGE_EDIT_MODELS, model)
+        || (body.quality != null && !['medium', 'high'].includes(body.quality))) {
+      res.status(400).json({ error: 'Unsupported image model or quality' });
+      return;
+    }
+    const endpoint = IMAGE_EDIT_MODELS[model];
+    const modernModel = model !== 'gpt-image-2';
+
     // Pick the prompt:
     //  1. customPrompt sent from the client (preset-specific or user-edited) wins
     //     — we interpolate {placeholders} like {appName}, {verb}, {themeHint},
@@ -289,8 +309,8 @@ export async function heroGenerate(req: Request, res: Response) {
     const scaffoldBuf = Buffer.from(stripDataUri(body.scaffoldDataUri), 'base64');
     const scaffoldW = scaffoldBuf.readUInt32BE(16);
     const scaffoldH = scaffoldBuf.readUInt32BE(20);
-    const outputW = body.device === 'ipad' ? 768 : 768;
-    const outputH = body.device === 'ipad' ? 1024 : 1664;
+    const outputW = modernModel ? 1280 : 768;
+    const outputH = modernModel ? (body.device === 'ipad' ? 1712 : 2784) : (body.device === 'ipad' ? 1024 : 1664);
     console.log('[hero] using prompt mode:', customPromptRaw ? 'custom' : (body.kind ?? 'hero'), body.hideDevice ? '(no-device)' : '', `polishCallout=${!!body.polishCallout}`);
     console.log(`[hero] scaffold dims: ${scaffoldW}×${scaffoldH} → fal output: ${outputW}×${outputH} | ratio scaffold=${(scaffoldW/scaffoldH).toFixed(4)} output=${(outputW/outputH).toFixed(4)}`);
     // Persist last prompt + scaffold to /tmp so we can inspect what was sent
@@ -341,19 +361,21 @@ export async function heroGenerate(req: Request, res: Response) {
     // 2. Call gpt-image-2/edit via @fal-ai/client SDK (handles queue + polling).
     //    Raw fetch/curl both hit HTTP/2 RST_STREAM ECONNRESET on fal.run;
     //    the SDK uses the fal queue protocol and avoids long-held connections.
-    console.log('[hero] calling fal.ai gpt-image-2/edit via SDK…');
+    console.log('[hero] calling fal.ai', endpoint);
     const imageUrls = [scaffoldUrl];
     if (iconUrl) imageUrls.push(iconUrl);
     console.log('[hero] image_urls count:', imageUrls.length);
 
     type FalResult = { data: { images?: Array<{ url: string }> } };
+    const maskUrl = body.maskDataUri
+      ? await fal.storage.upload(new File([Buffer.from(stripDataUri(body.maskDataUri), 'base64')], 'protected-regions.png', { type: 'image/png' }))
+      : undefined;
     const falInput = {
       prompt,
       image_urls: imageUrls,
-      image_size: body.device === 'ipad'
-        ? { width: 768, height: 1024 }
-        : { width: 768, height: 1664 },
-      quality: 'medium',
+      image_size: { width: outputW, height: outputH },
+      ...(maskUrl ? { mask_url: maskUrl } : {}),
+      quality: body.quality ?? (modernModel ? 'high' : 'medium'),
       output_format: 'png',
       num_images: 1,
     };
@@ -362,7 +384,7 @@ export async function heroGenerate(req: Request, res: Response) {
     const MAX_RETRIES = 3;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        result = await fal.subscribe('openai/gpt-image-2/edit', {
+        result = await fal.subscribe(endpoint, {
           input: falInput,
           logs: true,
           onQueueUpdate: (update: { status: string }) => {
@@ -434,7 +456,7 @@ export async function heroGenerate(req: Request, res: Response) {
       });
     }
 
-    res.json({ ok: true, url: imageUrl, prompt });
+    res.json({ ok: true, url: imageUrl, prompt, model, endpoint, quality: falInput.quality });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const stack = e instanceof Error ? (e.stack ?? '') : '';

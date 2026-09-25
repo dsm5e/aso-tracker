@@ -3,6 +3,14 @@ export type AppStoreLocale = {
   name: string;
 };
 
+/** Maps tracker locale variants to the App Store country used by ASA. */
+export function appStoreCountry(locale: string): string {
+  const normalized = locale.trim().toLocaleLowerCase().replace('_', '-');
+  if (normalized === 'es-ca') return 'es';
+  if (normalized.startsWith('in-')) return 'in';
+  return normalized.split('-').at(-1) ?? normalized;
+}
+
 const CODES = [
   'us', 'ca', 'mx', 'br', 'ar', 'cl', 'co', 'pe', 've', 'uy', 'py', 'bo', 'ec',
   'cr', 'pa', 'gt', 'hn', 'ni', 'sv', 'do', 'jm', 'bb', 'bs', 'tt', 'bz', 'bm',

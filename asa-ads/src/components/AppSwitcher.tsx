@@ -13,12 +13,12 @@ export default function AppSwitcher() {
 
   return (
     <div className="app-switcher">
-      <div className="app-switcher-label">App</div>
+      <div className="app-switcher-label">Приложение</div>
       <select
         value={String(selected)}
         onChange={(e) => setSelected(e.target.value === "all" ? "all" : Number(e.target.value))}
       >
-        <option value="all">All apps ({apps.length})</option>
+        <option value="all">Все приложения ({apps.length})</option>
         {apps.map((a) => (
           <option key={a.app_id} value={a.app_id}>
             {shortName(a.app_name)} · {a.active_count}/{a.campaign_count}

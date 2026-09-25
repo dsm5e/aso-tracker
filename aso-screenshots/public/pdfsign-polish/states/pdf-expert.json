@@ -1,0 +1,188 @@
+{
+  "appName": "PDFSign",
+  "appColor": "#6258eb",
+  "appIconUrl": null,
+  "devices": "iphone",
+  "iphoneModel": "iphone-17-pro-max",
+  "outputFolder": "/Users/qwar49/Developer/screenshots/PDFSign/polish-v2/variants/pdf-expert",
+  "agentNav": null,
+  "agentPolishCommand": null,
+  "selectedPresetId": "pdfsign-real-pdf-expert",
+  "catalogFilter": "all",
+  "screenshots": [
+    {
+      "id": "pdfsign-real-pdf-expert-1",
+      "filename": "pdf-expert-1.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/pdf-expert-1.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-pdf-expert",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Your go-to\nPDF signer",
+        "descriptor": "Sign documents\non your iPhone.",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 181,
+      "subPx": 86,
+      "textYFraction": 0.15,
+      "headlineSafeBottomFraction": 0.48,
+      "textColorOverride": "#303033",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 0
+    },
+    {
+      "id": "pdfsign-real-pdf-expert-2",
+      "filename": "pdf-expert-2.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/pdf-expert-2.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-pdf-expert",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Make it\nyour signature",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 144,
+      "subPx": 86,
+      "textYFraction": 0.06,
+      "headlineSafeBottomFraction": 0.245,
+      "textColorOverride": "#303033",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 1
+    },
+    {
+      "id": "pdfsign-real-pdf-expert-3",
+      "filename": "pdf-expert-3.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/pdf-expert-3.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-pdf-expert",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Save & reuse",
+        "descriptor": "Your signature,\nready when you need it.",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 144,
+      "subPx": 86,
+      "textYFraction": 0.06,
+      "headlineSafeBottomFraction": 0.245,
+      "textColorOverride": "#303033",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 2
+    }
+  ],
+  "activeScreenshotId": "pdfsign-real-pdf-expert-1",
+  "viewMode": "scaffold",
+  "previewDevice": "iphone",
+  "locales": [
+    {
+      "id": "ru",
+      "code": "ru",
+      "flag": "🇷🇺",
+      "name": "Русский",
+      "translations": {
+        "pdfsign-real-pdf-expert-1": {
+          "verb": "Ваш помощник\nдля подписи PDF",
+          "descriptor": "Подписывайте документы\nна iPhone.",
+          "subhead": ""
+        },
+        "pdfsign-real-pdf-expert-2": {
+          "verb": "Ваша подпись.\nВаш документ.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-pdf-expert-3": {
+          "verb": "Сохраните\nи используйте снова",
+          "descriptor": "Ваша подпись готова\nк новым документам.",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    },
+    {
+      "id": "de-DE",
+      "code": "de-DE",
+      "flag": "🇩🇪",
+      "name": "Deutsch",
+      "translations": {
+        "pdfsign-real-pdf-expert-1": {
+          "verb": "Ihr Helfer zum\nPDF-Signieren",
+          "descriptor": "Dokumente auf Ihrem\niPhone unterschreiben.",
+          "subhead": ""
+        },
+        "pdfsign-real-pdf-expert-2": {
+          "verb": "Ihre eigene\nUnterschrift",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-pdf-expert-3": {
+          "verb": "Speichern und\nwiederverwenden",
+          "descriptor": "Ihre Unterschrift.\nJederzeit griffbereit.",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    }
+  ],
+  "activeLocaleId": "ru"
+}

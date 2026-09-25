@@ -1,5 +1,5 @@
 // iTunes Search API wrapper — no proxy, conservative rate limit.
-// Ports logic from rank.py: 2 workers per locale, 0.5s sleep, one retry on 502, abort on persistent 502.
+// Apple's archived guidance says roughly 20 calls/minute, so the default stays below it.
 
 export class RateLimited extends Error {
   constructor(msg: string) {
@@ -48,7 +48,13 @@ const RATE_LIMIT_STATUSES = new Set([403, 429, 502, 503, 504]);
 export async function searchItunes(
   country: string,
   term: string,
-  { sleepMs = 500 }: { sleepMs?: number } = {}
+  {
+    sleepMs = 3250,
+    onRetry,
+  }: {
+    sleepMs?: number;
+    onRetry?: (event: { attempt: number; maxAttempts: number; delayMs: number; reason: string }) => void;
+  } = {}
 ): Promise<SearchResult[]> {
   const cc = COUNTRY_OVERRIDE[country] ?? country;
   const params = new URLSearchParams({
@@ -60,8 +66,8 @@ export async function searchItunes(
   });
   await throttle(sleepMs);
 
-  // Up to 3 attempts: immediate, +5s, +30s. If still throttled → RateLimited.
-  const backoffs = [0, 5_000, 30_000];
+  // Bound a single keyword to about a minute and surface every wait to the UI.
+  const backoffs = [0, 3_000, 12_000];
   let lastErr: Error | null = null;
   for (let attempt = 0; attempt < backoffs.length; attempt++) {
     if (backoffs[attempt] > 0) {
@@ -70,11 +76,19 @@ export async function searchItunes(
     try {
       const res = await fetch(`${BASE}/search?${params}`, {
         headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.1 (self-hosted)' },
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(15_000),
       });
       if (RATE_LIMIT_STATUSES.has(res.status)) {
         lastErr = new Error(`iTunes throttled (HTTP ${res.status}) for ${cc}/${term}`);
         console.warn(`[itunes] ${cc}/"${term}" → HTTP ${res.status} (attempt ${attempt + 1}/${backoffs.length})`);
+        if (attempt + 1 < backoffs.length) {
+          onRetry?.({
+            attempt: attempt + 2,
+            maxAttempts: backoffs.length,
+            delayMs: backoffs[attempt + 1],
+            reason: `Apple вернул HTTP ${res.status}`,
+          });
+        }
         continue;
       }
       if (!res.ok) throw new Error(`iTunes HTTP ${res.status} for ${cc}/${term}`);
@@ -83,8 +97,16 @@ export async function searchItunes(
     } catch (e) {
       const err = e as Error;
       if (err.name === 'TimeoutError' || err.name === 'AbortError') {
-        lastErr = new Error(`iTunes timeout (30s) for ${cc}/${term}`);
+        lastErr = new Error(`iTunes timeout (15s) for ${cc}/${term}`);
         console.warn(`[itunes] ${cc}/"${term}" → timeout (attempt ${attempt + 1}/${backoffs.length})`);
+        if (attempt + 1 < backoffs.length) {
+          onRetry?.({
+            attempt: attempt + 2,
+            maxAttempts: backoffs.length,
+            delayMs: backoffs[attempt + 1],
+            reason: 'Apple не ответил за 15 секунд',
+          });
+        }
         continue;
       }
       // Non-retriable (bad URL, parse error, etc.)
@@ -212,9 +234,9 @@ export function findPosition(results: SearchResult[], match: string): Position {
       break;
     }
   }
-  // Capture top-6 so after excluding ourselves (when we rank in top-5)
-  // we still have 5 real competitors to display.
-  const top5 = results.slice(0, 6).map((a, i) => ({
+  // Persist the real top five. The tracked app stays in the result set so the
+  // icons agree with the reported organic position.
+  const top5 = results.slice(0, 5).map((a, i) => ({
     name: a.trackName || '',
     id: a.bundleId || '',
     dev: a.artistName || '',

@@ -16,10 +16,10 @@ const TRACKER_ORIGIN =
     : "";
 
 const ITEMS: Item[] = [
-  { id: "aso",  label: "ASO",         hint: "Keywords & rankings", glyph: "◇", href: `${TRACKER_ORIGIN}/` },
-  { id: "shot", label: "Screenshots", hint: "App Store visuals",   glyph: "▤", href: `${TRACKER_ORIGIN}/studio/` },
-  { id: "vid",  label: "Video",       hint: "Ad video pipeline",   glyph: "▶", href: `${TRACKER_ORIGIN}/video/` },
-  { id: "asa",  label: "ASA Ads",     hint: "Search Ads ROI",      glyph: "$", href: `${TRACKER_ORIGIN}/asa/` },
+  { id: "aso",  label: "ASO",         hint: "Ключи и позиции", glyph: "◇", href: `${TRACKER_ORIGIN}/` },
+  { id: "shot", label: "Скриншоты",   hint: "Визуалы App Store", glyph: "▤", href: `${TRACKER_ORIGIN}/studio/` },
+  { id: "vid",  label: "Видео",       hint: "Производство рекламных видео", glyph: "▶", href: `${TRACKER_ORIGIN}/video/` },
+  { id: "asa",  label: "Apple Ads",   hint: "Экономика поисковой рекламы", glyph: "$", href: `${TRACKER_ORIGIN}/asa/` },
 ];
 
 export default function StudioSwitcher() {

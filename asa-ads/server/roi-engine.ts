@@ -85,7 +85,7 @@ export interface Projection {
   /** If insufficient — what would unlock more confidence. */
   next_step?: string;
 
-  /** "real" = projection driven by deterministic AdServices attribution;
+  /** "real" = projection driven by Adapty's deterministic Apple Ads attribution;
    * "estimated" = country-average fallback (no attribution data yet). */
   revenue_source: "real" | "estimated";
   /** Measured so far from ASA-attributed users (NOT projected). */
@@ -111,7 +111,7 @@ interface CampaignStats {
 
 function loadCampaignStats(campaignId: number, daysBack: number): CampaignStats | null {
   const db = getDb();
-  const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const start = new Date(Date.now() - Math.max(0, daysBack - 1) * 86400_000).toISOString().slice(0, 10);
   const row = db.prepare(`
     SELECT c.id AS campaign_id, c.name, c.country, c.app_id,
            COALESCE(SUM(d.spend), 0) AS spend,
@@ -130,7 +130,7 @@ function loadCampaignStats(campaignId: number, daysBack: number): CampaignStats 
 
 function loadKeywordStats(keywordId: number, daysBack: number): (CampaignStats & { keyword_id: number; text: string; bid: number }) | null {
   const db = getDb();
-  const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const start = new Date(Date.now() - Math.max(0, daysBack - 1) * 86400_000).toISOString().slice(0, 10);
   const row = db.prepare(`
     SELECT k.id AS keyword_id, k.text, k.bid, k.campaign_id, c.name, c.country, c.app_id,
            COALESCE(SUM(d.spend), 0) AS spend,
@@ -148,26 +148,43 @@ function loadKeywordStats(keywordId: number, daysBack: number): (CampaignStats &
   return row ?? null;
 }
 
-/** Real (measured) ASA outcome from deterministic AdServices attribution,
+/** Real (measured) ASA outcome from Adapty's native Apple Ads attribution,
  * joined with Adapty revenue — populated by the asa_kw_revenue sync. Absent
  * when there's no attribution data yet for this keyword/campaign. */
-export interface RealRevenue { trials: number; paid: number; revenue_usd: number; }
-
-function loadRealRevenueForKeyword(keywordId: number): RealRevenue | undefined {
-  const r = getDb().prepare(
-    `SELECT trials, paid, revenue_usd FROM asa_kw_revenue WHERE keyword_id = ?`
-  ).get(keywordId) as { trials: number; paid: number; revenue_usd: number } | undefined;
-  return r ? { trials: r.trials, paid: r.paid, revenue_usd: r.revenue_usd } : undefined;
+export interface RealRevenue {
+  attributed_installs: number;
+  trials: number;
+  paid: number;
+  revenue_usd: number;
+  cohort_start: string;
+  cohort_end: string;
 }
 
-function loadRealRevenueForCampaign(campaignId: number): RealRevenue | undefined {
+function isMatchingCohortWindow(row: RealRevenue, daysBack: number): boolean {
+  const start = Date.parse(`${row.cohort_start}T00:00:00Z`);
+  const end = Date.parse(`${row.cohort_end}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return false;
+  return Math.round((end - start) / 86_400_000) + 1 === daysBack;
+}
+
+function loadRealRevenueForKeyword(keywordId: number, daysBack: number): RealRevenue | undefined {
   const r = getDb().prepare(
-    `SELECT COALESCE(SUM(trials),0) AS trials, COALESCE(SUM(paid),0) AS paid,
-            COALESCE(SUM(revenue_usd),0) AS revenue_usd
-     FROM asa_kw_revenue WHERE campaign_id = ?`
-  ).get(campaignId) as { trials: number; paid: number; revenue_usd: number } | undefined;
-  if (!r || (r.paid === 0 && r.revenue_usd === 0 && r.trials === 0)) return undefined;
-  return { trials: r.trials, paid: r.paid, revenue_usd: r.revenue_usd };
+    `SELECT attributed_installs, trials, paid, revenue_usd, cohort_start, cohort_end
+     FROM asa_kw_revenue WHERE keyword_id = ? AND bounded = 1`
+  ).get(keywordId) as RealRevenue | undefined;
+  return r && isMatchingCohortWindow(r, daysBack) ? r : undefined;
+}
+
+function loadRealRevenueForCampaign(campaignId: number, daysBack: number): RealRevenue | undefined {
+  const r = getDb().prepare(
+    `SELECT COALESCE(SUM(attributed_installs),0) AS attributed_installs,
+            COALESCE(SUM(trials),0) AS trials, COALESCE(SUM(paid),0) AS paid,
+            COALESCE(SUM(revenue_usd),0) AS revenue_usd,
+            MIN(cohort_start) AS cohort_start, MAX(cohort_end) AS cohort_end
+     FROM asa_kw_revenue WHERE campaign_id = ? AND bounded = 1`
+  ).get(campaignId) as RealRevenue | undefined;
+  if (!r || r.attributed_installs === 0 || !isMatchingCohortWindow(r, daysBack)) return undefined;
+  return r;
 }
 
 interface TrialRateEstimate {
@@ -187,7 +204,7 @@ interface TrialRateEstimate {
  */
 function estimateTrialRate(appId: number, country: string, daysBack: number): TrialRateEstimate {
   const db = getDb();
-  const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const start = new Date(Date.now() - Math.max(0, daysBack - 1) * 86400_000).toISOString().slice(0, 10);
 
   // 1. App-country: ASA installs vs ASC trial starts in this country
   const appCountry = db.prepare(`
@@ -279,7 +296,6 @@ function assessConfidence(stats: CampaignStats, cfg: RoiConfig): "high" | "mediu
 }
 
 function decide(
-  cpi: number,
   projectedRoi: number,
   confidence: "high" | "medium" | "low" | "insufficient",
   installs: number,
@@ -374,19 +390,19 @@ function projectFrom(
   const revenueSoFar = real?.revenue_usd ?? 0;
   const roasSoFar = stats.spend > 0 ? revenueSoFar / stats.spend : 0;
 
-  // Deterministic AdServices attribution OVERRIDES the country-average estimate
+  // Deterministic Adapty Apple Ads attribution overrides the country estimate.
   // once there are enough attributed paid users to trust the rate. Valuation
   // stays at LTV (forward-looking, incl. future renewals); the conversion rate
   // is now REAL, so the projection + verdict are measured, not guessed.
-  if (real && real.paid >= REAL_MIN_PAID && stats.installs > 0) {
-    const realInstallToPaid = real.paid / stats.installs;
+  if (real && real.paid >= REAL_MIN_PAID && real.attributed_installs >= cfg.minInstallsForSignal) {
+    const realInstallToPaid = real.paid / real.attributed_installs;
     projPaid = projInstalls * realInstallToPaid;
     projRevenue = projPaid * cfg.ltv;
     if (real.trials > 0) {
-      trialRateOut = real.trials / stats.installs;
+      trialRateOut = real.trials / real.attributed_installs;
       projTrials = projInstalls * trialRateOut;
     }
-    trialSource = `real ASA attribution (${real.paid} paid / ${stats.installs} installs)`;
+    trialSource = `Adapty Apple Ads (${real.paid} paid / ${real.attributed_installs} attributed installs)`;
     revenueSource = "real";
     confidence = "high";
   }
@@ -395,7 +411,7 @@ function projectFrom(
   const projCpaTrial = projTrials > 0 ? proposedSpend / projTrials : 0;
   const projCpaPaid = projPaid > 0 ? proposedSpend / projPaid : 0;
 
-  const { verdict, next_step } = decide(cpi, projRoi, confidence, stats.installs, stats.days_active, {
+  const { verdict, next_step } = decide(projRoi, confidence, stats.installs, stats.days_active, {
     taps: stats.taps,
     impressions: stats.impressions,
     spend: stats.spend,
@@ -431,7 +447,7 @@ export function projectCampaign(campaignId: number, proposedSpend = 1000, daysBa
   const stats = loadCampaignStats(campaignId, daysBack);
   if (!stats) return null;
   const trialRate = estimateTrialRate(stats.app_id, stats.country, daysBack);
-  const real = loadRealRevenueForCampaign(campaignId);
+  const real = loadRealRevenueForCampaign(campaignId, daysBack);
   return projectFrom(stats, trialRate, proposedSpend, effectiveConfig(stats.app_id, cfgOverride), real);
 }
 
@@ -439,13 +455,6 @@ export function projectKeyword(keywordId: number, proposedSpend = 100, daysBack 
   const stats = loadKeywordStats(keywordId, daysBack);
   if (!stats) return null;
   const trialRate = estimateTrialRate(stats.app_id, stats.country, daysBack);
-  const real = loadRealRevenueForKeyword(keywordId);
+  const real = loadRealRevenueForKeyword(keywordId, daysBack);
   return projectFrom(stats, trialRate, proposedSpend, effectiveConfig(stats.app_id, cfgOverride), real);
-}
-
-/** Quick verdict (no projection) — used in tables to show row-level color/label. */
-export function quickVerdict(campaignId: number, daysBack = 14): { verdict: Verdict; confidence: "high" | "medium" | "low" | "insufficient" } {
-  const p = projectCampaign(campaignId, 100, daysBack);
-  if (!p) return { verdict: { kind: "unknown", label: "?", reason: "no data" }, confidence: "insufficient" };
-  return { verdict: p.verdict, confidence: p.confidence };
 }

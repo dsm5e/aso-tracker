@@ -1,0 +1,188 @@
+{
+  "appName": "PDFSign",
+  "appColor": "#6258eb",
+  "appIconUrl": null,
+  "devices": "iphone",
+  "iphoneModel": "iphone-17-pro-max",
+  "outputFolder": "/Users/qwar49/Developer/screenshots/PDFSign/polish-v2/variants/signnow/polished",
+  "agentNav": null,
+  "agentPolishCommand": null,
+  "selectedPresetId": "pdfsign-real-signnow",
+  "catalogFilter": "all",
+  "screenshots": [
+    {
+      "id": "pdfsign-real-signnow-1",
+      "filename": "signnow-1.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/polished/signnow-1.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-signnow",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Your signature.\nReady anywhere.",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 153,
+      "subPx": 70,
+      "textYFraction": 0.065,
+      "headlineSafeBottomFraction": 0.265,
+      "textColorOverride": "#fff",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 0
+    },
+    {
+      "id": "pdfsign-real-signnow-2",
+      "filename": "signnow-2.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/polished/signnow-2.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-signnow",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Open your\ndocuments",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 153,
+      "subPx": 70,
+      "textYFraction": 0.065,
+      "headlineSafeBottomFraction": 0.265,
+      "textColorOverride": "#fff",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 1
+    },
+    {
+      "id": "pdfsign-real-signnow-3",
+      "filename": "signnow-3.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/polished/signnow-3.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-signnow",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Sign, save\nand send PDFs",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 153,
+      "subPx": 70,
+      "textYFraction": 0.825,
+      "headlineSafeBottomFraction": 0.98,
+      "textColorOverride": "#fff",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 2
+    }
+  ],
+  "activeScreenshotId": "pdfsign-real-signnow-1",
+  "viewMode": "scaffold",
+  "previewDevice": "iphone",
+  "locales": [
+    {
+      "id": "ru",
+      "code": "ru",
+      "flag": "🇷🇺",
+      "name": "Русский",
+      "translations": {
+        "pdfsign-real-signnow-1": {
+          "verb": "Ваша подпись.\nВсегда под рукой.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-signnow-2": {
+          "verb": "Открывайте\nсвои документы",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-signnow-3": {
+          "verb": "Подписывайте\nи отправляйте PDF",
+          "descriptor": "",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    },
+    {
+      "id": "de-DE",
+      "code": "de-DE",
+      "flag": "🇩🇪",
+      "name": "Deutsch",
+      "translations": {
+        "pdfsign-real-signnow-1": {
+          "verb": "Ihre Unterschrift.\nÜberall bereit.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-signnow-2": {
+          "verb": "Dokumente\nöffnen",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-signnow-3": {
+          "verb": "PDFs signieren\nund versenden",
+          "descriptor": "",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    }
+  ],
+  "activeLocaleId": "ru"
+}

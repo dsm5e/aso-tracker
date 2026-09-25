@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type SearchTermSuggestion } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
+import { campaignDisplayName } from "../lib/campaignNames.ts";
 
 interface Props { reloadKey: number }
 
@@ -26,41 +27,41 @@ export default function SearchTerms({ reloadKey }: Props) {
       match_type: "EXACT",
     });
     const res = await api.applyAction(id);
-    if (!res.ok) alert(`Failed: ${res.error}`);
+    if (!res.ok) alert(`Не удалось применить действие: ${res.error}`);
   }
 
   return (
     <>
       <div className="topbar">
-        <h2>Search Terms — cleanup & discovery</h2>
+        <div><h2>Поисковые запросы</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Фактические запросы Apple Ads: чистка нерелевантного трафика и поиск новых ключей</div></div>
         <div className="controls">
           <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
-            <option value="all">All ({recs.length})</option>
-            <option value="negative">Negatives ({recs.filter((r) => r.suggestion === "negative").length})</option>
-            <option value="add_as_keyword">Discovery ({recs.filter((r) => r.suggestion === "add_as_keyword").length})</option>
+            <option value="all">Все ({recs.length})</option>
+            <option value="negative">В минус-слова ({recs.filter((r) => r.suggestion === "negative").length})</option>
+            <option value="add_as_keyword">Кандидаты ({recs.filter((r) => r.suggestion === "add_as_keyword").length})</option>
           </select>
           <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={7}>7 days</option>
-            <option value={14}>14 days</option>
-            <option value={30}>30 days</option>
+            <option value={7}>7 дней</option>
+            <option value={14}>14 дней</option>
+            <option value={30}>30 дней</option>
           </select>
         </div>
       </div>
 
-      {loading ? <div className="empty">Loading…</div> : filtered.length === 0 ? (
-        <div className="empty">Nothing to clean up. (либо нет search_terms — нужен sync, либо всё уже обработано.)</div>
+      {loading ? <div className="data-state loading">Загружаем поисковые запросы…</div> : filtered.length === 0 ? (
+        <div className="data-state">Нет запросов для этого фильтра. Возможно, синхронизация ещё не собрала search terms.</div>
       ) : (
         <table>
           <thead>
             <tr>
-              <th>Term</th>
-              <th>Campaign</th>
-              <th>Suggestion</th>
-              <th className="num">Imp</th>
+              <th>Запрос</th>
+              <th>Кампания</th>
+              <th>Рекомендация</th>
+              <th className="num">Показы</th>
               <th className="num">Taps</th>
-              <th className="num">Inst</th>
-              <th className="num">Spend</th>
-              <th>Reason</th>
+              <th className="num">Установки</th>
+              <th className="num">Расход</th>
+              <th>Причина</th>
               <th />
             </tr>
           </thead>
@@ -68,10 +69,10 @@ export default function SearchTerms({ reloadKey }: Props) {
             {filtered.map((r, idx) => (
               <tr key={`${r.campaign_id}-${r.term}-${idx}`}>
                 <td><strong>{r.term}</strong></td>
-                <td className="muted" style={{ fontSize: 11 }}>{r.campaign_name}</td>
+                <td className="muted" style={{ fontSize: 11 }}>{campaignDisplayName(r.campaign_name)}</td>
                 <td>
                   <span className={`badge ${r.suggestion === "negative" ? "bad" : "ok"}`}>
-                    {r.suggestion === "negative" ? "→ negative" : "→ add keyword"}
+                    {r.suggestion === "negative" ? "→ в минус-слова" : "→ проверить ключ"}
                   </span>
                 </td>
                 <td className="num">{r.impressions}</td>
@@ -81,10 +82,10 @@ export default function SearchTerms({ reloadKey }: Props) {
                 <td className="muted" style={{ fontSize: 12 }}>{r.reason}</td>
                 <td>
                   {r.suggestion === "negative" && (
-                    <button className="danger" onClick={() => applyNegative(r)}>Add negative</button>
+                    <button className="danger" onClick={() => applyNegative(r)}>Добавить минус-слово</button>
                   )}
                   {r.suggestion === "add_as_keyword" && (
-                    <span className="muted" style={{ fontSize: 11 }}>Add manually (need ad group)</span>
+                    <span className="muted" style={{ fontSize: 11 }}>Добавить после проверки владельца и группы</span>
                   )}
                 </td>
               </tr>

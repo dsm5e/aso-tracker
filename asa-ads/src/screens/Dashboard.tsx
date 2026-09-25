@@ -8,6 +8,8 @@ import GeoHeatmap from "../components/GeoHeatmap.tsx";
 import CampaignControls from "../components/CampaignControls.tsx";
 import RoiDrawer from "../components/RoiDrawer.tsx";
 import { exportRows } from "../lib/csv.ts";
+import InfoTooltip from "../components/InfoTooltip.tsx";
+import { campaignDisplayName, campaignTechnicalName } from "../lib/campaignNames.ts";
 
 interface Props { reloadKey: number }
 
@@ -27,6 +29,7 @@ export default function Dashboard({ reloadKey }: Props) {
   const [daily, setDaily] = useState<DailyTotals[]>([]);
   const [days, setDays] = useState(14);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [flashed, setFlashed] = useState<Set<number>>(new Set());
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   const [verdicts, setVerdicts] = useState<VerdictMap>({});
@@ -66,7 +69,11 @@ export default function Dashboard({ reloadKey }: Props) {
 
   useEffect(() => {
     setLoading(true);
-    load().catch(console.error).finally(() => setLoading(false));
+    setError("");
+    load().catch((reason: unknown) => {
+      console.error(reason);
+      setError(reason instanceof Error ? reason.message : "Не удалось получить данные Apple Ads");
+    }).finally(() => setLoading(false));
   }, [days, reloadKey, selected]);
 
   const totals = useMemo(() => {
@@ -96,58 +103,61 @@ export default function Dashboard({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <h2>Dashboard</h2>
+        <div>
+          <h2>Обзор Apple Ads</h2>
+          <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Все страны · Apple Ads reports · обновляется после синхронизации</div>
+        </div>
         <div className="controls">
-          <span className="meta">{new Date().toISOString().replace("T", " ").slice(0, 16)}Z</span>
+          <span className="meta">Источник: Apple Ads</span>
           <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={1}>Today</option>
-            <option value={3}>3D</option>
-            <option value={7}>7D</option>
-            <option value={14}>14D</option>
-            <option value={30}>30D</option>
+            <option value={1}>Сегодня</option>
+            <option value={3}>3 дня</option>
+            <option value={7}>7 дней</option>
+            <option value={14}>14 дней</option>
+            <option value={30}>30 дней</option>
           </select>
         </div>
       </div>
 
       <div className="spark-row">
-        <Sparkline title="Spend" value={fmtUsd(totals.spend)} data={daily.map((d) => d.spend)} labels={dates} color="#ffb000" format={fmtUsd} />
-        <Sparkline title="Installs" value={String(totals.installs)} data={daily.map((d) => d.installs)} labels={dates} color="#5ce1e6" format={(n) => String(Math.round(n))} />
+        <Sparkline title="Расход" value={fmtUsd(totals.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--amber)" format={fmtUsd} />
+        <Sparkline title="Установки" value={String(totals.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--cyan)" format={(n) => String(Math.round(n))} />
         <Sparkline title="CPI" value={overallCpi > 0 ? fmtUsd(overallCpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="#ff5c5c" format={fmtUsd} />
-        <Sparkline title="Trials (ASC)" value={String(totals.trials)} data={daily.map((d) => d.trial_starts)} labels={dates} color="#88c87a" format={(n) => String(Math.round(n))} />
+        <Sparkline title="Старты триала" value={String(totals.trials)} data={daily.map((d) => d.trial_starts)} labels={dates} color="var(--green)" format={(n) => String(Math.round(n))} />
       </div>
 
-      <div className="divider">Trend</div>
+      <div className="divider">Динамика</div>
       <HeroChart daily={daily} />
 
-      <div className="divider">Geography</div>
+      <div className="divider">Страны</div>
       <GeoHeatmap days={days} />
 
       <div className="divider" style={{ justifyContent: "space-between" }}>
-        Campaigns · {rows.length} total
+        Кампании · {rows.length}
         <button className="compact" onClick={() => exportRows(
           `campaigns-${new Date().toISOString().slice(0, 10)}.csv`,
           ["name", "country", "status", "daily_budget", "spend", "impressions", "taps", "installs", "cpi", "trial_starts"],
           rows as unknown as Array<Record<string, unknown>>,
-        )}>export csv</button>
+        )}>Экспорт CSV</button>
       </div>
 
-      {loading && rows.length === 0 ? (
-        <div className="loading">loading</div>
+      {error && rows.length === 0 ? <div className="data-state error">Не удалось обновить обзор: {error}</div> : loading && rows.length === 0 ? (
+        <div className="data-state loading">Загружаем показатели…</div>
       ) : rows.length === 0 ? (
-        <div className="empty">no data · run sync</div>
+        <div className="data-state">Нет данных за этот период. Запустите синхронизацию.</div>
       ) : (
         <table>
           <thead>
             <tr>
               <th style={{ width: 24 }} />
-              <th>Campaign</th>
-              <th>Status</th>
-              <th className="num">Daily</th>
-              <th className="num">Spend</th>
-              <th className="num">Inst</th>
+              <th>Кампания</th>
+              <th>Статус</th>
+              <th className="num">Дневной лимит</th>
+              <th className="num">Расход</th>
+              <th className="num">Установки</th>
               <th className="num">CPI</th>
-              <th>Verdict</th>
-              <th style={{ minWidth: 170 }}>Controls</th>
+              <th>Решение <InfoTooltip title="Как читать решение">Рекомендация — ориентир на основе доступных затрат, установок и доступной экономики. Откройте прогноз, чтобы увидеть источники и объём выборки.</InfoTooltip></th>
+              <th style={{ minWidth: 170 }}>Управление</th>
             </tr>
           </thead>
           <tbody>
@@ -160,12 +170,14 @@ export default function Dashboard({ reloadKey }: Props) {
                     <span className={`expand-toggle ${isExp ? "open" : ""}`} onClick={() => toggleExpand(r.id)}>▸</span>
                   </td>
                   <td>
-                    <Link to={`/campaigns/${r.id}`} style={{ color: "var(--bone)", fontWeight: 500 }}>{r.name}</Link>
-                    <div className="muted" style={{ fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", marginTop: 2 }}>{r.country}</div>
+                    <Link to={`/campaigns/${r.id}`} style={{ color: "var(--bone)", fontWeight: 500 }}>{campaignDisplayName(r.name)}</Link>
+                    <div className="muted" style={{ fontSize: 10, marginTop: 3 }}>
+                      {r.country}{campaignTechnicalName(r.name) ? ` · ${r.name}` : ""}
+                    </div>
                   </td>
                   <td>
                     <span className={`badge ${r.status === "ENABLED" && r.serving_status === "RUNNING" ? "ok" : "warn"}`}>
-                      {r.serving_status === "RUNNING" ? "run" : r.status === "PAUSED" ? "paused" : "hold"}
+                      {r.serving_status === "RUNNING" ? "работает" : r.status === "PAUSED" ? "пауза" : "на проверке"}
                     </span>
                   </td>
                   <td className="num">{fmtUsd(r.daily_budget)}</td>
@@ -187,14 +199,14 @@ export default function Dashboard({ reloadKey }: Props) {
                   <tr key={`${r.id}-exp`} className="expand-row">
                     <td colSpan={9}>
                       <div className="expand-grid">
-                        <div className="field"><span className="k">Impressions</span><span className="v">{r.impressions.toLocaleString()}</span></div>
-                        <div className="field"><span className="k">Taps</span><span className="v">{r.taps}</span></div>
+                        <div className="field"><span className="k">Показы</span><span className="v">{r.impressions.toLocaleString()}</span></div>
+                        <div className="field"><span className="k">Тапы</span><span className="v">{r.taps}</span></div>
                         <div className="field"><span className="k">TTR</span><span className="v">{(r.ttr * 100).toFixed(2)}%</span></div>
-                        <div className="field"><span className="k">Install Rate</span><span className="v">{(r.install_rate * 100).toFixed(1)}%</span></div>
-                        <div className="field"><span className="k">Trials (country, ASC)</span><span className="v">{r.trial_starts}</span></div>
-                        <div className="field"><span className="k">Lifetime budget cap</span><span className="v">{fmtUsd(r.lifetime_budget)}</span></div>
-                        <div className="field"><span className="k">Start → End</span><span className="v" style={{ fontSize: 11 }}>{r.start_time?.slice(0, 10)} → {r.end_time?.slice(0, 10) ?? "—"}</span></div>
-                        <div className="field"><span className="k">Bidding</span><span className="v">{r.bidding_strategy}</span></div>
+                        <div className="field"><span className="k">Тап → установка</span><span className="v">{(r.install_rate * 100).toFixed(1)}%</span></div>
+                        <div className="field"><span className="k">Старты триала (ASC)</span><span className="v">{r.trial_starts}</span></div>
+                        <div className="field"><span className="k">Лимит на весь срок</span><span className="v">{fmtUsd(r.lifetime_budget)}</span></div>
+                        <div className="field"><span className="k">Период</span><span className="v" style={{ fontSize: 11 }}>{r.start_time?.slice(0, 10)} → {r.end_time?.slice(0, 10) ?? "—"}</span></div>
+                        <div className="field"><span className="k">Стратегия ставок</span><span className="v">{r.bidding_strategy}</span></div>
                       </div>
                       {v?.reason && (
                         <div style={{ marginTop: 14, padding: "10px 12px", background: "var(--bg-1)", borderLeft: `2px solid var(--${v.kind === "scale" ? "amber" : v.kind === "cut" ? "red" : v.kind === "unknown" ? "yellow" : "bone-mute"})`, fontSize: 12, color: "var(--bone-dim)" }}>
@@ -203,8 +215,8 @@ export default function Dashboard({ reloadKey }: Props) {
                         </div>
                       )}
                       <div style={{ marginTop: 12 }}>
-                        <button className="primary" onClick={() => setDrawerCid(r.id)}>open ROI projection →</button>{" "}
-                        <Link to={`/campaigns/${r.id}`}><button>drill into keywords →</button></Link>
+                        <button className="primary" onClick={() => setDrawerCid(r.id)}>Открыть прогноз ROI</button>{" "}
+                        <Link to={`/campaigns/${r.id}`}><button>К ключевым словам</button></Link>
                       </div>
                     </td>
                   </tr>
@@ -218,7 +230,7 @@ export default function Dashboard({ reloadKey }: Props) {
       {drawerCid && drawerCamp && (
         <RoiDrawer
           campaignId={drawerCid}
-          campaignName={drawerCamp.name}
+          campaignName={campaignDisplayName(drawerCamp.name)}
           onClose={() => setDrawerCid(null)}
         />
       )}

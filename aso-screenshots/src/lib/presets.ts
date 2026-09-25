@@ -137,6 +137,9 @@ export interface DeviceTransform {
 }
 
 export interface SampleTextLayout {
+  /** Optional per-frame color and localization-safe lower boundary. */
+  color?: string;
+  safeBottomFraction?: number;
   /** Vertical position of headline top — fraction of canvas (0 = top, 1 = bottom). */
   yFraction?: number;
   /** Title font size in canvas px (overrides preset.text default). */
@@ -146,6 +149,8 @@ export interface SampleTextLayout {
 }
 
 export interface PresetSample {
+  /** Textless composed artwork; headlines remain editable Studio layers. */
+  sourceLayout?: 'device' | 'full-bleed';
   /** Headline shown on this sample screen. */
   verb: string;
   /** Sub-headline / descriptor. */

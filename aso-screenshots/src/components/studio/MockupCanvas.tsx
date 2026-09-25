@@ -462,7 +462,11 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
 
     const overflows = () => (
       content.scrollHeight > box.clientHeight + 1
-      || content.scrollWidth > box.clientWidth + 1
+      // The headline box includes horizontal padding; the content width is
+      // the actual text budget. Long unbreakable translated words must shrink.
+      || content.scrollWidth > content.clientWidth + 1
+      || title.scrollWidth > title.clientWidth + 1
+      || (descriptor != null && descriptor.scrollWidth > descriptor.clientWidth + 1)
     );
 
     const fit = () => {

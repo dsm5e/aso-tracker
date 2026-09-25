@@ -30,7 +30,7 @@ export default function Alerts({ reloadKey }: Props) {
     setChecking(true);
     try {
       const r = await api.checkAlerts();
-      alert(`Checked ${r.checked} candidates · sent ${r.sent} · skipped ${r.skipped}`);
+      alert(`Проверено: ${r.checked} · отправлено: ${r.sent} · пропущено: ${r.skipped}`);
       await load();
     } finally {
       setChecking(false);
@@ -40,14 +40,14 @@ export default function Alerts({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <h2>Alerts</h2>
+        <div><h2>Оповещения</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Контроль расхода, CPI и остановившихся кампаний</div></div>
         <div className="controls">
-          <button onClick={runCheck} disabled={checking}>{checking ? "Checking…" : "Run check now"}</button>
+          <button onClick={runCheck} disabled={checking}>{checking ? "Проверяем…" : "Проверить сейчас"}</button>
         </div>
       </div>
 
       <div className="card">
-        <h3>Rules</h3>
+        <h3>Правила</h3>
         <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>
           <strong>🔥 Burn:</strong> daily spend ≥ $5 with 0 installs<br />
           <strong>💸 High CPI:</strong> 7-day CPI ≥ $2.00 (min 3 installs)<br />
@@ -58,16 +58,16 @@ export default function Alerts({ reloadKey }: Props) {
         </div>
       </div>
 
-      {loading ? <div className="empty">Loading…</div> : rows.length === 0 ? (
-        <div className="empty">No alerts sent yet. Enable in .env and run check.</div>
+      {loading ? <div className="data-state loading">Загружаем оповещения…</div> : rows.length === 0 ? (
+        <div className="data-state">Оповещений пока нет. Проверьте конфигурацию и запустите проверку.</div>
       ) : (
         <table>
           <thead>
             <tr>
-              <th>Sent</th>
-              <th>Type</th>
-              <th>Message</th>
-              <th>Delivered</th>
+              <th>Отправлено</th>
+              <th>Тип</th>
+              <th>Сообщение</th>
+              <th>Доставлено</th>
             </tr>
           </thead>
           <tbody>
@@ -77,7 +77,7 @@ export default function Alerts({ reloadKey }: Props) {
                 <td><span className="badge">{a.alert_type}</span></td>
                 <td dangerouslySetInnerHTML={{ __html: a.message }} />
                 <td>
-                  <span className={`badge ${a.delivered ? "ok" : "bad"}`}>{a.delivered ? "sent" : "failed"}</span>
+                  <span className={`badge ${a.delivered ? "ok" : "bad"}`}>{a.delivered ? "отправлено" : "ошибка"}</span>
                 </td>
               </tr>
             ))}

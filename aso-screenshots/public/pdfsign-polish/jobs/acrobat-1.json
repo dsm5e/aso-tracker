@@ -1,0 +1,17 @@
+{
+  "id": "acrobat-1",
+  "status": "done",
+  "started": "2026-09-20T03:25:02.555Z",
+  "model": "gpt-image-2.5-sunburst",
+  "quality": "high",
+  "prompt": "Polish this App Store screenshot template for PDFSign into a premium, photorealistic product presentation. This is a tightly scoped FINISHING PASS, not a redesign. Preserve the exact composition, positions, device angles, scale, palette and hierarchy of the input.\n\nWhere an iPhone is present, refine it as a real photographed modern iPhone Pro: precise polished metal edges, convincing glass highlights and very subtle studio reflections, realistic contact shadows. No chunky plastic or clay mockup. Keep the inner screen aperture fixed at exactly the same coordinates. Where the composition has only paper cards or line art, preserve that concept; do not invent a phone. Polish existing cards and shadows gently. Match backgrounds seamlessly across all protected-region boundaries; never brighten a rectangular section. Existing illustration remains a restrained flat illustration. No new objects, hands, logos, badges, buttons, stars or claims.\n\nCRITICAL: The source app screenshots, all UI text, document text, signatures and controls are immutable. They are opaque protected regions in the supplied mask. Do not redraw, replace, crop, reposition or stylize them. All added highlights must stay on the hardware edges, never on the display.\n\nLOCALIZATION: There are deliberately NO marketing headlines in this input. Keep the top headline area empty and unchanged, spanning vertical fractions 0.035 through 0.250 of the canvas. Never generate marketing text, letters, watermarks or typographic shapes anywhere outside the existing app UI. Preserve background colors in that zone exactly so editable translated text can be overlaid later.\n\nArt direction: Красный фон, крупные карточки и увеличенные фрагменты интерфейса. Maintain this identity. Output one portrait composition with the same aspect ratio.",
+  "finished": "2026-09-20T03:25:43.885Z",
+  "endpoint": "openai/gpt-image-2.5/sunburst/edit",
+  "url": "https://v3b.fal.media/files/b/0aab21cf/O3JeTuHn8s34UCNgLQrS0_hLVoH721.png",
+  "rawDimensions": {
+    "width": 1280,
+    "height": 2784
+  },
+  "protectedCount": 3239156,
+  "changedProtected": 0
+}

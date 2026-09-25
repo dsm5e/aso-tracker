@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, type AccountHealth, type CommandCenterData, type CommandGeoRow } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
 import { exportRows } from "../lib/csv.ts";
+import InfoTooltip from "../components/InfoTooltip.tsx";
 
 interface Props { reloadKey: number }
 
@@ -20,21 +21,27 @@ function snapshotAgeDays(date: string | null): number | null {
 }
 
 export default function CommandCenter({ reloadKey }: Props) {
-  const { selected, apps, setSelected } = useApp();
+  const { selected } = useApp();
   const [data, setData] = useState<CommandCenterData | null>(null);
   const [health, setHealth] = useState<AccountHealth | null>(null);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Command Center is per-app; auto-pick the top spender when "all" is selected.
-  const appId = selected !== "all" ? selected : apps[0]?.app_id;
+  // A matrix joins app-specific Apple Ads, attribution and ASO data. Never pick
+  // an arbitrary first app when the portfolio selector is active.
+  const appId = selected !== "all" ? selected : undefined;
 
   useEffect(() => {
     if (!appId) return;
     setLoading(true);
+    setError("");
     Promise.all([api.commandCenter(appId, days), api.accountHealth()])
       .then(([d, h]) => { setData(d); setHealth(h); })
-      .catch(console.error)
+      .catch((reason: unknown) => {
+        console.error(reason);
+        setError(reason instanceof Error ? reason.message : "Не удалось загрузить матрицу решений");
+      })
       .finally(() => setLoading(false));
   }, [appId, days, reloadKey]);
 
@@ -49,55 +56,52 @@ export default function CommandCenter({ reloadKey }: Props) {
 
   const snapAge = snapshotAgeDays(data?.aso.snapshotDate ?? null);
 
-  if (!appId) return <div className="empty">no apps yet · run sync</div>;
+  if (!appId) return <div className="data-state">Выберите приложение слева, чтобы построить матрицу по всем его странам. Портфель не смешивается с воронкой одного приложения.</div>;
 
   return (
     <>
       <div className="topbar">
-        <h2>Command Center</h2>
+        <div>
+          <h2>Матрица решений</h2>
+          <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Страны текущего приложения · ASA × органика × выручка</div>
+        </div>
         <div className="controls">
-          {selected === "all" && apps.length > 1 && (
-            <select value={appId} onChange={(e) => setSelected(Number(e.target.value))}>
-              {apps.map((a) => <option key={a.app_id} value={a.app_id}>{a.app_name ?? a.app_id}</option>)}
-            </select>
-          )}
-          <span className="meta">ASA × revenue × organic ASO — one verdict per geo</span>
+          <span className="meta">Источник: Apple Ads, Adapty, ASO</span>
           <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={7}>7D</option>
-            <option value={14}>14D</option>
-            <option value={30}>30D</option>
-            <option value={90}>90D</option>
+            <option value={7}>7 дней</option>
+            <option value={14}>14 дней</option>
+            <option value={30}>30 дней</option>
+            <option value={90}>90 дней</option>
           </select>
         </div>
       </div>
 
       {health?.billingSuspected && (
         <div className="card" style={{ padding: "12px 16px", borderColor: "var(--red)", marginBottom: 12 }}>
-          <span style={{ color: "var(--red)", fontWeight: 600 }}>🚨 Account on hold</span>
+          <span style={{ color: "var(--red)", fontWeight: 600 }}>Аккаунт на удержании</span>
           <span className="muted" style={{ marginLeft: 10, fontSize: 12 }}>
-            {health.onHold}/{health.totalEnabled} enabled campaigns are ON_HOLD — nothing is serving.
-            Check Apple Ads → Billing (card declined?). Nobody notices this without an alert; the TG rule fires daily until fixed.
+            {health.onHold}/{health.totalEnabled} включённых кампаний находятся в ON_HOLD и не получают показы. Проверьте биллинг Apple Ads.
           </span>
         </div>
       )}
 
       <div className="spark-row">
-        <div className="card stat"><div className="muted">Spend {days}d</div><div className="big" style={{ color: "var(--amber)" }}>{fmtUsd(totals.spend)}</div></div>
-        <div className="card stat"><div className="muted">Installs</div><div className="big">{totals.installs}</div></div>
-        <div className="card stat"><div className="muted">Revenue</div><div className="big" style={{ color: "var(--green)" }}>{data?.revenueSource ? fmtUsd(totals.revenue) : "no feed"}</div></div>
-        <div className="card stat"><div className="muted">Blended ROAS</div><div className="big" style={{ color: totals.roas >= 1 ? "var(--green)" : "var(--red)" }}>{data?.revenueSource ? `${(totals.roas * 100).toFixed(0)}%` : "—"}</div></div>
+        <div className="card stat"><div className="muted">Расход · {days} дней</div><div className="big" style={{ color: "var(--amber)" }}>{fmtUsd(totals.spend)}</div></div>
+        <div className="card stat"><div className="muted">Установки</div><div className="big">{totals.installs}</div></div>
+        <div className="card stat"><div className="muted">Выручка</div><div className="big" style={{ color: "var(--green)" }}>{data?.revenueSource ? fmtUsd(totals.revenue) : "нет источника"}</div></div>
+        <div className="card stat"><div className="muted">Смешанный ROAS <InfoTooltip title="ROAS">Фактическая выручка, делённая на расход за одинаковое окно. Без подключённой выручки показатель не строится.</InfoTooltip></div><div className="big" style={{ color: totals.roas >= 1 ? "var(--green)" : "var(--red)" }}>{data?.revenueSource ? `${(totals.roas * 100).toFixed(0)}%` : "—"}</div></div>
         <div className="card stat">
-          <div className="muted">ASO snapshot</div>
+          <div className="muted">Снимок ASO</div>
           <div className="big" style={{ color: snapAge !== null && snapAge > 7 ? "var(--amber)" : "var(--bone)" }}>
-            {data?.aso.snapshotDate ? `${data.aso.snapshotDate}${snapAge !== null && snapAge > 7 ? ` · ${snapAge}d old` : ""}` : "none"}
+            {data?.aso.snapshotDate ? `${data.aso.snapshotDate}${snapAge !== null && snapAge > 7 ? ` · устарел на ${snapAge} дн.` : ""}` : "нет данных"}
           </div>
         </div>
       </div>
 
-      {data?.revenueError && <div className="muted" style={{ fontSize: 11, margin: "6px 0" }}>revenue feed error: {data.revenueError}</div>}
+      {data?.revenueError && <div className="data-state error" style={{ minHeight: 0, margin: "6px 0" }}>Ошибка источника выручки: {data.revenueError}</div>}
 
       <div className="divider" style={{ justifyContent: "space-between" }}>
-        Geo verdicts · {data?.rows.length ?? 0}
+        Решения по странам · {data?.rows.length ?? 0}
         {data && data.rows.length > 0 && (
           <button className="compact" onClick={() => exportRows(
             `command-center-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -108,28 +112,28 @@ export default function CommandCenter({ reloadKey }: Props) {
               roas: r.roas === null ? "" : Math.round(r.roas * 100) / 100,
               verdict: r.verdict, aso_top10: r.aso?.top10 ?? "", aso_avg: r.aso?.avgPos ?? "",
             })) as unknown as Array<Record<string, unknown>>,
-          )}>export csv</button>
+          )}>Экспорт CSV</button>
         )}
       </div>
 
-      {loading && !data ? (
-        <div className="empty">loading</div>
+      {error && !data ? <div className="data-state error">{error}</div> : loading && !data ? (
+        <div className="data-state loading">Загружаем данные по странам…</div>
       ) : (data?.rows.length ?? 0) === 0 ? (
-        <div className="empty">no geo data · run sync</div>
+        <div className="data-state">Нет данных по странам в выбранном окне.</div>
       ) : (
         <table>
           <thead>
             <tr>
-              <th>Geo</th>
-              <th className="num">Spend</th>
-              <th className="num">Inst</th>
+              <th>Страна</th>
+              <th className="num">Расход</th>
+              <th className="num">Установки</th>
               <th className="num">CPI</th>
-              <th className="num">Trials</th>
-              <th className="num">Paid</th>
-              <th className="num">Revenue</th>
+              <th className="num">Триалы</th>
+              <th className="num">Оплаты</th>
+              <th className="num">Выручка</th>
               <th className="num">ROAS</th>
-              <th>Verdict</th>
-              <th>Organic (top-10 / avg pos / best)</th>
+              <th>Решение</th>
+              <th>Органика (топ-10 / средняя / лучшие)</th>
             </tr>
           </thead>
           <tbody>
@@ -162,7 +166,7 @@ export default function CommandCenter({ reloadKey }: Props) {
                         )}
                       </span>
                     ) : (
-                      <span className="muted" style={{ fontSize: 11 }}>not tracked</span>
+                      <span className="muted" style={{ fontSize: 11 }}>не отслеживается</span>
                     )}
                   </td>
                 </tr>

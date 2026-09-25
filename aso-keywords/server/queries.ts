@@ -228,15 +228,6 @@ export interface RankingRow {
 export function getRankings(appId: string, localeFilter?: string): RankingRow[] {
   const { d: today } = db.prepare(`SELECT MAX(date) as d FROM snapshots WHERE app = ?`).get(appId) as { d: string | null };
 
-  const app = loadApps().find((a) => a.id === appId);
-  const selfBundle = (app?.bundle || '').toLowerCase();
-  const selfTid = app?.iTunesId ? Number(app.iTunesId) : NaN;
-  const isSelf = (e: { id?: string; tid?: number }) => {
-    if (Number.isFinite(selfTid) && e.tid === selfTid) return true;
-    const bid = (e.id || '').toLowerCase();
-    return !!selfBundle && (bid === selfBundle || bid.startsWith(selfBundle));
-  };
-
   const params: Array<string | number> = [appId];
   let sql = `
     WITH latest AS (
@@ -308,7 +299,10 @@ export function getRankings(appId: string, localeFilter?: string): RankingRow[] 
         const parsed = JSON.parse(r.top5_json) as Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
         // Assign position from array index for legacy rows that didn't persist it.
         const withPos = parsed.map((e, i) => ({ ...e, pos: e.pos ?? i + 1 }));
-        b.top5 = withPos.filter((e) => !isSelf(e)).slice(0, 5);
+        // This is the actual App Store top five, including the tracked app.
+        // Excluding it made a reported #2 position contradict the visible
+        // result icons and also shifted every competitor up by one place.
+        b.top5 = withPos.slice(0, 5);
       } catch { b.top5 = []; }
     }
     if (r.date <= yaStr && b.yesterday === null) b.yesterday = r.position;
