@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Smartphone, Tablet, Layers, Plus, Trash2, FlaskConical, Shapes, ArrowRight } from 'lucide-react';
-import { Button, Card, Input } from '../components/shared';
+import { Button, Card, Input, PageHeader } from '../components/shared';
 import { useStudio, type Devices, type ArchivedProject, type ArchivedPPOExperiment } from '../state/studio';
 import { formatDimensions, getIPhoneProfile } from '../lib/deviceProfiles';
 
@@ -66,23 +66,17 @@ export function SetupScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--s-9) var(--s-7)' }}>
       <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
-          <div>
-            <h1 className="ds-page-title" style={{ margin: 0 }}>
-              {hasActiveWork ? (appName || 'Draft project') : 'New project'}
-            </h1>
-            <p className="ds-page-sub" style={{ margin: '4px 0 0' }}>
-              {hasActiveWork
-                ? 'Editing in progress. Finish via Export to archive, or start over.'
-                : 'Set the basics. You can change anything later.'}
-            </p>
-          </div>
-          {hasActiveWork && (
+        <PageHeader
+          title={hasActiveWork ? (appName || 'Draft project') : 'New project'}
+          sub={hasActiveWork
+            ? 'Editing in progress. Finish via Export to archive, or start over.'
+            : 'Set the basics. You can change anything later.'}
+          actions={hasActiveWork && (
             <Button variant="ghost" leftIcon={<Plus size={14} />} onClick={onStartNew} title="Discard draft and start fresh">
               Start over
             </Button>
           )}
-        </header>
+        />
 
         <Card>
           <Card.Section title="Device targets">

@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Loader2, RefreshCcw, StopCircle, Wand2, X } from 'lucide-react';
-import { Button } from '../components/shared';
+import { Button, PageHeader } from '../components/shared';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
 import { useStudio, type Screenshot } from '../state/studio';
 import { polishBatch, polishSlot } from '../lib/polishBatch';
@@ -121,15 +121,10 @@ export function PolishScreen() {
 
   return (
     <div style={{ padding: 'var(--s-7)', maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
-        <div>
-          <h1 className="ds-page-title" style={{ margin: 0 }}>AI Polish</h1>
-          <p className="ds-page-sub" style={{ margin: '4px 0 0', maxWidth: 720 }}>
-            Replace the flat scaffold with photoreal devices + subtle highlights.
-            Same layout — only the rendering quality is upgraded. Hero slots shown separately below — generate from here or re-enhance if already done in Editor.
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <PageHeader
+        title="AI Polish"
+        sub="Replace the flat scaffold with photoreal devices + subtle highlights. Same layout — only the rendering quality is upgraded. Hero slots shown separately below — generate from here or re-enhance if already done in Editor."
+        actions={<>
           <span className="tabular ds-note">
             ${cost} · {totalSelected} selected
           </span>
@@ -147,8 +142,8 @@ export function PolishScreen() {
               Polish {totalSelected}
             </Button>
           )}
-        </div>
-      </header>
+        </>}
+      />
 
       {/* Progress bar — shown while a batch is in flight or any slot is mid-call */}
       {(running || generatingIds.size > 0) && (

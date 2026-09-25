@@ -4,7 +4,7 @@ import { useStudio } from '../state/studio';
 import { useHighlight } from '../state/highlight';
 import { useGenSelect, isGenSelected } from '../state/genSelect';
 import type { PPOSourceScreen, PPOGeneration } from '../state/studio';
-import { Button, Card } from '../components/shared';
+import { Button, Card, PageHeader } from '../components/shared';
 import { Plus, Trash2, X, UploadCloud, ChevronDown, ChevronRight, Wand2, Download, Loader2, Save, Shapes, ArrowRight } from 'lucide-react';
 import { generateOne, generateStrategy } from '../lib/ppoGenerate';
 import { exportStrategy, exportAllStrategies, type ExportProgress } from '../lib/ppoExport';
@@ -174,16 +174,10 @@ export function PPOScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--s-9) var(--s-7)' }}>
       <div style={{ width: '100%', maxWidth: 1200, display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <h1 className="ds-page-title" style={{ margin: 0 }}>
-              Product Page Optimization
-            </h1>
-            <p className="ds-page-sub" style={{ margin: '4px 0 0' }}>
-              Run multi-strategy A/B experiments. Upload source screens once, generate per-strategy
-              renders with different AI prompts. Export N treatments ready for App Store Connect.
-            </p>
-          </div>
+        <PageHeader
+          title="Product Page Optimization"
+          sub="Run multi-strategy A/B experiments. Upload source screens once, generate per-strategy renders with different AI prompts. Export N treatments ready for App Store Connect."
+          actions={<>
           {/* Device selector — drives generation input size (768×1664 vs 768×1024),
               tile aspect ratio, and export upscale dims (1290×2796 vs 2064×2752). */}
           <div className="seg">
@@ -199,7 +193,8 @@ export function PPOScreen() {
               </button>
             ))}
           </div>
-        </header>
+          </>}
+        />
 
         {/* Source screens pool */}
         <Card>

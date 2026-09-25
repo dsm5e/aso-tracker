@@ -1,0 +1,97 @@
+/* Adapty-style polish for the Screenshots product (loaded last in main.tsx).
+   App chrome only — nothing here reaches the mockup canvas or the /render
+   export page (that route renders outside .app-shell).
+   No hard dividers: surfaces separate by tone, shadow and spacing. */
+
+.app-shell {
+  /* every divider in the product is drawn with these — retire them in one place
+     (--line-1 is aliased on :root, so it has to be re-declared here) */
+  --ds-hairline: transparent;
+  --line-1: transparent;
+  --topbar-h: 56px;
+  --page-head-bg: var(--ds-bg);
+
+  /* the shell owns the viewport: the slim top bar stays, only the content scrolls */
+  height: 100vh;
+  height: 100dvh;
+}
+.app-content { min-height: 0; overscroll-behavior: contain; }
+
+/* ---------- top bar: 56px, tone instead of a rule ---------- */
+.topbar {
+  padding: 0 20px;
+  border-bottom: 0;
+  background: var(--ds-panel);
+  box-shadow: 0 6px 16px -14px rgba(1, 0, 48, .35);
+  position: relative;
+  z-index: 10;
+}
+.topbar-actions { gap: 8px; }
+.topbar-actions > .btn--sm { height: var(--ds-control-h-sm); }
+
+/* ---------- page header: one row, subtitle on one line, sticky + folding ---------- */
+.page-head {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  margin: -12px -12px 0;
+  padding: 12px;
+  background: var(--page-head-bg);
+  border-radius: 0 0 var(--ds-radius-card) var(--ds-radius-card);
+}
+.page-head-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+.page-head-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.page-head-title-row .ds-page-title { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.page-head-title-row > .btn--icon { margin-left: -6px; }
+.page-head-sub {
+  max-width: 760px;
+  max-height: 20px;
+  margin: 4px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.page-head-actions { display: flex; flex: none; align-items: center; gap: 12px; }
+.page-head-actions .ds-note { white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Fold the subtitle and lift the bar with a soft shadow once the content scrolls. */
+@supports (animation-timeline: scroll()) {
+  .page-head { animation: page-head-lift linear both; animation-timeline: scroll(nearest); animation-range: 0 48px; }
+  .page-head-sub { animation: page-head-fold linear both; animation-timeline: scroll(nearest); animation-range: 0 48px; }
+  @keyframes page-head-lift { to { box-shadow: 0 10px 18px -16px rgba(1, 0, 48, .35); } }
+  @keyframes page-head-fold { to { max-height: 0; margin-top: 0; opacity: 0; } }
+}
+
+/* ---------- cards: borderless, sections separated by spacing ---------- */
+.panel-section { border-bottom: 0; }
+.panel-section + .panel-section { padding-top: 4px; }
+.panel-section-title { min-height: 16px; }
+
+/* ---------- editor: tone-separated columns, one-row toolbar ---------- */
+.editor-toolbar {
+  flex-wrap: wrap;
+  row-gap: 6px;
+  gap: 8px !important;
+  height: auto !important;
+  min-height: 48px;
+  padding: 8px 16px !important;
+  box-shadow: 0 6px 14px -14px rgba(1, 0, 48, .35);
+  position: relative;
+  z-index: 1;
+}
+.editor-toolbar > * { flex: none; }
+.editor-toolbar > .select { flex: 0 1 auto; min-width: 120px !important; max-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.editor-dims { white-space: nowrap; }
+/* the column narrows the toolbar before the viewport does — drop the size read-out
+   first (it stays in the model picker's tooltip) */
+div:has(> .editor-toolbar) { container-type: inline-size; }
+@container (max-width: 780px) { .editor-dims { display: none; } }
+/* then the template buttons go icon-only (label stays in the tooltip) */
+@container (max-width: 700px) { .editor-toolbar .tb-label { display: none; } }
+.sidebar-foot { box-shadow: 0 -10px 18px -16px rgba(1, 0, 48, .35); position: relative; }
+.ds-flat .panel-section { padding: 14px 16px 16px; }

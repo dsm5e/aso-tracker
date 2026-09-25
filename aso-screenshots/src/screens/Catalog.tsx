@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Button, Card, SegmentedControl } from '../components/shared';
+import { Button, Card, SegmentedControl, PageHeader } from '../components/shared';
 import { PresetSampleStrip } from '../components/studio/PresetSampleStrip';
 import { PRESETS } from '../lib/presets';
 import { useStudio } from '../state/studio';
@@ -14,15 +14,10 @@ export function CatalogScreen() {
 
   return (
     <div style={{ padding: 'var(--s-7)', display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1280, margin: '0 auto' }}>
-      <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
-        <div>
-          <h1 className="ds-page-title" style={{ margin: 0 }}>Style catalog</h1>
-          <p className="ds-page-sub" style={{ margin: '4px 0 0' }}>
-            Each row is a 5-screenshot preview of how the style scales across an App Store listing. Click a row to pick.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <PageHeader
+        title="Style catalog"
+        sub="Each row is a 5-screenshot preview of how the style scales across an App Store listing. Click a row to pick."
+        actions={<>
           {/* Project-wide accent — every preset thumbnail re-tints live so you can
               compare styles already wearing your brand color. Same swatches as
               Inspector's accent picker so the two stay in sync. */}
@@ -75,8 +70,8 @@ export function CatalogScreen() {
             value={catalogFilter}
             onChange={setCatalogFilter}
           />
-        </div>
-      </header>
+        </>}
+      />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {visible.map((p) => {

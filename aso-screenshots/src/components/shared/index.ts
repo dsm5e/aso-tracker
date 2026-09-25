@@ -8,3 +8,4 @@ export { Card, type CardProps, type CardSectionProps } from './Card';
 export { Modal, type ModalProps } from './Modal';
 export { Tabs, type TabItem, type TabsProps } from './Tabs';
 export { Topbar, type TopbarProps } from './Topbar';
+export { PageHeader, type PageHeaderProps } from './PageHeader';

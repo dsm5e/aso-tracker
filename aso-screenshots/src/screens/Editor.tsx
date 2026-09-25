@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Eye, RefreshCcw, RotateCcw, Save, Sparkles, Wand2, X } from 'lucide-react';
+import { AlertTriangle, CopyPlus, Eye, RefreshCcw, RotateCcw, Save, Sparkles, Wand2, X } from 'lucide-react';
 import { Button, SegmentedControl } from '../components/shared';
 import { Inspector } from '../components/studio/Inspector';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
@@ -238,12 +238,12 @@ export function EditorScreen() {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'var(--sidebar-w) 1fr var(--inspector-w)', height: 'calc(100vh - var(--topbar-h))', minHeight: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'var(--sidebar-w) minmax(0, 1fr) var(--inspector-w)', height: 'calc(100vh - var(--topbar-h))', minHeight: 0 }}>
       <ScreenshotSidebar />
 
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg-canvas)' }}>
         <div
-          className="ds-dense"
+          className="ds-dense editor-toolbar"
           style={{
             height: 48,
             padding: '0 16px',
@@ -274,6 +274,7 @@ export function EditorScreen() {
               aria-label="iPhone screenshot model"
               value={iphoneModel}
               onChange={(e) => changeIphoneModel(e.target.value as IPhoneModel)}
+              title={active ? `${IPHONE_PROFILES.find((p) => p.id === iphoneModel)?.label ?? ''} · ${formatDimensions(activeDimensions)}` : undefined}
               style={{ width: 'auto', minWidth: 164 }}
             >
               {IPHONE_PROFILES.map((profile) => (
@@ -295,7 +296,7 @@ export function EditorScreen() {
               <option value="ipad-pro-13">iPad Pro 13" · 2064×2752</option>
             </select>
           )}
-          <span className="tabular muted" style={{ fontSize: 13 }}>
+          <span className="tabular muted editor-dims" style={{ fontSize: 13 }}>
             {active ? formatDimensions(activeDimensions) : ''}
           </span>
           {sourceDimensionsMismatch && (
@@ -347,15 +348,16 @@ export function EditorScreen() {
             leftIcon={<Save size={13} />}
             title="Overwrite the current template with these positions, fonts, headlines, pills and per-slot backgrounds"
           >
-            {saving === 'saving' ? 'Saving…' : saving === 'ok' ? 'Saved ✓' : saving === 'err' ? 'Failed' : 'Update'}
+            <span className="tb-label">{saving === 'saving' ? 'Saving…' : saving === 'ok' ? 'Saved ✓' : saving === 'err' ? 'Failed' : 'Update'}</span>
           </Button>
           <Button
             variant="ghost"
             onClick={() => saveTemplate('new')}
             disabled={!selectedPresetId || saving === 'saving'}
+            leftIcon={<CopyPlus size={13} />}
             title="Save current state as a new template (asks for a name)"
           >
-            Save as new
+            <span className="tb-label">Save as new</span>
           </Button>
           {/* Enhance is a HERO-only action — regular slots use the AI Polish
               screen (Phase 5) for batch refinement with a separate prompt. */}

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStudio } from '../state/studio';
 import type { IconVariant } from '../state/studio';
-import { Button, Card } from '../components/shared';
+import { Button, Card, PageHeader } from '../components/shared';
 import { Plus, Trash2, X, UploadCloud, Wand2, Download, Loader2, ArrowLeft } from 'lucide-react';
 import { generateIcon } from '../lib/ppoGenerate';
 import { downloadIcon, exportAllIcons, type ExportProgress } from '../lib/ppoExport';
@@ -52,29 +52,15 @@ export function IconGeneratorScreen() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 'var(--s-9) var(--s-7)' }}>
       <div style={{ width: '100%', maxWidth: 1200, display: 'flex', flexDirection: 'column', gap: 24 }}>
-        <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <button
-              type="button"
-              onClick={() => nav('/ppo')}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10,
-                background: 'transparent', border: 'none', color: 'var(--fg-2)',
-                fontSize: 14, fontWeight: 500, cursor: 'pointer', padding: 0,
-              }}
-            >
-              <ArrowLeft size={14} /> Back to PPO
-            </button>
-            <h1 className="ds-page-title" style={{ margin: 0 }}>
-              Icon Generator
-            </h1>
-            <p className="ds-page-sub" style={{ margin: '4px 0 0', maxWidth: 720 }}>
-              Generate 1024×1024 app-icon variants for A/B testing. Upload a base image per variant,
-              describe the styling, and render a square iOS icon. Drop the PNG into Xcode as an
-              alternate app icon to test it in an App Store Connect PPO icon experiment.
-            </p>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+        <PageHeader
+          lead={
+            <Button variant="ghost" size="icon" onClick={() => nav('/ppo')} aria-label="Back to PPO" title="Back to PPO">
+              <ArrowLeft size={16} />
+            </Button>
+          }
+          title="Icon Generator"
+          sub="Generate 1024×1024 app-icon variants for A/B testing. Upload a base image per variant, describe the styling, and render a square iOS icon. Drop the PNG into Xcode as an alternate app icon to test it in an App Store Connect PPO icon experiment."
+          actions={<>
             <Button
               leftIcon={
                 exportAllProg && exportAllProg.phase !== 'done' ? (
@@ -100,8 +86,8 @@ export function IconGeneratorScreen() {
             <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => iconLabAddVariant()}>
               Add variant
             </Button>
-          </div>
-        </header>
+          </>}
+        />
 
         {/* ASC constraint reminder — icons can't be uploaded ad-hoc like screenshots. */}
         <div

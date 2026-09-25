@@ -289,7 +289,7 @@ export function ScreenshotSidebar() {
         )}
       </div>
 
-      <div style={{ padding: 12, borderTop: '1px solid var(--line-1)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="sidebar-foot" style={{ padding: 12, borderTop: '1px solid var(--line-1)', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {/* Pair button — appears once 2+ slots are shift-selected */}
         {multiSelect.length >= 2 && (
           <Button

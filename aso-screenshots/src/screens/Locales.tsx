@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, Globe, Languages, Loader2, Plus, RefreshCcw, Trash2, X } from 'lucide-react';
-import { Button } from '../components/shared';
+import { Button, PageHeader } from '../components/shared';
 import { MockupCanvas } from '../components/studio/MockupCanvas';
 import { useStudio, type LocaleEntry } from '../state/studio';
 import { CURATED_LOCALES, findLocaleSpec } from '../lib/locales';
@@ -111,15 +111,11 @@ export function LocalesScreen() {
 
   return (
     <div style={{ padding: 'var(--s-7)', maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
-        <div>
-          <h1 className="ds-page-title" style={{ margin: 0 }}>Locales</h1>
-          <p className="ds-page-sub" style={{ margin: '4px 0 0', maxWidth: 720 }}>
-            AI-translate slot headlines + pills via gpt-4o-mini. Same AI background reused for every locale — only the HTML overlay changes.
-          </p>
-        </div>
-        {locales.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <PageHeader
+        title="Locales"
+        sub="AI-translate slot headlines + pills via gpt-4o-mini. Same AI background reused for every locale — only the HTML overlay changes."
+        actions={locales.length > 0 && (
+          <>
             <span className="tabular ds-note">
               ~${totalCost} · {locales.length} locale{locales.length === 1 ? '' : 's'}
             </span>
@@ -129,9 +125,9 @@ export function LocalesScreen() {
             <Button variant="ai" onClick={onTranslateAll} disabled={isAnyBusy} leftIcon={<Languages size={14} />}>
               {isAnyBusy ? `Translating ${busy.size}…` : 'Translate all'}
             </Button>
-          </div>
+          </>
         )}
-      </header>
+      />
 
       {/* Locale picker — grouped by tier so the user starts with high-ROI
           markets and works outward. Tier 1 = global launch core, Tier 2 =

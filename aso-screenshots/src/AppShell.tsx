@@ -45,7 +45,10 @@ function SpendCounter() {
 export function AppShell() {
   const nav = useNavigate();
   const loc = useLocation();
-  const activeStep = STEPS.find((s) => loc.pathname.startsWith(s.value)) ?? STEPS[0];
+  // PPO / Icon Generator sit outside the wizard: no step is highlighted there,
+  // but reachability still follows the first step.
+  const matchedStep = STEPS.find((s) => loc.pathname.startsWith(s.value));
+  const activeStep = matchedStep ?? STEPS[0];
   const settingsOpen = useKeyGate((s) => s.settingsOpen);
   const openSettings = useKeyGate((s) => s.openSettings);
   const closeSettings = useKeyGate((s) => s.closeSettings);
@@ -61,7 +64,7 @@ export function AppShell() {
           // Anything farther than current + 1 is disabled to avoid jumping into a
           // page that depends on data from the skipped step (e.g. Editor without
           // a picked Style → blank canvas).
-          const isActive = activeStep.value === s.value;
+          const isActive = matchedStep?.value === s.value;
           const reachable = s.n <= activeStep.n + 1;
           return (
             <div
@@ -87,7 +90,7 @@ export function AppShell() {
         }
       />
 
-      <div style={{ overflow: 'auto' }}>
+      <div className="app-content" style={{ overflow: 'auto' }}>
         <Outlet />
       </div>
     </div>

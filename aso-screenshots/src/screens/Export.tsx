@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, FolderOpen, AlertCircle, Loader2, StopCircle, FolderSearch, RefreshCw, FlaskConical } from 'lucide-react';
-import { Button, Card, Input } from '../components/shared';
+import { Button, Card, Input, PageHeader } from '../components/shared';
 import { useStudio } from '../state/studio';
 import { renderAll, pickOutputFolder, type RenderFailure } from '../lib/exportRender';
 import { pushStateNow } from '../lib/stateSync';
@@ -181,12 +181,10 @@ export function ExportScreen() {
 
   return (
     <div style={{ padding: 'var(--s-7)', maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
-      <header>
-        <h1 className="ds-page-title" style={{ margin: 0 }}>Export</h1>
-        <p className="ds-page-sub" style={{ margin: '4px 0 0' }}>
-          PNG render via Playwright + ASC upload land in a future build. For now, finish the project here to archive it into Setup → Recent.
-        </p>
-      </header>
+      <PageHeader
+        title="Export"
+        sub="PNG render via Playwright + ASC upload land in a future build. For now, finish the project here to archive it into Setup → Recent."
+      />
 
       <Card>
         <Card.Section title="Output folder">

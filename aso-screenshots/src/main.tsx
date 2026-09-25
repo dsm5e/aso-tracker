@@ -13,6 +13,7 @@ import './styles/tokens.css';
 import './styles/app.css';
 import './styles/highlight.css';
 import './styles/ds-bridge.css';
+import './styles/polish.css'; // Adapty-style chrome pass — keep last
 
 loadPresetFonts();
 
