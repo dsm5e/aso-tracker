@@ -61,11 +61,17 @@
   --ds-dim: #e3e3dd;
 
   /* shape */
-  --ds-radius-card: 14px;
+  /* shape — one radius family, nothing square and nothing round except badges */
+  --ds-radius-card: 8px;      /* cards, tables, popovers, controls */
   --ds-radius-control: 8px;
-  --ds-radius-pill: 999px;
+  --ds-radius-inner: 6px;     /* segment buttons, menu rows, rate chips */
+  --ds-radius-pill: 999px;    /* small status badges only */
+  --ds-control-h: 40px;
+  --ds-control-h-sm: 32px;
+  --ds-control-border: .75px solid var(--ds-ctl-border);
   --ds-shadow: 0 1px 8px rgba(1, 0, 48, .10);
-  --ds-shadow-pop: 0 12px 36px rgba(1, 0, 48, .18);
+  --ds-shadow-pop: 0 8px 28px rgba(1, 0, 48, .16);
+  --ds-scrollbar: rgba(54, 54, 48, .22);
 }
 
 :root[data-theme="dark"] {
@@ -113,7 +119,8 @@
   --ds-dim: #34343d;
 
   --ds-shadow: 0 1px 8px rgba(0, 0, 0, .45);
-  --ds-shadow-pop: 0 12px 36px rgba(0, 0, 0, .5);
+  --ds-shadow-pop: 0 8px 28px rgba(0, 0, 0, .5);
+  --ds-scrollbar: rgba(255, 255, 255, .16);
 }
 
 html, body {
