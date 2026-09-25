@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './Competitors.css';
 import Icon from '../components/Icon';
+import CompetitorSpy from '../components/CompetitorSpy';
+import { useDismiss } from '../components/useDismiss';
 import { Sparkline } from '../../../shared/charts/Charts';
 import {
   api,
@@ -17,7 +19,16 @@ import {
 export interface CompetitorsProps {
   app: { id: string; name: string; iTunesId: string };
   locale: string;
+  /** Called with the saved keyword map after «Добавить в отслеживание». */
+  onKeywordsChanged?: (keywords: Record<string, string[]>) => void;
 }
+
+type DetailTab = 'profile' | 'keywords' | 'gap';
+const DETAIL_TABS: Array<{ id: DetailTab; label: string }> = [
+  { id: 'profile', label: 'Профиль' },
+  { id: 'keywords', label: 'Ключи конкурента' },
+  { id: 'gap', label: 'Gap' },
+];
 
 type AppleTrafficTerm = {
   keyword?: string;
@@ -128,8 +139,12 @@ function HistoryLine({ rows }: { rows: CompetitorKeywordRow[] }) {
   );
 }
 
-export default function Competitors({ app, locale }: CompetitorsProps) {
+export default function Competitors({ app, locale, onKeywordsChanged }: CompetitorsProps) {
   const [competitors, setCompetitors] = useState<CompetitorSummary[]>([]);
+  const [manualByApp, setManualByApp] = useState<Record<string, CompetitorSummary[]>>({});
+  const manual = useMemo(() => manualByApp[app.id] ?? [], [manualByApp, app.id]);
+  const [tab, setTab] = useState<DetailTab>('profile');
+  const [storefronts, setStorefronts] = useState<string[]>([]);
   const [selectedBundle, setSelectedBundle] = useState<string | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [listLoading, setListLoading] = useState(true);
@@ -156,6 +171,24 @@ export default function Competitors({ app, locale }: CompetitorsProps) {
       .finally(() => { if (!cancelled) setListLoading(false); });
     return () => { cancelled = true; };
   }, [app.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.keywords(app.id).then((map) => { if (!cancelled) setStorefronts(Object.keys(map)); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [app.id]);
+
+  const keywordsChanged = (map: Record<string, string[]>) => {
+    setStorefronts(Object.keys(map));
+    onKeywordsChanged?.(map);
+  };
+
+  const addManual = (item: CompetitorSummary) => {
+    if (!competitors.some((row) => row.bundleId === item.bundleId)) {
+      setManualByApp((current) => ({ ...current, [app.id]: [item, ...(current[app.id] ?? []).filter((row) => row.bundleId !== item.bundleId)] }));
+    }
+    setSelectedBundle(item.bundleId);
+  };
 
   useEffect(() => {
     if (!selectedBundle) { setDetail(emptyDetail); return; }
@@ -236,7 +269,7 @@ export default function Competitors({ app, locale }: CompetitorsProps) {
     return () => { cancelled = true; window.clearTimeout(loadingTimer); };
   }, [app.id, detail.info?.iTunesId, paidFocus, selectedBundle]);
 
-  const selected = useMemo(() => competitors.find((item) => item.bundleId === selectedBundle) ?? null, [competitors, selectedBundle]);
+  const selected = useMemo(() => competitors.find((item) => item.bundleId === selectedBundle) ?? manual.find((item) => item.bundleId === selectedBundle) ?? null, [competitors, manual, selectedBundle]);
   const localeKeywords = useMemo(() => detail.keywords.filter((row) => row.locale.toLowerCase() === locale.toLowerCase()), [detail.keywords, locale]);
   const averageRank = useMemo(() => {
     const ranks = localeKeywords.map((row) => row.theirRank).filter(Number.isFinite);
@@ -318,6 +351,17 @@ export default function Competitors({ app, locale }: CompetitorsProps) {
             <h2>В органической выдаче</h2><FactBadge kind="fact" />
           </div>
           <p className="competitor-muted">Показы — число появлений в отслеживаемом топе; средняя позиция — агрегированная оценка по снимкам.</p>
+          <CompetitorFind country={locale.split('-')[0]} ownTrackId={app.iTunesId} onPick={addManual} />
+          {manual.length ? (
+            <div className="competitors-list">
+              {manual.map((competitor) => (
+                <button key={competitor.bundleId} onClick={() => setSelectedBundle(competitor.bundleId)} aria-pressed={selectedBundle === competitor.bundleId} className={selectedBundle === competitor.bundleId ? 'selected' : ''}>
+                  <strong>{competitor.name}</strong>
+                  <small>{competitor.dev} · добавлен вручную</small>
+                </button>
+              ))}
+            </div>
+          ) : null}
           {listLoading ? <p>Загрузка конкурентов…</p> : listError ? <p role="alert">Не удалось загрузить список: {listError}</p> : competitors.length === 0 ? <p>Конкуренты пока не обнаружены. Сначала обновите позиции ключевых слов.</p> : (
             <div className="competitors-list">
               {competitors.map((competitor) => (
@@ -331,7 +375,16 @@ export default function Competitors({ app, locale }: CompetitorsProps) {
         </aside>
 
         <main className="competitor-profile">
-          {!selected ? <div className="competitor-panel competitor-state">Выберите конкурента слева, чтобы увидеть профиль и пересечения по ключевым словам.</div> : detail.loading ? <div className="competitor-panel competitor-state">Загрузка профиля конкурента…</div> : detail.error ? <div className="competitor-panel competitor-state" role="alert">Не удалось загрузить профиль: {detail.error}</div> : (
+          {selected ? (
+            <div className="competitor-tabs">
+              <div className="ds-seg" role="tablist" aria-label="Разделы конкурента">
+                {DETAIL_TABS.map((item) => <button key={item.id} role="tab" aria-selected={tab === item.id} className={tab === item.id ? 'on' : ''} onClick={() => setTab(item.id)}>{item.label}</button>)}
+              </div>
+            </div>
+          ) : null}
+          {selected && tab !== 'profile' ? (
+            <CompetitorSpy appId={app.id} appName={app.name} competitor={selected.bundleId} storefront={locale} storefronts={storefronts} view={tab} onKeywordsChanged={keywordsChanged} />
+          ) : !selected ? <div className="competitor-panel competitor-state">Выберите конкурента слева, чтобы увидеть профиль и пересечения по ключевым словам.</div> : detail.loading ? <div className="competitor-panel competitor-state">Загрузка профиля конкурента…</div> : detail.error ? <div className="competitor-panel competitor-state" role="alert">Не удалось загрузить профиль: {detail.error}</div> : (
             <>
               <section className="competitor-panel">
                 <div className="competitor-profile-header">
@@ -565,5 +618,62 @@ function PaidObservationPanel({
         </>
       )}
     </section>
+  );
+}
+
+type StoreHit = Awaited<ReturnType<typeof api.itunesSearch>>[number];
+
+/** Pick any App Store app as a competitor: name, numeric id, bundle id or an
+ * apps.apple.com URL. Searches on Enter to spare the shared iTunes rate limit. */
+function CompetitorFind({ country, ownTrackId, onPick }: { country: string; ownTrackId: string; onPick: (item: CompetitorSummary) => void }) {
+  const [value, setValue] = useState('');
+  const [hits, setHits] = useState<StoreHit[] | null>(null);
+  const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
+  const rootRef = useRef<HTMLDivElement>(null);
+  const close = () => setHits(null);
+  useDismiss(rootRef, hits != null, close);
+
+  const search = async () => {
+    const raw = value.trim();
+    if (!raw) return;
+    const term = raw.match(/\/id(\d+)/)?.[1] ?? raw;
+    setState('loading');
+    try {
+      const results = await api.itunesSearch(term, country);
+      setHits(results.filter((item) => item.bundleId && String(item.trackId) !== ownTrackId).slice(0, 10));
+      setState('idle');
+    } catch {
+      setHits([]);
+      setState('error');
+    }
+  };
+
+  const pick = (hit: StoreHit) => {
+    onPick({ bundleId: hit.bundleId!, name: hit.trackName ?? hit.bundleId!, dev: hit.artistName ?? '', appearances: 0, localesCount: 0, avgRank: 0, top1Count: 0, top3Count: 0, bestRank: 0, lastSeen: null });
+    setValue('');
+    close();
+  };
+
+  return (
+    <div className="competitor-find" ref={rootRef}>
+      <input
+        className="ds-input"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => { if (event.key === 'Enter') void search(); }}
+        placeholder={state === 'loading' ? 'Ищем в App Store…' : 'Любое приложение: название, id или ссылка ↵'}
+        aria-label="Найти конкурента в App Store"
+      />
+      {hits != null ? (
+        <div className="ds-pop competitor-find-pop" role="listbox">
+          {hits.length === 0 ? <div className="picker-empty">{state === 'error' ? 'Поиск App Store не ответил' : 'Ничего не найдено'}</div> : hits.map((hit) => (
+            <button key={hit.trackId} type="button" role="option" aria-selected={false} className="ds-pop-row" onClick={() => pick(hit)}>
+              {hit.artworkUrl100 ? <img src={hit.artworkUrl100} alt="" /> : null}
+              <span><strong>{hit.trackName}</strong><small>{hit.artistName}</small></span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }

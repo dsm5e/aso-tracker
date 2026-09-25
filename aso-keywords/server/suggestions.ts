@@ -378,12 +378,12 @@ async function appleHints(seed: string, country: string): Promise<string[]> {
   }
 }
 
-interface AsaTerm { term: string; demandIndex: number | null; origins: string[] }
+export interface AsaTerm { term: string; demandIndex: number | null; origins: string[] }
 
 /** Apple Ads popularity through the local Ads service. Optional: the service
  * may be down or the app may have no Ads account — then ideas are scored
  * without it. */
-async function asaTerms(app: AppConfig, country: string, terms: string[]): Promise<AsaTerm[] | null> {
+export async function asaTerms(app: AppConfig, country: string, terms: string[]): Promise<AsaTerm[] | null> {
   const base = process.env.ASA_ADS_API_URL ?? 'http://localhost:5194';
   if (!/^\d+$/.test(String(app.iTunesId)) || !terms.length) return null;
   const params = new URLSearchParams({
