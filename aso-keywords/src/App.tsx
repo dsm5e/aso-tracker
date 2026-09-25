@@ -24,6 +24,9 @@ import AcquisitionFunnel from './screens/AcquisitionFunnel';
 import ConnectGate from './components/ConnectGate';
 import Experiments from './screens/Experiments';
 import { TopFiveArtwork } from './components/KeywordResultsDrawer';
+import Icon from './components/Icon';
+import Picker from './components/Picker';
+import { useDismiss } from './components/useDismiss';
 import { HBars, Legend, SERIES, Sparkline as ChartSparkline, type TipRow } from '../../shared/charts/Charts';
 
 type TopFiveCandidate = { id: string; tid?: number };
@@ -65,7 +68,7 @@ const STUDIO_LINKS = [
   { id: 'shot', label: 'Screenshots', hint: 'Визуалы App Store', href: '/studio/' },
   { id: 'vid', label: 'Video', hint: 'Подготовка рекламных видео', href: '/video/' },
   { id: 'asa', label: 'Ads', hint: 'Окупаемость рекламы', href: '/asa/' },
-  { id: 'inapp', label: 'In-App', hint: 'In-App Events', href: 'http://localhost:5196/' },
+  { id: 'inapp', label: 'In-App', hint: 'In-App Events', href: '/inapp/' },
 ];
 
 function initialArtworkCache(): Record<string, string> {
@@ -171,6 +174,9 @@ export default function App() {
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
+  const updateMenuRef = useRef<HTMLDivElement>(null);
+  const closeUpdateMenu = useCallback(() => setUpdateMenuOpen(false), []);
+  useDismiss(updateMenuRef, updateMenuOpen, closeUpdateMenu);
   const [relevanceOn, setRelevanceOn] = useState(false);
   const [relevance, setRelevance] = useState<Record<string, RelevanceRow>>({});
   const [snapshotSpeed, setSnapshotSpeed] = useState<SnapshotSpeed>(
@@ -666,7 +672,7 @@ export default function App() {
           <div className="brand-mark">K</div>
           <h1>Keywords</h1>
           <p>Добавьте приложение из App Store, чтобы отслеживать позиции по ключевым словам.</p>
-          <button className="button button-primary" onClick={openAppDialog}>Добавить первое приложение</button>
+          <button className="ds-btn ds-btn-primary" onClick={openAppDialog}>Добавить первое приложение</button>
           {dialog && <InputDialog dialog={dialog} busy={dialogBusy} existingLocales={Object.keys(keywordMap)} onClose={() => setDialog(null)} onSubmit={submitDialog} />}
         </div>
       </main>
@@ -727,29 +733,34 @@ export default function App() {
         <header className="context-bar">
           <button className="mobile-nav-toggle" onClick={() => setMobileNavOpen(true)} aria-label="Открыть навигацию">Меню</button>
           {selectedApp && (
-            <label className="app-context-control">
-              <AppIcon app={selectedApp} size={24} />
-              <span className="sr-only">Приложение</span>
-              <select value={selectedApp.id} onChange={(event) => setSelectedAppID(event.target.value)} aria-label="Выбранное приложение">
-                {apps.map((app) => <option key={app.id} value={app.id}>{app.name}</option>)}
-              </select>
-            </label>
+            <Picker
+              className="app-picker"
+              label="Приложение"
+              searchPlaceholder="Найти приложение"
+              value={selectedApp.id}
+              onChange={setSelectedAppID}
+              options={apps.map((app) => ({ value: app.id, label: app.name, lead: <AppIcon app={app} size={20} /> }))}
+            />
           )}
           {locale && view !== 'overview' && view !== 'funnel' && view !== 'experiments' && (
-            <label className="context-control">
-              <span className="sr-only">Витрина</span>
-              <select value={locale} onChange={(event) => setLocale(event.target.value)} aria-label="Витрина">
-                {Object.keys(keywordMap).sort().map((code) => (
-                  <option key={code} value={code}>{localeFlag(code)} {code.toUpperCase()}</option>
-                ))}
-              </select>
-            </label>
+            <Picker
+              label="Витрина"
+              searchPlaceholder="Найти страну или код"
+              value={locale}
+              onChange={setLocale}
+              options={Object.keys(keywordMap).sort().map((code) => ({
+                value: code,
+                label: APP_STORE_LOCALES.find((item) => item.code === code)?.name ?? code.toUpperCase(),
+                hint: code.toUpperCase(),
+                lead: <span className="picker-flag" aria-hidden="true">{localeFlag(code)}</span>,
+              }))}
+            />
           )}
           <span className="context-freshness" aria-live="polite">
             {freshnessLabel(selectedApp?.lastSnapshot)}
           </span>
           <span className="context-spacer" />
-          <button className="context-action" onClick={openAppDialog}>Добавить приложение</button>
+          <button className="ds-btn" onClick={openAppDialog}><Icon name="plus" /> Добавить приложение</button>
         </header>
 
       {view === 'overview' ? (
@@ -767,30 +778,32 @@ export default function App() {
         <header className="view-header">
           <div className="page-title-row">
             <div>
-              <h1>Ключевые слова</h1>
-              <div className="segmented page-tabs" role="tablist" aria-label="Раздел ключевых слов">
+              <h1 className="ds-page-title">Ключевые слова</h1>
+              <div className="ds-seg page-tabs" role="tablist" aria-label="Раздел ключевых слов">
                 {([['positions', 'Позиции'], ['ideas', 'Идеи'], ['analytics', 'Динамика']] as const).map(([id, label]) => (
-                  <button key={id} role="tab" aria-selected={keywordView === id} className={keywordView === id ? 'selected' : ''}
+                  <button key={id} role="tab" aria-selected={keywordView === id}
                     disabled={id !== 'positions' && (!selectedApp || (id === 'ideas' && !locale))}
                     onClick={() => openKeywordView(id)}>{label}</button>
                 ))}
               </div>
-              <p>{keywordView === 'positions'
+              <p className="ds-page-sub">{keywordView === 'positions'
                 ? 'Отслеживайте позиции, релевантность и приложения, лидирующие по каждому запросу.'
                 : keywordView === 'analytics'
                   ? 'Сравнивайте рост, падение и видимость ключевых слов за выбранный период.'
                   : 'Проверяйте подсказки Apple и запросы конкурентов перед добавлением в отслеживание.'}</p>
             </div>
-            {keywordView === 'positions' ? <button className="button button-primary" onClick={openKeywordsDialog}>Добавить ключевые слова</button> : null}
+            {keywordView === 'positions' ? <button className="ds-btn ds-btn-primary" onClick={openKeywordsDialog}>Добавить ключевые слова</button> : null}
           </div>
         {keywordView === 'positions' && <div className="toolbar">
-          <div className="update-cluster">
-            <button className="toolbar-labeled" onClick={refresh} disabled={refreshing} aria-label="Обновить позиции">
-              <span className={refreshing ? 'spinning' : ''}>↻</span> Обновить
+          <div className="split-btn" ref={updateMenuRef}>
+            <button className="split-btn-main" onClick={refresh} disabled={refreshing} aria-label="Обновить позиции">
+              <Icon name="refresh" className={refreshing ? 'spinning' : ''} /> Обновить
             </button>
-            <button className="toolbar-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Параметры снимка">▾</button>
+            <button className="split-btn-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Параметры обновления" aria-haspopup="menu" aria-expanded={updateMenuOpen}>
+              <Icon name="chevronDown" />
+            </button>
             {updateMenuOpen && (
-              <div className="menu update-menu" onMouseLeave={() => setUpdateMenuOpen(false)}>
+              <div className="menu update-menu" role="menu">
                 <div className="menu-label">Область обновления позиций</div>
                 <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>Этот регион ({locale.toUpperCase()})</strong><small>только ключевые слова текущего региона</small></button>
                 <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Всё приложение ({selectedApp?.name})</strong><small>все регионы этого приложения</small></button>
@@ -801,29 +814,30 @@ export default function App() {
                   <button key={speed} onClick={() => changeSpeed(speed)}>
                     <strong>{SPEED_PRESETS[speed].label}</strong>
                     <small>{SPEED_PRESETS[speed].note}</small>
-                    {snapshotSpeed === speed && <b>✓</b>}
+                    {snapshotSpeed === speed && <b><Icon name="check" /></b>}
                   </button>
                 ))}
               </div>
             )}
           </div>
-          <button className="toolbar-labeled" onClick={openLocaleDialog} aria-label="Добавить регион">＋ Регион</button>
+          <button className="ds-btn" onClick={openLocaleDialog} aria-label="Добавить регион"><Icon name="plus" /> Регион</button>
 
           <span className="toolbar-spacer" />
 
           {refreshing && (
             <span className="snapshot-status">
               <i /> {snapshotStatusText(progress, rows.length)}
-              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Остановить обновление">■ Стоп</button>
+              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Остановить обновление"><Icon name="stop" size={12} /> Стоп</button>
             </span>
           )}
           <button
-            className={`toolbar-labeled relevance-toggle ${relevanceOn ? 'active' : ''}`}
+            className={`ds-btn relevance-toggle ${relevanceOn ? 'active' : ''}`}
             onClick={() => setRelevanceOn((on) => !on)}
+            aria-pressed={relevanceOn}
             title="Показывает, совпадает ли жанр приложений из топ-5 с жанром вашего приложения"
-          >◎ Релевантность</button>
+          ><Icon name="target" /> Релевантность</button>
           <label className="search-field">
-            <span>⌕</span>
+            <Icon name="search" />
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск ключевых слов" />
           </label>
         </div>}
@@ -840,13 +854,13 @@ export default function App() {
           <table className="keyword-table">
             <thead>
               <tr>
-                <th className="keyword-column">Ключевое слово <span title="Поисковый запрос, по которому отслеживается приложение">ⓘ</span></th>
+                <th className="keyword-column">Ключевое слово <span className="th-info" title="Поисковый запрос, по которому отслеживается приложение"><Icon name="info" size={14} /></span></th>
                 <th>Обновлено</th>
-                <th>Позиция <span title="Место приложения в результатах поиска App Store; меньше — лучше">ⓘ</span></th>
+                <th>Позиция <span className="th-info" title="Место приложения в результатах поиска App Store; меньше — лучше"><Icon name="info" size={14} /></span></th>
                 <th>24 часа</th>
                 <th>7 дней</th>
                 <th>Тренд</th>
-                <th>Приложения в выдаче <span title="Первые пять приложений в выдаче; нажмите иконку, чтобы открыть карточку конкурента">ⓘ</span></th>
+                <th>Приложения в выдаче <span className="th-info" title="Первые пять приложений в выдаче; нажмите иконку, чтобы открыть карточку конкурента"><Icon name="info" size={14} /></span></th>
                 <th aria-label="Действия" />
               </tr>
             </thead>
@@ -880,12 +894,12 @@ export default function App() {
           <span>{localeFlag(locale)} {locale.toUpperCase()}</span>
           {pageSize > 0 && pageCount > 1 && (
             <span className="pager">
-              <button onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0}>‹</button>
+              <button className="ds-icon-btn" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} aria-label="Предыдущая страница"><Icon name="chevronLeft" /></button>
               {page + 1} / {pageCount}
-              <button onClick={() => setPage(Math.min(pageCount - 1, page + 1))} disabled={page >= pageCount - 1}>›</button>
+              <button className="ds-icon-btn" onClick={() => setPage(Math.min(pageCount - 1, page + 1))} disabled={page >= pageCount - 1} aria-label="Следующая страница"><Icon name="chevronRight" /></button>
             </span>
           )}
-          <select className="page-size" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
+          <select className="ds-select ds-btn-sm page-size" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
             <option value={0}>Все строки</option>
             <option value={25}>25 / стр.</option>
             <option value={50}>50 / стр.</option>
@@ -995,15 +1009,17 @@ function KeywordRow({
         </button>
       </td>
       <td><UpdateStatus state={updateState} timestamp={ranking?.lastUpdated} /></td>
-      <td><span className={`rank rank-${tone}`}>{ranking?.today ? `#${ranking.today}` : 'Нет в выдаче'}</span></td>
+      <td>{ranking?.today
+        ? <span className={`rank rank-${tone}`}>#{ranking.today}</span>
+        : <span className="rank-none" title="Нет в выдаче" aria-label="Нет в выдаче">—</span>}</td>
       <td><Delta value={dayDelta} /></td>
       <td><Delta value={weekDelta} /></td>
       <td><MiniTrend values={ranking?.trend ?? []} /></td>
       <td><TopApps apps={ranking?.top5 ?? []} artworks={artworks} onOpen={onOpenCompetitor} ownApp={ownApp} country={ranking?.locale ?? 'us'} onEnsureArtworks={onEnsureArtworks} /></td>
       <td>
         <div className="row-actions">
-          <button className="row-action row-refresh" onClick={onRefresh} title="Обновить это ключевое слово" aria-label={`Обновить ${keyword}`}>↻</button>
-          <button className="row-action row-remove" onClick={onRemove} title="Удалить ключевое слово" aria-label={`Удалить ${keyword}`}>×</button>
+          <button className="ds-icon-btn row-action" onClick={onRefresh} title="Обновить это ключевое слово" aria-label={`Обновить ${keyword}`}><Icon name="refresh" /></button>
+          <button className="ds-icon-btn row-action row-remove" onClick={onRemove} title="Удалить ключевое слово" aria-label={`Удалить ${keyword}`}><Icon name="close" /></button>
         </div>
       </td>
     </tr>
@@ -1092,7 +1108,7 @@ function TopApps({ apps, artworks, onOpen, ownApp, country, onEnsureArtworks }: 
             onClick={own ? undefined : () => onOpen(app.id)}
           >
             <TopFiveArtwork url={artwork} label={`Иконка ${app.name}`} fallback={app.name} className="competitor-icon" />
-            {own ? <span className="own-app-check" aria-hidden="true">✓</span> : null}
+            {own ? <span className="own-app-check" aria-hidden="true"><Icon name="check" size={10} /></span> : null}
           </button>
         );
       })}
@@ -1155,7 +1171,7 @@ function CompetitorDetail({
               {info?.rating != null && <b>★ {info.rating.toFixed(1)} · {(info.ratingCount ?? 0).toLocaleString()}</b>}
             </div>
           </div>
-          <button onClick={onClose}>×</button>
+          <button className="ds-icon-btn" onClick={onClose} aria-label="Закрыть"><Icon name="close" /></button>
         </header>
 
         <div className="competitor-content">
@@ -1207,8 +1223,8 @@ function CompetitorDetail({
         </div>
 
         <footer className="competitor-footer">
-          {info?.storeUrl && <a href={info.storeUrl} target="_blank" rel="noreferrer">Открыть в App Store ↗</a>}
-          <button onClick={onClose}>Готово</button>
+          {info?.storeUrl && <a href={info.storeUrl} target="_blank" rel="noreferrer">Открыть в App Store <Icon name="external" size={14} /></a>}
+          <button className="ds-btn ds-btn-primary" onClick={onClose}>Готово</button>
         </footer>
       </aside>
     </div>
@@ -1305,13 +1321,13 @@ function InputDialog({
   return (
     <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="dialog-card" role="dialog" aria-modal="true" aria-labelledby="dialog-title" onMouseDown={(event) => event.stopPropagation()}>
-        <div className={`dialog-symbol ${isError || isDelete ? 'dialog-symbol-error' : ''}`}>{isError ? '!' : isDelete ? '×' : '+'}</div>
+        <div className={`dialog-symbol ${isError || isDelete ? 'dialog-symbol-error' : ''}`}>{isError ? '!' : <Icon name={isDelete ? 'close' : 'plus'} size={20} />}</div>
         <h2 id="dialog-title">{dialog.title}</h2>
         <p>{dialog.message}</p>
         {isDelete ? null : !isError && dialog.kind === 'locale' ? (
           <div className="locale-picker">
             <label className="dialog-search">
-              <span>⌕</span>
+              <Icon name="search" />
             <input autoFocus value={localeSearch} onChange={(event) => setLocaleSearch(event.target.value)} placeholder="Найти страну или код" />
             </label>
             <div className="locale-options">
@@ -1324,7 +1340,7 @@ function InputDialog({
                   <span className="locale-option-flag">{localeFlag(locale.code)}</span>
                   <span>{locale.name}</span>
                   <small>{locale.code.toUpperCase()}</small>
-                  {value === locale.code && <b>✓</b>}
+                  {value === locale.code && <b><Icon name="check" /></b>}
                 </button>
               ))}
             </div>
@@ -1332,7 +1348,7 @@ function InputDialog({
         ) : !isError && isApp ? (
           <div className="app-store-picker">
             <label className="dialog-search app-store-search">
-              <span>⌕</span>
+              <Icon name="search" />
               <input
                 autoFocus
                 value={selectedAppResult ? selectedAppResult.trackName ?? value : value}
@@ -1348,7 +1364,7 @@ function InputDialog({
               <button className="app-search-result selected" onClick={() => { setSelectedAppResult(null); setValue(''); }}>
                 {selectedAppResult.artworkUrl100 ? <img src={selectedAppResult.artworkUrl100} alt="" /> : <span className="app-result-fallback">{(selectedAppResult.trackName || 'A')[0]}</span>}
                 <span><strong>{selectedAppResult.trackName}</strong><small>{selectedAppResult.artistName} · {selectedAppResult.bundleId}</small></span>
-                <b>✓</b>
+                <b><Icon name="check" /></b>
               </button>
             ) : (
               <div className="app-search-results">
@@ -1370,9 +1386,9 @@ function InputDialog({
           <input autoFocus value={value} onChange={(event) => setValue(event.target.value)} placeholder={dialog.placeholder} inputMode={dialog.kind === 'app' ? 'numeric' : 'text'} />
         ))}
         <div className="dialog-actions">
-          {!isError && <button className="dialog-button dialog-button-secondary" onClick={onClose}>Отмена</button>}
+          {!isError && <button className="ds-btn dialog-button" onClick={onClose}>Отмена</button>}
           <button
-            className={`dialog-button ${isDelete ? 'dialog-button-danger' : 'dialog-button-primary'}`}
+            className={`ds-btn dialog-button ${isDelete ? 'dialog-button-danger' : 'ds-btn-primary'}`}
             disabled={busy || (!isError && (!value.trim() || (isApp && !appCanSubmit)))}
             onClick={() => onSubmit(value)}
           >
@@ -1446,9 +1462,9 @@ function SuggestionsPanel({
         <h2 id="suggestions-title" className="sr-only">Идеи ключевых слов</h2>
         <div className="page-commandbar">
           <span className="page-scope">{localeFlag(locale)} {locale.toUpperCase()} · подсказки Apple, названия конкурентов из топ-5 и Apple Ads · бренды отфильтрованы</span>
-          <button className="toolbar-labeled" onClick={onReload} disabled={loading} title="Пересобрать идеи заново" aria-label="Обновить идеи">↻ Обновить</button>
+          <button className="ds-btn" onClick={onReload} disabled={loading} title="Пересобрать идеи заново" aria-label="Обновить идеи"><Icon name="refresh" /> Обновить</button>
         <label className="dialog-search suggestion-search">
-          <span>⌕</span>
+          <Icon name="search" />
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск идей" />
         </label>
         </div>
@@ -1471,12 +1487,12 @@ function SuggestionsPanel({
           {loading ? (
             <div className="suggestions-empty">Ищем релевантные идеи…</div>
           ) : error ? (
-            <div className="suggestions-empty"><span>{error}</span><button className="dialog-button dialog-button-secondary" onClick={onReload}>Повторить</button></div>
+            <div className="suggestions-empty"><span>{error}</span><button className="ds-btn" onClick={onReload}>Повторить</button></div>
           ) : filtered.length === 0 ? (
             <div className="suggestions-empty">Новых общих запросов не нашлось. Apple подсказывает в основном названия приложений — их мы не предлагаем. Добавьте больше исходных ключей или обновите снимок.</div>
           ) : filtered.map((idea) => (
             <button className={selected.has(idea.keyword) ? 'selected' : ''} key={idea.keyword} onClick={() => toggle(idea.keyword)} aria-pressed={selected.has(idea.keyword)}>
-              <span className="suggestion-check">{selected.has(idea.keyword) ? '✓' : ''}</span>
+              <span className="suggestion-check">{selected.has(idea.keyword) ? <Icon name="check" size={12} /> : null}</span>
               <span className="suggestion-copy"><strong>{idea.keyword}</strong><small title={idea.reason}>{idea.reason}</small></span>
               <span className="idea-origin">
                 {idea.origin.map((line) => <small key={line} title={line}>{line}</small>)}
@@ -1499,7 +1515,7 @@ function SuggestionsPanel({
         </div>
         <footer>
           <span>Выбрано: {selected.size}</span>
-          <button className="dialog-button dialog-button-primary" disabled={!selected.size || saving} onClick={add}>{saving ? 'Добавляем…' : `Добавить ключевые слова: ${selected.size || ''}`}</button>
+          <button className="ds-btn ds-btn-primary" disabled={!selected.size || saving} onClick={add}>{saving ? 'Добавляем…' : selected.size ? `Добавить ${selected.size}` : 'Добавить ключевые слова'}</button>
         </footer>
       </section>
   );
@@ -1563,7 +1579,7 @@ function KeywordDrawer({
               </div>
             )}
           </div>
-          <button onClick={onClose}>×</button>
+          <button className="ds-icon-btn" onClick={onClose} aria-label="Закрыть"><Icon name="close" /></button>
         </header>
 
         <div className="competitor-content">
@@ -1620,9 +1636,9 @@ function KeywordDrawer({
         </div>
 
         <footer className="competitor-footer">
-          <button onClick={copy}>{copied ? 'Скопировано' : 'Скопировать запрос для анализа'}</button>
-          <button onClick={onRefresh}>↻ Обновить ключевое слово</button>
-          <button onClick={onClose}>Готово</button>
+          <button className="ds-btn" onClick={copy}>{copied ? 'Скопировано' : 'Скопировать запрос для анализа'}</button>
+          <button className="ds-btn" onClick={onRefresh}><Icon name="refresh" /> Обновить ключевое слово</button>
+          <button className="ds-btn ds-btn-primary" onClick={onClose}>Готово</button>
         </footer>
       </aside>
     </div>
@@ -1667,17 +1683,21 @@ function AnalyticsPanel({
         <div className="page-commandbar">
           <span className="page-scope">Отслеживаемые ключевые слова · {PERIOD_LABEL[period]} · все регионы</span>
           <div className="analytics-controls">
-            <div className="segmented">
+            <div className="ds-seg" role="group" aria-label="Период">
               {(['day', 'week', 'month'] as const).map((value) => (
-                <button key={value} className={period === value ? 'selected' : ''} onClick={() => setPeriod(value)}>
+                <button key={value} aria-pressed={period === value} className={period === value ? 'on' : ''} onClick={() => setPeriod(value)}>
                   {{ day: 'День', week: 'Неделя', month: 'Месяц' }[value]}
                 </button>
               ))}
             </div>
-            <select value={appFilter} onChange={(event) => setAppFilter(event.target.value)}>
-              <option value="">Все приложения</option>
-              {apps.map((app) => <option key={app.id} value={app.id}>{app.name}</option>)}
-            </select>
+            <Picker
+              align="end"
+              label="Приложение"
+              searchPlaceholder="Найти приложение"
+              value={appFilter}
+              onChange={setAppFilter}
+              options={[{ value: '', label: 'Все приложения' }, ...apps.map((app) => ({ value: app.id, label: app.name, lead: <AppIcon app={app} size={20} /> }))]}
+            />
           </div>
         </div>
 

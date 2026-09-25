@@ -71,7 +71,6 @@
   --rail-width: 220px;
 }
 body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-font); font-size: 14px; line-height: 20px; }
-.experiments-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
 /* ======================================================================
    Studio look (DESIGN.md): radius 8 / 6 inside controls / pills only for
@@ -105,80 +104,34 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
 
 /* ---------- shell: context bar (app switcher, locale picker) ---------- */
 .context-bar { gap: 12px; padding: 0 20px; background: var(--ds-panel); border-bottom: 1px solid var(--ds-hairline); }
-.app-context-control,
-.context-control { height: var(--ds-control-h); gap: 8px; padding: 0 6px 0 10px; border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); cursor: pointer; }
-.app-context-control:hover,
-.context-control:hover { border-color: var(--ds-muted); background: var(--ds-input-bg); }
-.app-context-control:focus-within,
-.context-control:focus-within { border-color: var(--ds-accent); outline: 2px solid var(--ds-accent-soft); }
-.app-context-control .app-icon { border-radius: var(--ds-radius-inner); }
-.app-context-control select,
-.context-control select { height: 36px; font-size: 14px; font-weight: 500; color: var(--ds-text); cursor: pointer; }
-.app-context-control select { font-weight: 600; }
+
 .context-freshness { font-size: 13px; color: var(--ds-muted); }
 
-/* ---------- buttons ---------- */
-.button,
-.context-action,
-.toolbar-labeled,
-.toolbar-pill,
-.dialog-button,
-.add-app-button,
-.competitor-footer button { height: var(--ds-control-h); min-height: 0; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); color: var(--ds-text); box-shadow: none; font-size: 14px; font-weight: 500; line-height: 20px; white-space: nowrap; cursor: pointer; transition: none; filter: none; }
-.button:active { transform: none; }
-.button:hover,
-.context-action:hover,
-.toolbar-labeled:hover,
-.toolbar-pill:hover,
-.dialog-button:hover,
-.add-app-button:hover { border-color: var(--ds-muted); background: var(--ds-input-bg); filter: none; }
-.button:disabled,
-.toolbar-labeled:disabled,
-.dialog-button:disabled { opacity: .5; cursor: default; }
-.button-primary,
-.dialog-button-primary,
-.competitor-footer button { background: var(--ds-accent); border-color: transparent; color: var(--ds-on-accent); font-weight: 600; box-shadow: none; }
-.button-primary:hover,
-.dialog-button-primary:hover:not(:disabled),
-.competitor-footer button:hover { background: var(--ds-accent-hover); border-color: transparent; }
-.dialog-button-primary:disabled { background: var(--ds-accent); }
+/* ---------- buttons (markup uses .ds-btn / .ds-btn-primary / .ds-icon-btn) ---------- */
+.ds-icon { flex: none; display: inline-block; vertical-align: -0.2em; }
+.spinning { animation: spin 1s linear infinite; }
+.dialog-button { min-width: 104px; }
+/* «Обновить» + scope menu: one 40px split control, radius 8 */
+.split-btn { position: relative; display: inline-flex; align-items: stretch; height: var(--ds-control-h); border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); }
+.split-btn:hover { border-color: var(--ds-muted); }
+.split-btn > button { display: inline-flex; align-items: center; gap: 8px; padding: 0 12px 0 14px; border: 0; background: none; color: var(--ds-text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.split-btn > button:first-child { border-radius: var(--ds-radius-control) 0 0 var(--ds-radius-control); }
+.split-btn > .split-btn-caret { padding: 0 10px; border-left: var(--ds-control-border); border-radius: 0 var(--ds-radius-control) var(--ds-radius-control) 0; color: var(--ds-muted); }
+.split-btn > button:hover:not(:disabled),
+.split-btn > .split-btn-caret[aria-expanded="true"] { background: var(--ds-accent-soft); }
+.split-btn > button:disabled { opacity: .5; cursor: default; }
 .dialog-button-danger { background: var(--ds-bad); border-color: transparent; color: #fff; font-weight: 600; }
 .dialog-button-danger:hover { background: var(--ds-bad); border-color: transparent; filter: brightness(1.06); }
-.dialog-button-secondary { background: var(--ds-input-bg); color: var(--ds-text); }
-.button-suggestion { background: var(--ds-input-bg); color: var(--ds-text); border: var(--ds-control-border); }
-.button span { margin-left: 0; }
-.toolbar-labeled .spinning { display: inline-block; }
-.toolbar-pill span { color: var(--ds-muted); margin-left: 0; }
 
-/* icon-only toolbar controls: square 40px box, radius 8 — no circles */
-.toolbar-refresh,
-.toolbar-icon { width: var(--ds-control-h); height: var(--ds-control-h); border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); box-shadow: none; color: var(--ds-text); font-size: 18px; }
-.toolbar-refresh:hover,
-.toolbar-icon:hover { border-color: var(--ds-muted); background: var(--ds-input-bg); }
-.toolbar-caret { width: 32px; height: var(--ds-control-h); border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); color: var(--ds-muted); font-size: 12px; }
-.toolbar-caret:hover { border-color: var(--ds-muted); background: var(--ds-input-bg); }
-.update-cluster { gap: 4px; }
-.relevance-toggle.active { background: var(--ds-accent-soft); border-color: var(--ds-accent); color: var(--ds-accent); font-weight: 600; box-shadow: none; }
-.snapshot-stop { height: 20px; padding: 0 8px; border-radius: var(--ds-radius-pill); background: var(--ds-bad-soft); color: var(--ds-bad); font-size: 11px; font-weight: 600; }
+.relevance-toggle.active,
+.relevance-toggle.active:hover { background: var(--ds-accent-soft); border-color: var(--ds-accent); color: var(--ds-accent); font-weight: 600; box-shadow: none; }
+.snapshot-stop { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: var(--ds-radius-pill); background: var(--ds-bad-soft); color: var(--ds-bad); font-size: 11px; font-weight: 600; }
 .snapshot-stop:hover { background: var(--ds-bad-soft); filter: brightness(.97); }
 .snapshot-status { font-size: 13px; color: var(--ds-muted); }
 
-/* small icon buttons (row actions, close, delete) — 32px, radius 6 */
-.icon-button,
-.row-action,
-.analytics-close,
-.competitor-header > button,
-.suggestions-dialog > header > button,
-.app-item-delete,
-.overview-delete { width: var(--ds-control-h-sm); height: var(--ds-control-h-sm); display: inline-grid; place-items: center; padding: 0; border: 0; border-radius: var(--ds-radius-inner); background: transparent; color: var(--ds-muted); font-size: 16px; line-height: 1; cursor: pointer; }
-.icon-button:hover,
-.row-action:hover,
-.analytics-close:hover,
-.competitor-header > button:hover,
-.suggestions-dialog > header > button:hover { background: var(--ds-accent-soft); color: var(--ds-accent); }
+/* destructive icon buttons (.ds-icon-btn) turn red on hover */
 .row-remove:hover,
-.app-item-delete:hover,
-.overview-delete:hover { background: var(--ds-bad-soft); color: var(--ds-bad); }
+.overview2-delete:hover { background: var(--ds-bad-soft); color: var(--ds-bad); }
 .row-actions { gap: 2px; }
 
 /* ---------- inputs, selects, search fields ---------- */
@@ -191,8 +144,9 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
 .dialog-search:hover { border-color: var(--ds-muted); }
 .search-field:focus-within,
 .dialog-search:focus-within { border-color: var(--ds-accent); outline: 2px solid var(--ds-accent-soft); box-shadow: none; }
-.search-field span,
-.dialog-search > span { color: var(--ds-muted); font-size: 16px; line-height: 1; }
+
+.search-field > .ds-icon,
+.dialog-search > .ds-icon { color: var(--ds-muted); }
 .search-field input,
 .dialog-search input { height: auto; padding: 0; border: 0; border-radius: 0; outline: 0; background: transparent; box-shadow: none; color: var(--ds-text); font-size: 14px; font-weight: 500; }
 .search-field input::placeholder,
@@ -206,24 +160,12 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
 .dialog-card textarea:focus { background: var(--ds-input-bg); border-color: var(--ds-accent); outline: 2px solid var(--ds-accent-soft); box-shadow: none; }
 .dialog-card .dialog-search input,
 .dialog-card .dialog-search input:focus { height: auto; padding: 0; border: 0; outline: 0; background: transparent; }
-.analytics-controls select,
-.page-size { height: var(--ds-control-h); padding: 0 10px; border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); color: var(--ds-text); font-size: 14px; font-weight: 500; cursor: pointer; }
-.analytics-controls select:hover,
-.page-size:hover { border-color: var(--ds-muted); }
-.analytics-controls { gap: 12px; }
-/* compact (32px) controls in the dense status bar */
-.page-size { height: var(--ds-control-h-sm); font-size: 13px; }
-.pager { gap: 6px; }
-.pager button { width: var(--ds-control-h-sm); height: var(--ds-control-h-sm); border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); color: var(--ds-text); font-size: 14px; }
-.pager button:hover:not(:disabled) { border-color: var(--ds-muted); }
 
-/* ---------- segmented controls ---------- */
-.segmented { display: inline-flex; align-items: center; height: var(--ds-control-h); padding: 3px; gap: 2px; border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); color: var(--ds-text); }
-.segmented button { height: 32px; padding: 0 10px; border: 0; border-radius: var(--ds-radius-inner); background: none; color: var(--ds-text); font-size: 14px; font-weight: 500; box-shadow: none; }
-.segmented button:hover:not(:disabled) { background: var(--ds-accent-soft); }
-.segmented button.selected,
-.segmented button[aria-selected="true"] { background: var(--ds-accent-soft); color: var(--ds-accent); font-weight: 600; box-shadow: none; }
-.page-tabs { display: inline-flex; width: max-content; margin: 12px 0 4px; }
+.analytics-controls { gap: 12px; }
+
+.pager { gap: 6px; }
+
+.page-tabs { width: max-content; margin: 12px 0 8px; }
 
 /* idea filters: compact toggles (32px, radius 8), not pills */
 .idea-filters { gap: 8px; padding: 12px 20px; background: var(--ds-bg); border-bottom: 1px solid var(--ds-hairline); }
@@ -258,14 +200,11 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
 .dialog-backdrop,
 .competitor-backdrop { backdrop-filter: none; }
 .dialog-card,
-.suggestions-dialog,
-.analytics-dialog,
 .competitor-sheet { border: 1px solid var(--ds-border); border-radius: var(--ds-radius-card); background: var(--ds-panel); box-shadow: var(--ds-shadow-pop); color: var(--ds-text); }
 .dialog-card { padding: 24px; }
 .dialog-card h2,
-.suggestions-dialog h2,
 .competitor-header h2 { font-size: 20px; line-height: 24px; font-weight: 600; letter-spacing: 0; color: var(--ds-strong); }
-.analytics-dialog > header h2 { font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: 0; }
+
 .dialog-card p { font-size: 14px; line-height: 20px; color: var(--ds-muted); }
 .dialog-symbol { border-radius: var(--ds-radius-card); background: var(--ds-accent-soft); color: var(--ds-accent); }
 .dialog-symbol-error { background: var(--ds-bad-soft); color: var(--ds-bad); }
@@ -306,7 +245,7 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
 .screenshot-strip img { border-radius: var(--ds-radius-card); border-color: var(--ds-hairline); }
 .competitor-footer { border-top: 1px solid var(--ds-hairline); }
 .competitor-footer a { font-size: 14px; color: var(--ds-accent); }
-.competitor-footer button { padding: 0 16px; }
+
 .drawer-top5 button { border-radius: var(--ds-radius-inner); }
 .drawer-top5 button.own-app-row,
 .drawer-top5 button.own-app-row:hover { background: var(--ds-accent-soft); }
@@ -357,9 +296,8 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
 .main-shell { background: var(--ds-bg); }
 .view-header { background: var(--ds-bg); border-bottom: 0; }
 .page-title-row { min-height: 0; padding: 20px 20px 12px; gap: 24px; }
-.page-title-row h1 { font-size: 24px; line-height: 28px; font-weight: 600; letter-spacing: 0; color: var(--ds-strong); }
-.page-title-row p { margin: 4px 0 0; font-size: 14px; line-height: 20px; color: var(--ds-muted); }
-.page-title-row .page-tabs + p { margin-top: 8px; }
+
+.page-title-row > .ds-btn { margin-left: auto; flex: none; }
 .toolbar { min-height: 0; padding: 12px 20px; gap: 12px; border-top: 0; border-bottom: 1px solid var(--ds-hairline); background: var(--ds-bg); }
 .toolbar-title { font-size: 14px; }
 .page-commandbar { min-height: 0; padding: 12px 20px; gap: 12px; border-bottom: 1px solid var(--ds-hairline); background: var(--ds-bg); }
@@ -400,7 +338,8 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
 .keyword-table { border-collapse: separate; border-spacing: 0; font-size: 14px; font-variant-numeric: tabular-nums; }
 .keyword-table th,
 .keyword-table .keyword-column { height: 40px; padding: 10px 12px; background: var(--ds-panel); border-bottom: 1px solid var(--ds-hairline); color: var(--ds-strong); font-size: 14px; font-weight: 600; text-transform: none; letter-spacing: 0; }
-.keyword-table th span { color: var(--ds-subtle); }
+.keyword-table th .th-info { display: inline-flex; margin-left: 4px; vertical-align: -2px; color: var(--ds-subtle); cursor: help; }
+.rank-none { color: var(--ds-subtle); cursor: help; }
 .keyword-table td,
 .keyword-table .keyword-cell { height: 48px; padding: 6px 12px; background: var(--ds-panel); border-bottom: 1px solid var(--ds-hairline); color: var(--ds-text); font-size: 14px; }
 .keyword-table tbody tr:last-child td { border-bottom: 0; }
@@ -476,3 +415,5 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
   .rankings-summary { padding: 12px 12px 0; gap: 12px; }
   .rankings-table-wrap { margin: 12px; }
 }
+/* the dense status bar uses the compact 32px select */
+.statusbar .page-size { height: var(--ds-control-h-sm); padding: 0 8px; font-size: 13px; }

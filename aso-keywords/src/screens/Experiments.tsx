@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type AsoExperiment, type AsoExperimentStatus, type MetadataHistoryPayload, type MetadataSnapshot } from '../api';
+import Icon from '../components/Icon';
+import Picker from '../components/Picker';
 import './Experiments.css';
 
 export interface ExperimentsProps {
@@ -176,14 +178,13 @@ export default function Experiments({ app, locales, activeLocale }: ExperimentsP
     <main className="experiments-workspace">
       <header className="experiments-header">
         <div>
-          <span className="experiments-eyebrow">ASO · журнал изменений</span>
-          <h1>Метаданные и эксперименты</h1>
-          <p>{app.name} · фиксируйте изменения до публикации и сравнивайте одинаковые окна до/после.</p>
+          <h1 className="ds-page-title">Метаданные и эксперименты</h1>
+          <p className="ds-page-sub">{app.name} · фиксируйте изменения до публикации и сравнивайте одинаковые окна до/после.</p>
         </div>
         <div className="experiments-actions">
-          <label><span className="experiments-sr-only">Витрина</span><select value={effectiveScope} onChange={(event) => setScope(event.target.value)}><option value="all">Все витрины</option>{availableLocales.map((locale) => <option key={locale} value={locale}>{locale.toUpperCase()}</option>)}</select></label>
-          <button type="button" onClick={() => setShowSnapshotForm((open) => !open)}>Зафиксировать ASC экспорт</button>
-          <button type="button" className="experiments-primary" onClick={() => setShowExperimentForm((open) => !open)}>Новый эксперимент</button>
+          <Picker align="end" label="Витрина" searchPlaceholder="Найти витрину" value={effectiveScope} onChange={setScope} options={[{ value: 'all', label: 'Все витрины' }, ...availableLocales.map((locale) => ({ value: locale, label: locale.toUpperCase() }))]} />
+          <button type="button" className="ds-btn" onClick={() => setShowSnapshotForm((open) => !open)}>Зафиксировать ASC экспорт</button>
+          <button type="button" className="ds-btn ds-btn-primary" onClick={() => setShowExperimentForm((open) => !open)}><Icon name="plus" /> Новый эксперимент</button>
         </div>
       </header>
 
@@ -194,20 +195,20 @@ export default function Experiments({ app, locales, activeLocale }: ExperimentsP
         </section>
 
         {showExperimentForm ? <form className="experiments-form" onSubmit={addExperiment}>
-          <header><h2>Новый ASO-эксперимент</h2><button type="button" onClick={() => setShowExperimentForm(false)} aria-label="Закрыть форму">×</button></header>
+          <header><h2>Новый ASO-эксперимент</h2><button type="button" className="ds-icon-btn" onClick={() => setShowExperimentForm(false)} aria-label="Закрыть форму"><Icon name="close" /></button></header>
           <label>Название<input value={experimentName} onChange={(event) => setExperimentName(event.target.value)} placeholder="Например: DICOM в subtitle" required /></label>
           <label>Витрина<select value={experimentLocale} onChange={(event) => setExperimentLocale(event.target.value)}>{availableLocales.map((locale) => <option key={locale} value={locale}>{locale.toUpperCase()}</option>)}</select></label>
           <label>Гипотеза<textarea value={hypothesis} onChange={(event) => setHypothesis(event.target.value)} placeholder="Какое изменение и какой сигнал должны улучшиться" /></label>
-          <footer><button type="button" onClick={() => setShowExperimentForm(false)}>Отмена</button><button className="experiments-primary" disabled={saving}>Создать</button></footer>
+          <footer><button type="button" className="ds-btn" onClick={() => setShowExperimentForm(false)}>Отмена</button><button className="ds-btn ds-btn-primary" disabled={saving}>Создать</button></footer>
         </form> : null}
 
         {showSnapshotForm ? <form className="experiments-form" onSubmit={addSnapshot}>
-          <header><h2>Снимок метаданных</h2><button type="button" onClick={() => setShowSnapshotForm(false)} aria-label="Закрыть форму">×</button></header>
+          <header><h2>Снимок метаданных</h2><button type="button" className="ds-icon-btn" onClick={() => setShowSnapshotForm(false)} aria-label="Закрыть форму"><Icon name="close" /></button></header>
           <label>Витрина<select value={metadataLocale} onChange={(event) => setMetadataLocale(event.target.value)}>{availableLocales.map((locale) => <option key={locale} value={locale}>{locale.toUpperCase()}</option>)}</select></label>
           <label>Title<input value={metadataTitle} onChange={(event) => setMetadataTitle(event.target.value)} required /></label>
           <label>Subtitle<input value={metadataSubtitle} onChange={(event) => setMetadataSubtitle(event.target.value)} /></label>
           <label>Keyword field<textarea value={metadataKeywords} onChange={(event) => setMetadataKeywords(event.target.value)} /></label>
-          <footer><button type="button" onClick={() => void capturePublicMetadata()} disabled={saving}>Получить публичную карточку</button><button type="button" onClick={() => setShowSnapshotForm(false)}>Отмена</button><button className="experiments-primary" disabled={saving}>Сохранить ASC экспорт</button></footer>
+          <footer><button type="button" className="ds-btn" onClick={() => void capturePublicMetadata()} disabled={saving}>Получить публичную карточку</button><button type="button" className="ds-btn" onClick={() => setShowSnapshotForm(false)}>Отмена</button><button className="ds-btn ds-btn-primary" disabled={saving}>Сохранить ASC экспорт</button></footer>
         </form> : null}
 
         {state === 'loading' ? <div className="experiments-state" aria-live="polite"><i /><strong>Загружаем журнал ASO…</strong></div> : null}

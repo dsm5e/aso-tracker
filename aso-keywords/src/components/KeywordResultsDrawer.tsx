@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { RankingRow } from '../api';
+import Icon from './Icon';
 import './KeywordResultsDrawer.css';
 
 export interface KeywordResultApp {
@@ -147,7 +148,7 @@ export default function KeywordResultsDrawer({
       <aside ref={drawerRef} className="keyword-results-drawer" role="dialog" aria-modal="true" aria-labelledby="keyword-results-title">
         <header className="keyword-results-header">
           <div><span>Органическая выдача App Store · {ranking?.locale?.toUpperCase() ?? country.toUpperCase()}</span><h2 id="keyword-results-title">{keyword}</h2></div>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="Закрыть выдачу">×</button>
+          <button ref={closeRef} type="button" className="ds-icon-btn" onClick={onClose} aria-label="Закрыть выдачу"><Icon name="close" /></button>
         </header>
         <div className="keyword-results-body">
           <section className="keyword-results-summary" aria-label="Позиции MedScan">

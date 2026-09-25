@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './Competitors.css';
+import Icon from '../components/Icon';
 import { Sparkline } from '../../../shared/charts/Charts';
 import {
   api,
@@ -305,8 +306,8 @@ export default function Competitors({ app, locale }: CompetitorsProps) {
       <header className="view-header">
         <div className="page-title-row">
           <div>
-            <h1>Конкуренты</h1>
-            <p>Органические конкуренты {app.name} в App Store. Список строится по пересечениям в выдаче, а не по рекламным кабинетам.</p>
+            <h1 className="ds-page-title">Конкуренты</h1>
+            <p className="ds-page-sub">Органические конкуренты {app.name} в App Store. Список строится по пересечениям в выдаче, а не по рекламным кабинетам.</p>
           </div>
         </div>
       </header>
@@ -338,7 +339,7 @@ export default function Competitors({ app, locale }: CompetitorsProps) {
                   <div>
                     <div className="competitor-profile-name"><h2>{detail.info?.name ?? selected.name}</h2><FactBadge kind={detail.info ? 'fact' : 'unavailable'} /></div>
                     <p className="competitor-developer">{detail.info?.dev ?? selected.dev}{detail.info?.category ? ` · ${detail.info.category}` : ''}</p>
-                    {detail.info?.storeUrl ? <a href={detail.info.storeUrl} target="_blank" rel="noreferrer">Открыть в App Store ↗</a> : <small>Ссылка на App Store недоступна.</small>}
+                    {detail.info?.storeUrl ? <a href={detail.info.storeUrl} target="_blank" rel="noreferrer">Открыть в App Store <Icon name="external" size={14} /></a> : <small>Ссылка на App Store недоступна.</small>}
                   </div>
                 </div>
                 <div className="competitor-kpi-grid competitor-kpi-grid-four">
@@ -457,7 +458,7 @@ export default function Competitors({ app, locale }: CompetitorsProps) {
                   <p className="competitor-state">У приложения нет числового Apple ID или ответ репозитория ещё не получен.</p>
                 ) : (
                   <>
-                    <p className="competitor-source-note"><FactBadge kind="fact" /> <a href={detail.repository.sourceUrl} target="_blank" rel="noreferrer">Официальный Apple App Store Advertising Repository ↗</a> · данные {formattedDate(detail.repository.dataStartDate)}–{formattedDate(detail.repository.dataEndDate)} · {repositoryCacheLabel(detail.repository)}.</p>
+                    <p className="competitor-source-note"><FactBadge kind="fact" /> <a href={detail.repository.sourceUrl} target="_blank" rel="noreferrer">Официальный Apple App Store Advertising Repository <Icon name="external" size={14} /></a> · данные {formattedDate(detail.repository.dataStartDate)}–{formattedDate(detail.repository.dataEndDate)} · {repositoryCacheLabel(detail.repository)}.</p>
                     <div className="competitor-kpi-grid competitor-kpi-grid-four">
                       <Kpi label="Рекламных записей" value={String(detail.repository.summary.adCount)} kind="fact" hint="Количество записей Apple, не количество показов рекламы." />
                       <Kpi label="Стран с доставкой" value={String(detail.repository.summary.countryCount)} kind="fact" hint="Поддерживаемые страны ЕС, где Apple зафиксировала доставку рекламы." />
@@ -544,7 +545,7 @@ function PaidObservationPanel({
     <section className="competitor-observation-panel" aria-live="polite">
       <header>
         <div><h4>Наблюдение paid выдачи: «{focus.keyword}»</h4><p>{focus.locale.toUpperCase()} · отдельный доказательный слой, не оценка чужого трафика.</p></div>
-        <button type="button" onClick={onClose} aria-label="Закрыть paid evidence">×</button>
+        <button type="button" className="ds-icon-btn" onClick={onClose} aria-label="Закрыть paid evidence"><Icon name="close" /></button>
       </header>
       {state.loading ? <p className="competitor-state">Загружаем сохранённые наблюдения…</p> : state.error ? <p className="competitor-repository-warning" role="alert">Наблюдения временно недоступны: {state.error}</p> : !state.data ? null : (
         <>
@@ -558,7 +559,7 @@ function PaidObservationPanel({
           {state.data.observations.length ? <div className="competitor-observation-list">{state.data.observations.slice(0, 8).map((observation) => <article key={observation.id}>
             <div><strong>{formattedDate(observation.observedAt)}</strong><small>{observation.source === 'authorized_partner_export' ? 'авторизованный partner export' : 'ручное наблюдение App Store'}</small></div>
             <p>{observation.paidResults.length ? observation.paidResults.map((result) => `${result.name} · ${result.placement} #${result.rank}${result.productPageId ? ` · CPP ${result.productPageId}` : ''}`).join(' · ') : 'Платные результаты в снимке не перечислены.'}</p>
-            {observation.evidenceUrl ? <a href={observation.evidenceUrl} target="_blank" rel="noreferrer">Открыть evidence ↗</a> : <small>Ссылка-доказательство не приложена</small>}
+            {observation.evidenceUrl ? <a href={observation.evidenceUrl} target="_blank" rel="noreferrer">Открыть evidence <Icon name="external" size={14} /></a> : <small>Ссылка-доказательство не приложена</small>}
           </article>)}</div> : null}
           <p className="competitor-observation-caveat">{state.data.capability.sourceScope.join(' · ') || 'Источник не указан'}. Частота показывается только при сохранённых наблюдениях и никогда не подменяет Apple impression share.</p>
         </>

@@ -1,15 +1,10 @@
 .overview2 { flex: 1; min-height: 0; overflow: auto; background: var(--canvas); color: var(--ink); }
 .overview2-header { display: flex; align-items: center; gap: 24px; padding: 20px 20px 12px; background: var(--ds-bg); }
 .overview2-heading { min-width: 0; }
-.overview2-eyebrow, .overview2-coverage-label { display: block; margin-bottom: 4px; color: var(--ds-muted); font-size: 12px; line-height: 16px; font-weight: 600; }
-.overview2-heading h1 { margin: 0; color: var(--ds-strong); font-size: 24px; line-height: 28px; font-weight: 600; letter-spacing: 0; }
-.overview2-heading p { margin: 4px 0 0; color: var(--ds-muted); font-size: 14px; line-height: 20px; }
+.overview2-coverage-label { display: block; margin-bottom: 4px; color: var(--ds-muted); font-size: 12px; line-height: 16px; font-weight: 600; }
 .overview2-actions { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .overview2-progress { display: inline-flex; align-items: center; gap: 8px; color: var(--ds-muted); font-size: 13px; }
 .overview2-progress i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse .8s infinite alternate; }
-.overview2-run { height: var(--ds-control-h); padding: 0 14px; border: 0; border-radius: var(--ds-radius-control); background: var(--ds-accent); color: var(--ds-on-accent); font-size: 14px; font-weight: 600; cursor: pointer; }
-.overview2-run:hover { background: var(--accent-hover); }
-.overview2-run:disabled { opacity: .55; cursor: default; }
 .overview2-body { display: grid; gap: 16px; padding: 12px 20px 28px; }
 .overview2-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
 .overview2-kpi { padding: 16px; border-radius: var(--ds-radius-card); background: var(--ds-panel); box-shadow: var(--ds-shadow); }
@@ -61,7 +56,7 @@
 .overview2-movers > span { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 8px; color: var(--ds-text); font-size: 13px; }
 .overview2-movers b { font-size: 13px; font-weight: 600; }
 .overview2-movers small { color: var(--ink-subtle); }
-.overview2-delete { position: absolute; z-index: 2; top: 16px; right: 12px; width: 32px; height: 32px; border: 0; border-radius: var(--ds-radius-inner); background: transparent; color: var(--ink-subtle); cursor: pointer; }
+.overview2-delete { position: absolute; z-index: 2; top: 16px; right: 12px; }
 .overview2-delete:hover { background: var(--danger-soft); color: var(--negative); }
 .overview2-empty { min-height: 180px; display: grid; place-content: center; gap: 4px; border: 0; border-radius: var(--ds-radius-card); background: var(--ds-panel); box-shadow: var(--ds-shadow); color: var(--ds-muted); text-align: center; }
 .overview2-empty strong { color: var(--ds-text); font-size: 16px; line-height: 24px; font-weight: 600; }

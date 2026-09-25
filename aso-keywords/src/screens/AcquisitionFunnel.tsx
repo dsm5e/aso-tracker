@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DataQualityPayload } from '../api';
 import DataQuality from './DataQuality';
+import Picker from '../components/Picker';
 import './AcquisitionFunnel.css';
 
 export interface AcquisitionFunnelApp {
@@ -355,14 +356,13 @@ export function AcquisitionFunnel({ app, locale, countries = [] }: AcquisitionFu
     <section className="acquisition-funnel" aria-label="Воронка привлечения">
       <header className="acquisition-funnel-header">
         <div>
-          <span className="acquisition-funnel-eyebrow">{countryScope === 'all' ? 'Все страны' : countryScope.toUpperCase()} · {range}</span>
-          <h1>Воронка привлечения</h1>
-          <p>{app.name}: от показа в App Store до выручки, без смешивания фактов и моделей.</p>
+          <h1 className="ds-page-title">Воронка привлечения</h1>
+          <p className="ds-page-sub">{app.name}: от показа в App Store до выручки, без смешивания фактов и моделей · {countryScope === 'all' ? 'все страны' : countryScope.toUpperCase()} · {range}</p>
         </div>
         <div className="acquisition-funnel-actions">
-          <label className="acquisition-funnel-country"><span className="acquisition-funnel-sr-only">Страна</span><select value={countryScope} onChange={(event) => setCountryScope(event.target.value)}><option value="all">Все страны</option>{countryOptions.map((code) => <option key={code} value={code}>{code.toUpperCase()}</option>)}</select></label>
-          <button type="button" className="acquisition-funnel-sync" onClick={handleSync} disabled={syncing}>{syncing ? 'Синхронизация…' : 'Синхронизировать ASC'}</button>
-          <button type="button" className="acquisition-funnel-refresh" onClick={() => void load()} disabled={loading}>Обновить экран</button>
+          <Picker align="end" className="acquisition-funnel-country" label="Страна" searchPlaceholder="Найти страну" value={countryScope} onChange={setCountryScope} options={[{ value: 'all', label: 'Все страны' }, ...countryOptions.map((code) => ({ value: code, label: code.toUpperCase() }))]} />
+          <button type="button" className="ds-btn ds-btn-primary" onClick={handleSync} disabled={syncing}>{syncing ? 'Синхронизация…' : 'Синхронизировать ASC'}</button>
+          <button type="button" className="ds-btn" onClick={() => void load()} disabled={loading}>Обновить экран</button>
         </div>
       </header>
 

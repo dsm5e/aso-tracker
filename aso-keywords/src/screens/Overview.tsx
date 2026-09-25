@@ -1,5 +1,6 @@
 import type { AppStats, LocaleAvg } from '../api';
 import { Sparkline } from '../../../shared/charts/Charts';
+import Icon from '../components/Icon';
 import './Overview.css';
 
 export interface OverviewProps {
@@ -67,14 +68,13 @@ export function Overview({ apps, localeAvgByApp, onOpenApp, onDeleteApp, onRunAl
     <section className="overview2" aria-label="Обзор портфеля">
       <header className="overview2-header">
         <div className="overview2-heading">
-          <span className="overview2-eyebrow">Keywords</span>
-          <h1>Обзор портфеля</h1>
-          <p>Видимость, покрытие и изменения по отслеживаемым приложениям.</p>
+          <h1 className="ds-page-title">Обзор портфеля</h1>
+          <p className="ds-page-sub">Видимость, покрытие и изменения по отслеживаемым приложениям.</p>
         </div>
         <div className="overview2-actions">
           {progressText ? <span className="overview2-progress" role="status"><i />{progressText}</span> : null}
-          <button className="overview2-run" type="button" onClick={onRunAll} disabled={refreshing}>
-            {refreshing ? 'Обновляем…' : 'Обновить всё'}
+          <button className="ds-btn ds-btn-primary" type="button" onClick={onRunAll} disabled={refreshing}>
+            <Icon name="refresh" className={refreshing ? 'spinning' : ''} />{refreshing ? 'Обновляем…' : 'Обновить всё'}
           </button>
         </div>
       </header>
@@ -126,7 +126,7 @@ export function Overview({ apps, localeAvgByApp, onOpenApp, onDeleteApp, onRunAl
                     </div>
                     {movers.length ? <div className="overview2-movers">{movers.map((mover) => <span key={`${mover.kw}-${mover.delta}`}><b className={mover.delta > 0 ? 'overview2-delta-up' : 'overview2-delta-down'}>{formatDelta(mover.delta)}</b>{mover.kw}<small>#{mover.from} → #{mover.to}</small></span>)}</div> : null}
                   </button>
-                  <button className="overview2-delete" type="button" title={`Удалить ${app.name}`} aria-label={`Удалить ${app.name}`} onClick={() => onDeleteApp(app)}>×</button>
+                  <button className="ds-icon-btn overview2-delete" type="button" title={`Удалить ${app.name}`} aria-label={`Удалить ${app.name}`} onClick={() => onDeleteApp(app)}><Icon name="close" /></button>
                 </article>
               );
             })}
