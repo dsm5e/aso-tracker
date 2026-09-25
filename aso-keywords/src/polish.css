@@ -171,15 +171,20 @@ body.pt-resizing, body.pt-resizing * { cursor: col-resize !important; user-selec
 :root[data-theme="dark"] { --live-queued: #d9a23a; --live-queued-soft: rgba(224, 161, 0, .10); --live-on: #4cc38a; --live-on-soft: rgba(76, 195, 138, .16); }
 @keyframes live-pulse { 0%, 100% { box-shadow: inset 0 0 0 1.5px var(--live-on), 0 0 0 0 var(--live-on-soft); } 50% { box-shadow: inset 0 0 0 1.5px var(--live-on), 0 0 12px 2px var(--live-on-soft); } }
 @keyframes live-flash { 0% { background: var(--live-on-soft); } 100% { background: transparent; } }
-/* matrix cells */
-.mx-table td.mx-live-queued { background: var(--live-queued-soft) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--live-queued) 45%, transparent); }
-.mx-table td.mx-live-updating { background: var(--live-on-soft) !important; animation: live-pulse 1.2s ease-in-out infinite; position: relative; z-index: 1; }
-.mx-table td.mx-live-done { animation: live-flash 2.4s ease-out; }
+/* matrix cells: a rounded inset pad behind the chip, not the square cell */
+.mx-table td.mx-live-queued, .mx-table td.mx-live-updating, .mx-table td.mx-live-done { position: relative; }
+.mx-table td[class*="mx-live-"] > .mx-cell-btn { position: relative; z-index: 0; }
+.mx-table td[class*="mx-live-"]::before { content: ''; position: absolute; z-index: 0; inset: 3px; border-radius: var(--ds-radius-card); pointer-events: none; }
+.mx-table td.mx-live-queued::before { background: var(--live-queued-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--live-queued) 45%, transparent); }
+.mx-table td.mx-live-updating::before { background: var(--live-on-soft); animation: live-pulse 1.2s ease-in-out infinite; }
+.mx-table td.mx-live-done::before { animation: live-flash 2.4s ease-out forwards; }
 /* positions rows */
 .pt-table tbody tr.pt-live-queued td { background: var(--live-queued-soft); }
 .pt-table tbody tr.pt-live-queued td:first-child { box-shadow: inset 3px 0 0 var(--live-queued); }
+.pt-table tbody tr[class*="pt-live-"] td:first-child { border-radius: var(--ds-radius-card) 0 0 var(--ds-radius-card); }
+.pt-table tbody tr[class*="pt-live-"] td:last-child { border-radius: 0 var(--ds-radius-card) var(--ds-radius-card) 0; }
 @keyframes live-row { 0%, 100% { background: var(--live-on-soft); } 50% { background: color-mix(in srgb, var(--live-on) 26%, transparent); } }
 .pt-table tbody tr.pt-live-updating td { animation: live-row 1.2s ease-in-out infinite; }
 .pt-table tbody tr.pt-live-updating td:first-child { box-shadow: inset 3px 0 0 var(--live-on); }
 .pt-table tbody tr.pt-live-done td { animation: live-flash 2.4s ease-out; }
-@media (prefers-reduced-motion: reduce) { .mx-table td.mx-live-updating, .pt-table tbody tr.pt-live-updating td { animation: none; background: var(--live-on-soft); } }
+@media (prefers-reduced-motion: reduce) { .mx-table td.mx-live-updating::before, .pt-table tbody tr.pt-live-updating td { animation: none; background: var(--live-on-soft); } }
