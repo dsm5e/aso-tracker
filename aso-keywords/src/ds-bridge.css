@@ -417,3 +417,4 @@ body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-fo
 }
 /* the dense status bar uses the compact 32px select */
 .statusbar .page-size { height: var(--ds-control-h-sm); padding: 0 8px; font-size: 13px; }
+.update-menu .gate-status { font-weight: 400; font-variant-numeric: tabular-nums; }

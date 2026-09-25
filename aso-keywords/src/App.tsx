@@ -10,6 +10,8 @@ import {
   type RankingRow,
   type SnapshotEvent,
   type SnapshotSpeed,
+  type SnapshotSettings,
+  type RankSource,
   type KeywordIdea,
   type KeywordSuggestionsResponse,
   type RelevanceRow,
@@ -104,6 +106,11 @@ function delta(from: number | null, to: number | null) {
   if (from == null || to == null) return null;
   return from - to;
 }
+
+const RANK_SOURCES: Array<{ value: RankSource; label: string; note: string }> = [
+  { value: 'appstore', label: 'App Store', note: 'как в приложении: порядок витрины, до 250 мест' },
+  { value: 'itunes', label: 'iTunes API', note: 'старый источник: до 200 мест, порядок расходится' },
+];
 
 function snapshotStatusText(progress: SnapshotEvent | null, fallbackTotal: number | string) {
   const completed = progress?.completed ?? 0;
@@ -491,6 +498,22 @@ export default function App() {
       api.setSnapshotSpeed(preset.sleepMs, preset.workers).catch(() => { /* run may have just ended */ });
     }
   };
+
+  // Rank source + gate status for the update menu; polled while it is open.
+  const [snapshotSettings, setSnapshotSettings] = useState<SnapshotSettings | null>(null);
+  useEffect(() => {
+    if (!updateMenuOpen) return;
+    let alive = true;
+    const load = () => api.snapshotSettings().then((s) => { if (alive) setSnapshotSettings(s); }).catch(() => {});
+    load();
+    const timer = setInterval(load, 3000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [updateMenuOpen]);
+  const changeRankSource = (rankSource: RankSource) => {
+    api.setRankSource(rankSource).then(setSnapshotSettings).catch(() => {});
+  };
+  const rankGate = snapshotSettings?.gates.find((g) =>
+    g.host === (snapshotSettings.rankSource === 'appstore' ? 'search.itunes.apple.com' : 'itunes.apple.com'));
 
   const startSnapshot = async (scope: 'locale' | 'app' | 'all') => {
     if (!selectedApp || !locale || refreshing) return;
@@ -982,6 +1005,21 @@ export default function App() {
                     {snapshotSpeed === speed && <b><Icon name="check" /></b>}
                   </button>
                 ))}
+                <div className="menu-separator" />
+                <div className="menu-label">Источник позиций</div>
+                {RANK_SOURCES.map(({ value, label, note }) => (
+                  <button key={value} onClick={() => changeRankSource(value)}>
+                    <strong>{label}</strong>
+                    <small>{note}</small>
+                    {snapshotSettings?.rankSource === value && <b><Icon name="check" /></b>}
+                  </button>
+                ))}
+                {rankGate && (
+                  <div className="menu-label gate-status">
+                    Лимит Apple: {rankGate.effectivePerMin}/мин · в очереди {rankGate.queued.interactive + rankGate.queued.top + rankGate.queued.tail}
+                    {rankGate.pausedUntil ? ` · пауза до ${new Date(rankGate.pausedUntil).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </div>
+                )}
               </div>
             )}
           </div>

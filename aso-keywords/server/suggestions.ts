@@ -1,4 +1,6 @@
 import { db } from './db.js';
+import { GateHttpError, hostGate, type GatePriority } from './host-gate.js';
+import { storeFrontHeader } from './storefront-ids.js';
 import { loadApps, loadKeywords, type AppConfig } from './config.js';
 import {
   MEDSCAN_KNOWN_BRANDS,
@@ -328,19 +330,6 @@ export function estimateGain(input: GainInputs): { score: number; level: GainLev
 
 // --- Data sources -----------------------------------------------------------
 
-const STOREFRONT: Record<string, string> = {
-  us: '143441', fr: '143442', de: '143443', gb: '143444', at: '143445',
-  be: '143446', fi: '143447', gr: '143448', ie: '143449', it: '143450',
-  lu: '143451', nl: '143452', pt: '143453', es: '143454', ca: '143455',
-  se: '143456', no: '143457', dk: '143458', ch: '143459', au: '143460',
-  nz: '143461', jp: '143462', hk: '143463', sg: '143464', cn: '143465',
-  kr: '143466', in: '143467', mx: '143468', ru: '143469', tw: '143470',
-  vn: '143471', za: '143472', my: '143473', ph: '143474', th: '143475',
-  id: '143476', pk: '143477', pl: '143478', sa: '143479', tr: '143480',
-  ae: '143481', hu: '143482', cl: '143483', np: '143484', pa: '143485',
-  lk: '143486', ro: '143487', cz: '143489', sk: '143496', br: '143503',
-};
-
 function decodeXML(value: string) {
   return value
     .replace(/&amp;/g, '&')
@@ -355,19 +344,23 @@ const hintCache = new Map<string, { expiresAt: number; hints: string[] }>();
 /** App Store search autocomplete. The `MacSearchAds` client only echoes the
  * seed back; the `Software` client with a storefront header returns the real,
  * popularity-ordered hint list. */
-async function appleHints(seed: string, country: string): Promise<string[]> {
+async function appleHints(seed: string, country: string, priority: GatePriority = 'interactive'): Promise<string[]> {
   const key = `${country}:${seed}`;
   const cached = hintCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.hints;
-  const storefront = STOREFRONT[country] ?? STOREFRONT.us;
+  const storefront = storeFrontHeader(country) ?? storeFrontHeader('us')!;
   const params = new URLSearchParams({ clientApplication: 'Software', term: seed });
   try {
-    const response = await fetch(
-      `https://search.itunes.apple.com/WebObjects/MZSearchHints.woa/wa/hints?${params}`,
-      { headers: { 'X-Apple-Store-Front': `${storefront}-1,29` }, signal: AbortSignal.timeout(10_000) }
-    );
-    if (!response.ok) return [];
-    const xml = await response.text();
+    // Hints share the search.itunes.apple.com budget with MZStore rank checks;
+    // they are user-triggered, so they jump the snapshot queue.
+    const xml = await hostGate('search.itunes.apple.com').run(async () => {
+      const response = await fetch(
+        `https://search.itunes.apple.com/WebObjects/MZSearchHints.woa/wa/hints?${params}`,
+        { headers: { 'X-Apple-Store-Front': storefront }, signal: AbortSignal.timeout(10_000) }
+      );
+      if (!response.ok) throw new GateHttpError(response.status);
+      return response.text();
+    }, { key: `hints|${country}|${seed}`, priority });
     const hints = Array.from(xml.matchAll(/<key>term<\/key>\s*<string>([\s\S]*?)<\/string>/g))
       .map((match) => normalized(decodeXML(match[1])))
       .filter(Boolean);

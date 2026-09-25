@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from 'express';
 import { db } from './db.js';
 import { assertSafeAppId, loadApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
-import { searchItunes, type SearchResult } from './itunes.js';
+import { RateLimited, searchItunes, type SearchResult } from './itunes.js';
 import { asaPopularity, normalized, tokenize } from './suggestions.js';
 
 // Competitor spy: reverse keyword lookup + gap analysis for one competitor in
@@ -598,10 +598,21 @@ export function startSpyCheck(storefront: string, rawTerms: string[]): SpyCheckJ
         if (job.status !== 'running') return;
         job.current = term;
         job.note = null;
-        // searchItunes shares the global gate with snapshots (≈18 requests/min).
-        const results = await searchItunes(storefront, term, {
-          onRetry: ({ delayMs, reason }) => { job.note = `${reason}; повтор через ${Math.round(delayMs / 1000)} с`; },
-        });
+        // searchItunes shares the itunes.apple.com gate with snapshots (tail
+        // priority). A 403/429 pauses the host; the retry waits in the gate.
+        let results: SearchResult[] | null = null;
+        for (let limits = 0; results == null; limits++) {
+          try {
+            results = await searchItunes(storefront, term, {
+              priority: 'tail',
+              onRetry: ({ reason }) => { job.note = `${reason}; повтор`; },
+            });
+          } catch (error) {
+            if (!(error instanceof RateLimited) || limits >= 2) throw error;
+            job.note = 'Лимит Apple: пауза 5 мин, потом продолжим';
+          }
+        }
+        job.note = null;
         saveFullSerp(country, term, results);
         job.done++;
       }

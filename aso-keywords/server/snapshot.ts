@@ -1,5 +1,7 @@
 import { refreshOwnAppMeta } from './own-app-meta.js';
-import { RateLimited, findPosition, searchItunes } from './itunes.js';
+import { RateLimited, positionFromRank, searchRanked, type RankSource, type Top5Entry } from './itunes.js';
+import { gateStatus, hostGate, onGateEvent, type GateHost, type GatePriority, type HostGateStatus } from './host-gate.js';
+import { activeProbeMatcher, insertProbe, loadSnapshotSettings, measureProbe, otherSource } from './rank-source.js';
 import { loadApps, loadKeywords, type AppConfig } from './config.js';
 import { insertSnapshot, type SnapshotRow, db } from './db.js';
 
@@ -19,45 +21,58 @@ export interface SnapshotProgress {
   source?: 'auto' | 'user';
   attempt?: number;
   maxAttempts?: number;
-  top5?: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
+  top5?: Top5Entry[];
+  /** Rank source that answered ('keyword') or the run's configured source ('start'). */
+  rankSource?: RankSource;
+  /** Request latency for 'keyword' events, ms. */
+  ms?: number;
+  /** Gate state of the host involved ('throttle' / 'speed' / 'start'). */
+  gate?: HostGateStatus;
 }
 
 export interface SnapshotOptions {
   appIds?: string[];
   locales?: string[];
   workers?: number;
+  /** Speed preset. ≤3250 ms = adaptive gate rate; slower presets cap the rate at 60000/sleepMs per minute. */
   sleepMs?: number;
+  /** Override the stored rank source setting for this run. */
+  rankSource?: RankSource;
   /** Skip (app, locale, keyword) combos that already have a successful snapshot today. */
   skipExisting?: boolean;
   onProgress?: (p: SnapshotProgress) => void;
   isCancelled?: () => boolean;
 }
 
+const RANK_HOSTS: GateHost[] = ['search.itunes.apple.com', 'itunes.apple.com'];
+const hostOf = (s: RankSource): GateHost => (s === 'appstore' ? 'search.itunes.apple.com' : 'itunes.apple.com');
+
+/** Speed preset → optional gate cap. The default preset leaves pacing to AIMD. */
+function capFor(sleepMs: number): number | null {
+  return sleepMs > 3250 ? Math.max(1, Math.round(60_000 / sleepMs)) : null;
+}
+function applyCap(sleepMs: number) {
+  const cap = capFor(sleepMs);
+  for (const h of RANK_HOSTS) hostGate(h).setCap(cap);
+}
+
 interface LiveRuntime {
   sleepMs: number;
   workers: number;
-  /** User-selected pacing — what we recover toward after a throttle cools down. */
-  baselineSleepMs: number;
-  baselineWorkers: number;
-  /** True while pacing is auto-elevated above baseline; recovery decays it back. */
-  throttled: boolean;
-  cooldownUntil: number;
-  consecutiveThrottles: number;
-  successesSinceThrottle: number;
   emit: (p: SnapshotProgress) => void;
 }
 
 let liveRuntime: LiveRuntime | null = null;
 
 /** Returns the current runtime for any in-flight snapshot, or null. */
-export function getLiveRuntime(): { sleepMs: number; workers: number } | null {
+export function getLiveRuntime(): { sleepMs: number; workers: number; gates: HostGateStatus[] } | null {
   if (!liveRuntime) return null;
-  return { sleepMs: liveRuntime.sleepMs, workers: liveRuntime.workers };
+  return { sleepMs: liveRuntime.sleepMs, workers: liveRuntime.workers, gates: gateStatus() };
 }
 
 /**
- * Mutate the running snapshot's pacing. Workers takes effect at the next locale boundary;
- * sleepMs takes effect on the very next iTunes request.
+ * Change the running snapshot's pacing. `sleepMs` maps to a gate cap (next
+ * request); `workers` applies at the next locale boundary.
  * Returns false if no snapshot is running.
  */
 export function setLiveSpeed(opts: { sleepMs?: number; workers?: number; source?: 'auto' | 'user' }): boolean {
@@ -65,19 +80,12 @@ export function setLiveSpeed(opts: { sleepMs?: number; workers?: number; source?
   let changed = false;
   if (typeof opts.sleepMs === 'number' && opts.sleepMs !== liveRuntime.sleepMs) {
     liveRuntime.sleepMs = Math.max(0, opts.sleepMs);
-    if (opts.source !== 'auto') liveRuntime.baselineSleepMs = liveRuntime.sleepMs;
+    applyCap(liveRuntime.sleepMs);
     changed = true;
   }
   if (typeof opts.workers === 'number' && opts.workers !== liveRuntime.workers) {
     liveRuntime.workers = Math.max(1, Math.min(8, Math.round(opts.workers)));
-    if (opts.source !== 'auto') liveRuntime.baselineWorkers = liveRuntime.workers;
     changed = true;
-  }
-  if (opts.source !== 'auto' && changed) {
-    // User manually adjusted pacing — clear throttle state so auto-recovery doesn't fight them.
-    liveRuntime.throttled = false;
-    liveRuntime.successesSinceThrottle = 0;
-    liveRuntime.consecutiveThrottles = 0;
   }
   if (changed) {
     liveRuntime.emit({
@@ -90,15 +98,28 @@ export function setLiveSpeed(opts: { sleepMs?: number; workers?: number; source?
   return true;
 }
 
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** Latest known position per (app|locale|keyword), for queue priorities. */
+function latestPositions(appIds: string[]): Map<string, number | null> {
+  const out = new Map<string, number | null>();
+  if (appIds.length === 0) return out;
+  const placeholders = appIds.map(() => '?').join(',');
+  const rows = db.prepare(`
+    SELECT s.app, s.locale, s.keyword, s.position FROM snapshots s
+      JOIN (SELECT MAX(id) AS id FROM snapshots WHERE app IN (${placeholders}) AND error IS NULL
+             GROUP BY app, locale, keyword) l ON l.id = s.id
+  `).all(...appIds) as Array<{ app: string; locale: string; keyword: string; position: number | null }>;
+  for (const r of rows) out.set(`${r.app}|${r.locale}|${r.keyword}`, r.position);
+  return out;
+}
 
 /**
- * Run a snapshot across apps × locales × keywords.
- * Conservative defaults: 1 worker, 3250ms sleep. Auto-throttles down on iTunes rate limit
- * instead of aborting — only gives up after consecutive failures at the slowest preset.
+ * Run a snapshot across apps × locales × keywords. Pacing, rate-limit pauses
+ * and retries belong to the per-host gate; this loop only orders work, records
+ * rows and reports progress. Probe pairs are also measured with the other source.
  */
 export async function runSnapshot(opts: SnapshotOptions = {}) {
   const { appIds, locales, workers = 1, sleepMs = 3250, skipExisting = false, onProgress, isCancelled } = opts;
+  const rankSource: RankSource = opts.rankSource ?? loadSnapshotSettings().rankSource;
 
   // Every refresh also pulls our apps' current icon/name/subtitle from the App Store,
   // so a new icon or title shows up with the new positions (best-effort, ~1–2 s per app).
@@ -119,11 +140,13 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
       .all(today, ...apps.map((a) => a.id)) as Array<{ app: string; locale: string; keyword: string }>;
     for (const r of rows) alreadyDone.add(`${r.app}|${r.locale}|${r.keyword}`);
   }
+  const lastPos = latestPositions(apps.map((a) => a.id));
 
   interface Task {
     app: AppConfig;
     locale: string;
     keyword: string;
+    priority: GatePriority;
   }
   const byLocale = new Map<string, Task[]>();
   const seenTasks = new Set<string>();
@@ -139,10 +162,13 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
         seenTasks.add(key);
         if (alreadyDone.has(key)) continue;
         if (!byLocale.has(loc)) byLocale.set(loc, []);
-        byLocale.get(loc)!.push({ app, locale: loc, keyword: normalized });
+        const pos = lastPos.get(key);
+        byLocale.get(loc)!.push({ app, locale: loc, keyword: normalized, priority: pos != null && pos <= 10 ? 'top' : 'tail' });
       }
     }
   }
+  // Keywords we are in the top 10 for go first within each storefront.
+  for (const list of byLocale.values()) list.sort((a, b) => Number(a.priority !== 'top') - Number(b.priority !== 'top'));
 
   const totalCombos = Array.from(byLocale.values()).reduce((a, b) => a + b.length, 0);
   if (totalCombos === 0) {
@@ -151,236 +177,198 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
   }
 
   const emit: (p: SnapshotProgress) => void = (p) => onProgress?.(p);
-
-  // Install live runtime so /api/snapshot/speed can mutate it during the run.
-  liveRuntime = {
-    sleepMs,
-    workers,
-    baselineSleepMs: sleepMs,
-    baselineWorkers: workers,
-    throttled: false,
-    cooldownUntil: 0,
-    consecutiveThrottles: 0,
-    successesSinceThrottle: 0,
-    emit,
-  };
-
-  emit({ type: 'start', total: totalCombos, sleepMs, workers });
+  liveRuntime = { sleepMs, workers, emit };
+  applyCap(sleepMs);
 
   const records: SnapshotRow[] = [];
   let completed = 0;
   let aborted = false;
   let abortReason: string | undefined;
 
-  /** Hard ceiling on auto-throttle escalations before we give up entirely. */
-  const MAX_CONSECUTIVE_THROTTLES = 6;
-  /** Max sleepMs we'll auto-escalate to (5s/req). */
-  const MAX_AUTO_SLEEP_MS = 5000;
-  /** Cooldown duration when iTunes is hot. */
-  const COOLDOWN_SEC = 60;
-  /** After this many consecutive successful keywords, step pacing back toward baseline. */
-  const RECOVERY_SUCCESS_THRESHOLD = 30;
+  // Cancellation: one AbortController for every queued/in-flight request.
+  const ctrl = new AbortController();
+  const cancelPoll = setInterval(() => {
+    if (isCancelled?.() && !ctrl.signal.aborted) {
+      aborted = true;
+      abortReason = 'Cancelled by user';
+      ctrl.abort();
+    }
+  }, 300);
+
+  // Gate state → SSE: a pause is a 'throttle', an AIMD step is a 'speed'.
+  const offGate = onGateEvent((e) => {
+    if (!RANK_HOSTS.includes(e.host)) return;
+    const gate = hostGate(e.host).status();
+    if (e.type === 'limit') {
+      emit({
+        type: 'throttle',
+        completed,
+        total: totalCombos,
+        cooldownSec: Math.ceil((e.pausedUntil - Date.now()) / 1000),
+        reason: `${e.host}: HTTP ${e.status} — пауза 5 мин, темп ${e.ratePerMin}/мин`,
+        source: 'auto',
+        gate,
+      });
+    } else {
+      emit({ type: 'speed', completed, total: totalCombos, source: 'auto', sleepMs: liveRuntime?.sleepMs, workers: liveRuntime?.workers, gate });
+    }
+  });
+
+  emit({ type: 'start', total: totalCombos, sleepMs, workers, rankSource, gate: hostGate(hostOf(rankSource)).status() });
+
+  const isProbe = activeProbeMatcher();
+  /** Both hosts limited this many times in a row → give up with a readable reason. */
+  const MAX_CONSECUTIVE_LIMITS = 4;
+  let consecutiveLimits = 0;
   const MAX_TASK_ATTEMPTS = 3;
   const taskAttempts = new Map<string, number>();
 
-  function recoverStep(): void {
-    if (!liveRuntime || !liveRuntime.throttled) return;
-    if (liveRuntime.successesSinceThrottle < RECOVERY_SUCCESS_THRESHOLD) return;
-    const atBaseline =
-      liveRuntime.sleepMs <= liveRuntime.baselineSleepMs &&
-      liveRuntime.workers >= liveRuntime.baselineWorkers;
-    if (atBaseline) {
-      liveRuntime.throttled = false;
-      liveRuntime.successesSinceThrottle = 0;
-      return;
-    }
-    // Halve sleep toward baseline; bring workers up by 1 toward baseline.
-    const newSleep = Math.max(liveRuntime.baselineSleepMs, Math.floor(liveRuntime.sleepMs / 2));
-    const newWorkers = Math.min(liveRuntime.baselineWorkers, liveRuntime.workers + 1);
-    liveRuntime.sleepMs = newSleep;
-    liveRuntime.workers = newWorkers;
-    liveRuntime.successesSinceThrottle = 0;
-    liveRuntime.emit({ type: 'speed', sleepMs: newSleep, workers: newWorkers, source: 'auto' });
-  }
-
-  async function autoThrottle(reason: string): Promise<void> {
-    if (!liveRuntime) return;
-    liveRuntime.consecutiveThrottles += 1;
-    liveRuntime.successesSinceThrottle = 0;
-    if (liveRuntime.consecutiveThrottles > MAX_CONSECUTIVE_THROTTLES) {
-      aborted = true;
-      abortReason = `Persistent rate limit even at slowest speed: ${reason}`;
-      return;
-    }
-    // Escalate pacing: slow down + drop to 1 worker (next-locale enforcement)
-    const newSleep = Math.min(MAX_AUTO_SLEEP_MS, Math.max(1000, liveRuntime.sleepMs * 2));
-    const newWorkers = 1;
-    liveRuntime.sleepMs = newSleep;
-    liveRuntime.workers = newWorkers;
-    liveRuntime.throttled = true;
-    liveRuntime.cooldownUntil = Date.now() + COOLDOWN_SEC * 1000;
-    emit({
-      type: 'throttle',
-      sleepMs: newSleep,
-      workers: newWorkers,
-      cooldownSec: COOLDOWN_SEC,
-      reason,
-      source: 'auto',
-    });
-    // Sleep through the cooldown (interruptible by cancel)
-    const deadline = liveRuntime.cooldownUntil;
-    while (Date.now() < deadline && !aborted) {
-      if (isCancelled?.()) {
-        aborted = true;
-        abortReason = 'Cancelled by user';
-        return;
-      }
-      await sleep(1000);
-    }
-  }
-
   const sortedLocales = Array.from(byLocale.keys()).sort();
 
-  for (const locale of sortedLocales) {
-    if (aborted) break;
-    if (isCancelled?.()) {
-      aborted = true;
-      abortReason = 'Cancelled by user';
-      break;
-    }
-    emit({ type: 'locale', locale });
+  try {
+    for (const locale of sortedLocales) {
+      if (aborted) break;
+      emit({ type: 'locale', locale });
 
-    const tasks = byLocale.get(locale)!.slice(); // mutable copy — we re-push throttled tasks
-    let pointer = 0;
+      const tasks = byLocale.get(locale)!.slice(); // mutable copy — failed tasks are re-queued
+      let pointer = 0;
 
-    async function worker() {
-      while (!aborted) {
-        if (isCancelled?.()) { aborted = true; abortReason = 'Cancelled by user'; return; }
+      const worker = async () => {
+        while (!aborted) {
+          const myIdx = pointer++;
+          if (myIdx >= tasks.length) return;
+          const task = tasks[myIdx];
+          const taskKey = `${task.app.id}|${task.locale}|${task.keyword}`;
 
-        // Honour active cooldown before pulling next task.
-        if (liveRuntime && Date.now() < liveRuntime.cooldownUntil) {
-          await sleep(500);
-          continue;
-        }
-
-        const myIdx = pointer++;
-        if (myIdx >= tasks.length) return;
-        const task = tasks[myIdx];
-        const taskKey = `${task.app.id}|${task.locale}|${task.keyword}`;
-
-        try {
-          emit({
-            type: 'keyword-start',
-            completed,
-            total: totalCombos,
-            locale: task.locale,
-            keyword: task.keyword,
-            attempt: (taskAttempts.get(taskKey) ?? 0) + 1,
-            maxAttempts: MAX_TASK_ATTEMPTS,
-          });
-          const currentSleep = liveRuntime?.sleepMs ?? sleepMs;
-          const results = await searchItunes(task.locale, task.keyword, {
-            sleepMs: currentSleep,
-            onRetry: ({ attempt, maxAttempts, delayMs, reason }) => emit({
-              type: 'retry',
-              completed,
-              total: totalCombos,
-              locale: task.locale,
-              keyword: task.keyword,
-              attempt,
-              maxAttempts,
-              cooldownSec: Math.ceil(delayMs / 1000),
-              reason,
-            }),
-          });
-          const { position, total, top5 } = findPosition(results, task.app.bundle);
-          if (liveRuntime) {
-            liveRuntime.consecutiveThrottles = 0;
-            if (liveRuntime.throttled) {
-              liveRuntime.successesSinceThrottle += 1;
-              recoverStep();
-            }
-          }
-          const rec: SnapshotRow = {
-            date: today,
-            app: task.app.id,
-            locale: task.locale,
-            keyword: task.keyword,
-            position,
-            total,
-            top5,
-          };
-          records.push(rec);
-          // Commit each successful keyword immediately. A browser close,
-          // worker restart or later rate limit never discards prior progress.
-          insertSnapshot(rec);
-          completed++;
-          emit({
-            type: 'keyword',
-            completed,
-            total: totalCombos,
-            locale: task.locale,
-            keyword: task.keyword,
-            position,
-            top5,
-          });
-        } catch (e) {
-          if (e instanceof RateLimited) {
-            // Auto-throttle path: re-queue the task, slow down, cooldown, retry. Only one
-            // worker actually escalates — others see updated cooldownUntil and pause too.
-            await autoThrottle((e as Error).message);
-            if (aborted) return;
-            tasks.push(task); // requeue
-            continue;
-          }
-          const attempt = (taskAttempts.get(taskKey) ?? 0) + 1;
-          taskAttempts.set(taskKey, attempt);
-          if (attempt < MAX_TASK_ATTEMPTS) {
+          try {
             emit({
-              type: 'retry',
+              type: 'keyword-start',
               completed,
               total: totalCombos,
               locale: task.locale,
               keyword: task.keyword,
-              error: (e as Error).message || 'unknown',
-              attempt: attempt + 1,
+              attempt: (taskAttempts.get(taskKey) ?? 0) + 1,
               maxAttempts: MAX_TASK_ATTEMPTS,
             });
-            await sleep([1000, 3000, 8000][attempt - 1] ?? 8000);
-            tasks.push(task);
-            continue;
+            const res = await searchRanked(rankSource, task.locale, task.keyword, {
+              priority: task.priority,
+              signal: ctrl.signal,
+              onRetry: ({ attempt, maxAttempts, reason }) => emit({
+                type: 'retry',
+                completed,
+                total: totalCombos,
+                locale: task.locale,
+                keyword: task.keyword,
+                attempt,
+                maxAttempts,
+                reason,
+              }),
+            });
+            consecutiveLimits = 0;
+            const { position, total, top5 } = positionFromRank(res, task.app);
+            const rec: SnapshotRow = {
+              date: today,
+              app: task.app.id,
+              locale: task.locale,
+              keyword: task.keyword,
+              position,
+              total,
+              top5,
+              source: res.source,
+            };
+            records.push(rec);
+            // Commit each successful keyword immediately. A browser close,
+            // worker restart or later rate limit never discards prior progress.
+            insertSnapshot(rec);
+            completed++;
+            emit({
+              type: 'keyword',
+              completed,
+              total: totalCombos,
+              locale: task.locale,
+              keyword: task.keyword,
+              position,
+              top5,
+              rankSource: res.source,
+              ms: res.ms,
+            });
+
+            // Dual measurement for the probe set: also record the other source.
+            const pair = { app: task.app.id, locale: task.locale, keyword: task.keyword };
+            if (isProbe?.(pair)) {
+              insertProbe({ ...pair, date: today, source: res.source, position, total, ms: res.ms });
+              if (res.source === rankSource) {
+                await measureProbe(pair, otherSource(rankSource), { priority: 'tail', signal: ctrl.signal, date: today })
+                  .catch((e) => console.warn(`[probe] ${taskKey}: ${(e as Error).message}`));
+              }
+            }
+          } catch (e) {
+            if (aborted || (e as Error).name === 'AbortError') return;
+            if (e instanceof RateLimited) {
+              // The gate already paused the host for 5 minutes; the re-queued
+              // task waits there (cancel still interrupts the wait).
+              consecutiveLimits++;
+              if (consecutiveLimits > MAX_CONSECUTIVE_LIMITS) {
+                aborted = true;
+                abortReason = `Apple держит лимит даже после пауз: ${(e as Error).message}`;
+                ctrl.abort();
+                return;
+              }
+              tasks.push(task);
+              continue;
+            }
+            const attempt = (taskAttempts.get(taskKey) ?? 0) + 1;
+            taskAttempts.set(taskKey, attempt);
+            if (attempt < MAX_TASK_ATTEMPTS) {
+              emit({
+                type: 'retry',
+                completed,
+                total: totalCombos,
+                locale: task.locale,
+                keyword: task.keyword,
+                error: (e as Error).message || 'unknown',
+                attempt: attempt + 1,
+                maxAttempts: MAX_TASK_ATTEMPTS,
+              });
+              tasks.push(task);
+              continue;
+            }
+            const rec: SnapshotRow = {
+              date: today,
+              app: task.app.id,
+              locale: task.locale,
+              keyword: task.keyword,
+              position: null,
+              total: 0,
+              top5: [],
+              error: (e as Error).message || 'unknown',
+              source: rankSource,
+            };
+            records.push(rec);
+            insertSnapshot(rec);
+            completed++;
+            emit({
+              type: 'keyword',
+              completed,
+              total: totalCombos,
+              locale: task.locale,
+              keyword: task.keyword,
+              error: rec.error,
+            });
           }
-          const rec: SnapshotRow = {
-            date: today,
-            app: task.app.id,
-            locale: task.locale,
-            keyword: task.keyword,
-            position: null,
-            total: 0,
-            top5: [],
-            error: (e as Error).message || 'unknown',
-          };
-          records.push(rec);
-          insertSnapshot(rec);
-          completed++;
-          emit({
-            type: 'keyword',
-            completed,
-            total: totalCombos,
-            locale: task.locale,
-            keyword: task.keyword,
-            error: rec.error,
-          });
         }
-      }
+      };
+
+      // Workers count is read fresh at each locale boundary so live changes apply.
+      const localeWorkerCount = liveRuntime?.workers ?? workers;
+      await Promise.all(Array.from({ length: localeWorkerCount }, () => worker()));
     }
-
-    // Workers count is read fresh at each locale boundary so live changes apply.
-    const localeWorkerCount = liveRuntime?.workers ?? workers;
-    await Promise.all(Array.from({ length: localeWorkerCount }, () => worker()));
+  } finally {
+    clearInterval(cancelPoll);
+    offGate();
+    applyCap(3250); // drop any preset cap
+    liveRuntime = null;
   }
-
-  liveRuntime = null;
 
   if (aborted) {
     emit({ type: 'abort', reason: abortReason, completed, total: totalCombos });
@@ -392,8 +380,8 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
 }
 
 /**
- * Refresh a single (app, locale, keyword) combo on demand. Inserts a new row
- * with today's date so the rankings table picks it up on next fetch.
+ * Refresh a single (app, locale, keyword) combo on demand (UI → interactive
+ * priority). Inserts a new row with today's date.
  */
 export async function refreshKeyword(
   appId: string,
@@ -403,9 +391,10 @@ export async function refreshKeyword(
   const app = loadApps().find((a) => a.id === appId);
   if (!app) throw new Error(`unknown app ${appId}`);
   const today = new Date().toISOString().slice(0, 10);
+  const rankSource = loadSnapshotSettings().rankSource;
   try {
-    const results = await searchItunes(locale, keyword);
-    const { position, total, top5 } = findPosition(results, app.bundle);
+    const res = await searchRanked(rankSource, locale, keyword, { priority: 'interactive' });
+    const { position, total, top5 } = positionFromRank(res, app);
     const rec: SnapshotRow = {
       date: today,
       app: app.id,
@@ -414,6 +403,7 @@ export async function refreshKeyword(
       position,
       total,
       top5,
+      source: res.source,
     };
     insertSnapshot(rec);
     return rec;
@@ -427,6 +417,7 @@ export async function refreshKeyword(
       total: 0,
       top5: [],
       error: (e as Error).message || 'unknown',
+      source: rankSource,
     };
     insertSnapshot(rec);
     throw e;

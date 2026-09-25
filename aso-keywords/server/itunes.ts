@@ -1,5 +1,13 @@
-// iTunes Search API wrapper — no proxy, conservative rate limit.
-// Apple's archived guidance says roughly 20 calls/minute, so the default stays below it.
+// App Store rank sources. Every request goes through the per-host gate
+// (host-gate.ts): AIMD token bucket, priorities, coalescing, 5-min pause on 403/429.
+//
+// - `searchAppStore` — the App Store app's own search (MZStore): ~250 ordered
+//   adamIds, full lockups for the first 8. Matches the on-device order.
+// - `searchItunes` — the public iTunes Search API: ≤200 results with metadata,
+//   ordered differently from the store. Fallback and dual-measurement source.
+
+import { GateHttpError, hostGate, isGateLimitStatus, type GatePriority } from './host-gate.js';
+import { storeFrontHeader, storefrontCountry } from './storefront-ids.js';
 
 export class RateLimited extends Error {
   constructor(msg: string) {
@@ -9,12 +17,13 @@ export class RateLimited extends Error {
 }
 
 const BASE = 'https://itunes.apple.com';
+const MZSTORE_SEARCH = 'https://search.itunes.apple.com/WebObjects/MZStore.woa/wa/search';
+/** The App Store app's user agent; MZStore serves the app's JSON only to it. */
+export const APP_STORE_UA = 'AppStore/3.0 iOS/17.5 model/iPhone15,2 hwp/t8120 build/21F79 (6; dt:280) AMS/1';
+const REQUEST_TIMEOUT_MS = 15_000;
+const MAX_ATTEMPTS = 3;
 
-const COUNTRY_OVERRIDE: Record<string, string> = {
-  'in-hi': 'in', 'in-gu': 'in', 'in-kn': 'in', 'in-ml': 'in',
-  'in-mr': 'in', 'in-or': 'in', 'in-pa': 'in', 'in-ta': 'in', 'in-te': 'in',
-  'es-ca': 'es',
-};
+export type RankSource = 'appstore' | 'itunes';
 
 export interface SearchResult {
   bundleId?: string;
@@ -30,93 +39,226 @@ export interface SearchResult {
   userRatingCount?: number;
 }
 
-// Global gate: enforce a minimum interval between any two iTunes requests,
-// regardless of which worker fires them. This makes rate-limiting per-second reliable
-// AND makes the first request in a session instant (no pointless initial sleep).
-let nextAllowedAt = 0;
-async function throttle(sleepMs: number) {
-  const now = Date.now();
-  const wait = nextAllowedAt - now;
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
-  nextAllowedAt = Math.max(nextAllowedAt, Date.now()) + sleepMs;
+export interface RetryInfo { attempt: number; maxAttempts: number; delayMs: number; reason: string }
+
+export interface GatedRequestOptions {
+  priority?: GatePriority;
+  signal?: AbortSignal;
+  onRetry?: (event: RetryInfo) => void;
+  /** @deprecated pacing is owned by the host gate; ignored. */
+  sleepMs?: number;
 }
 
-// iTunes returns 403/429 when IP is throttled, 502/503/504 when overloaded.
-// Treat all of these as transient — pause + retry. Persistent = RateLimited (aborts snapshot).
-const RATE_LIMIT_STATUSES = new Set([403, 429, 502, 503, 504]);
+function requestSignal(signal?: AbortSignal): AbortSignal {
+  const timeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  return signal ? AbortSignal.any([signal, timeout]) : timeout;
+}
 
+const isAbort = (e: unknown) => (e as Error)?.name === 'AbortError';
+const isTimeout = (e: unknown) => (e as Error)?.name === 'TimeoutError';
+
+/**
+ * iTunes Search API. 403/429 pause the `itunes.apple.com` gate for 5 minutes and
+ * throw `RateLimited` at once (the caller re-queues; the gate holds the pause).
+ * 5xx and timeouts are retried through the gate — no fixed sleeps.
+ */
 export async function searchItunes(
   country: string,
   term: string,
-  {
-    sleepMs = 3250,
-    onRetry,
-  }: {
-    sleepMs?: number;
-    onRetry?: (event: { attempt: number; maxAttempts: number; delayMs: number; reason: string }) => void;
-  } = {}
+  { priority = 'top', signal, onRetry }: GatedRequestOptions = {}
 ): Promise<SearchResult[]> {
-  const cc = COUNTRY_OVERRIDE[country] ?? country;
-  const params = new URLSearchParams({
-    term,
-    country: cc,
-    media: 'software',
-    entity: 'software',
-    limit: '200',
-  });
-  await throttle(sleepMs);
-
-  // Bound a single keyword to about a minute and surface every wait to the UI.
-  const backoffs = [0, 3_000, 12_000];
-  let lastErr: Error | null = null;
-  for (let attempt = 0; attempt < backoffs.length; attempt++) {
-    if (backoffs[attempt] > 0) {
-      await new Promise((r) => setTimeout(r, backoffs[attempt]));
-    }
+  const cc = storefrontCountry(country);
+  const params = new URLSearchParams({ term, country: cc, media: 'software', entity: 'software', limit: '200' });
+  const gate = hostGate('itunes.apple.com');
+  let lastReason = '';
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      const res = await fetch(`${BASE}/search?${params}`, {
-        headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.1 (self-hosted)' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (RATE_LIMIT_STATUSES.has(res.status)) {
-        lastErr = new Error(`iTunes throttled (HTTP ${res.status}) for ${cc}/${term}`);
-        console.warn(`[itunes] ${cc}/"${term}" → HTTP ${res.status} (attempt ${attempt + 1}/${backoffs.length})`);
-        if (attempt + 1 < backoffs.length) {
-          onRetry?.({
-            attempt: attempt + 2,
-            maxAttempts: backoffs.length,
-            delayMs: backoffs[attempt + 1],
-            reason: `Apple вернул HTTP ${res.status}`,
-          });
-        }
-        continue;
-      }
-      if (!res.ok) throw new Error(`iTunes HTTP ${res.status} for ${cc}/${term}`);
-      const data = (await res.json()) as { results?: SearchResult[] };
-      return data.results || [];
+      return await gate.run(async () => {
+        const res = await fetch(`${BASE}/search?${params}`, {
+          headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.3 (self-hosted)' },
+          signal: requestSignal(signal),
+        });
+        if (!res.ok) throw new GateHttpError(res.status, `iTunes HTTP ${res.status} for ${cc}/${term}`);
+        const data = (await res.json()) as { results?: SearchResult[] };
+        return data.results || [];
+      }, { key: `search|${cc}|${term.toLowerCase()}`, priority, signal });
     } catch (e) {
-      const err = e as Error;
-      if (err.name === 'TimeoutError' || err.name === 'AbortError') {
-        lastErr = new Error(`iTunes timeout (15s) for ${cc}/${term}`);
-        console.warn(`[itunes] ${cc}/"${term}" → timeout (attempt ${attempt + 1}/${backoffs.length})`);
-        if (attempt + 1 < backoffs.length) {
-          onRetry?.({
-            attempt: attempt + 2,
-            maxAttempts: backoffs.length,
-            delayMs: backoffs[attempt + 1],
-            reason: 'Apple не ответил за 15 секунд',
-          });
-        }
-        continue;
+      if (isAbort(e)) throw e;
+      if (e instanceof GateHttpError && isGateLimitStatus(e.status)) {
+        console.warn(`[itunes] ${cc}/"${term}" → HTTP ${e.status}; itunes.apple.com paused 5 min`);
+        throw new RateLimited(`Apple ограничил iTunes API (HTTP ${e.status}); пауза 5 мин, темп снижен вдвое`);
       }
-      // Non-retriable (bad URL, parse error, etc.)
-      throw err;
+      const transient = isTimeout(e) || (e instanceof GateHttpError && e.status >= 500);
+      if (!transient) throw e;
+      lastReason = isTimeout(e) ? 'Apple не ответил за 15 секунд' : `Apple вернул HTTP ${(e as GateHttpError).status}`;
+      console.warn(`[itunes] ${cc}/"${term}" → ${lastReason} (attempt ${attempt}/${MAX_ATTEMPTS})`);
+      if (attempt < MAX_ATTEMPTS) onRetry?.({ attempt: attempt + 1, maxAttempts: MAX_ATTEMPTS, delayMs: 0, reason: lastReason });
     }
   }
-  // Persistent throttle → abort snapshot with readable reason.
-  throw new RateLimited(
-    `iTunes is rate-limiting your IP (persistent ${lastErr?.message || 'errors'}). Wait 2–5 min and Resume.`
-  );
+  throw new Error(`iTunes: ${lastReason || 'нет ответа'} (${cc}/${term})`);
+}
+
+// --- App Store (MZStore) search ---------------------------------------------
+
+export interface RankLockup {
+  name: string;
+  developer: string;
+  rating?: number;
+  ratingCount?: number;
+  genre?: string;
+  bundleId?: string;
+}
+
+export interface RankSearch {
+  /** Ordered adamIds as the store ranks them. */
+  ids: string[];
+  /** Metadata for ids we have it for (MZStore: first 8; iTunes: all). */
+  lockups: Map<string, RankLockup>;
+  source: RankSource;
+  /** Why an App Store request fell back to iTunes, if it did. */
+  fallbackReason?: string;
+  ms: number;
+}
+
+interface MzLockup {
+  id?: string;
+  name?: string;
+  artistName?: string;
+  bundleId?: string;
+  genreNames?: string[];
+  userRating?: { value?: number; ratingCount?: number };
+}
+
+/** Parse an MZStore search payload; null means the schema changed. */
+export function parseMzSearch(json: unknown): { ids: string[]; lockups: Map<string, RankLockup> } | null {
+  const root = json as {
+    pageData?: { bubbles?: Array<{ name?: string; results?: Array<{ id?: unknown }> }> };
+    storePlatformData?: { 'native-search-lockup'?: { results?: Record<string, MzLockup> } };
+  } | null;
+  const bubble = root?.pageData?.bubbles?.find((b) => b?.name === 'software');
+  if (!bubble || !Array.isArray(bubble.results)) return null;
+  const ids = bubble.results.map((r) => String(r?.id ?? '')).filter((id) => /^\d+$/.test(id));
+  const lockups = new Map<string, RankLockup>();
+  for (const [id, l] of Object.entries(root?.storePlatformData?.['native-search-lockup']?.results ?? {})) {
+    if (!l || typeof l !== 'object') continue;
+    lockups.set(String(l.id ?? id), {
+      name: l.name ?? '',
+      developer: l.artistName ?? '',
+      rating: l.userRating?.value,
+      ratingCount: l.userRating?.ratingCount,
+      genre: l.genreNames?.[0],
+      bundleId: l.bundleId,
+    });
+  }
+  return { ids, lockups };
+}
+
+/** Names seen in any lockup, so positions past the first 8 still get a label. */
+const lockupNameCache = new Map<string, RankLockup>();
+const LOCKUP_CACHE_MAX = 20_000;
+function rememberLockups(lockups: Map<string, RankLockup>) {
+  for (const [id, l] of lockups) {
+    if (lockupNameCache.size >= LOCKUP_CACHE_MAX) lockupNameCache.delete(lockupNameCache.keys().next().value!);
+    lockupNameCache.set(id, l);
+  }
+}
+export function cachedLockup(id: string): RankLockup | undefined {
+  return lockupNameCache.get(id);
+}
+
+/** MZStore keeps results for 15 minutes (Cache-Control max-age=900) — so do we. */
+const APPSTORE_CACHE_MS = 15 * 60_000;
+const appStoreCache = new Map<string, { at: number; value: RankSearch }>();
+let schemaWarned = false;
+
+function fromItunes(results: SearchResult[], started: number, fallbackReason?: string): RankSearch {
+  const ids: string[] = [];
+  const lockups = new Map<string, RankLockup>();
+  for (const r of results) {
+    if (!r.trackId) continue;
+    const id = String(r.trackId);
+    ids.push(id);
+    lockups.set(id, {
+      name: r.trackName ?? '',
+      developer: r.artistName ?? '',
+      rating: r.averageUserRating,
+      ratingCount: r.userRatingCount,
+      genre: r.primaryGenreName,
+      bundleId: r.bundleId,
+    });
+  }
+  rememberLockups(lockups);
+  return { ids, lockups, source: 'itunes', fallbackReason, ms: Date.now() - started };
+}
+
+/** iTunes Search API reshaped as a rank result. */
+export async function searchItunesRanked(country: string, term: string, opts: GatedRequestOptions = {}): Promise<RankSearch> {
+  const started = Date.now();
+  return fromItunes(await searchItunes(country, term, opts), started);
+}
+
+/**
+ * The App Store app's own search. Falls back to the iTunes Search API on
+ * 400/403/429/5xx, timeouts, an unknown storefront, a paused host or a changed
+ * response schema; the result's `source` tells which one answered.
+ */
+export async function searchAppStore(
+  country: string,
+  term: string,
+  opts: GatedRequestOptions = {}
+): Promise<RankSearch> {
+  const started = Date.now();
+  const cc = storefrontCountry(country);
+  const key = `${cc}|${term.trim().toLowerCase()}`;
+  const cached = appStoreCache.get(key);
+  if (cached && Date.now() - cached.at < APPSTORE_CACHE_MS) return { ...cached.value, ms: 0 };
+
+  const fallback = async (reason: string) => {
+    const results = await searchItunes(country, term, opts);
+    return fromItunes(results, started, reason);
+  };
+
+  const header = storeFrontHeader(cc);
+  if (!header) return fallback(`storefront id for "${cc}" unknown`);
+  const gate = hostGate('search.itunes.apple.com');
+  if (gate.isPaused()) return fallback('search.itunes.apple.com paused after a rate limit');
+
+  const { priority = 'top', signal } = opts;
+  let payload: unknown;
+  try {
+    payload = await gate.run(async () => {
+      const params = new URLSearchParams({ clientApplication: 'Software', media: 'software', term });
+      const res = await fetch(`${MZSTORE_SEARCH}?${params}`, {
+        headers: { 'User-Agent': APP_STORE_UA, 'X-Apple-Store-Front': header, Accept: 'application/json' },
+        signal: requestSignal(signal),
+      });
+      if (!res.ok) throw new GateHttpError(res.status, `MZStore HTTP ${res.status}`);
+      return res.json();
+    }, { key: `mz|${key}`, priority, signal });
+  } catch (e) {
+    if (isAbort(e)) throw e;
+    const reason = e instanceof GateHttpError ? `App Store HTTP ${e.status}` : isTimeout(e) ? 'App Store timeout' : (e as Error).message;
+    console.warn(`[appstore] ${cc}/"${term}" → ${reason}; falling back to iTunes`);
+    return fallback(reason);
+  }
+
+  const parsed = parseMzSearch(payload);
+  if (!parsed) {
+    if (!schemaWarned) {
+      schemaWarned = true;
+      console.warn('[appstore] ⚠️ MZStore response schema changed: pageData.bubbles[name=software].results missing — using iTunes API until fixed');
+    }
+    return fallback('App Store response schema changed');
+  }
+  rememberLockups(parsed.lockups);
+  const value: RankSearch = { ...parsed, source: 'appstore', ms: Date.now() - started };
+  appStoreCache.set(key, { at: Date.now(), value });
+  if (appStoreCache.size > 5000) appStoreCache.delete(appStoreCache.keys().next().value!);
+  return value;
+}
+
+export async function searchRanked(source: RankSource, country: string, term: string, opts: GatedRequestOptions = {}) {
+  return source === 'appstore' ? searchAppStore(country, term, opts) : searchItunesRanked(country, term, opts);
 }
 
 export async function lookupItunes(
@@ -124,20 +266,21 @@ export async function lookupItunes(
   country = 'us'
 ): Promise<SearchResult | null> {
   const appId = String(id).trim();
-  const cc = COUNTRY_OVERRIDE[country] ?? country;
+  const cc = storefrontCountry(country);
   const params = new URLSearchParams({ id: appId, country: cc });
 
+  if (hostGate('itunes.apple.com').isPaused()) return lookupFromAppStorePage(appId, cc);
   try {
-    const res = await fetch(`${BASE}/lookup?${params}`, {
-      headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.2 (self-hosted)' },
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (res.ok) {
+    const result = await hostGate('itunes.apple.com').run(async () => {
+      const res = await fetch(`${BASE}/lookup?${params}`, {
+        headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.3 (self-hosted)' },
+        signal: requestSignal(),
+      });
+      if (!res.ok) throw new GateHttpError(res.status);
       const data = (await res.json()) as { results?: SearchResult[] };
-      if (data.results?.[0]) return data.results[0];
-    } else {
-      console.warn(`[itunes] lookup ${cc}/${appId} → HTTP ${res.status}; trying App Store page fallback`);
-    }
+      return data.results?.[0] ?? null;
+    }, { key: `lookup|${cc}|${appId}`, priority: 'interactive' });
+    if (result) return result;
   } catch (e) {
     console.warn(`[itunes] lookup ${cc}/${appId} failed: ${(e as Error).message}; trying App Store page fallback`);
   }
@@ -150,20 +293,24 @@ export async function lookupItunes(
  * includes the same adamId + PurchaseConfiguration data needed by AppAdder. */
 async function lookupFromAppStorePage(appId: string, country: string): Promise<SearchResult | null> {
   const pageUrl = `https://apps.apple.com/${encodeURIComponent(country)}/app/id${encodeURIComponent(appId)}`;
-  const res = await fetch(pageUrl, {
-    headers: {
-      Accept: 'text/html,application/xhtml+xml',
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36',
-    },
-    redirect: 'follow',
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!res.ok) {
-    console.warn(`[itunes] App Store fallback ${country}/${appId} → HTTP ${res.status}`);
+  let html: string;
+  try {
+    html = await hostGate('apps.apple.com').run(async () => {
+      const res = await fetch(pageUrl, {
+        headers: {
+          Accept: 'text/html,application/xhtml+xml',
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) throw new GateHttpError(res.status);
+      return res.text();
+    }, { key: `page|${country}|${appId}`, priority: 'interactive' });
+  } catch (e) {
+    console.warn(`[itunes] App Store fallback ${country}/${appId} → ${(e as Error).message}`);
     return null;
   }
-
-  const html = await res.text();
   const payloadMatch = html.match(/<script[^>]+id=["']serialized-server-data["'][^>]*>([\s\S]*?)<\/script>/i);
   if (!payloadMatch) return null;
 
@@ -218,10 +365,12 @@ async function lookupFromAppStorePage(appId: string, country: string): Promise<S
   };
 }
 
+export type Top5Entry = { name: string; id: string; dev: string; tid?: number; pos?: number };
+
 export interface Position {
   position: number | null;
   total: number;
-  top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
+  top5: Top5Entry[];
 }
 
 export function findPosition(results: SearchResult[], match: string): Position {
@@ -244,4 +393,34 @@ export function findPosition(results: SearchResult[], match: string): Position {
     pos: i + 1,
   }));
   return { position, total: results.length, top5 };
+}
+
+/**
+ * Our app's position in a ranked id list: by App Store id first, then by
+ * bundle-id prefix over the lockups we have metadata for. top5 keeps the
+ * shape the UI reads from top5_json: name, id (bundle), dev, tid, pos.
+ */
+export function positionFromRank(search: Pick<RankSearch, 'ids' | 'lockups'>, app: { iTunesId?: string; bundle?: string }): Position {
+  const { ids, lockups } = search;
+  let position: number | null = null;
+  const tid = String(app.iTunesId ?? '').trim();
+  if (tid) {
+    const i = ids.indexOf(tid);
+    if (i >= 0) position = i + 1;
+  }
+  if (position == null && app.bundle) {
+    const m = app.bundle.toLowerCase();
+    for (let i = 0; i < ids.length; i++) {
+      const bid = (lockups.get(ids[i])?.bundleId ?? '').toLowerCase();
+      if (bid && (bid === m || bid.startsWith(m))) {
+        position = i + 1;
+        break;
+      }
+    }
+  }
+  const top5 = ids.slice(0, 5).map((id, i) => {
+    const l = lockups.get(id) ?? cachedLockup(id);
+    return { name: l?.name ?? '', id: l?.bundleId ?? '', dev: l?.developer ?? '', tid: Number(id), pos: i + 1 };
+  });
+  return { position, total: ids.length, top5 };
 }

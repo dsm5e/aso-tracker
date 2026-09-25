@@ -491,6 +491,14 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sleepMs, workers }),
     }).then((r) => j<{ ok: true; runtime: { sleepMs: number; workers: number } }>(r)),
+  snapshotSettings: () =>
+    fetch('/api/snapshot/settings').then((r) => j<SnapshotSettings>(r)),
+  setRankSource: (rankSource: RankSource) =>
+    fetch('/api/snapshot/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rankSource }),
+    }).then((r) => j<SnapshotSettings>(r)),
   movers: (period: 'day' | 'week' | 'month', appId?: string, locale?: string) => {
     const qs = new URLSearchParams({ period });
     if (appId) qs.set('app', appId);
@@ -537,6 +545,26 @@ export interface MoversResponse {
   dropouts: Mover[];
 }
 
+export type RankSource = 'appstore' | 'itunes';
+
+/** Per-host request budget (server/host-gate.ts). */
+export interface HostGateStatus {
+  host: 'search.itunes.apple.com' | 'itunes.apple.com' | 'apps.apple.com';
+  ratePerMin: number;
+  capPerMin: number | null;
+  effectivePerMin: number;
+  queued: { interactive: number; top: number; tail: number };
+  inFlight: number;
+  pausedUntil: number | null;
+  counters: { ok: number; limited: number; errors: number; coalesced: number };
+  consecutiveOk: number;
+}
+
+export interface SnapshotSettings {
+  rankSource: RankSource;
+  gates: HostGateStatus[];
+}
+
 export interface SnapshotEvent {
   type: 'start' | 'locale' | 'keyword-start' | 'keyword' | 'retry' | 'done' | 'abort' | 'throttle' | 'speed';
   total?: number;
@@ -554,13 +582,16 @@ export interface SnapshotEvent {
   attempt?: number;
   maxAttempts?: number;
   top5?: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
+  rankSource?: RankSource;
+  ms?: number;
+  gate?: HostGateStatus;
 }
 
 export type SnapshotSpeed = 'medium' | 'slow';
 
 export const SPEED_PRESETS: Record<SnapshotSpeed, { workers: number; sleepMs: number; label: string; note: string }> = {
-  medium: { workers: 1, sleepMs: 3250, label: 'Обычная', note: 'Около 18 запросов в минуту' },
-  slow:   { workers: 1, sleepMs: 5000, label: 'Бережная', note: 'Для больших обновлений и после 429/503' },
+  medium: { workers: 1, sleepMs: 3250, label: 'Обычная', note: 'Адаптивно: 24–40 запросов в минуту' },
+  slow:   { workers: 1, sleepMs: 5000, label: 'Бережная', note: 'Не больше 12 в минуту — для больших обновлений' },
 };
 
 export interface SnapshotPublicState {

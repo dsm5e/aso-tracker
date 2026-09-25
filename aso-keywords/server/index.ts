@@ -11,6 +11,8 @@ import { db } from './db.js';
 import { runSnapshot, refreshKeyword, getLiveRuntime, setLiveSpeed } from './snapshot.js';
 import { getMovers } from './analytics.js';
 import { lookupItunes, searchItunes } from './itunes.js';
+import { gateStatus } from './host-gate.js';
+import { compareRankSources, isRankSource, loadSnapshotSettings, recordProbeSet, saveSnapshotSettings, type RankSource } from './rank-source.js';
 import { competitorInfo, competitorKeywords, topCompetitors } from './competitors.js';
 import { getCompetitorPricing } from './pricing.js';
 import { getCompetitorReviews } from './reviews.js';
@@ -117,7 +119,7 @@ async function searchAppStore(term: string, country: string): Promise<any[]> {
       // Keyword-result checks share the conservative global iTunes gate used by
       // snapshots. The UI loads only visible rows and this durable cache keeps
       // page reloads from spending the rate limit again.
-      return (await searchItunes(country, term)).slice(0, 15).map((item) => ({
+      return (await searchItunes(country, term, { priority: 'interactive' })).slice(0, 15).map((item) => ({
         trackId: item.trackId,
         trackName: item.trackName,
         bundleId: item.bundleId,
@@ -677,6 +679,56 @@ app.post('/api/snapshot/speed', (req, res) => {
   res.json({ ok: true, runtime: getLiveRuntime() });
 });
 
+// --- Snapshot settings: rank source + per-host gate status ---
+app.get('/api/snapshot/settings', (_req, res) => {
+  res.json({ ...loadSnapshotSettings(), gates: gateStatus() });
+});
+
+app.post('/api/snapshot/settings', (req, res) => {
+  const { rankSource } = req.body || {};
+  if (!isRankSource(rankSource)) {
+    res.status(400).json({ error: "rankSource must be 'appstore' or 'itunes'" });
+    return;
+  }
+  res.json({ ...saveSnapshotSettings({ rankSource }), gates: gateStatus() });
+});
+
+app.get('/api/gate/status', (_req, res) => {
+  res.json({ gates: gateStatus() });
+});
+
+// --- Rank source dual measurement (App Store vs iTunes on the probe set) ---
+app.get('/api/rank-source/compare', (_req, res) => {
+  try {
+    res.json(compareRankSources());
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+let probeRun: Promise<unknown> | null = null;
+/** Record the probe set once with both sources (pairs already done today are
+ * skipped). `?wait=1` responds when finished; otherwise runs in the background. */
+app.post('/api/rank-source/probe', async (req, res) => {
+  if (probeRun) {
+    res.status(409).json({ error: 'probe run already in progress' });
+    return;
+  }
+  const started = Date.now();
+  const run = recordProbeSet().finally(() => { probeRun = null; });
+  probeRun = run;
+  if (req.query.wait !== '1') {
+    res.status(202).json({ ok: true });
+    return;
+  }
+  try {
+    const result = await run;
+    res.json({ ok: true, measured: result.measured, ms: Date.now() - started, rows: result.rows });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
 // --- Analytics: movers across apps & periods ---
 app.get('/api/analytics/movers', (req, res) => {
   const appId = req.query.app as string | undefined;
@@ -747,7 +799,7 @@ function snapshotBroadcast(event: SnapshotEvent) {
   }
 }
 
-function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: number; sleepMs?: number; skipExisting?: boolean }) {
+function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: number; sleepMs?: number; skipExisting?: boolean; rankSource?: RankSource }) {
   if (snapshotState.running) return false;
   snapshotState.running = true;
   snapshotState.startedAt = Date.now();
@@ -769,6 +821,7 @@ function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: 
     workers: typeof opts.workers === 'number' ? opts.workers : undefined,
     sleepMs: typeof opts.sleepMs === 'number' ? opts.sleepMs : undefined,
     skipExisting: opts.skipExisting === true,
+    rankSource: opts.rankSource,
     onProgress: (ev) => {
       // Track total once we receive the start event so reconnecting clients
       // can render accurate progress without replaying the full buffer.
@@ -798,8 +851,8 @@ app.post('/api/snapshot', (req, res) => {
     res.status(409).json({ error: 'snapshot already running', state: snapshotPublicState() });
     return;
   }
-  const { appIds, locales, workers, sleepMs, skipExisting } = req.body || {};
-  startSnapshot({ appIds, locales, workers, sleepMs, skipExisting });
+  const { appIds, locales, workers, sleepMs, skipExisting, rankSource } = req.body || {};
+  startSnapshot({ appIds, locales, workers, sleepMs, skipExisting, rankSource: isRankSource(rankSource) ? rankSource : undefined });
   res.status(202).json({ ok: true, state: snapshotPublicState() });
 });
 

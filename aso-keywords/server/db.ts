@@ -156,6 +156,36 @@ db.exec(`
     ON aso_idempotency_keys(scope, app_id, entity_id);
 `);
 
+// Rank source per snapshot row (P0 2026-09-25). Rows written before the App
+// Store (MZStore) source existed all came from the iTunes Search API.
+{
+  const cols = db.prepare(`PRAGMA table_info(snapshots)`).all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === 'source')) {
+    db.exec(`ALTER TABLE snapshots ADD COLUMN source TEXT NOT NULL DEFAULT 'itunes'`);
+  }
+}
+
+// Dual measurement of a fixed probe set: both rank sources for the same
+// (app, locale, keyword) and day. Kept out of the snapshots table so history,
+// matrix and "latest row" queries never see a second row per keyword.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS rank_source_probes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    date       TEXT NOT NULL,
+    app        TEXT NOT NULL,
+    locale     TEXT NOT NULL,
+    keyword    TEXT NOT NULL,
+    source     TEXT NOT NULL,
+    position   INTEGER,
+    total      INTEGER,
+    ms         INTEGER,
+    error      TEXT,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s','now'))
+  );
+  CREATE INDEX IF NOT EXISTS ix_rank_source_probes_pair
+    ON rank_source_probes(app, locale, keyword, date, source);
+`);
+
 export interface SnapshotRow {
   date: string;
   app: string;
@@ -163,14 +193,16 @@ export interface SnapshotRow {
   keyword: string;
   position: number | null;
   total: number;
-  top5: Array<{ name: string; id: string; dev: string }>;
+  top5: Array<{ name: string; id: string; dev: string; tid?: number; pos?: number }>;
   error?: string;
+  /** Which rank source produced the row; defaults to 'itunes'. */
+  source?: 'appstore' | 'itunes';
 }
 
 export function insertSnapshot(r: SnapshotRow) {
   const stmt = db.prepare(`
-    INSERT INTO snapshots (date, app, locale, keyword, position, total, top5_json, error)
-    VALUES (@date, @app, @locale, @keyword, @position, @total, @top5_json, @error)
+    INSERT INTO snapshots (date, app, locale, keyword, position, total, top5_json, error, source)
+    VALUES (@date, @app, @locale, @keyword, @position, @total, @top5_json, @error, @source)
   `);
   stmt.run({
     date: r.date,
@@ -181,13 +213,14 @@ export function insertSnapshot(r: SnapshotRow) {
     total: r.total,
     top5_json: JSON.stringify(r.top5 || []),
     error: r.error || null,
+    source: r.source ?? 'itunes',
   });
 }
 
 export function insertSnapshotsBatch(rows: SnapshotRow[]) {
   const stmt = db.prepare(`
-    INSERT INTO snapshots (date, app, locale, keyword, position, total, top5_json, error)
-    VALUES (@date, @app, @locale, @keyword, @position, @total, @top5_json, @error)
+    INSERT INTO snapshots (date, app, locale, keyword, position, total, top5_json, error, source)
+    VALUES (@date, @app, @locale, @keyword, @position, @total, @top5_json, @error, @source)
   `);
   const tx = db.transaction((rs: SnapshotRow[]) => {
     for (const r of rs) {
@@ -200,6 +233,7 @@ export function insertSnapshotsBatch(rows: SnapshotRow[]) {
         total: r.total,
         top5_json: JSON.stringify(r.top5 || []),
         error: r.error || null,
+        source: r.source ?? 'itunes',
       });
     }
   });
