@@ -110,8 +110,8 @@ export function PolishScreen() {
   if (!regulars.length) {
     return (
       <div style={{ padding: 'var(--s-9)', maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-        <h2 style={{ margin: 0, fontSize: 22 }}>No regular slots to polish</h2>
-        <p style={{ color: 'var(--fg-2)', fontSize: 13 }}>
+        <h2 className="ds-h2" style={{ margin: 0 }}>No regular slots to polish</h2>
+        <p className="ds-page-sub" style={{ margin: '8px 0 16px' }}>
           Add screenshots in the Editor first. Polish only applies to non-hero slots.
         </p>
         <Button variant="primary" onClick={() => nav('/editor')}>← Back to Editor</Button>
@@ -123,14 +123,14 @@ export function PolishScreen() {
     <div style={{ padding: 'var(--s-7)', maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>AI Polish</h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--fg-2)', fontSize: 13, maxWidth: 720 }}>
+          <h1 className="ds-page-title" style={{ margin: 0 }}>AI Polish</h1>
+          <p className="ds-page-sub" style={{ margin: '4px 0 0', maxWidth: 720 }}>
             Replace the flat scaffold with photoreal devices + subtle highlights.
             Same layout — only the rendering quality is upgraded. Hero slots shown separately below — generate from here or re-enhance if already done in Editor.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span className="tabular" style={{ fontSize: 12, color: 'var(--fg-3)' }}>
+          <span className="tabular ds-note">
             ${cost} · {totalSelected} selected
           </span>
           {running ? (
@@ -154,14 +154,14 @@ export function PolishScreen() {
       {(running || generatingIds.size > 0) && (
         <div
           style={{
-            padding: '10px 14px',
-            background: 'var(--bg-1)',
-            borderRadius: 10,
-            border: '1px solid var(--line-1)',
+            padding: '12px 16px',
+            background: 'var(--ds-panel)',
+            borderRadius: 8,
+            boxShadow: 'var(--ds-shadow)',
             display: 'flex',
             alignItems: 'center',
             gap: 12,
-            fontSize: 12,
+            fontSize: 14,
             color: 'var(--fg-1)',
           }}
         >
@@ -169,7 +169,7 @@ export function PolishScreen() {
           <span>
             {totalSelected > 0 ? `${doneInBatch} of ${totalSelected} done` : 'Polishing…'}
           </span>
-          <div style={{ flex: 1, height: 4, background: 'var(--bg-2)', borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ flex: 1, height: 4, background: 'var(--ds-dim)', borderRadius: 999, overflow: 'hidden' }}>
             <div
               style={{
                 width: totalSelected > 0 ? `${(doneInBatch / totalSelected) * 100}%` : '100%',
@@ -191,15 +191,7 @@ export function PolishScreen() {
         .map((group) => (
           <div key={group.label} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {ipadSlots.length > 0 && (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.07em',
-                  color: 'var(--fg-3)',
-                }}
-              >
+              <span className="ds-group-label">
                 {group.label}
               </span>
             )}
@@ -232,7 +224,7 @@ export function PolishScreen() {
 
       {heroes.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--fg-3)' }}>
+          <span className="ds-group-label">
             Hero
           </span>
           <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(${hasBothDevices ? 180 : 260}px, 1fr))`, gap: hasBothDevices ? 10 : 16 }}>
@@ -258,7 +250,7 @@ export function PolishScreen() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 8 }}>
         <Button variant="ghost" onClick={() => nav('/editor')}>← Editor</Button>
-        <Button variant="primary" size="lg" onClick={() => nav('/locales')}>Continue → Locales</Button>
+        <Button variant="primary" onClick={() => nav('/locales')}>Continue → Locales</Button>
       </div>
     </div>
   );
@@ -294,13 +286,14 @@ function PolishCard({ slot, checked, disabled, isGenerating, onToggle, onPolish,
     <div
       data-canvas-slot={slot.id}
       style={{
-        borderRadius: 12,
-        border: `2px solid ${checked ? 'var(--accent)' : 'var(--line-1)'}`,
-        background: 'var(--bg-1)',
+        borderRadius: 8,
+        border: 0,
+        boxShadow: checked ? 'inset 0 0 0 1.5px var(--ds-accent), var(--ds-shadow)' : 'var(--ds-shadow)',
+        background: 'var(--ds-panel)',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'border-color .12s',
+        transition: 'box-shadow .12s',
       }}
     >
       <div
@@ -323,12 +316,12 @@ function PolishCard({ slot, checked, disabled, isGenerating, onToggle, onPolish,
           />
         )}
         {isHero && (
-          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--ai)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Hero</span>
+          <span className="ds-badge">Hero</span>
         )}
         <span
           style={{
             flex: 1,
-            fontSize: compact ? 11 : 12,
+            fontSize: compact ? 12 : 13,
             fontWeight: 500,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -392,7 +385,7 @@ function PolishCard({ slot, checked, disabled, isGenerating, onToggle, onPolish,
         </div>
       </button>
 
-<div style={{ padding: 8, display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid var(--line-1)' }}>
+<div className="ds-dense" style={{ padding: 8, display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid var(--line-1)' }}>
         {status === 'done' && (
           <Button
             variant="ghost"
@@ -417,7 +410,7 @@ function PolishCard({ slot, checked, disabled, isGenerating, onToggle, onPolish,
           </Button>
         ) : (
           <Button
-            variant={status === 'done' ? 'ghost' : 'ai'}
+            variant={status === 'done' ? 'ghost' : 'default'}
             onClick={onPolish}
             leftIcon={status === 'done' ? <RefreshCcw size={12} /> : <Wand2 size={12} />}
           >
@@ -427,7 +420,7 @@ function PolishCard({ slot, checked, disabled, isGenerating, onToggle, onPolish,
       </div>
 
       {errorMsg && status === 'error' && (
-        <div style={{ padding: '6px 10px', background: 'var(--neg-soft)', color: 'var(--neg)', fontSize: 11 }}>
+        <div style={{ padding: '6px 10px', background: 'var(--neg-soft)', color: 'var(--neg)', fontSize: 12 }}>
           {errorMsg}
         </div>
       )}
@@ -452,24 +445,24 @@ function PolishCardCanvas({ slot, compact }: { slot: Screenshot; compact?: boole
 
 function StatusBadge({ status }: { status: 'idle' | 'queued' | 'generating' | 'done' | 'error' }) {
   if (status === 'idle') {
-    return <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>—</span>;
+    return <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>—</span>;
   }
   if (status === 'queued') {
-    return <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>Queued</span>;
+    return <span className="ds-badge ds-badge-muted">Queued</span>;
   }
   if (status === 'generating') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--ai)' }}>
+      <span className="ds-badge">
         <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
         Polishing
       </span>
     );
   }
   if (status === 'error') {
-    return <span style={{ fontSize: 11, color: 'var(--neg)' }}>Error</span>;
+    return <span className="ds-badge ds-badge-bad">Error</span>;
   }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--ok)' }}>
+    <span className="ds-badge ds-badge-good">
       <CheckCircle2 size={11} />
       Done
     </span>

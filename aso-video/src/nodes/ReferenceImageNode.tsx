@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { NodeShell, inputStyle, labelStyle, patchData } from './common';
+import { NodeShell, patchData } from './common';
 import { openLightbox } from '../components/Lightbox';
 import { API } from '../store/graphClient';
 
@@ -41,20 +41,19 @@ export function ReferenceImageNode({ id, data }: { id: string; data: Data }) {
       outputs={[{ id: 'image', label: 'image' }]}
     >
       <div className="nodrag">
-        <span style={labelStyle}>Upload</span>
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} style={{ ...inputStyle, padding: 4 }} disabled={busy} />
+        <span className="vid-label">Upload</span>
+        <input className="ds-input" ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleFile} disabled={busy} />
       </div>
       <div className="nodrag">
-        <span style={labelStyle}>or URL</span>
-        <input
+        <span className="vid-label">or URL</span>
+        <input className="ds-input"
           type="text"
           value={data.url ?? ''}
           onChange={(e) => patchData(id, { url: e.target.value })}
           placeholder="https://…"
-          style={inputStyle}
         />
       </div>
-      {err && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{err}</div>}
+      {err && <div className="vid-err">{err}</div>}
       {data.url && (
         <img
           src={data.url}

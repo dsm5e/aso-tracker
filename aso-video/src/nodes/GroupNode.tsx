@@ -32,7 +32,7 @@ export function GroupNode({ id, data }: { id: string; data: Data }) {
         width: '100%', height: '100%',
         background: `color-mix(in srgb, ${tint} 6%, transparent)`,
         border: `2px dashed color-mix(in srgb, ${tint} 33%, transparent)`,    // dashed to read as "container, not card"
-        borderRadius: 14,
+        borderRadius: 'var(--ds-radius-card)',
         boxSizing: 'border-box',
       }}
     >
@@ -58,16 +58,15 @@ export function GroupNode({ id, data }: { id: string; data: Data }) {
         style={{
           position: 'absolute', top: 8, left: 14,
           display: 'flex', alignItems: 'center', gap: 8,
-          padding: '4px 10px',
+          height: 32, padding: '0 10px', boxSizing: 'border-box',
           background: 'var(--ds-panel)',
-          border: `1px solid color-mix(in srgb, ${tint} 40%, transparent)`,
-          borderRadius: 8,
-          fontSize: 11, fontWeight: 600,
+          borderRadius: 'var(--ds-radius-card)', boxShadow: 'var(--ds-shadow)',
+          fontSize: 14, fontWeight: 600,
           color: tint,
           pointerEvents: 'auto',
         }}
       >
-        <span style={{ fontSize: 10, opacity: 0.7 }}>▦ GROUP</span>
+        <span style={{ fontSize: 12, color: 'var(--ds-muted)' }}>▦ Group</span>
         {editing ? (
           <input
             autoFocus
@@ -79,7 +78,8 @@ export function GroupNode({ id, data }: { id: string; data: Data }) {
               if (e.key === 'Escape') setEditing(false);
             }}
             onMouseDown={(e) => e.stopPropagation()}
-            style={{ background: 'var(--ds-input-bg)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '2px 6px', fontSize: 11, fontWeight: 600 }}
+            className="ds-input"
+            style={{ height: 26, padding: '0 8px', fontSize: 14, fontWeight: 600, borderRadius: 'var(--ds-radius-inner)' }}
           />
         ) : (
           <span

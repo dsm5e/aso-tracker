@@ -8,6 +8,7 @@ import { loadScreenshotBlob, loadScreenshotBgBlob } from './lib/screenshotStore'
 import { useStudio } from './state/studio';
 import { startStudioStateSync } from './lib/stateSync';
 import '../../shared/ds.css';
+import '../../shared/ds-components.css';
 import './styles/tokens.css';
 import './styles/app.css';
 import './styles/highlight.css';

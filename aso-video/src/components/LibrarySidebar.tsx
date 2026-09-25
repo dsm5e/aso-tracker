@@ -135,12 +135,12 @@ export function LibrarySidebar() {
     return (
       <div style={collapsedRail}>
         <button
+          className="ds-icon-btn"
           onClick={() => setOpen(true)}
           title="Open library"
-          style={railBtn}
         >▶</button>
-        <div style={{ writingMode: 'vertical-rl', fontSize: 10, color: 'var(--ds-muted)', marginTop: 8, letterSpacing: 1 }}>
-          LIBRARY · {items.length}
+        <div style={{ writingMode: 'vertical-rl', fontSize: 12, fontWeight: 600, color: 'var(--ds-muted)', marginTop: 8 }}>
+          Library · {items.length}
         </div>
       </div>
     );
@@ -149,17 +149,18 @@ export function LibrarySidebar() {
   return (
     <div style={{ ...panel, width }}>
       <div style={header}>
-        <strong style={{ fontSize: 13 }}>Library</strong>
+        <span className="ds-card-title">Library</span>
         <div style={{ flex: 1 }} />
-        <button onClick={refresh} title="refresh" style={iconBtn}>⟳</button>
-        <button onClick={() => setOpen(false)} title="collapse" style={iconBtn}>◀</button>
+        <button className="ds-icon-btn" onClick={refresh} title="Refresh">⟳</button>
+        <button className="ds-icon-btn" onClick={() => setOpen(false)} title="Collapse">◀</button>
       </div>
-      <div style={tabs}>
+      <div className="ds-seg vid-lib-tabs" role="tablist">
         {(['all', 'image', 'video', 'audio'] as Filter[]).map((f) => (
           <button
             key={f}
+            role="tab"
+            aria-selected={filter === f}
             onClick={() => setFilter(f)}
-            style={{ ...tabBtn, ...(filter === f ? tabActive : null) }}
           >
             {f === 'all' ? 'All' : f === 'image' ? 'Images' : f === 'video' ? 'Videos' : 'Audio'}
           </button>
@@ -167,8 +168,8 @@ export function LibrarySidebar() {
       </div>
       <div style={grid}>
         {filtered.length === 0 && (
-          <div style={{ gridColumn: '1 / -1', padding: 24, textAlign: 'center', fontSize: 11, color: 'var(--ds-subtle)' }}>
-            no files
+          <div className="ds-note" style={{ gridColumn: '1 / -1', padding: 24, textAlign: 'center' }}>
+            No files
           </div>
         )}
         {filtered.map((item) => (
@@ -219,7 +220,7 @@ function Thumb({ item, onDeleted }: { item: LibItem; onDeleted: () => void }) {
     <div
       onClick={onClick}
       title={tooltip}
-      style={{ ...thumbBox, borderColor: accent, boxShadow: `0 0 0 1px color-mix(in srgb, ${accent} 40%, transparent)` }}
+      style={{ ...thumbBox, borderTop: `3px solid ${accent}` }}
     >
       <div style={mediaWrap}>
         {item.kind === 'image' && (
@@ -235,7 +236,7 @@ function Thumb({ item, onDeleted }: { item: LibItem; onDeleted: () => void }) {
         )}
         <button
           onClick={handleDelete}
-          title="delete"
+          title="Delete file"
           style={deleteBtn}
         >×</button>
       </div>
@@ -245,19 +246,14 @@ function Thumb({ item, onDeleted }: { item: LibItem; onDeleted: () => void }) {
 }
 
 const collapsedRail: React.CSSProperties = {
-  position: 'absolute', top: 64, left: 0, bottom: 0, width: 40,
+  position: 'absolute', top: 80, left: 0, bottom: 0, width: 40,
   background: 'var(--ds-panel)', borderRight: '1px solid var(--ds-border)',
   display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 8,
   zIndex: 9,
 };
 
-const railBtn: React.CSSProperties = {
-  background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)',
-  borderRadius: 'var(--ds-radius-control)', padding: '6px 8px', cursor: 'pointer', fontSize: 12, width: 28,
-};
-
 const panel: React.CSSProperties = {
-  position: 'absolute', top: 64, left: 0, bottom: 0, width: 320,
+  position: 'absolute', top: 80, left: 0, bottom: 0, width: 320,
   background: 'var(--ds-panel)', borderRight: '1px solid var(--ds-border)',
   display: 'flex', flexDirection: 'column',
   zIndex: 9,
@@ -265,31 +261,12 @@ const panel: React.CSSProperties = {
 };
 
 const header: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 6,
-  padding: '10px 12px', borderBottom: '1px solid var(--ds-border)',
-};
-
-const iconBtn: React.CSSProperties = {
-  background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)',
-  borderRadius: 4, padding: '4px 8px', cursor: 'pointer', fontSize: 12,
-};
-
-const tabs: React.CSSProperties = {
-  display: 'flex', gap: 4, padding: '8px 10px', borderBottom: '1px solid var(--ds-hairline)',
-};
-
-const tabBtn: React.CSSProperties = {
-  flex: 1, background: 'transparent', color: 'var(--ds-muted)',
-  border: '1px solid var(--ds-border)', borderRadius: 4, padding: '4px 6px',
-  cursor: 'pointer', fontSize: 11,
-};
-
-const tabActive: React.CSSProperties = {
-  background: 'var(--ds-accent)', color: 'var(--ds-on-accent)', borderColor: 'var(--ds-accent)',
+  display: 'flex', alignItems: 'center', gap: 4,
+  padding: '8px 8px 8px 16px', borderBottom: '1px solid var(--ds-hairline)',
 };
 
 const grid: React.CSSProperties = {
-  flex: 1, overflowY: 'auto', padding: 10,
+  flex: 1, overflowY: 'auto', padding: '4px 10px 10px',
   display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10,
   alignContent: 'start',
   // Force each row to size itself to its content (the 220px-tall media +
@@ -297,11 +274,12 @@ const grid: React.CSSProperties = {
   gridAutoRows: 'min-content',
 };
 
+// Thumbs are small cards: no outline, DS shadow, category shown as a 3px top rule
+// (same language as node cards on the canvas).
 const thumbBox: React.CSSProperties = {
-  cursor: 'zoom-in', borderRadius: 'var(--ds-radius-control)', overflow: 'hidden',
-  background: 'var(--ds-panel)',
-  // borderColor is overridden per-thumb based on file category.
-  borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--ds-border)',
+  cursor: 'zoom-in', borderRadius: 'var(--ds-radius-card)', overflow: 'hidden',
+  background: 'var(--ds-panel)', boxShadow: 'var(--ds-shadow)',
+  borderTop: '3px solid var(--ds-border)',
   display: 'flex', flexDirection: 'column',
 };
 
@@ -318,20 +296,20 @@ const thumbMedia: React.CSSProperties = {
 };
 
 const thumbCaption: React.CSSProperties = {
-  fontSize: 10, color: 'var(--ds-muted)', padding: '4px 6px',
+  fontSize: 12, color: 'var(--ds-muted)', padding: '6px 8px',
   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
 };
 
+// Sits on top of arbitrary media, so it keeps a dark scrim instead of DS tokens.
 const deleteBtn: React.CSSProperties = {
-  position: 'absolute', top: 4, right: 4,
-  width: 22, height: 22, borderRadius: 11,
-  background: 'rgba(0,0,0,0.7)', color: '#fff',
-  border: '1px solid rgba(255,255,255,0.2)',
-  cursor: 'pointer', fontSize: 14, lineHeight: '18px', padding: 0,
+  position: 'absolute', top: 6, right: 6,
+  width: 24, height: 24, borderRadius: 'var(--ds-radius-inner)',
+  background: 'rgba(0,0,0,0.6)', color: '#fff', border: 0,
+  cursor: 'pointer', fontSize: 15, lineHeight: 1, padding: 0,
   display: 'flex', alignItems: 'center', justifyContent: 'center',
 };
 
 const footer: React.CSSProperties = {
-  padding: '8px 12px', borderTop: '1px solid var(--ds-border)',
-  fontSize: 11, color: 'var(--ds-muted)',
+  padding: '10px 16px', borderTop: '1px solid var(--ds-hairline)',
+  fontSize: 12, color: 'var(--ds-muted)',
 };

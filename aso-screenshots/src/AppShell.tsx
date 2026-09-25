@@ -80,30 +80,26 @@ function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {
       <button
         ref={btnRef}
         onClick={() => setOpen((v) => !v)}
+        className="btn btn--ghost"
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 10,
-          padding: '4px 8px 4px 4px', height: 36,
-          background: open ? 'var(--bg-2)' : 'transparent',
-          border: 0, borderRadius: 9, cursor: 'pointer',
+          gap: 10, height: 40, padding: '0 8px 0 4px',
+          background: open ? 'var(--ds-accent-soft)' : undefined,
           color: 'var(--fg-0)',
         }}
       >
         <span className="logo" style={{ width: 26, height: 26, fontSize: 12 }}>A</span>
         <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.15 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em' }}>Studio</span>
-          <span style={{ fontSize: 11.5, color: 'var(--fg-2)' }}>{active.label}</span>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>Studio</span>
+          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--fg-2)' }}>{active.label}</span>
         </span>
         <ChevronDown size={12} style={{ color: 'var(--fg-2)', marginLeft: 2 }} />
       </button>
 
       {/* position:fixed escapes the .app-shell overflow:hidden that would clip an absolute dropdown */}
       {open && rect && (
-        <div ref={menuRef} style={{
+        <div ref={menuRef} className="ds-pop" style={{
           position: 'fixed', top: rect.top, left: rect.left,
-          minWidth: 240, padding: 6,
-          background: 'var(--bg-1)',
-          borderRadius: 12,
-          boxShadow: 'inset 0 0 0 1px var(--line-1), var(--ds-shadow-pop)',
+          minWidth: 240,
           zIndex: 1000,
         }}>
           {SWITCHER_ITEMS.map((it) => {
@@ -112,17 +108,15 @@ function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {
             return (
               <a key={it.id} href={disabled ? undefined : it.href}
                  onClick={(e) => { if (disabled) e.preventDefault(); }}
+                 className={`ds-pop-row${isActive ? ' on' : ''}`}
+                 aria-selected={isActive}
                  style={{
-                   display: 'flex', alignItems: 'center', gap: 10,
-                   padding: '8px 10px', borderRadius: 8,
+                   gap: 10,
                    textDecoration: 'none',
-                   background: isActive ? 'var(--bg-2)' : 'transparent',
-                   color: 'var(--fg-0)',
+                   background: isActive ? 'var(--ds-accent-soft)' : undefined,
                    opacity: disabled ? 0.5 : 1,
                    cursor: disabled ? 'not-allowed' : 'pointer',
                  }}
-                 onMouseEnter={(e) => { if (!isActive && !disabled) (e.currentTarget as HTMLAnchorElement).style.background = 'var(--bg-2)'; }}
-                 onMouseLeave={(e) => { if (!isActive && !disabled) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
               >
                 <span style={{
                   width: 24, height: 24, borderRadius: 6,
@@ -141,8 +135,8 @@ function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {
                   lineHeight: 1,
                 }}>{it.glyph}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 500 }}>{it.label}</span>
-                  <span style={{ fontSize: 11.5, color: 'var(--fg-2)' }}>{it.hint}</span>
+                  <span style={{ fontSize: 14 }}>{it.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--fg-2)' }}>{it.hint}</span>
                 </span>
                 {isActive && <Check size={12} style={{ color: 'var(--accent)' }} />}
               </a>
@@ -169,20 +163,12 @@ function SpendCounter() {
       type="button"
       onClick={onClick}
       title={`AI spend: $${aiSpent.toFixed(4)} across ${aiCallCount} renders. Click to reset.`}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6,
-        padding: '4px 10px', height: 24,
-        borderRadius: 'var(--r-pill)',
-        background: aiSpent > 0 ? 'var(--bg-2)' : 'transparent',
-        border: '1px solid var(--line-1)',
-        color: 'var(--fg-1)',
-        fontSize: 11, fontWeight: 500,
-        cursor: aiSpent > 0 ? 'pointer' : 'default',
-      }}
+      className="btn btn--sm"
+      style={{ gap: 6, cursor: aiSpent > 0 ? 'pointer' : 'default' }}
     >
-      <Sparkles size={11} style={{ color: 'var(--ai)' }} />
+      <Sparkles size={13} style={{ color: 'var(--ai)' }} />
       <span className="tabular">${aiSpent.toFixed(2)}</span>
-      <span style={{ color: 'var(--fg-3)', fontSize: 10 }}>· {aiCallCount}</span>
+      <span style={{ color: 'var(--fg-2)' }}>· {aiCallCount}</span>
     </button>
   );
 }
@@ -226,7 +212,7 @@ export function AppShell() {
           <>
             <SpendCounter />
             <Button variant="ghost" size="icon" aria-label="Settings" onClick={openSettings}>
-              <Settings size={14} />
+              <Settings size={16} />
             </Button>
           </>
         }

@@ -1,7 +1,7 @@
 // Split Screen compositor — top video (talking head) over bottom video
 // (b-roll / slime). Output is a 9:16 1080×1920 mp4. Bottom auto-loops to
 // match top duration.
-import { NodeShell, inputStyle, labelStyle, patchData, triggerRun, stopProp } from './common';
+import { NodeShell, patchData, triggerRun, stopProp } from './common';
 import { openLightbox } from '../components/Lightbox';
 
 type Ratio = '50/50' | '60/40' | '65/35' | '70/30';
@@ -46,13 +46,12 @@ export function SplitScreenNode({ id, data }: { id: string; data: Data }) {
       runLabel="Compose (free)"
     >
       <div className="nodrag">
-        <span style={labelStyle}>Ratio (top / bottom)</span>
+        <span className="vid-label">Ratio (top / bottom)</span>
         <select
-          className="nodrag"
+          className="nodrag ds-select"
           onMouseDown={stopProp}
           value={ratio}
           onChange={(e) => patchData(id, { ratio: e.target.value as Ratio })}
-          style={inputStyle}
         >
           {(Object.keys(RATIO_LABEL) as Ratio[]).map((r) => (
             <option key={r} value={r}>{RATIO_LABEL[r]}</option>
@@ -60,28 +59,27 @@ export function SplitScreenNode({ id, data }: { id: string; data: Data }) {
         </select>
       </div>
       <div className="nodrag">
-        <span style={labelStyle}>Audio source</span>
+        <span className="vid-label">Audio source</span>
         <select
-          className="nodrag"
+          className="nodrag ds-select"
           onMouseDown={stopProp}
           value={audioSource}
           onChange={(e) => patchData(id, { audioSource: e.target.value as AudioSource })}
-          style={inputStyle}
         >
           <option value="top">top (keep talking head audio)</option>
           <option value="bottom">bottom (keep b-roll audio)</option>
           <option value="mute">mute (no audio)</option>
         </select>
       </div>
-      {data.error && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div className="vid-err">{data.error}</div>}
       {data.status === 'done' && data.outputUrl && (
         <>
           <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 'var(--ds-radius-control)', background: '#000' }} />
           <button
-            className="nodrag"
+            className="nodrag ds-btn ds-btn-sm"
             onClick={() => openLightbox({ kind: 'video', src: data.outputUrl! })}
             title="open fullscreen"
-            style={{ background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '2px 8px', cursor: 'zoom-in', fontSize: 11, alignSelf: 'flex-start' }}
+            style={{ alignSelf: 'flex-start' }}
           >⛶ fullscreen</button>
         </>
       )}

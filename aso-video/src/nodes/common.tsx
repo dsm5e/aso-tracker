@@ -1,5 +1,5 @@
 // Shared bits for all custom node types.
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { Handle, Position, NodeResizeControl } from '@xyflow/react';
 import { patchNode, deleteNode, runNode } from '../store/graphClient';
@@ -36,12 +36,7 @@ function EditableTitle({ id, title }: { id: string; title: string }) {
         }}
         onClick={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
-        style={{
-          flex: 1, background: 'var(--ds-input-bg)', color: 'var(--ds-strong)',
-          border: '1px solid var(--ds-accent)', borderRadius: 4,
-          padding: '2px 6px', fontWeight: 600, fontSize: 12,
-          fontFamily: 'inherit', minWidth: 0,
-        }}
+        className="ds-input vid-node-title-input"
       />
     );
   }
@@ -49,7 +44,7 @@ function EditableTitle({ id, title }: { id: string; title: string }) {
     <span
       onDoubleClick={start}
       title="Double-click to rename"
-      style={{ flex: 1, cursor: 'text', userSelect: 'none' }}
+      style={{ flex: 1, minWidth: 0, cursor: 'text', userSelect: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
     >{title}</span>
   );
 }
@@ -86,13 +81,10 @@ export function StatusDot({ status }: { status?: string }) {
   const pulse = status === 'loading';
   return (
     <span
+      className="vid-dot"
+      title={status ?? 'idle'}
       style={{
-        display: 'inline-block',
-        width: 10,
-        height: 10,
-        borderRadius: 5,
         background: color,
-        boxShadow: pulse ? `0 0 6px ${color}` : 'none',
         animation: pulse ? 'asov-pulse 1s ease-in-out infinite' : undefined,
       }}
     />
@@ -136,30 +128,9 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
 
   return (
     <div
-      style={{
-        position: 'relative',
-        background: 'var(--ds-panel)',
-        color: 'var(--ds-text)',
-        borderRadius: 12,
-        boxShadow: 'var(--ds-shadow)',
-        // Fill the React Flow wrapper exactly so NodeResizeControl bounds and
-        // visible card edges match. The wrapper's width is set by App.tsx
-        // (default per type) and updated by NodeResizeControl on drag.
-        width: '100%',
-        height: '100%',
-        minWidth: 200,
-        border: '1px solid var(--ds-border)',
-        // Category shows as a thin top rule; the card itself stays neutral.
-        borderTop: `3px solid ${headerColor}`,
-        overflow: 'hidden',
-        fontFamily: 'var(--ds-font)',
-        fontSize: 12,
-        // Flex column so the body can grow to fill the resized card height.
-        // Without this, content sat at the top with empty space at the bottom
-        // when the user resized vertically.
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+      className="vid-node"
+      // Category shows as a thin top rule; the card itself stays neutral.
+      style={{ borderTop: `3px solid ${headerColor}` }}
     >
       {blocked && (
         // Barely-noticeable amber wash — signals the card is waiting on an
@@ -167,7 +138,6 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
         <div style={{
           position: 'absolute', inset: 0,
           background: 'color-mix(in srgb, var(--ds-warn) 6%, transparent)',
-          borderRadius: 12,
           pointerEvents: 'none',
           zIndex: 1,
         }} />
@@ -217,47 +187,41 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
         />
       ))}
 
-      <div
-        style={{
-          background: 'var(--ds-panel)',
-          borderBottom: '1px solid var(--ds-hairline)',
-          padding: '8px 10px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          color: 'var(--ds-strong)',
-          fontWeight: 600,
-        }}
-      >
-        <span
+      <div className="vid-node-head">
+        <button
+          type="button"
+          className="ds-icon-btn nodrag"
           onClick={() => setOpen((v) => !v)}
-          style={{ cursor: 'pointer', fontSize: 10, opacity: 0.85, userSelect: 'none' }}
-        >{open ? '▼' : '▶'}</span>
+          title={open ? 'Collapse' : 'Expand'}
+          style={{ fontSize: 10 }}
+        >{open ? '▼' : '▶'}</button>
         <EditableTitle id={id} title={title} />
         <StatusDot status={status} />
-        <span
+        <button
+          type="button"
+          className="ds-icon-btn nodrag"
           onClick={(e) => {
             e.stopPropagation();
             if (confirm('Delete node?')) deleteNode(id);
           }}
-          title="delete"
-          style={{ cursor: 'pointer', fontSize: 11, opacity: 0.85, marginLeft: 4 }}
-        >×</span>
+          title="Delete node"
+          style={{ fontSize: 16 }}
+        >×</button>
       </div>
 
       {open && (
         // Body fills remaining vertical space below the header. Long prompts
         // / lists stay scrollable inside the resized card; children marked
         // `data-grow` (e.g. prompt textareas) flex-grow inside.
-        <div style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0, overflow: 'auto' }}>
+        <div className="vid-node-body">
           {children}
           {status === 'loading' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--ds-muted)' }}>
+              <div className="vid-meta" style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>{stage ?? 'working…'}</span>
                 <span>{typeof progress === 'number' ? `${Math.round(progress * 100)}%` : ''}</span>
               </div>
-              <div style={{ height: 6, background: 'var(--ds-panel-2)', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--ds-border)' }}>
+              <div style={{ height: 6, background: 'var(--ds-panel-2)', borderRadius: 'var(--ds-radius-pill)', overflow: 'hidden' }}>
                 <div
                   style={{
                     height: '100%',
@@ -272,17 +236,10 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
           )}
           {onRun && (
             <button
-              className="nodrag"
+              className={`ds-btn ds-btn-sm vid-run nodrag${blocked ? ' blocked' : ''}`}
               onClick={onRun}
               disabled={status === 'loading' || blocked}
               title={blocked ? 'Upstream node hasn\'t finished yet — run it first' : undefined}
-              style={{
-                ...btnStyle(),
-                opacity: blocked ? 0.6 : 1,
-                background: blocked ? 'var(--ds-dim)' : btnStyle().background,
-                color: blocked ? 'var(--ds-muted)' : btnStyle().color,
-                cursor: blocked ? 'not-allowed' : 'pointer',
-              }}
             >
               {blocked ? '⏳ wait for upstream' : (status === 'loading' ? '…running' : (runLabel ?? '▶ Run'))}
             </button>
@@ -293,40 +250,8 @@ export function NodeShell({ id, type, title, status, inputs = [], outputs = [], 
   );
 }
 
-export const inputStyle: CSSProperties = {
-  width: '100%',
-  background: 'var(--ds-input-bg)',
-  color: 'var(--ds-text)',
-  border: '1px solid var(--ds-border)',
-  borderRadius: 'var(--ds-radius-control)',
-  padding: '6px 8px',
-  fontFamily: 'inherit',
-  fontSize: 12,
-  boxSizing: 'border-box',
-};
-
 /** Stop React Flow from intercepting mousedown on form controls (select dropdowns close otherwise). */
 export const stopProp = (e: React.MouseEvent | React.PointerEvent) => e.stopPropagation();
-
-export const labelStyle: CSSProperties = {
-  fontSize: 10,
-  color: 'var(--ds-muted)',
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
-};
-
-export function btnStyle(accent = 'var(--ds-accent)'): CSSProperties {
-  return {
-    background: accent,
-    color: 'var(--ds-on-accent)',
-    border: 'none',
-    borderRadius: 'var(--ds-radius-control)',
-    padding: '6px 10px',
-    cursor: 'pointer',
-    fontWeight: 600,
-    fontSize: 12,
-  };
-}
 
 // Helper for nodes to commit a data patch back to the server.
 export async function patchData(id: string, data: Record<string, unknown>) {

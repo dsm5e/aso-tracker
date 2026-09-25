@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NodeShell, inputStyle, labelStyle, patchData, triggerRun, stopProp } from './common';
+import { NodeShell, patchData, triggerRun, stopProp } from './common';
 import { openLightbox } from '../components/Lightbox';
 import { HistoryPicker } from '../components/HistoryPicker';
 import { API } from '../store/graphClient';
@@ -97,15 +97,14 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
         kind="image"
         onPick={(url) => patchData(id, { status: 'done', outputUrl: url, error: undefined })}
       />
-      <div className="nodrag" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      <div className="nodrag vid-grid2">
         <div>
-          <span style={labelStyle}>Type</span>
+          <span className="vid-label">Type</span>
           <select
-            className="nodrag"
+            className="nodrag ds-select"
             onMouseDown={stopProp}
             value={usage}
             onChange={(e) => patchData(id, { usage: e.target.value as Usage })}
-            style={inputStyle}
             title="Character = saveable influencer/model portrait. Asset = generic image (overlays, B-roll)."
           >
             <option value="character">👤 Character</option>
@@ -113,13 +112,12 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
           </select>
         </div>
         <div>
-          <span style={labelStyle}>Model</span>
+          <span className="vid-label">Model</span>
           <select
-            className="nodrag"
+            className="nodrag ds-select"
             onMouseDown={stopProp}
             value={model}
             onChange={(e) => patchData(id, { model: e.target.value as Model })}
-            style={inputStyle}
           >
             <option value="gpt-image-2">{MODEL_LABELS['gpt-image-2']}</option>
             <option value="flux-1.1-pro">{MODEL_LABELS['flux-1.1-pro']}</option>
@@ -127,22 +125,21 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
         </div>
       </div>
       <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-        <span style={labelStyle}>Prompt</span>
-        <textarea
+        <span className="vid-label">Prompt</span>
+        <textarea className="ds-textarea"
           value={data.prompt ?? ''}
           onChange={(e) => patchData(id, { prompt: e.target.value })}
           placeholder="describe the image…"
-          style={{ ...inputStyle, minHeight: 60, flex: 1, resize: 'none' }}
+          style={{ minHeight: 60, flex: 1, resize: 'none' }}
         />
       </div>
       <div className="nodrag">
-        <span style={labelStyle}>Aspect</span>
+        <span className="vid-label">Aspect</span>
         <select
-          className="nodrag"
+          className="nodrag ds-select"
           onMouseDown={stopProp}
           value={data.aspectRatio ?? '9:16'}
           onChange={(e) => patchData(id, { aspectRatio: e.target.value as Data['aspectRatio'] })}
-          style={inputStyle}
         >
           <option value="9:16">9:16 (vertical)</option>
           <option value="16:9">16:9 (landscape)</option>
@@ -151,13 +148,12 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
       </div>
       {model === 'gpt-image-2' && (
         <div className="nodrag">
-          <span style={labelStyle}>Quality</span>
+          <span className="vid-label">Quality</span>
           <select
-            className="nodrag"
+            className="nodrag ds-select"
             onMouseDown={stopProp}
             value={quality}
             onChange={(e) => patchData(id, { quality: e.target.value as Quality })}
-            style={inputStyle}
           >
             <option value="low">low ($0.011)</option>
             <option value="medium">medium ($0.04)</option>
@@ -166,7 +162,7 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
           </select>
         </div>
       )}
-      {data.error && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div className="vid-err">{data.error}</div>}
       {data.status === 'done' && data.outputUrl && (
         <>
           <img
@@ -175,17 +171,16 @@ export function FluxImageNode({ id, data }: { id: string; data: Data }) {
             onClick={() => openLightbox({ kind: 'image', src: data.outputUrl! })}
             style={{ width: '100%', maxHeight: 160, objectFit: 'contain', borderRadius: 'var(--ds-radius-control)', background: 'var(--ds-panel-2)', cursor: 'zoom-in' }}
           />
-          <div className="nodrag" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <div className="nodrag vid-row">
             {typeof data.cost === 'number' && (
-              <span style={{ fontSize: 10, color: 'var(--ds-muted)' }}>cost ${data.cost.toFixed(3)}</span>
+              <span className="vid-meta">cost ${data.cost.toFixed(3)}</span>
             )}
             <div style={{ flex: 1 }} />
             {usage === 'character' && (
-              <button
+              <button className="ds-btn ds-btn-sm"
                 onClick={handleSave}
                 disabled={saving}
                 title="Save prompt + image as a reusable influencer preset"
-                style={{ background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '3px 8px', cursor: 'pointer', fontSize: 11 }}
               >{saving ? '…saving' : '💾 Save Influencer'}</button>
             )}
           </div>

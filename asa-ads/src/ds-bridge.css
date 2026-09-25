@@ -1,3 +1,4 @@
+@import '../../shared/ds-components.css';
 /* Maps the ASA app's terminal-era variables onto the shared design system
    (../../shared/ds.css). Imported after styles.css so it wins over both the
    :root block and the prefers-color-scheme layer: the theme now follows

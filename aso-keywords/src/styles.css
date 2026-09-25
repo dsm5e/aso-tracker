@@ -457,30 +457,8 @@ button { color: inherit; }
   --input-border: #34343c;
   --card-shadow: 0 1px 3px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
 }
-:root[data-theme="dark"] body { background: #121215; }
-:root[data-theme="dark"] .keyword-table th { background: #121215; color: #b9b9c2; }
-:root[data-theme="dark"] .keyword-table th span { color: #6a6a74; }
-:root[data-theme="dark"] .segmented button.selected { background: var(--selected); color: var(--text); box-shadow: none; }
-:root[data-theme="dark"] .row-action:hover { background: var(--selected); color: var(--text); }
-:root[data-theme="dark"] .dialog-card input:focus, :root[data-theme="dark"] .dialog-card textarea:focus { background: var(--surface-2); }
-:root[data-theme="dark"] .source-apple_autocomplete { color: #5fd394; }
-:root[data-theme="dark"] .source-competitor_title { color: #f0a54a; }
-:root[data-theme="dark"] .relevance-match { background: var(--ok-soft); color: #5fd394; }
-:root[data-theme="dark"] .relevance-ambiguous { background: var(--warn-soft); color: #e4bb54; }
-:root[data-theme="dark"] .relevance-mismatch { background: var(--danger-soft); color: #ff7a84; }
-:root[data-theme="dark"] .relevance-unknown { background: var(--chip); color: var(--muted); }
-:root[data-theme="dark"] .snapshot-stop { color: #ff7a84; }
-:root[data-theme="dark"] .app-item-delete:hover, :root[data-theme="dark"] .overview-delete:hover { color: #ff7a84; }
-:root[data-theme="dark"] .relevance-toggle.active { color: #a7a0ff; box-shadow: inset 0 0 0 1px #3b3760; }
-:root[data-theme="dark"] .studio-menu a.active, :root[data-theme="dark"] .menu > button b, :root[data-theme="dark"] .menu > a b { color: #a7a0ff; }
-:root[data-theme="dark"] .analytics-symbol { background: #1c2b40; color: #6fb1f5; }
-:root[data-theme="dark"] .suggestion-symbol { background: var(--warn-soft); }
-:root[data-theme="dark"] .dialog-symbol { background: var(--accent-soft); color: #a7a0ff; }
-:root[data-theme="dark"] .dialog-symbol-error { background: var(--danger-soft); color: #ff7a84; }
-:root[data-theme="dark"] .competitor-strip-chips span { background: var(--accent-soft); color: #a7a0ff; }
 :root[data-theme="dark"] .rank-warning { filter: brightness(1.25); }
 :root[data-theme="dark"] .mini-trend polyline, :root[data-theme="dark"] .sparkline polyline { stroke: #8d8d99; }
-:root[data-theme="dark"] .brand-mark { box-shadow: 0 5px 14px rgba(81,70,235,.45); }
 
 .toolbar-labeled { height: 38px; border: 0; border-radius: 999px; background: var(--surface-2); box-shadow: inset 0 0 0 1px var(--chip); padding: 0 15px; display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 12.5px; cursor: pointer; color: inherit; white-space: nowrap; }
 .toolbar-labeled:hover { background: var(--hover); }
@@ -1618,18 +1596,6 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   --text-mid: var(--ink-muted);
   --row: var(--surface);
 }
-:root[data-theme="dark"] .keyword-table th,
-:root[data-theme="dark"] .keyword-table .keyword-column,
-:root[data-theme="dark"] .traffic-table th,
-:root[data-theme="dark"] .traffic-table th:first-child { background: var(--surface-subtle); color: var(--ink-secondary); }
-:root[data-theme="dark"] .keyword-table td,
-:root[data-theme="dark"] .keyword-table .keyword-cell,
-:root[data-theme="dark"] .traffic-table td,
-:root[data-theme="dark"] .traffic-table td:first-child { background: var(--surface); }
-:root[data-theme="dark"] .keyword-table tbody tr:hover td,
-:root[data-theme="dark"] .keyword-table tbody tr:hover .keyword-cell,
-:root[data-theme="dark"] .traffic-table tbody tr:hover td,
-:root[data-theme="dark"] .traffic-table tbody tr:hover td:first-child { background: var(--surface-hover); }
 
 /* Overlay surfaces must always inherit the active theme.  These declarations
    intentionally follow legacy component rules above, which used white RGBA

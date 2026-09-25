@@ -228,7 +228,7 @@ export function EditorScreen() {
   if (screenshots.length === 0) {
     return (
       <div style={{ padding: 'var(--s-9)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <h2 style={{ margin: 0 }}>No screenshots yet</h2>
+        <h2 className="ds-h2" style={{ margin: 0 }}>No screenshots yet</h2>
         <p style={{ color: 'var(--fg-2)', textAlign: 'center', maxWidth: 460 }}>
           Add at least one simulator screenshot in Setup to start composing.
         </p>
@@ -243,6 +243,7 @@ export function EditorScreen() {
 
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg-canvas)' }}>
         <div
+          className="ds-dense"
           style={{
             height: 48,
             padding: '0 16px',
@@ -273,7 +274,7 @@ export function EditorScreen() {
               aria-label="iPhone screenshot model"
               value={iphoneModel}
               onChange={(e) => changeIphoneModel(e.target.value as IPhoneModel)}
-              style={{ width: 'auto', minWidth: 164, height: 30, padding: '0 28px 0 10px', fontSize: 11 }}
+              style={{ width: 'auto', minWidth: 164 }}
             >
               {IPHONE_PROFILES.map((profile) => (
                 <option key={profile.id} value={profile.id}>
@@ -288,19 +289,19 @@ export function EditorScreen() {
               aria-label="iPad screenshot size"
               value={ipadModel ?? 'ipad-pro-12.9'}
               onChange={(e) => setProject({ ipadModel: e.target.value as IPadModel })}
-              style={{ width: 'auto', minWidth: 164, height: 30, padding: '0 28px 0 10px', fontSize: 11 }}
+              style={{ width: 'auto', minWidth: 164 }}
             >
               <option value="ipad-pro-12.9">iPad Pro 12.9" · 2048×2732</option>
               <option value="ipad-pro-13">iPad Pro 13" · 2064×2752</option>
             </select>
           )}
-          <span className="tabular muted" style={{ fontSize: 11 }}>
+          <span className="tabular muted" style={{ fontSize: 13 }}>
             {active ? formatDimensions(activeDimensions) : ''}
           </span>
           {sourceDimensionsMismatch && (
             <span
               title={`Uploaded screenshot is ${active.sourcePixelWidth} × ${active.sourcePixelHeight}; selected model expects ${formatDimensions(activeProfile.canvas)}.`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--warn)', fontSize: 11 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--warn)', fontSize: 13 }}
             >
               <AlertTriangle size={13} />
               Source size differs
@@ -315,7 +316,7 @@ export function EditorScreen() {
             onClick={resetLayout}
             disabled={!active}
           >
-            <RotateCcw size={14} />
+            <RotateCcw size={16} />
           </Button>
           <Button
             variant="ghost"
@@ -325,7 +326,7 @@ export function EditorScreen() {
             onClick={resetTemplate}
             disabled={!selectedPresetId}
           >
-            <RefreshCcw size={14} />
+            <RefreshCcw size={16} />
           </Button>
           {hasResult && active?.kind === 'action' && (
             <Button

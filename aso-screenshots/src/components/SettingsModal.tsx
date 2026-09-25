@@ -74,12 +74,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
     <Modal open={open} onClose={onClose} width={560}>
       <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>API Keys</h2>
-          <span style={{ fontSize: 11.5, color: 'var(--fg-2)' }}>
-            stored at <code style={{ fontSize: 11 }}>~/.aso-studio/keys.json</code> (mode 0600)
+          <h2 className="ds-h2" style={{ margin: 0 }}>API Keys</h2>
+          <span className="ds-note">
+            stored at <code style={{ fontSize: 12 }}>~/.aso-studio/keys.json</code> (mode 0600)
           </span>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--fg-2)', lineHeight: 1.5 }}>
+        <div className="ds-note">
           Keys are local-only — never sent anywhere except the API endpoints they belong to. Inputs are masked while you type;
           click 👁 to reveal a draft.
         </div>
@@ -91,16 +91,16 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
           const isRevealed = revealed.has(name);
           return (
             <div key={name} style={{
-              border: '1px solid var(--line-1)', borderRadius: 10, padding: 14,
+              background: 'var(--ds-panel-2)', borderRadius: 8, padding: 16,
               display: 'flex', flexDirection: 'column', gap: 8,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{info.label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--fg-2)' }}>{info.description}</div>
+                  <div className="ds-card-title">{info.label}</div>
+                  <div className="ds-note">{info.description}</div>
                 </div>
                 <a href={info.getUrl} target="_blank" rel="noreferrer"
-                   style={{ fontSize: 11.5, color: 'var(--accent)', textDecoration: 'none' }}>
+                   style={{ fontSize: 13, fontWeight: 500, color: 'var(--accent)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
                   Get key ↗
                 </a>
               </div>
@@ -108,20 +108,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
                 {cur?.set ? (
                   <>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '2px 8px', borderRadius: 'var(--r-pill)',
-                      background: 'var(--bg-2)', color: 'var(--pos)',
-                    }}>● configured</span>
+                    <span className="ds-badge ds-badge-good">configured</span>
                     <code style={{ fontSize: 11.5, color: 'var(--fg-1)' }}>{cur.masked}</code>
                     <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>({cur.source})</span>
                   </>
                 ) : (
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    padding: '2px 8px', borderRadius: 'var(--r-pill)',
-                    background: 'var(--bg-2)', color: 'var(--neg)',
-                  }}>○ not set</span>
+                  <span className="ds-badge ds-badge-bad">not set</span>
                 )}
               </div>
 
@@ -131,11 +123,12 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                   placeholder={cur?.set ? 'Replace key…' : 'Paste API key…'}
                   value={draft}
                   onChange={(e) => setDrafts((d) => ({ ...d, [name]: (e.target as HTMLInputElement).value }))}
-                  style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 12 }}
+                  style={{ flex: 1, fontFamily: 'var(--font-mono)', fontSize: 13 }}
                 />
                 <Button
                   variant="ghost"
-                  size="sm"
+                  size="icon"
+                  style={{ width: 40, height: 40 }}
                   onClick={() => toggleReveal(name)}
                   title={isRevealed ? 'Hide draft' : 'Reveal draft (only what you\'re typing now)'}
                 >
@@ -143,14 +136,13 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
                 </Button>
                 <Button
                   variant="primary"
-                  size="sm"
                   disabled={!draft.trim() || busy === name}
                   onClick={() => save(name, draft.trim())}
                 >
                   {busy === name ? 'Saving…' : 'Save'}
                 </Button>
                 {cur?.set && cur.source === 'keys.json' && (
-                  <Button variant="ghost" size="sm" disabled={busy === name} onClick={() => save(name, null)}>
+                  <Button variant="ghost" disabled={busy === name} onClick={() => save(name, null)}>
                     Clear
                   </Button>
                 )}
@@ -160,7 +152,7 @@ export function SettingsModal({ open, onClose }: { open: boolean; onClose: () =>
         })}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="ghost" onClick={onClose}>Close</Button>
+          <Button onClick={onClose}>Close</Button>
         </div>
       </div>
     </Modal>

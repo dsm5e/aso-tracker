@@ -262,7 +262,7 @@ export function TimelineEditor({
     .sort((a, b) => a.timeline.track - b.timeline.track);
 
   return (
-    <div className="timeline-editor" style={{ position: 'absolute', top: 66, right: 0, bottom: 0, left: 'var(--aso-library-width, 40px)', display: 'grid', background: 'var(--ds-bg)', minHeight: 0 }}>
+    <div className="timeline-editor" style={{ position: 'absolute', top: 80, right: 0, bottom: 0, left: 'var(--aso-library-width, 40px)', display: 'grid', background: 'var(--ds-bg)', minHeight: 0 }}>
       <div className="timeline-preview-row" style={{ minHeight: 0 }}>
         <div style={{ display: 'grid', placeItems: 'center', padding: 16, overflow: 'hidden', background: 'var(--ds-panel-2)' }}>
           <div className="timeline-stage" style={{ aspectRatio: '9 / 16', position: 'relative', overflow: 'hidden', background: '#050505', boxShadow: 'var(--ds-shadow-pop)', borderRadius: 8 }}>
@@ -383,33 +383,26 @@ export function TimelineEditor({
           </div>
         </div>
         <div className="timeline-inspector" style={{ padding: 14, overflowY: 'auto', background: 'var(--ds-panel)', minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 12 }}>Inspector</div>
-          {!selected || !selectedTimeline ? <div style={{ color: 'var(--ds-subtle)', fontSize: 12 }}>Select a clip.</div> : (
+          <div className="ds-card-title" style={{ marginBottom: 8 }}>Inspector</div>
+          {!selected || !selectedTimeline ? <div className="ds-note">Select a clip.</div> : (
             <>
-              <div style={{ fontSize: 12, color: 'var(--ds-strong)', fontWeight: 600, marginBottom: 12 }}>{selectedTimeline.label ?? String(selected.node.data.label ?? selected.node.type)}</div>
+              <div style={{ fontSize: 14, color: 'var(--ds-strong)', fontWeight: 600, marginBottom: 12 }}>{selectedTimeline.label ?? String(selected.node.data.label ?? selected.node.type)}</div>
               {linkedVideo && selectedPhotoUrl && (
-                <div style={{ padding: 10, marginBottom: 12, border: '1px solid var(--ds-border)', borderRadius: 10, background: 'var(--ds-panel-2)' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4, padding: 3, marginBottom: 9, borderRadius: 8, background: 'var(--ds-hover)' }}>
+                <div style={{ padding: 12, marginBottom: 12, borderRadius: 'var(--ds-radius-card)', background: 'var(--ds-panel-2)' }}>
+                  <div className="ds-seg" role="tablist" style={{ display: 'flex', marginBottom: 10 }}>
                     {(['photo', 'video'] as const).map((mode) => (
                       <button
                         key={mode}
+                        role="tab"
+                        aria-selected={previewMode === mode}
                         onClick={() => setPreviewMode(mode)}
-                        style={{
-                          border: 0,
-                          borderRadius: 6,
-                          padding: '7px 8px',
-                          color: previewMode === mode ? 'var(--ds-on-accent)' : 'var(--ds-muted)',
-                          background: previewMode === mode ? 'var(--ds-accent)' : 'transparent',
-                          fontSize: 11,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
+                        style={{ flex: 1 }}
                       >
                         {mode === 'photo' ? 'Photo' : 'Video'}
                       </button>
                     ))}
                   </div>
-                  <div style={{ width: 84, maxWidth: '100%', aspectRatio: '9 / 16', margin: '0 auto', overflow: 'hidden', borderRadius: 7, background: '#050505', position: 'relative' }}>
+                  <div style={{ width: 84, maxWidth: '100%', aspectRatio: '9 / 16', margin: '0 auto', overflow: 'hidden', borderRadius: 'var(--ds-radius-inner)', background: '#050505', position: 'relative' }}>
                     {previewMode === 'video' && videoFresh
                       ? <video src={linkedVideoUrl} controls muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       : <img src={selectedPhotoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
@@ -419,30 +412,32 @@ export function TimelineEditor({
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', gap: 6, marginTop: 9 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                     <button
+                      className="ds-btn ds-btn-sm"
                       onClick={approveSelectedPhoto}
                       disabled={photoApproved || videoAction !== 'idle'}
-                      style={{ ...inspectorButton, color: photoApproved ? 'var(--ds-good)' : 'var(--ds-text)' }}
+                      style={{ flex: '1 1 auto', color: photoApproved ? 'var(--ds-good)' : undefined }}
                     >
                       {photoApproved ? '✓ Approved' : videoAction === 'approving' ? 'Approving…' : 'Approve photo'}
                     </button>
                     <button
+                      className="ds-btn ds-btn-sm ds-btn-primary"
                       onClick={generateLinkedVideo}
                       disabled={!photoApproved || videoAction !== 'idle'}
-                      style={{ ...inspectorButton, background: photoApproved ? 'var(--ds-accent)' : 'var(--ds-panel-2)', color: photoApproved ? 'var(--ds-on-accent)' : 'var(--ds-subtle)' }}
+                      style={{ flex: '1 1 auto' }}
                     >
                       {videoAction === 'generating' ? 'Starting…' : videoFresh ? 'Regenerate' : 'Generate video'}
                     </button>
                   </div>
-                  <div style={{ marginTop: 7, color: videoFresh ? 'var(--ds-good)' : photoApproved ? 'var(--ds-warn)' : 'var(--ds-muted)', fontSize: 10 }}>
+                  <div style={{ marginTop: 8, color: videoFresh ? 'var(--ds-good)' : photoApproved ? 'var(--ds-warn)' : 'var(--ds-muted)', fontSize: 12, lineHeight: '17px' }}>
                     {videoFresh ? 'Video matches the current photo' : photoApproved ? 'Photo approved; video is ready to generate' : 'Approval prevents accidental paid generations'}
                   </div>
                 </div>
               )}
               {selectedTransition && (
-                <div style={{ padding: '9px 10px', marginBottom: 12, borderRadius: 9, border: '1px solid var(--ds-warn)', background: 'var(--ds-warn-soft)' }}>
-                  <div style={{ color: 'var(--ds-warn)', fontSize: 10, fontWeight: 800, marginBottom: 7 }}>
+                <div style={{ padding: 12, marginBottom: 12, borderRadius: 'var(--ds-radius-card)', background: 'var(--ds-warn-soft)' }}>
+                  <div style={{ color: 'var(--ds-warn)', fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
                     Transition · {selectedTransition.type === 'mask-wipe' ? 'Mask wipe' : 'Slide bounce up'}
                   </div>
                   <Field
@@ -468,28 +463,28 @@ export function TimelineEditor({
                   onChange={(v) => commit(selected.node, { ...selectedTimeline, layout: { ...resolvedLayout(selectedTimeline), [key]: v } })}
                 />
               ))}
-              <div style={{ color: 'var(--ds-subtle)', fontSize: 10, lineHeight: 1.5, marginTop: 12 }}>Drag the selected layer in the preview. Drag clip body to move; drag its edges to trim.</div>
+              <div className="ds-note" style={{ marginTop: 12 }}>Drag the selected layer in the preview. Drag clip body to move; drag its edges to trim.</div>
             </>
           )}
         </div>
       </div>
 
-      <div className="timeline-tracks" style={{ borderTop: '1px solid var(--ds-border)', background: 'var(--ds-panel)', display: 'grid', gridTemplateRows: '44px 1fr', minWidth: 0, minHeight: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 12px', borderBottom: '1px solid var(--ds-border)' }}>
-          <button onClick={() => setPlaying((v) => !v)} style={controlBtn}>{playing ? 'Ⅱ' : '▶'}</button>
-          <button onClick={() => { setPlaying(false); setPlayhead(0); }} style={controlBtn}>■</button>
-          <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 12, color: 'var(--ds-text)', minWidth: 70 }}>{playhead.toFixed(2)}s</span>
-          <input type="range" min={0} max={duration} step={1 / 30} value={playhead} onChange={(e) => setPlayhead(Number(e.target.value))} style={{ flex: 1 }} />
-          <span style={{ color: 'var(--ds-subtle)', fontSize: 11 }}>30 fps · {duration.toFixed(1)}s</span>
+      <div className="timeline-tracks" style={{ borderTop: '1px solid var(--ds-border)', background: 'var(--ds-panel)', display: 'grid', gridTemplateRows: '48px 1fr', minWidth: 0, minHeight: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px', borderBottom: '1px solid var(--ds-border)' }}>
+          <button className="ds-btn ds-btn-sm" onClick={() => setPlaying((v) => !v)} title={playing ? 'Pause' : 'Play'} style={{ width: 32, padding: 0 }}>{playing ? 'Ⅱ' : '▶'}</button>
+          <button className="ds-btn ds-btn-sm" onClick={() => { setPlaying(false); setPlayhead(0); }} title="Stop" style={{ width: 32, padding: 0 }}>■</button>
+          <span style={{ fontVariantNumeric: 'tabular-nums', fontSize: 14, fontWeight: 500, color: 'var(--ds-text)', minWidth: 70 }}>{playhead.toFixed(2)}s</span>
+          <input type="range" min={0} max={duration} step={1 / 30} value={playhead} onChange={(e) => setPlayhead(Number(e.target.value))} style={{ flex: 1, accentColor: 'var(--ds-accent)' }} />
+          <span className="vid-meta">30 fps · {duration.toFixed(1)}s</span>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '116px 1fr', minHeight: 0, overflow: 'auto' }}>
           <div style={{ paddingTop: 26, borderRight: '1px solid var(--ds-border)', background: 'var(--ds-panel-2)', position: 'sticky', left: 0, zIndex: 5 }}>
-            <div style={{ height: 30, padding: '9px 10px', boxSizing: 'border-box', borderBottom: '1px solid var(--ds-hairline)', color: 'var(--ds-warn)', fontSize: 9 }}>FX · Transitions</div>
-            {TRACKS.map((track) => <div key={track} style={{ height: TRACK_HEIGHT, padding: '17px 10px', boxSizing: 'border-box', borderBottom: '1px solid var(--ds-hairline)', fontSize: 10, color: 'var(--ds-muted)' }}>{track}</div>)}
+            <div style={{ height: 30, padding: '9px 10px', boxSizing: 'border-box', borderBottom: '1px solid var(--ds-hairline)', color: 'var(--ds-warn)', fontSize: 11, fontWeight: 600 }}>FX · Transitions</div>
+            {TRACKS.map((track) => <div key={track} style={{ height: TRACK_HEIGHT, padding: '17px 10px', boxSizing: 'border-box', borderBottom: '1px solid var(--ds-hairline)', fontSize: 12, fontWeight: 500, color: 'var(--ds-muted)' }}>{track}</div>)}
           </div>
           <div ref={timelineSurfaceRef} style={{ position: 'relative', minWidth: duration * PX_PER_SECOND, paddingTop: 26 }}>
             <div onPointerDown={beginPlayheadDrag} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: 26, cursor: 'ew-resize', touchAction: 'none', background: 'var(--ds-panel-2)', borderBottom: '1px solid var(--ds-border)' }}>
-              {Array.from({ length: Math.ceil(duration) + 1 }, (_, i) => <span key={i} style={{ position: 'absolute', left: i * PX_PER_SECOND, top: 6, fontSize: 9, color: 'var(--ds-subtle)', borderLeft: '1px solid var(--ds-axis)', paddingLeft: 3 }}>{i}s</span>)}
+              {Array.from({ length: Math.ceil(duration) + 1 }, (_, i) => <span key={i} style={{ position: 'absolute', left: i * PX_PER_SECOND, top: 6, fontSize: 11, color: 'var(--ds-subtle)', borderLeft: '1px solid var(--ds-axis)', paddingLeft: 3 }}>{i}s</span>)}
             </div>
             <div style={{ height: 30, position: 'relative', borderBottom: '1px solid var(--ds-hairline)', background: 'var(--ds-panel-2)' }}>
               {clips.map(({ node, timeline: original }) => {
@@ -508,11 +503,12 @@ export function TimelineEditor({
                       width: Math.max(24, transition.duration * PX_PER_SECOND),
                       height: 22,
                       padding: '0 6px',
-                      borderRadius: 5,
+                      borderRadius: 'var(--ds-radius-inner)',
                       border: selectedId === node.id ? '1px solid var(--ds-strong)' : '1px solid transparent',
                       background: transition.type === 'mask-wipe' ? 'var(--ds-c2)' : 'var(--ds-c4)',
                       color: '#fff',
-                      fontSize: 9,
+                      fontSize: 11,
+                      fontWeight: 600,
                       overflow: 'hidden',
                       whiteSpace: 'nowrap',
                       cursor: 'pointer',
@@ -535,7 +531,7 @@ export function TimelineEditor({
                       style={{
                         position: 'absolute', left: timeline.start * PX_PER_SECOND, top: 6,
                         width: Math.max(18, timeline.duration * PX_PER_SECOND), height: TRACK_HEIGHT - 12,
-                        borderRadius: 5, background: COLORS[track], border: selectedId === node.id ? '2px solid var(--ds-strong)' : '1px solid transparent',
+                        borderRadius: 'var(--ds-radius-inner)', background: COLORS[track], border: selectedId === node.id ? '2px solid var(--ds-strong)' : '1px solid transparent',
                         boxSizing: 'border-box', overflow: 'hidden', cursor: 'grab',
                         boxShadow: changedIds?.has(node.id)
                           ? '0 0 0 2px var(--ds-accent), var(--ds-shadow-pop)'
@@ -545,7 +541,7 @@ export function TimelineEditor({
                       }}
                     >
                       <div onPointerDown={(e) => beginTimelineDrag(e, node, timeline, 'trim-left')} style={{ position: 'absolute', inset: '0 auto 0 0', width: 7, cursor: 'ew-resize', background: '#ffffff44' }} />
-                      <span style={{ display: 'block', padding: '9px 12px', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff' }}>{timeline.label ?? String(node.data.label ?? node.type)}</span>
+                      <span style={{ display: 'block', padding: '11px 12px', fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#fff' }}>{timeline.label ?? String(node.data.label ?? node.type)}</span>
                       <div onPointerDown={(e) => beginTimelineDrag(e, node, timeline, 'trim-right')} style={{ position: 'absolute', inset: '0 0 0 auto', width: 7, cursor: 'ew-resize', background: '#ffffff44' }} />
                     </div>
                   );
@@ -951,26 +947,9 @@ function SyncedAudio({ src, time, playing, volume = 1 }: { src: string; time: nu
 
 function Field({ label, value, step, onChange }: { label: string; value: number; step: number; onChange: (value: number) => void }) {
   return (
-    <label style={{ display: 'grid', gridTemplateColumns: '72px 1fr', alignItems: 'center', gap: 8, marginBottom: 7, fontSize: 11, color: 'var(--ds-muted)' }}>
+    <label style={{ display: 'grid', gridTemplateColumns: '72px 1fr', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12, fontWeight: 600, color: 'var(--ds-muted)' }}>
       <span>{label}</span>
-      <input type="number" value={Number(value.toFixed(3))} step={step} onChange={(e) => onChange(Number(e.target.value))} style={{ width: '100%', boxSizing: 'border-box', padding: '5px 7px', borderRadius: 5, border: '1px solid var(--ds-border)', background: 'var(--ds-input-bg)', color: 'var(--ds-text)' }} />
+      <input className="ds-input" type="number" value={Number(value.toFixed(3))} step={step} onChange={(e) => onChange(Number(e.target.value))} style={{ width: '100%', height: 'var(--ds-control-h-sm)', padding: '0 10px', fontSize: 13 }} />
     </label>
   );
 }
-
-const controlBtn: React.CSSProperties = {
-  width: 31, height: 28, borderRadius: 5, border: '1px solid var(--ds-border)',
-  background: 'var(--ds-panel)', color: 'var(--ds-text)', cursor: 'pointer',
-};
-
-const inspectorButton: React.CSSProperties = {
-  flex: 1,
-  border: '1px solid var(--ds-border)',
-  borderRadius: 7,
-  padding: '7px 6px',
-  background: 'var(--ds-panel-2)',
-  color: 'var(--ds-text)',
-  fontSize: 10,
-  fontWeight: 700,
-  cursor: 'pointer',
-};

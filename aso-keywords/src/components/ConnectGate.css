@@ -1,28 +1,30 @@
 .gate-loading { padding: 40px; color: var(--ds-muted); }
 .gate { flex: 1; overflow: auto; padding: 40px 24px; display: flex; justify-content: center; background: var(--ds-bg); }
-.gate-card { width: min(720px, 100%); background: var(--ds-panel); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-card); padding: 28px 28px 24px; box-shadow: var(--ds-shadow); height: max-content; }
-.gate-lock { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: var(--ds-accent-soft); font-size: 20px; margin-bottom: 14px; }
-.gate h2 { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--ds-strong); }
-.gate p { margin: 0 0 12px; color: var(--ds-muted); font-size: 13.5px; line-height: 1.5; }
-.gate-why { margin: 0 0 18px; padding-left: 18px; color: var(--ds-text); font-size: 13px; line-height: 1.7; }
-.gate-primary { border: 0; border-radius: var(--ds-radius-control); background: var(--ds-accent); color: var(--ds-on-accent); font: inherit; font-weight: 600; font-size: 13.5px; padding: 9px 18px; cursor: pointer; }
+.gate-card { width: min(720px, 100%); background: var(--ds-panel); border: 0; border-radius: var(--ds-radius-card); padding: 24px; box-shadow: var(--ds-shadow); height: max-content; }
+.gate-lock { width: 44px; height: 44px; border-radius: var(--ds-radius-card); display: grid; place-items: center; background: var(--ds-accent-soft); font-size: 20px; margin-bottom: 14px; }
+.gate h2 { margin: 0 0 4px; font-size: 20px; line-height: 24px; font-weight: 600; color: var(--ds-strong); }
+.gate p { margin: 0 0 12px; color: var(--ds-muted); font-size: 14px; line-height: 20px; }
+.gate-why { margin: 0 0 16px; padding-left: 18px; color: var(--ds-text); font-size: 14px; line-height: 24px; }
+.gate-primary { height: var(--ds-control-h); border: 0; border-radius: var(--ds-radius-control); background: var(--ds-accent); color: var(--ds-on-accent); font: inherit; font-weight: 600; font-size: 14px; padding: 0 14px; cursor: pointer; }
 .gate-primary:hover { background: var(--ds-accent-hover); }
 .gate-primary:disabled { opacity: .5; cursor: default; }
-.gate-connect { border: 1px solid var(--ds-border); border-radius: 12px; padding: 16px 18px; margin-top: 14px; background: var(--ds-panel); }
+.gate-connect { border: 1px solid var(--ds-hairline); border-radius: var(--ds-radius-card); padding: 16px; margin-top: 16px; background: var(--ds-panel); }
 .gate-connect-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
-.gate-connect-head b { font-size: 15px; color: var(--ds-strong); }
-.gate-tabs { display: inline-flex; background: var(--ds-panel-2); border: 1px solid var(--ds-border); border-radius: 10px; padding: 2px; }
-.gate-tabs button { border: 0; background: none; color: var(--ds-muted); font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 8px; cursor: pointer; }
-.gate-tabs button.on { background: var(--ds-panel); color: var(--ds-text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-.gate-where { font-size: 12.5px !important; }
+.gate-connect-head b { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--ds-strong); }
+.gate-tabs { display: inline-flex; align-items: center; height: var(--ds-control-h); gap: 2px; background: var(--ds-input-bg); border: var(--ds-control-border); border-radius: var(--ds-radius-control); padding: 3px; }
+.gate-tabs button { height: 32px; border: 0; background: none; color: var(--ds-text); font: inherit; font-size: 14px; font-weight: 500; padding: 0 10px; border-radius: var(--ds-radius-inner); cursor: pointer; }
+.gate-tabs button:hover { background: var(--ds-accent-soft); }
+.gate-tabs button.on { background: var(--ds-accent-soft); color: var(--ds-accent); font-weight: 600; box-shadow: none; }
+.gate-where { font-size: 13px !important; }
 .gate-form { display: grid; gap: 10px; }
-.gate-form label { display: grid; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--ds-text); }
+.gate-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ds-text); }
 .gate-form label em { font-style: normal; font-weight: 500; color: var(--ds-good); margin-left: 8px; }
-.gate-form input, .gate-form textarea { font: inherit; font-size: 13px; font-weight: 400; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-control); padding: 8px 10px; background: var(--ds-input-bg); color: var(--ds-text); resize: vertical; }
+.gate-form input, .gate-form textarea { font: inherit; font-size: 14px; font-weight: 500; border: var(--ds-control-border); border-radius: var(--ds-radius-control); padding: 10px 12px; background: var(--ds-input-bg); color: var(--ds-text); resize: vertical; }
 .gate-form input:focus, .gate-form textarea:focus { outline: 2px solid var(--ds-accent-soft); border-color: var(--ds-accent); }
 .gate-actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
-.gate-ok { color: var(--ds-good); font-size: 12.5px; }
-.gate-err { color: var(--ds-bad); font-size: 12.5px; }
+.gate-ok { color: var(--ds-good); font-size: 13px; }
+.gate-err { color: var(--ds-bad); font-size: 13px; }
 .gate-note { font-size: 12px !important; margin-top: 4px !important; }
-.gate-agent pre { white-space: pre-wrap; font-family: var(--ds-font-mono); font-size: 12px; line-height: 1.55; background: var(--ds-panel-2); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-control); padding: 12px 14px; margin: 0 0 10px; color: var(--ds-text); }
-.gate-agent button { border: 1px solid var(--ds-border); background: var(--ds-panel); border-radius: var(--ds-radius-control); font: inherit; font-size: 13px; font-weight: 600; padding: 7px 14px; cursor: pointer; color: var(--ds-text); }
+.gate-agent pre { white-space: pre-wrap; font-family: var(--ds-font-mono); font-size: 12px; line-height: 1.55; background: var(--ds-panel-2); border: 1px solid var(--ds-hairline); border-radius: var(--ds-radius-control); padding: 12px 14px; margin: 0 0 10px; color: var(--ds-text); }
+.gate-agent button { height: var(--ds-control-h); border: var(--ds-control-border); background: var(--ds-input-bg); border-radius: var(--ds-radius-control); font: inherit; font-size: 14px; font-weight: 500; padding: 0 14px; cursor: pointer; color: var(--ds-text); }
+.gate-agent button:hover { border-color: var(--ds-muted); }

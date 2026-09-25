@@ -96,6 +96,7 @@ export function ScreenshotSidebar() {
 
   return (
     <aside
+      className="ds-dense"
       style={{
         width: 'var(--sidebar-w)',
         borderRight: '1px solid var(--line-1)',
@@ -115,22 +116,12 @@ export function ScreenshotSidebar() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span
-            style={{
-              fontSize: 10,
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.08em',
-              color: 'var(--fg-2)',
-            }}
-          >
-            Screenshots
-          </span>
-          <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{visibleScreenshots.length} / 10</span>
+          <span className="ds-group-label">Screenshots</span>
+          <span className="tabular" style={{ fontSize: 12, color: 'var(--fg-2)' }}>{visibleScreenshots.length} / 10</span>
         </div>
         {/* Device tabs — shown when project has both devices */}
         {devices === 'both' && (
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div className="seg seg--block">
             {(['iphone', 'ipad'] as const).map((d) => (
               <button
                 key={d}
@@ -143,24 +134,9 @@ export function ScreenshotSidebar() {
                   );
                   if (first) setActiveScreenshot(first.id);
                 }}
-                style={{
-                  flex: 1,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 5,
-                  padding: '5px 0',
-                  borderRadius: 'var(--r-2)',
-                  border: 'none',
-                  background: previewDevice === d ? 'var(--accent)' : 'var(--bg-2)',
-                  color: previewDevice === d ? 'var(--accent-fg)' : 'var(--fg-2)',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all .1s',
-                }}
+                className={previewDevice === d ? 'active' : ''}
               >
-                {d === 'iphone' ? <Smartphone size={11} /> : <Tablet size={11} />}
+                {d === 'iphone' ? <Smartphone size={14} /> : <Tablet size={14} />}
                 {d === 'iphone' ? 'iPhone' : 'iPad'}
               </button>
             ))}
@@ -185,20 +161,16 @@ export function ScreenshotSidebar() {
                 );
                 setActiveScreenshot(ss.id);
               }}
+              className="btn"
               style={{
                 width: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '8px 10px',
+                justifyContent: 'flex-start',
                 marginBottom: 8,
-                border: '1px dashed var(--ai)',
-                borderRadius: 'var(--r-3)',
-                background: 'var(--ai-soft)',
-                color: 'var(--ai)',
+                borderStyle: 'dashed',
+                borderColor: 'var(--ds-accent)',
+                background: 'var(--ds-accent-soft)',
+                color: 'var(--ds-accent)',
                 cursor: heroExists ? 'not-allowed' : 'pointer',
-                opacity: heroExists ? 0.4 : 1,
-                fontSize: 12,
                 fontWeight: 600,
               }}
               title={
@@ -209,7 +181,7 @@ export function ScreenshotSidebar() {
             >
               <Wand2 size={14} />
               {heroExists ? 'Hero already added' : 'Add hero (AI)'}
-              <Sparkles size={11} style={{ marginLeft: 'auto' }} />
+              <Sparkles size={14} style={{ marginLeft: 'auto' }} />
             </button>
           );
         })()}
@@ -309,7 +281,7 @@ export function ScreenshotSidebar() {
         </DndContext>
 
         {visibleScreenshots.length === 0 && (
-          <div style={{ padding: 16, color: 'var(--fg-3)', fontSize: 12, textAlign: 'center' }}>
+          <div className="ds-note" style={{ padding: 16, textAlign: 'center' }}>
             {previewDevice === 'ipad'
               ? 'No iPad slots yet. They were copied from iPhone — check your device toggle.'
               : 'No screenshots yet. Add your first to get started.'}
@@ -324,7 +296,7 @@ export function ScreenshotSidebar() {
             variant="primary"
             onClick={onPair}
             leftIcon={<Link2 size={14} />}
-            style={{ width: '100%', justifyContent: 'center', height: 32 }}
+            style={{ width: '100%' }}
             title="Make these slots share a single device — moves & tilt sync, sourceUrl mirrors"
           >
             Pair {multiSelect.length} slots
@@ -336,7 +308,7 @@ export function ScreenshotSidebar() {
             variant="ghost"
             onClick={onUnpair}
             leftIcon={<Link2Off size={14} />}
-            style={{ width: '100%', justifyContent: 'center', height: 32 }}
+            style={{ width: '100%' }}
             title="Break this cross-group apart"
           >
             Unpair group ({groupSize})
@@ -346,7 +318,7 @@ export function ScreenshotSidebar() {
           variant="ghost"
           onClick={handleAdd}
           leftIcon={<Plus size={14} />}
-          style={{ width: '100%', justifyContent: 'center', height: 32 }}
+          style={{ width: '100%' }}
           title="Adds an empty slot — drop a screenshot inside the phone in the canvas"
         >
           Add screen
@@ -360,7 +332,7 @@ export function ScreenshotSidebar() {
               syncIphoneToIpad();
             }}
             leftIcon={<RefreshCw size={14} />}
-            style={{ width: '100%', justifyContent: 'center', height: 32, color: 'var(--fg-2)' }}
+            style={{ width: '100%', color: 'var(--fg-2)' }}
             title="Replace the iPad section with copies of all current iPhone slides"
           >
             Sync to iPad
@@ -372,14 +344,14 @@ export function ScreenshotSidebar() {
             variant="ghost"
             onClick={addIpadVariant}
             leftIcon={<Tablet size={14} />}
-            style={{ width: '100%', justifyContent: 'center', height: 32, color: 'var(--fg-2)' }}
+            style={{ width: '100%', color: 'var(--fg-2)' }}
             title="Copy all iPhone slots to iPad — content and text are inherited, AI images reset for regeneration"
           >
             + Add iPad
           </Button>
         )}
         {multiSelect.length === 1 && (
-          <span style={{ fontSize: 11, color: 'var(--fg-3)', textAlign: 'center' }}>
+          <span className="ds-note" style={{ textAlign: 'center' }}>
             Shift-click another slot to pair them
           </span>
         )}
@@ -495,7 +467,7 @@ function SortableRow({
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <span
           style={{
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 500,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
@@ -506,8 +478,8 @@ function SortableRow({
         </span>
         <span
           style={{
-            fontSize: 11,
-            color: 'var(--fg-3)',
+            fontSize: 12,
+            color: 'var(--fg-2)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -524,10 +496,11 @@ function SortableRow({
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
-        style={{ appearance: 'none', border: 0, background: 'transparent', color: 'var(--fg-3)', cursor: 'pointer', padding: 4, borderRadius: 4 }}
+        className="btn btn--icon"
+        style={{ width: 28, height: 28, flex: 'none' }}
         title="Duplicate slide"
       >
-        <Copy size={13} />
+        <Copy size={14} />
       </button>
       <button
         type="button"
@@ -535,20 +508,13 @@ function SortableRow({
           e.stopPropagation();
           onRemove();
         }}
-        style={{
-          appearance: 'none',
-          border: 0,
-          background: 'transparent',
-          color: 'var(--fg-3)',
-          cursor: 'pointer',
-          padding: 4,
-          borderRadius: 4,
-        }}
+        className="btn btn--icon btn--danger"
+        style={{ width: 28, height: 28, flex: 'none', color: 'var(--fg-2)' }}
         onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--danger)')}
-        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fg-3)')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--fg-2)')}
         title="Remove"
       >
-        <Trash2 size={12} />
+        <Trash2 size={14} />
       </button>
     </div>
   );

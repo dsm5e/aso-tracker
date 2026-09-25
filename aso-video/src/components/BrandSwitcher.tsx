@@ -53,66 +53,46 @@ export function BrandSwitcher({ current = 'vid' as Item['id'] }: { current?: Ite
     <div ref={ref} style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 10,
-          padding: '4px 10px 4px 4px', height: 32,
-          background: open ? 'var(--ds-hover)' : 'transparent',
-          border: 0, borderRadius: 8, cursor: 'pointer',
-          color: 'var(--ds-text)',
-        }}
+        className={`ds-btn ds-btn-ghost${open ? ' on' : ''}`}
+        style={{ gap: 10, padding: '0 10px 0 6px' }}
       >
         <span style={{
-          width: 22, height: 22, borderRadius: 'var(--ds-radius-control)',
+          width: 26, height: 26, borderRadius: 'var(--ds-radius-inner)',
           background: COLORS[active.id],
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           color: '#fff', fontSize: 12, fontWeight: 700,
           flex: 'none', lineHeight: 1,
         }}>{active.glyph}</span>
-        <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.15 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '-0.01em' }}>Studio</span>
-          <span style={{ fontSize: 10, opacity: 0.6 }}>{active.label}</span>
+        <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: '16px', color: 'var(--ds-text)' }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>Studio</span>
+          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--ds-muted)' }}>{active.label}</span>
         </span>
-        <span style={{ fontSize: 10, opacity: 0.5, marginLeft: 2 }}>▾</span>
+        <span className="vid-caret">▾</span>
       </button>
 
       {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 6px)', left: 0,
-          minWidth: 220, padding: 6,
-          background: 'var(--ds-panel)',
-          borderRadius: 10,
-          border: '1px solid var(--ds-border)',
-          boxShadow: 'var(--ds-shadow-pop)',
-          zIndex: 1000,
-        }}>
+        <div className="ds-pop vid-pop" style={{ minWidth: 240 }}>
           {ITEMS.map((it) => {
             const isActive = it.id === current;
             return (
               <a
                 key={it.id}
                 href={it.href}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  padding: '8px 10px', borderRadius: 'var(--ds-radius-control)',
-                  textDecoration: 'none',
-                  background: isActive ? 'var(--ds-hover)' : 'transparent',
-                  color: 'var(--ds-text)',
-                }}
-                onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.background = 'var(--ds-hover)'; }}
-                onMouseLeave={(e) => { if (!isActive) (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; }}
+                className={`ds-nav-item${isActive ? ' on' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
+                style={{ height: 'auto', padding: '8px 10px' }}
               >
                 <span style={{
-                  width: 22, height: 22, borderRadius: 'var(--ds-radius-control)',
+                  width: 26, height: 26, borderRadius: 'var(--ds-radius-inner)',
                   background: COLORS[it.id],
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: '#fff', fontSize: 12, fontWeight: 700,
                   flex: 'none', lineHeight: 1,
                 }}>{it.glyph}</span>
                 <span style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 12, fontWeight: 500 }}>{it.label}</span>
-                  <span style={{ fontSize: 10.5, opacity: 0.6 }}>{it.hint}</span>
+                  <span style={{ fontSize: 14, lineHeight: '18px' }}>{it.label}</span>
+                  <span style={{ fontSize: 12, lineHeight: '16px', fontWeight: 400, color: 'var(--ds-muted)' }}>{it.hint}</span>
                 </span>
-                {isActive && <span style={{ fontSize: 10, color: 'var(--ds-accent)' }}>●</span>}
               </a>
             );
           })}

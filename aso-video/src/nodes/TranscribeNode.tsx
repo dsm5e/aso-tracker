@@ -3,7 +3,7 @@
 // downstream nodes (overlays, captions) keep working unchanged. Used to peek
 // exact word times so the user can align Image Overlay start/end to specific
 // spoken words ("teeth", "falling", etc.) before burning anything.
-import { NodeShell, labelStyle, triggerRun } from './common';
+import { NodeShell, triggerRun } from './common';
 
 interface Word { text: string; start: number; end: number }
 
@@ -34,18 +34,18 @@ export function TranscribeNode({ id, data }: { id: string; data: Data }) {
       onRun={() => triggerRun(id)}
       runLabel={`Transcribe (~$0.02${data.cached ? ' cached' : ''})`}
     >
-      <div style={{ ...labelStyle, padding: '4px 4px 0', lineHeight: 1.4 }}>
+      <div className="vid-note">
         Pass-through node. Runs whisper on upstream audio, caches word
         timings — copy the start/end of any word into Image Overlay's
         Start/End fields for precise alignment.
       </div>
-      {data.error && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div className="vid-err">{data.error}</div>}
       {data.status === 'done' && words.length > 0 && (
         <div className="nodrag" style={{
           maxHeight: 260, overflowY: 'auto',
-          background: 'var(--ds-panel-2)', border: '1px solid var(--ds-border)',
-          borderRadius: 'var(--ds-radius-control)', padding: 6, fontSize: 11,
-          fontFamily: 'ui-monospace, monospace',
+          background: 'var(--ds-panel-2)',
+          borderRadius: 'var(--ds-radius-card)', padding: 6, fontSize: 12,
+          fontFamily: 'var(--ds-font-mono)',
         }}>
           {words.map((w, i) => (
             <div
@@ -54,7 +54,7 @@ export function TranscribeNode({ id, data }: { id: string; data: Data }) {
               title="Click to copy 'start,end' to clipboard"
               style={{
                 display: 'flex', gap: 8,
-                padding: '2px 4px',
+                padding: '4px 6px', borderRadius: 'var(--ds-radius-inner)',
                 borderBottom: i < words.length - 1 ? '1px solid var(--ds-hairline)' : 'none',
                 cursor: 'pointer',
               }}
@@ -66,7 +66,7 @@ export function TranscribeNode({ id, data }: { id: string; data: Data }) {
         </div>
       )}
       {data.status === 'done' && words.length === 0 && (
-        <div style={{ color: 'var(--ds-muted)', fontSize: 11 }}>(no words found in audio)</div>
+        <div className="vid-note">(no words found in audio)</div>
       )}
     </NodeShell>
   );

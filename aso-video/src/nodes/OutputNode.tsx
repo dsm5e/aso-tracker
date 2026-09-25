@@ -1,4 +1,4 @@
-import { NodeShell, labelStyle } from './common';
+import { NodeShell } from './common';
 import { openLightbox } from '../components/Lightbox';
 import { MockupFrame, MockupProvider, useMockupToggle } from '../components/TikTokMockup';
 
@@ -25,15 +25,13 @@ export function OutputNode({ id, data }: { id: string; data: Data }) {
       {upstreamUrl ? (
         <>
           <label
-            className="nodrag"
+            className="nodrag vid-check"
             title="Overlay TikTok UI chrome on the preview — visual only, not baked into mp4"
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--ds-muted)', cursor: 'pointer', marginBottom: 6 }}
           >
             <input
               type="checkbox"
               checked={mockup}
               onChange={(e) => setMockup(e.target.checked)}
-              style={{ margin: 0 }}
             />
             📱 TikTok mockup
           </label>
@@ -47,14 +45,14 @@ export function OutputNode({ id, data }: { id: string; data: Data }) {
             </MockupFrame>
           </MockupProvider>
           <button
-            className="nodrag"
+            className="nodrag ds-btn ds-btn-sm"
             onClick={() => openLightbox({ kind: 'video', src: upstreamUrl })}
             title="open fullscreen"
-            style={{ marginTop: 4, background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '4px 10px', cursor: 'zoom-in', fontSize: 11, alignSelf: 'flex-start' }}
+            style={{ alignSelf: 'flex-start' }}
           >⛶ fullscreen</button>
         </>
       ) : (
-        <div style={{ ...labelStyle, padding: 16, textAlign: 'center', border: '1px dashed var(--ds-border)', borderRadius: 6 }}>
+        <div className="vid-note" style={{ padding: 16, textAlign: 'center', border: '1px dashed var(--ds-border)', borderRadius: 'var(--ds-radius-card)' }}>
           connect a video output here
         </div>
       )}

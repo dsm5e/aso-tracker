@@ -176,33 +176,23 @@ export function PPOScreen() {
       <div style={{ width: '100%', maxWidth: 1200, display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            <h1 className="ds-page-title" style={{ margin: 0 }}>
               Product Page Optimization
             </h1>
-            <p style={{ margin: '8px 0 0', color: 'var(--fg-2)', fontSize: 13 }}>
+            <p className="ds-page-sub" style={{ margin: '4px 0 0' }}>
               Run multi-strategy A/B experiments. Upload source screens once, generate per-strategy
               renders with different AI prompts. Export N treatments ready for App Store Connect.
             </p>
           </div>
           {/* Device selector — drives generation input size (768×1664 vs 768×1024),
               tile aspect ratio, and export upscale dims (1290×2796 vs 2064×2752). */}
-          <div style={{ display: 'flex', gap: 4, padding: 4, borderRadius: 'var(--r-2)', border: '1px solid var(--line-1)', background: 'var(--bg-1)' }}>
+          <div className="seg">
             {(['iphone', 'ipad'] as const).map((d) => (
               <button
                 key={d}
                 type="button"
                 onClick={() => ppoSetDevice(d)}
-                style={{
-                  padding: '6px 12px',
-                  borderRadius: 'var(--r-1)',
-                  border: 'none',
-                  background: device === d ? 'var(--accent)' : 'transparent',
-                  color: device === d ? 'var(--accent-fg)' : 'var(--fg-2)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  textTransform: 'capitalize',
-                }}
+                className={device === d ? 'active' : ''}
                 title={d === 'iphone' ? 'iPhone 6.9" (1290×2796 export)' : 'iPad 13" (2064×2752 export)'}
               >
                 {d === 'iphone' ? '📱 iPhone' : '🟦 iPad'}
@@ -259,7 +249,7 @@ export function PPOScreen() {
                 <div>
                   Upload simulator screenshots once — they're shared across every strategy below.
                 </div>
-                <div style={{ marginTop: 12, fontSize: 11, opacity: 0.7 }}>
+                <div className="ds-note" style={{ marginTop: 12 }}>
                   PNG / JPG · Multi-select OK · Resized to {MAX_PREVIEW_DIM}px max for state storage
                 </div>
               </div>
@@ -329,7 +319,7 @@ export function PPOScreen() {
                         right: 4,
                         width: 22,
                         height: 22,
-                        borderRadius: 11,
+                        borderRadius: 6,
                         background: 'rgba(239,68,68,0.92)',
                         border: '1px solid rgba(255,255,255,0.6)',
                         color: '#fff',
@@ -448,7 +438,7 @@ export function PPOScreen() {
                 style={{
                   width: 72,
                   height: 72,
-                  borderRadius: 18,
+                  borderRadius: 8,
                   flex: 'none',
                   background: 'var(--ds-accent-soft)',
                   display: 'flex',
@@ -460,10 +450,10 @@ export function PPOScreen() {
                 <Shapes size={34} />
               </div>
               <div style={{ flex: 1, minWidth: 260 }}>
-                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-0)', marginBottom: 4 }}>
+                <div className="ds-card-title" style={{ marginBottom: 4 }}>
                   Generate icon variants for an icon experiment
                 </div>
-                <p style={{ margin: 0, fontSize: 13, color: 'var(--fg-2)', lineHeight: 1.6 }}>
+                <p style={{ margin: 0, fontSize: 14, lineHeight: '20px', color: 'var(--fg-2)' }}>
                   Render 1024×1024 app-icon variants from a base image and a prompt. Icons can't be
                   uploaded ad-hoc like screenshots — they ship inside the app binary as alternate
                   icons, then get selected as PPO treatments. This opens a dedicated screen.
@@ -473,8 +463,6 @@ export function PPOScreen() {
                 </p>
               </div>
               <Button
-                variant="primary"
-                size="lg"
                 leftIcon={<Shapes size={16} />}
                 rightIcon={<ArrowRight size={16} />}
                 onClick={() => nav('/icon-generator')}
@@ -508,9 +496,10 @@ export function PPOScreen() {
             background: savedAt ? 'var(--ds-good)' : 'var(--accent)',
             color: 'var(--accent-fg)',
             border: 'none',
-            borderRadius: 999,
-            padding: '12px 18px',
-            fontSize: 13,
+            borderRadius: 8,
+            height: 40,
+            padding: '0 16px',
+            fontSize: 14,
             fontWeight: 600,
             cursor: 'pointer',
             boxShadow: 'var(--ds-shadow-pop)',
@@ -594,9 +583,10 @@ function StrategyCard({
   return (
     <div
       style={{
-        border: `1px solid ${isExpanded ? 'var(--accent)' : 'var(--line-1)'}`,
-        borderRadius: 'var(--r-3)',
-        background: isExpanded ? 'var(--accent-soft)' : 'var(--bg-2)',
+        border: 0,
+        borderRadius: 8,
+        background: 'var(--ds-panel)',
+        boxShadow: isExpanded ? 'inset 0 0 0 1.5px var(--ds-accent), var(--ds-shadow)' : 'var(--ds-shadow)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -620,7 +610,7 @@ function StrategyCard({
           onClick={(e) => e.stopPropagation()}
           style={{
             flex: 1,
-            fontSize: 15,
+            fontSize: 16,
             fontWeight: 600,
             background: 'transparent',
             border: 'none',
@@ -629,7 +619,7 @@ function StrategyCard({
             padding: '4px 0',
           }}
         />
-        <span style={{ fontSize: 11, color: 'var(--fg-3)', whiteSpace: 'nowrap' }}>
+        <span className="ds-note" style={{ whiteSpace: 'nowrap' }}>
           {screensInStrategy.length} screens · {promptCount} prompts · {renderedCount} rendered
         </span>
         <button
@@ -641,15 +631,7 @@ function StrategyCard({
             }
           }}
           title="Delete strategy"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--fg-3)',
-            cursor: 'pointer',
-            padding: 4,
-            display: 'flex',
-            alignItems: 'center',
-          }}
+          className="btn btn--icon"
         >
           <Trash2 size={14} />
         </button>
@@ -679,18 +661,13 @@ function StrategyCard({
                 </div>
                 {/* Per-strategy device switch — drives the global PPO filter so the
                     grid + Generate target iPhone or iPad without scrolling to the top. */}
-                <div style={{ display: 'flex', gap: 2, padding: 2, borderRadius: 'var(--r-1)', border: '1px solid var(--line-1)', background: 'var(--bg-1)' }}>
+                <div className="seg seg--sm">
                   {(['iphone', 'ipad'] as const).map((d) => (
                     <button
                       key={d}
                       type="button"
                       onClick={() => ppoSetDevice(d)}
-                      style={{
-                        padding: '4px 10px', borderRadius: 'var(--r-1)', border: 'none',
-                        background: device === d ? 'var(--accent)' : 'transparent',
-                        color: device === d ? 'var(--accent-fg)' : 'var(--fg-2)',
-                        fontSize: 11, fontWeight: 600, cursor: 'pointer',
-                      }}
+                      className={device === d ? 'active' : ''}
                     >
                       {d === 'iphone' ? '📱 iPhone' : '🟦 iPad'}
                     </button>
@@ -719,7 +696,6 @@ function StrategyCard({
                   {isBatchInFlight ? `Generating ${generatingCount}…` : `Generate ${device === 'ipad' ? 'iPad' : 'iPhone'}${selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}`}
                 </Button>
                 <Button
-                  variant="ai"
                   size="sm"
                   leftIcon={<Wand2 size={14} />}
                   disabled={bothSelectedIds.length === 0 || isBatchInFlight}
@@ -814,21 +790,10 @@ function StrategyCard({
                       e.stopPropagation();
                       setShowAddPicker((v) => !v);
                     }}
-                    style={{
-                      alignSelf: 'flex-start',
-                      background: 'transparent',
-                      border: '1px dashed var(--line-2)',
-                      color: 'var(--fg-1)',
-                      borderRadius: 'var(--r-2)',
-                      padding: '6px 12px',
-                      fontSize: 12,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
+                    className="btn btn--sm"
+                    style={{ alignSelf: 'flex-start', borderStyle: 'dashed' }}
                   >
-                    <Plus size={12} />
+                    <Plus size={14} />
                     Add screen ({screensNotInStrategy.length} available)
                   </button>
                   {showAddPicker && (
@@ -839,8 +804,8 @@ function StrategyCard({
                         gap: 8,
                         padding: 8,
                         background: 'var(--bg-1)',
-                        border: '1px solid var(--line-1)',
-                        borderRadius: 'var(--r-2)',
+                        borderRadius: 8,
+                        boxShadow: 'var(--ds-shadow-pop)',
                       }}
                     >
                       {screensNotInStrategy.map((src) => (
@@ -857,11 +822,11 @@ function StrategyCard({
                             alignItems: 'center',
                             gap: 8,
                             padding: '4px 8px 4px 4px',
-                            background: 'var(--bg-2)',
-                            border: '1px solid var(--line-1)',
-                            borderRadius: 'var(--r-2)',
+                            background: 'var(--ds-input-bg)',
+                            border: 'var(--ds-control-border)',
+                            borderRadius: 8,
                             cursor: 'pointer',
-                            fontSize: 12,
+                            fontSize: 13,
                             color: 'var(--fg-0)',
                           }}
                           title={`Add ${src.filename} to this strategy`}
@@ -880,7 +845,7 @@ function StrategyCard({
               )}
 
               {screensInStrategy.length === 0 && (
-                <div style={{ fontSize: 12, color: 'var(--fg-2)', textAlign: 'center', padding: 16, border: '1px dashed var(--line-2)', borderRadius: 'var(--r-2)' }}>
+                <div className="ds-note" style={{ textAlign: 'center', padding: 16, background: 'var(--ds-panel-2)', borderRadius: 8 }}>
                   No screens in this strategy yet. Use <strong>Add screen</strong> above to pick from the source pool.
                 </div>
               )}
@@ -1053,7 +1018,7 @@ function PPOTile({
               right: 4,
               width: 22,
               height: 22,
-              borderRadius: 11,
+              borderRadius: 6,
               background: 'rgba(239,68,68,0.92)',
               border: '1px solid rgba(255,255,255,0.6)',
               color: '#fff',
@@ -1078,22 +1043,15 @@ function PPOTile({
           style={{
             width: '100%',
             boxSizing: 'border-box',
-            background: 'var(--bg-2)',
-            color: 'var(--fg-0)',
-            border: '1px solid var(--line-1)',
-            borderRadius: 'var(--r-2)',
-            padding: 8,
-            fontSize: 12,
-            lineHeight: 1.4,
-            fontFamily: 'inherit',
+            fontSize: 13,
             resize: 'vertical',
             minHeight: 140,
             maxHeight: 320,
             overflowY: 'auto',
-            outline: 'none',
           }}
+          className="textarea"
         />
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: selected ? 'var(--fg-1)' : 'var(--fg-3)', cursor: 'pointer', userSelect: 'none' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: selected ? 'var(--fg-1)' : 'var(--fg-3)', cursor: 'pointer', userSelect: 'none' }}>
           <input type="checkbox" checked={selected} onChange={() => toggleSel(selKey, selDefault)} style={{ accentColor: 'var(--accent)' }} />
           {selected ? 'Will generate in batch' : hasResult ? 'Done — skipped in batch' : 'Skipped in batch'}
         </label>
@@ -1101,20 +1059,8 @@ function PPOTile({
           type="button"
           disabled={prompt.trim().length === 0 || isGenerating}
           onClick={onRegenerate}
-          style={{
-            background: prompt.trim().length === 0 || isGenerating ? 'var(--bg-2)' : 'var(--accent)',
-            color: prompt.trim().length === 0 || isGenerating ? 'var(--fg-3)' : 'var(--accent-fg)',
-            border: 'none',
-            borderRadius: 'var(--r-2)',
-            padding: '6px 10px',
-            fontSize: 11,
-            fontWeight: 600,
-            cursor: prompt.trim().length === 0 || isGenerating ? 'not-allowed' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-          }}
+          className="btn btn--sm"
+          style={{ width: '100%', gap: 6 }}
         >
           {isGenerating ? (
             <>

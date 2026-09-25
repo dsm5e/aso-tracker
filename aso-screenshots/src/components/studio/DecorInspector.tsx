@@ -1,3 +1,4 @@
+import { Trash2 } from 'lucide-react';
 import { Card, Slider } from '../shared';
 import type { DecorItem, Screenshot } from '../../state/studio';
 
@@ -8,10 +9,7 @@ import type { DecorItem, Screenshot } from '../../state/studio';
  */
 const SHAPES: NonNullable<DecorItem['shape']>[] = ['arrow', 'arrow-curly', 'star', 'heart', 'sparkle', 'swirl', 'scribble', 'burst', 'wave'];
 
-const inputStyle: React.CSSProperties = {
-  flex: 1, minWidth: 0, padding: '6px 8px', borderRadius: 8, border: '1px solid var(--line-2)',
-  background: 'var(--bg-2)', color: 'var(--fg-1)', fontSize: 12,
-};
+const inputStyle: React.CSSProperties = { flex: 1, minWidth: 0 };
 
 export function DecorInspector({ ss, set }: { ss: Screenshot; set: (patch: Partial<Screenshot>) => void }) {
   const list = ss.decor ?? [];
@@ -30,41 +28,40 @@ export function DecorInspector({ ss, set }: { ss: Screenshot; set: (patch: Parti
   return (
     <Card.Section title="Декор (дети, маскот, пузыри, дудлы)">
       {list.map((d, i) => (
-        <div key={i} style={{ border: '1px solid var(--line-2)', borderRadius: 10, padding: 10, marginBottom: 10 }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12 }}>
-            <strong style={{ flex: 1 }}>
+        <div key={i} style={{ background: 'var(--ds-panel-2)', borderRadius: 8, padding: 10, marginBottom: 10 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', fontSize: 13 }}>
+            <strong style={{ flex: '1 0 100%', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {i + 1}. {d.kind === 'image' ? (d.src?.split('/').pop() ?? 'image') : d.kind === 'bubble' ? 'пузырь' : d.shape}
             </strong>
             <select className="select" value={d.layer ?? 'front'} onChange={(e) => update(i, { layer: e.target.value as DecorItem['layer'] })}
-              style={{ width: 'auto', height: 26, fontSize: 11 }}>
+              style={{ width: 'auto', flex: 1, minWidth: 0 }}>
               <option value="back">под устройством</option>
               <option value="front">над устройством</option>
               <option value="top">над всем</option>
             </select>
-            <label style={{ fontSize: 11 }}>
+            <label style={{ fontSize: 13 }}>
               <input type="checkbox" checked={Boolean(d.flipX)} onChange={(e) => update(i, { flipX: e.target.checked })} /> ⇋
             </label>
-            <button type="button" onClick={() => remove(i)}
-              style={{ border: 0, background: 'transparent', color: 'var(--neg)', cursor: 'pointer', fontSize: 11 }}>
-              удалить
+            <button type="button" onClick={() => remove(i)} className="btn btn--icon btn--danger" title="удалить" aria-label="удалить">
+              <Trash2 size={14} />
             </button>
           </div>
           {d.kind === 'bubble' && (
-            <textarea value={d.text ?? ''} rows={2} onChange={(e) => update(i, { text: e.target.value })}
+            <textarea className="textarea" value={d.text ?? ''} rows={2} onChange={(e) => update(i, { text: e.target.value })}
               style={{ ...inputStyle, width: '100%', marginTop: 8, resize: 'vertical' }} />
           )}
           {d.kind === 'doodle' && (
             <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
               <select className="select" value={d.shape} onChange={(e) => update(i, { shape: e.target.value as DecorItem['shape'] })}
-                style={{ flex: 1, height: 26, fontSize: 11 }}>
+                style={{ flex: 1 }}>
                 {SHAPES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
               <input type="color" value={/^#[0-9a-f]{6}$/i.test(d.stroke ?? '') ? d.stroke : '#ffffff'}
-                onChange={(e) => update(i, { stroke: e.target.value })} />
+                onChange={(e) => update(i, { stroke: e.target.value })} style={{ width: 40, flex: 'none' }} />
             </div>
           )}
           {d.kind === 'image' && (
-            <input type="text" value={d.src ?? ''} placeholder="URL прозрачного PNG" onChange={(e) => update(i, { src: e.target.value })}
+            <input type="text" className="input" value={d.src ?? ''} placeholder="URL прозрачного PNG" onChange={(e) => update(i, { src: e.target.value })}
               style={{ ...inputStyle, width: '100%', marginTop: 8 }} />
           )}
           {slider('X', d.xFrac, -0.2, 1.2, 0.005, (v) => update(i, { xFrac: v }))}
@@ -74,9 +71,9 @@ export function DecorInspector({ ss, set }: { ss: Screenshot; set: (patch: Parti
         </div>
       ))}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <button type="button" className="btn btn-ghost" onClick={() => add({ kind: 'bubble', text: 'Привет!', xFrac: 0.3, yFrac: 0.4, widthFrac: 0.45, layer: 'top', tail: 'bottom-left' })}>+ пузырь</button>
-        <button type="button" className="btn btn-ghost" onClick={() => add({ kind: 'doodle', shape: 'star', xFrac: 0.15, yFrac: 0.5, widthFrac: 0.08, stroke: '#FFE27A', layer: 'top' })}>+ дудл</button>
-        <label className="btn btn-ghost" style={{ cursor: 'pointer' }}>
+        <button type="button" className="btn" onClick={() => add({ kind: 'bubble', text: 'Привет!', xFrac: 0.3, yFrac: 0.4, widthFrac: 0.45, layer: 'top', tail: 'bottom-left' })}>+ пузырь</button>
+        <button type="button" className="btn" onClick={() => add({ kind: 'doodle', shape: 'star', xFrac: 0.15, yFrac: 0.5, widthFrac: 0.08, stroke: '#FFE27A', layer: 'top' })}>+ дудл</button>
+        <label className="btn" style={{ cursor: 'pointer' }}>
           + картинка
           <input type="file" accept="image/png,image/webp" hidden onChange={(e) => {
             const f = e.target.files?.[0];
@@ -85,7 +82,7 @@ export function DecorInspector({ ss, set }: { ss: Screenshot; set: (patch: Parti
           }} />
         </label>
       </div>
-      <div style={{ marginTop: 10, fontSize: 11 }}>
+      <div style={{ marginTop: 10, fontSize: 13, color: 'var(--fg-1)' }}>
         <label>
           <input type="checkbox" checked={ss.deviceAnchor !== 'free'}
             onChange={(e) => set({ deviceAnchor: e.target.checked ? undefined : 'free' })} />{' '}

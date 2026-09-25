@@ -1,7 +1,7 @@
 // Reference Video — upload a local mp4/mov (slime, b-roll, satisfying clip)
 // to feed the Split Screen node. Same pattern as ReferenceImageNode.
 import { useRef, useState } from 'react';
-import { NodeShell, inputStyle, labelStyle, patchData } from './common';
+import { NodeShell, patchData } from './common';
 import { openLightbox } from '../components/Lightbox';
 import { API } from '../store/graphClient';
 
@@ -43,27 +43,25 @@ export function ReferenceVideoNode({ id, data }: { id: string; data: Data }) {
       outputs={[{ id: 'video', label: 'video' }]}
     >
       <div className="nodrag">
-        <span style={labelStyle}>Upload mp4/mov (max 200MB)</span>
-        <input
+        <span className="vid-label">Upload mp4/mov (max 200MB)</span>
+        <input className="ds-input"
           ref={fileRef}
           type="file"
           accept="video/mp4,video/quicktime,video/webm,video/x-m4v"
           onChange={handleFile}
-          style={{ ...inputStyle, padding: 4 }}
           disabled={busy}
         />
       </div>
       <div className="nodrag">
-        <span style={labelStyle}>or paste URL / path</span>
-        <input
+        <span className="vid-label">or paste URL / path</span>
+        <input className="ds-input"
           type="text"
           value={data.url ?? ''}
           onChange={(e) => patchData(id, { url: e.target.value })}
           placeholder="/output/uploads/upload-…mp4 or https://"
-          style={inputStyle}
         />
       </div>
-      {err && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{err}</div>}
+      {err && <div className="vid-err">{err}</div>}
       {data.url && (
         <video
           key={data.url}

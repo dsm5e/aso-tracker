@@ -4,7 +4,7 @@
 //
 // To peek word timings before burning (e.g. to align Image Overlays), use
 // the dedicated `Transcribe` node upstream — same whisper, pass-through video.
-import { NodeShell, inputStyle, labelStyle, patchData, triggerRun, stopProp } from './common';
+import { NodeShell, patchData, triggerRun, stopProp } from './common';
 import { openLightbox } from '../components/Lightbox';
 
 type Preset =
@@ -60,56 +60,52 @@ export function CaptionsNode({ id, data }: { id: string; data: Data }) {
       runLabel="Burn Captions (~$0.01)"
     >
       <div className="nodrag">
-        <span style={labelStyle}>Style</span>
+        <span className="vid-label">Style</span>
         <select
-          className="nodrag"
+          className="nodrag ds-select"
           onMouseDown={stopProp}
           value={preset}
           onChange={(e) => patchData(id, { preset: e.target.value as Preset })}
-          style={inputStyle}
         >
           {(Object.keys(PRESET_LABEL) as Preset[]).map((p) => (
             <option key={p} value={p}>{PRESET_LABEL[p]}</option>
           ))}
         </select>
       </div>
-      <div className="nodrag" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      <div className="nodrag vid-grid2">
         <div>
-          <span style={labelStyle}>Font Size</span>
-          <input
+          <span className="vid-label">Font Size</span>
+          <input className="ds-input"
             type="number"
             min={24}
             max={140}
             step={4}
             value={fontSize}
             onChange={(e) => patchData(id, { fontSize: Number(e.target.value) })}
-            style={inputStyle}
           />
         </div>
         <div>
-          <span style={labelStyle}>Bottom Margin (px)</span>
-          <input
+          <span className="vid-label">Bottom Margin (px)</span>
+          <input className="ds-input"
             type="number"
             min={0}
             max={1500}
             step={20}
             value={marginV}
             onChange={(e) => patchData(id, { marginV: Number(e.target.value) })}
-            style={inputStyle}
           />
         </div>
       </div>
-      {data.error && <div style={{ color: 'var(--ds-bad)', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div className="vid-err">{data.error}</div>}
       {data.status === 'done' && data.outputUrl && (
         <>
           <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 'var(--ds-radius-control)', background: '#000' }} />
-          <div className="nodrag" style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: 'var(--ds-muted)' }}>
+          <div className="nodrag vid-row vid-meta">
             <span>burned</span>
             <div style={{ flex: 1 }} />
-            <button
+            <button className="ds-btn ds-btn-sm"
               onClick={() => openLightbox({ kind: 'video', src: data.outputUrl! })}
               title="open fullscreen"
-              style={{ background: 'var(--ds-panel)', color: 'var(--ds-text)', border: '1px solid var(--ds-border)', borderRadius: 4, padding: '2px 8px', cursor: 'zoom-in', fontSize: 11 }}
             >⛶ fullscreen</button>
           </div>
         </>

@@ -60,15 +60,15 @@ export function IconGeneratorScreen() {
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10,
                 background: 'transparent', border: 'none', color: 'var(--fg-2)',
-                fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0,
+                fontSize: 14, fontWeight: 500, cursor: 'pointer', padding: 0,
               }}
             >
               <ArrowLeft size={14} /> Back to PPO
             </button>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            <h1 className="ds-page-title" style={{ margin: 0 }}>
               Icon Generator
             </h1>
-            <p style={{ margin: '8px 0 0', color: 'var(--fg-2)', fontSize: 13, maxWidth: 720 }}>
+            <p className="ds-page-sub" style={{ margin: '4px 0 0', maxWidth: 720 }}>
               Generate 1024×1024 app-icon variants for A/B testing. Upload a base image per variant,
               describe the styling, and render a square iOS icon. Drop the PNG into Xcode as an
               alternate app icon to test it in an App Store Connect PPO icon experiment.
@@ -76,8 +76,6 @@ export function IconGeneratorScreen() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <Button
-              variant="ghost"
-              size="sm"
               leftIcon={
                 exportAllProg && exportAllProg.phase !== 'done' ? (
                   <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
@@ -99,7 +97,7 @@ export function IconGeneratorScreen() {
                 ? `Fetching ${exportAllProg.done}/${exportAllProg.total}…`
                 : 'Zipping…'}
             </Button>
-            <Button variant="primary" size="sm" leftIcon={<Plus size={14} />} onClick={() => iconLabAddVariant()}>
+            <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => iconLabAddVariant()}>
               Add variant
             </Button>
           </div>
@@ -108,13 +106,12 @@ export function IconGeneratorScreen() {
         {/* ASC constraint reminder — icons can't be uploaded ad-hoc like screenshots. */}
         <div
           style={{
-            padding: 12,
-            borderRadius: 'var(--r-2)',
-            background: 'var(--accent-soft)',
-            border: '1px solid var(--line-1)',
-            fontSize: 12,
+            padding: '12px 16px',
+            borderRadius: 8,
+            background: 'var(--ds-accent-soft)',
+            fontSize: 14,
             color: 'var(--fg-1)',
-            lineHeight: 1.6,
+            lineHeight: '20px',
           }}
         >
           <strong>How icon A/B tests work in ASC:</strong> unlike screenshots, an icon variant must
@@ -206,9 +203,9 @@ function IconVariantCard({ variant }: { variant: IconVariant }) {
       style={{
         flex: '0 0 calc((100% - 32px) / 3)',
         minWidth: 280,
-        border: '1px solid var(--line-1)',
-        borderRadius: 'var(--r-3)',
-        background: 'var(--bg-2)',
+        borderRadius: 8,
+        background: 'var(--ds-panel)',
+        boxShadow: 'var(--ds-shadow)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -220,7 +217,7 @@ function IconVariantCard({ variant }: { variant: IconVariant }) {
           value={variant.title}
           onChange={(e) => iconLabUpdateVariant(variant.id, { title: e.target.value })}
           style={{
-            flex: 1, fontSize: 14, fontWeight: 600, background: 'transparent', border: 'none',
+            flex: 1, fontSize: 16, fontWeight: 600, background: 'transparent', border: 'none',
             outline: 'none', color: 'var(--fg-0)', padding: '2px 0',
           }}
         />
@@ -230,7 +227,7 @@ function IconVariantCard({ variant }: { variant: IconVariant }) {
             if (window.confirm(`Delete variant "${variant.title}"?`)) iconLabRemoveVariant(variant.id);
           }}
           title="Delete variant"
-          style={{ background: 'transparent', border: 'none', color: 'var(--fg-3)', cursor: 'pointer', padding: 4, display: 'flex' }}
+          className="btn btn--icon"
         >
           <Trash2 size={14} />
         </button>
@@ -251,7 +248,7 @@ function IconVariantCard({ variant }: { variant: IconVariant }) {
           style={{
             aspectRatio: '1 / 1',
             borderRadius: 'var(--r-3)',
-            border: previewSrc ? '1px solid var(--line-1)' : `1.5px dashed ${isDragOver ? 'var(--accent)' : 'var(--line-2)'}`,
+            border: previewSrc ? '1px solid var(--line-1)' : `1px dashed ${isDragOver ? 'var(--accent)' : 'var(--ds-ctl-border)'}`,
             background: isDragOver ? 'var(--accent-soft)' : 'var(--bg-1)',
             position: 'relative',
             overflow: 'hidden',
@@ -290,7 +287,7 @@ function IconVariantCard({ variant }: { variant: IconVariant }) {
               type="button"
               onClick={(e) => { e.stopPropagation(); iconLabSetBase(variant.id, undefined); }}
               title="Remove base image"
-              style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 11, background: 'rgba(239,68,68,0.92)', border: '1px solid rgba(255,255,255,0.6)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              style={{ position: 'absolute', top: 6, right: 6, width: 22, height: 22, borderRadius: 6, background: 'rgba(239,68,68,0.92)', border: '1px solid rgba(255,255,255,0.6)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             >
               <X size={12} />
             </button>
@@ -313,7 +310,7 @@ function IconVariantCard({ variant }: { variant: IconVariant }) {
 
         <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }}
           onChange={(e) => { const f = e.target.files?.[0]; if (f) void handleFile(f); e.target.value = ''; }} />
-        {uploadError && <div style={{ color: 'var(--danger)', fontSize: 11 }}>{uploadError}</div>}
+        {uploadError && <div style={{ color: 'var(--danger)', fontSize: 13 }}>{uploadError}</div>}
 
         {/* Prompt */}
         <textarea
@@ -321,11 +318,8 @@ function IconVariantCard({ variant }: { variant: IconVariant }) {
           onChange={(e) => iconLabSetPrompt(variant.id, e.target.value)}
           placeholder="Describe the icon styling — e.g. 'flat minimal, deep teal gradient, white cross glyph, subtle depth'…"
           rows={4}
-          style={{
-            width: '100%', boxSizing: 'border-box', background: 'var(--bg-1)', color: 'var(--fg-0)',
-            border: '1px solid var(--line-1)', borderRadius: 'var(--r-2)', padding: 8, fontSize: 12,
-            lineHeight: 1.4, fontFamily: 'inherit', resize: 'vertical', minHeight: 76, outline: 'none',
-          }}
+          className="textarea"
+          style={{ width: '100%', boxSizing: 'border-box', fontSize: 13, resize: 'vertical', minHeight: 76 }}
         />
 
         {/* Actions */}
