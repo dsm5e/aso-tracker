@@ -266,3 +266,23 @@ node cli/import-sources.mjs --app liveaquarium --scan    # rescan after manual a
 ```
 Missing files for a language just fall back (the import prints what's missing).
 `setup-liveaquarium.mjs` keeps `localizedSources` (it spreads the existing state).
+
+## Gateway ports (monorepo `npm run dev` at the repo root)
+
+The root gateway serves every product on ONE port: UI `localhost:5173/studio/*`,
+API `localhost:5173/studio-api/*` (= `/api/*`). :5180/:5181 exist only with the
+standalone `aso-screenshots` dev server. CLIs that talk to the Studio:
+`ASO_API=http://localhost:5173/studio-api ASO_ORIGIN=http://localhost:5173 node cli/render-export.mjs …`
+(defaults stay :5181/api and :5180). render-export waits for the injected web fonts
+before each shot and retries a job once if a dev-server reload tears the page down.
+
+## Luna Dream (added 2026-09-25)
+
+- `node cli/setup-dream.mjs` — rebuilds the project: 7 frames × iPhone/iPad on preset
+  `dream-night`, 50 locales from `cli/dream-copy.mjs`, variants `A` (default) and `T`
+  (tradition-first: ar-SA tr ur-PK id ms bn-BD). Sources `public/uploads/dream/`
+  (root = en UI; de fr pt tr ar hi ja ko zh ru sub-folders), night-sky backgrounds
+  `uploads/dream/decor/bg-{iphone,ipad}.png` via per-slot `backgroundOverride`.
+- Preset text options added: `text.subtitleFont` (sans subline under a serif title;
+  the locale script font stays in the stack as glyph fallback) and
+  `text.textWrap: 'balance' | 'pretty'`.

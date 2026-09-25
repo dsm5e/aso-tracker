@@ -36,6 +36,7 @@ export function loadPresetFonts(): void {
   // Anything a preset uses that escaped the curated set (e.g. exotic imported template)
   for (const p of PRESETS) {
     if (p.text?.font && !PRELOADED_FONTS.has(p.text.font)) fonts.add(p.text.font);
+    if (p.text?.subtitleFont && !PRELOADED_FONTS.has(p.text.subtitleFont)) fonts.add(p.text.subtitleFont);
   }
   if (fonts.size === 0) return;
 

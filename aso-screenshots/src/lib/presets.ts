@@ -31,6 +31,12 @@ export interface PresetText {
   subtitleColor?: string;
   /** Subtitle font weight (default 500). */
   subtitleWeight?: number;
+  /** Subtitle font family (default: the title font). Locale script fonts
+   *  stay in the stack as per-glyph fallback, so CJK / Arabic still render. */
+  subtitleFont?: string;
+  /** CSS `text-wrap` for title + subtitle, e.g. 'balance' — evens out
+   *  two-line headlines instead of leaving an orphan word (default: none). */
+  textWrap?: 'balance' | 'pretty';
   /** Title line-height (default 1.02). */
   titleLineHeight?: number;
   /** Title letter-spacing (default -0.02em). */

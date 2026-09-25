@@ -1223,6 +1223,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               letterSpacing: tracking(verbDisplay, pt?.titleLetterSpacing ?? '-0.02em'),
               textShadow: titleShadow,
               whiteSpace: fitLines ? 'pre' : 'pre-wrap',
+              textWrapStyle: pt?.textWrap,
               overflowWrap: 'normal',
               wordBreak: 'normal',
               hyphens: 'none',
@@ -1236,6 +1237,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               data-headline-descriptor
               style={{
                 color: subtitleColor,
+                fontFamily: pt?.subtitleFont ? `"${pt.subtitleFont}", "${textFont}", Inter, sans-serif` : undefined,
                 fontSize: subPx,
                 fontWeight: pt?.subtitleWeight ?? 500,
                 lineHeight: lineHeight(descDisplay, 1.15),
@@ -1244,6 +1246,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
                 letterSpacing: tracking(descDisplay, '-0.005em'),
                 textShadow: subtitleShadow,
                 whiteSpace: fitLines ? 'pre' : 'pre-wrap',
+                textWrapStyle: pt?.textWrap,
                 overflowWrap: 'break-word',
                 wordBreak: 'normal',
               }}

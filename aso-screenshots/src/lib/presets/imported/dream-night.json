@@ -1,0 +1,45 @@
+{
+  "id": "dream-night",
+  "name": "Dream Night Sky",
+  "kind": "real",
+  "description": "Calm night sky for Luna Dream: indigo-to-violet gradient with scattered stars, soft sparkles and a small crescent moon; serif headline in pale lavender-white, sans subline in lavender; the phone hangs under the headline and is clipped by the bottom edge. Night indigo #12142B + lavender + soft gold.",
+  "recommendedFor": "sleep / dreams / journaling / meditation apps",
+  "background": {
+    "type": "linear",
+    "css": "linear-gradient(180deg, #090B1E 0%, #12142B 35%, #1A1840 75%, #241E52 100%)"
+  },
+  "text": {
+    "font": "Noto Serif Display",
+    "weight": 600,
+    "color": "#F4EFFF",
+    "uppercase": false,
+    "align": "center",
+    "titleShadow": "0 0.3u 1.6u rgba(6,6,30,.55)",
+    "subtitleFont": "Inter",
+    "subtitleColor": "#C9BDFF",
+    "subtitleWeight": 500,
+    "subtitleUppercase": false,
+    "titleLineHeight": 1.08,
+    "titleLetterSpacing": "-0.01em",
+    "subtitleGapU": 1.8,
+    "sidePaddingU": 7,
+    "textWrap": "balance"
+  },
+  "layout": { "deviceAnchor": "below-headline", "deviceGapU": 5, "headlineMaxFraction": 0.3 },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": true,
+  "suggestedAccent": "#E9C98B",
+  "decorationsHint": "calm night sky: deep indigo gradient, sparse stars with a few soft four-point sparkles, a small crescent moon in a corner, faint lavender haze behind the phone; no clutter.",
+  "device": {
+    "asset": "iphone",
+    "scale": 1.12,
+    "ipad": { "scale": 1.0 },
+    "shadow": "0 3u 8u rgba(0,0,10,.55)",
+    "frameStyle": "apple",
+    "bezelColor": { "iphone": "deep-blue", "ipad": "space-black" }
+  },
+  "samples": [
+    { "verb": "What did your dream mean?", "descriptor": "AI interpretation in seconds", "text": { "yFraction": 0.06, "titlePx": 128, "subPx": 60 } }
+  ]
+}

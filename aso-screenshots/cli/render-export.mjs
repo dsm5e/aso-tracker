@@ -37,15 +37,18 @@ import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import pathMod from 'node:path';
 
-const API = 'http://localhost:5181';
-const BASE = 'http://localhost:5180/studio';
+// The monorepo gateway serves everything on :5173 (`/studio`, `/studio-api`);
+// the standalone dev servers use :5180 / :5181. Override via env for the gateway:
+//   ASO_API=http://localhost:5173/studio-api ASO_ORIGIN=http://localhost:5173
+const API = process.env.ASO_API ?? 'http://localhost:5181/api';
+const ORIGIN = process.env.ASO_ORIGIN ?? 'http://localhost:5180';
 
 function arg(name, fallback = null) {
   const i = process.argv.indexOf(`--${name}`);
   return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
 
-const state = await fetch(`${API}/api/studio-state`).then((r) => {
+const state = await fetch(`${API}/studio-state`).then((r) => {
   if (!r.ok) throw new Error(`state GET ${r.status}`);
   return r.json();
 });
@@ -150,7 +153,7 @@ async function worker(queue) {
     const key = `${job.slot.id}|${code}`;
     try {
       if (!loaded) {
-        await page.goto(`http://localhost:5180${path}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        await page.goto(`${ORIGIN}${path}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await page.evaluate(() => document.fonts.ready);
         loaded = true;
       } else {
@@ -168,7 +171,22 @@ async function worker(queue) {
       // Locale fonts and any artwork not yet cached still load asynchronously,
       // and the headline fit pass re-runs when they land.
       await page.evaluate(async () => {
+        // Web fonts are injected asynchronously (fontLoader fetches the Google CSS),
+        // so fonts.ready can resolve before the headline face even exists. Wait for
+        // the injected CSS, then load the exact faces the headline uses.
+        const t0 = Date.now();
+        while (!document.querySelector('style[data-preset-fonts]')?.textContent
+          && !document.querySelector('link[data-preset-fonts]') && Date.now() - t0 < 10_000) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        const els = document.querySelectorAll('[data-headline-title], [data-headline-descriptor]');
+        await Promise.all([...els].map((el) => {
+          const cs = getComputedStyle(el);
+          return document.fonts.load(`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`, el.textContent || 'A').catch(() => null);
+        }));
         await document.fonts.ready;
+        // Let the headline fit pass re-run on the final metrics.
+        await new Promise((r) => setTimeout(r, 120));
         const imgs = [...document.images].filter((i) => !i.complete);
         await Promise.all(imgs.map((i) => new Promise((r) => {
           i.addEventListener('load', r, { once: true });
@@ -198,6 +216,14 @@ async function worker(queue) {
       done += 1;
       if (done % 25 === 0 || done === jobs.length) console.log(`  ${done}/${jobs.length}`);
     } catch (e) {
+      // A dev-server reload (Vite dep re-optimisation, HMR) can tear down the page
+      // mid-job; retry such a job once on a fresh load before reporting it.
+      if (!job.retried && /context was destroyed|navigation|Target closed/i.test(e.message)) {
+        job.retried = true;
+        queue.push(job);
+        loaded = false;
+        continue;
+      }
       failures.push({ locale: code || sourceLocale, slot: `${job.variant ? job.variant + '/' : ''}${job.slot.device ?? 'iphone'} ${job.n}`, error: e.message.split('\n')[0] });
       // A failed job can leave the SPA on the wrong route; force a clean load.
       loaded = false;
