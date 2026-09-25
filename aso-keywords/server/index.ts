@@ -228,7 +228,9 @@ app.get('/api/apps/:id/suggestions', async (req, res) => {
     return;
   }
   try {
-    res.json(await keywordSuggestions(req.params.id, locale));
+    const refresh = ['1', 'true'].includes(String(req.query.refresh || ''));
+    res.set('Cache-Control', 'no-store');
+    res.json(await keywordSuggestions(req.params.id, locale, { refresh }));
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

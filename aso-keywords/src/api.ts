@@ -340,11 +340,37 @@ export interface RelevanceRow {
   flag: 'match' | 'ambiguous' | 'mismatch' | 'unknown';
 }
 
-export interface KeywordSuggestion {
+export type IdeaSource = 'apple_autocomplete' | 'competitor_title' | 'asa_suggestion';
+
+export interface KeywordIdea {
   keyword: string;
-  source: 'apple_autocomplete' | 'competitor_title';
+  source: IdeaSource;
+  sources: IdeaSource[];
+  /** Plain-Russian evidence lines: seed query, competitor titles, Apple Ads. */
+  origin: string[];
+  /** Why the phrase passed the relevance filter. */
+  reason: string;
+  cluster: { id: string; label: string };
+  /** Expected-effect estimate 0–100 = demand × chance × 100. */
   score: number;
-  evidence: string;
+  level: 'high' | 'medium' | 'low';
+  demand: number;
+  chance: number;
+  inputs: string[];
+}
+
+export interface KeywordSuggestionsResponse {
+  locale: string;
+  generatedAt: string;
+  formula: string;
+  signals: {
+    appleAutocomplete: 'ok' | 'empty';
+    asaPopularity: 'ok' | 'no-data' | 'unavailable';
+    competitorApps: number;
+  };
+  ideas: KeywordIdea[];
+  rejected: Array<{ keyword: string; reason: string }>;
+  trackedSkipped: number;
 }
 
 export const api = {
@@ -434,9 +460,9 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(keywords),
     }).then((r) => j(r)),
-  suggestions: (id: string, locale: string) =>
-    fetch(`/api/apps/${id}/suggestions?locale=${encodeURIComponent(locale)}`)
-      .then((r) => j<KeywordSuggestion[]>(r)),
+  suggestions: (id: string, locale: string, refresh = false) =>
+    fetch(`/api/apps/${id}/suggestions?locale=${encodeURIComponent(locale)}${refresh ? '&refresh=1' : ''}`)
+      .then((r) => j<KeywordSuggestionsResponse>(r)),
   itunesLookup: (iTunesId: string, country = 'us') =>
     fetch(`/api/itunes/lookup?id=${iTunesId}&country=${country}`).then((r) => j(r)),
   artworks: (ids: number[], bundles: string[], country = 'us') =>

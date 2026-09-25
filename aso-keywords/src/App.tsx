@@ -10,7 +10,8 @@ import {
   type RankingRow,
   type SnapshotEvent,
   type SnapshotSpeed,
-  type KeywordSuggestion,
+  type KeywordIdea,
+  type KeywordSuggestionsResponse,
   type RelevanceRow,
   type MoversResponse,
   type Mover,
@@ -139,14 +140,6 @@ function freshnessLabel(value: string | null | undefined) {
   }).format(parsed)}`;
 }
 
-function suggestionEvidenceLabel(value: string) {
-  const competitors = value.match(/^Used by (\d+) top-ranking competitors?$/i);
-  if (competitors) return `Используют конкуренты из топа: ${competitors[1]}`;
-  const autocomplete = value.match(/^Apple autocomplete from [“"](.+)[”"]$/i);
-  if (autocomplete) return `Автоподсказка Apple для «${autocomplete[1]}»`;
-  return value;
-}
-
 function AppIcon({ app, size = 42 }: { app: AppStats; size?: number }) {
   if (app.iconUrl) {
     return <img className="app-icon" src={app.iconUrl} alt="" style={{ width: size, height: size }} />;
@@ -182,7 +175,7 @@ export default function App() {
   const [dialogBusy, setDialogBusy] = useState(false);
   const [rowUpdates, setRowUpdates] = useState<Record<string, RowUpdateState>>({});
   const [competitorBundle, setCompetitorBundle] = useState<string | null>(null);
-  const [suggestions, setSuggestions] = useState<KeywordSuggestion[] | null>(null);
+  const [suggestions, setSuggestions] = useState<KeywordSuggestionsResponse | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
   const [studioMenuOpen, setStudioMenuOpen] = useState(false);
@@ -636,12 +629,12 @@ export default function App() {
     placeholder: 'Найти приложение или ввести App Store ID',
   });
 
-  const findSuggestions = async () => {
+  const findSuggestions = async (refresh = false) => {
     if (!selectedApp || !locale || suggestionsLoading) return;
     setSuggestionsLoading(true);
     setSuggestionsError(null);
     try {
-      setSuggestions(await api.suggestions(selectedApp.id, locale));
+      setSuggestions(await api.suggestions(selectedApp.id, locale, refresh));
     } catch (error) {
       setSuggestionsError((error as Error).message);
     } finally {
@@ -979,10 +972,10 @@ export default function App() {
         </> : keywordView === 'ideas' ? (
           <SuggestionsPanel
             locale={locale}
-            suggestions={suggestions ?? []}
+            data={suggestions}
             loading={suggestionsLoading}
             error={suggestionsError}
-            onReload={() => void findSuggestions()}
+            onReload={() => void findSuggestions(true)}
             onAdd={addSelectedSuggestions}
           />
         ) : (
@@ -1504,26 +1497,46 @@ function InputDialog({
   );
 }
 
+const IDEA_LEVEL_LABEL: Record<KeywordIdea['level'], string> = { high: 'Высокий', medium: 'Средний', low: 'Низкий' };
+
+function asaSignalLabel(state: KeywordSuggestionsResponse['signals']['asaPopularity']) {
+  if (state === 'ok') return 'Популярность Apple Ads: есть для части фраз';
+  if (state === 'no-data') return 'Популярность Apple Ads: Apple не отдала данные по этим фразам';
+  return 'Популярность Apple Ads: сервис недоступен — оценка без неё';
+}
+
 function SuggestionsPanel({
   locale,
-  suggestions,
+  data,
   loading,
   error,
   onReload,
   onAdd,
 }: {
   locale: string;
-  suggestions: KeywordSuggestion[];
+  data: KeywordSuggestionsResponse | null;
   loading: boolean;
   error: string | null;
   onReload: () => void;
   onAdd: (keywords: string[]) => Promise<void>;
 }) {
   const [query, setQuery] = useState('');
+  const [cluster, setCluster] = useState('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
-  const filtered = suggestions.filter((suggestion) =>
-    suggestion.keyword.toLocaleLowerCase().includes(query.trim().toLocaleLowerCase())
+  const ideas = data?.ideas ?? [];
+  const clusters = useMemo(() => {
+    const counts = new Map<string, { label: string; count: number }>();
+    for (const idea of ideas) {
+      const entry = counts.get(idea.cluster.id) ?? { label: idea.cluster.label, count: 0 };
+      entry.count++;
+      counts.set(idea.cluster.id, entry);
+    }
+    return Array.from(counts, ([id, entry]) => ({ id, ...entry })).sort((a, b) => b.count - a.count);
+  }, [ideas]);
+  const needle = query.trim().toLocaleLowerCase();
+  const filtered = ideas.filter((idea) =>
+    (cluster === 'all' || idea.cluster.id === cluster) && idea.keyword.toLocaleLowerCase().includes(needle)
   );
 
   const toggle = (keyword: string) => {
@@ -1545,36 +1558,57 @@ function SuggestionsPanel({
       <section className="suggestions-page" aria-labelledby="suggestions-title">
         <h2 id="suggestions-title" className="sr-only">Идеи ключевых слов</h2>
         <div className="page-commandbar">
-          <span className="page-scope">{localeFlag(locale)} {locale.toUpperCase()} · автоподсказки Apple и слова из названий конкурентов</span>
-          <button className="toolbar-labeled" onClick={onReload} disabled={loading} title="Обновить идеи" aria-label="Обновить идеи">↻ Обновить</button>
+          <span className="page-scope">{localeFlag(locale)} {locale.toUpperCase()} · подсказки Apple, названия конкурентов из топ-5 и Apple Ads · бренды отфильтрованы</span>
+          <button className="toolbar-labeled" onClick={onReload} disabled={loading} title="Пересобрать идеи заново" aria-label="Обновить идеи">↻ Обновить</button>
         <label className="dialog-search suggestion-search">
           <span>⌕</span>
           <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск идей" />
         </label>
         </div>
+        {data && ideas.length > 0 && (
+          <div className="idea-filters" role="group" aria-label="Тема">
+            <button type="button" className={cluster === 'all' ? 'active' : ''} onClick={() => setCluster('all')}>Все <span>{ideas.length}</span></button>
+            {clusters.map((item) => (
+              <button type="button" key={item.id} className={cluster === item.id ? 'active' : ''} onClick={() => setCluster(item.id)}>{item.label} <span>{item.count}</span></button>
+            ))}
+            <small>{asaSignalLabel(data.signals.asaPopularity)}</small>
+          </div>
+        )}
         <div className="suggestion-list">
           <div className="suggestion-table-head" role="row">
             <span aria-label="Выбор" />
-            <span>Ключевое слово <button type="button" className="traffic-info-button" data-tooltip="Фраза-кандидат, которой ещё нет в отслеживаемых ключах выбранной страны. Перед добавлением проверьте её релевантность приложению." aria-label="Как читать колонку «Ключевое слово»">?</button></span>
-            <span>Источник <button type="button" className="traffic-info-button" data-tooltip="Apple — реальная автоподсказка App Store для одного из ваших исходных запросов. Конкурент — фраза, извлечённая из названий приложений в сохранённом топе выдачи." aria-label="Как читать колонку «Источник»">?</button></span>
-            <span>Приоритет <button type="button" className="traffic-info-button" data-tooltip="Внутренний балл 0–100 для сортировки идей. Для слов конкурентов: 42 + 8 за каждое появление в топе, максимум 95; автоподсказка Apple получает 90. Это не объём трафика, не сложность и не прогноз конверсии." aria-label="Как читать колонку «Приоритет»">?</button></span>
+            <span>Ключевое слово <button type="button" className="traffic-info-button" data-tooltip="Фраза, которой ещё нет в отслеживаемых ключах этой страны. Показываются только общие запросы категории: названия конкурентов, разработчиков, обрывки названий и фразы другого интента отфильтрованы (список внизу)." aria-label="Как читать колонку «Ключевое слово»">?</button></span>
+            <span>Откуда <button type="button" className="traffic-info-button" data-tooltip="Конкретное доказательство: при вводе какого вашего ключа Apple подсказала фразу и на каком месте, в названиях скольких конкурентов из топ-5 и по каким ключам она встречается, рекомендовала ли её Apple Ads." aria-label="Как читать колонку «Откуда»">?</button></span>
+            <span>Ожидаемый эффект <button type="button" className="traffic-info-button" data-tooltip={data?.formula ?? 'Оценка = спрос × шанс × 100.'} aria-label="Как считается ожидаемый эффект">?</button></span>
           </div>
           {loading ? (
             <div className="suggestions-empty">Ищем релевантные идеи…</div>
           ) : error ? (
             <div className="suggestions-empty"><span>{error}</span><button className="dialog-button dialog-button-secondary" onClick={onReload}>Повторить</button></div>
           ) : filtered.length === 0 ? (
-            <div className="suggestions-empty">Новых идей нет. Добавьте больше исходных ключевых слов или сначала обновите снимок.</div>
-          ) : filtered.map((suggestion) => (
-            <button className={selected.has(suggestion.keyword) ? 'selected' : ''} key={suggestion.keyword} onClick={() => toggle(suggestion.keyword)} aria-pressed={selected.has(suggestion.keyword)}>
-              <span className="suggestion-check">{selected.has(suggestion.keyword) ? '✓' : ''}</span>
-              <span className="suggestion-copy"><strong>{suggestion.keyword}</strong><small>{suggestionEvidenceLabel(suggestion.evidence)}</small></span>
-              <span className={`suggestion-source source-${suggestion.source}`}>{suggestion.source === 'apple_autocomplete' ? 'Apple' : 'Конкурент'}</span>
-              <span className="suggestion-score" title="Внутренний приоритет идеи; это не объём поиска Apple">
-                <b>{suggestion.score}</b><i><em style={{ width: `${Math.max(0, Math.min(100, suggestion.score))}%` }} /></i>
+            <div className="suggestions-empty">Новых общих запросов не нашлось. Apple подсказывает в основном названия приложений — их мы не предлагаем. Добавьте больше исходных ключей или обновите снимок.</div>
+          ) : filtered.map((idea) => (
+            <button className={selected.has(idea.keyword) ? 'selected' : ''} key={idea.keyword} onClick={() => toggle(idea.keyword)} aria-pressed={selected.has(idea.keyword)}>
+              <span className="suggestion-check">{selected.has(idea.keyword) ? '✓' : ''}</span>
+              <span className="suggestion-copy"><strong>{idea.keyword}</strong><small title={idea.reason}>{idea.reason}</small></span>
+              <span className="idea-origin">
+                {idea.origin.map((line) => <small key={line} title={line}>{line}</small>)}
+              </span>
+              <span className={`idea-gain gain-${idea.level}`} title={idea.inputs.join('\n')}>
+                <span className="idea-gain-head"><em>{IDEA_LEVEL_LABEL[idea.level]}</em><b>{idea.score}</b></span>
+                <i><em style={{ width: `${Math.max(2, Math.min(100, idea.score))}%` }} /></i>
+                <small>спрос {idea.demand.toFixed(2)} × шанс {idea.chance.toFixed(2)} · оценка</small>
               </span>
             </button>
           ))}
+          {!loading && data && data.rejected.length > 0 && (
+            <details className="idea-rejected">
+              <summary>Отфильтровано: {data.rejected.length} — бренды, названия приложений, обрывки и другой интент{data.trackedSkipped ? ` · уже отслеживаются: ${data.trackedSkipped}` : ''}</summary>
+              <ul>
+                {data.rejected.map((item) => <li key={item.keyword}><b>{item.keyword}</b><span>{item.reason}</span></li>)}
+              </ul>
+            </details>
+          )}
         </div>
         <footer>
           <span>Выбрано: {selected.size}</span>
@@ -1583,7 +1617,6 @@ function SuggestionsPanel({
       </section>
   );
 }
-
 function Sparkline({ values, width = 120, height = 26 }: { values: number[]; width?: number; height?: number }) {
   const clean = values.filter((value) => Number.isFinite(value));
   if (clean.length < 2) return <span className="muted-cell">—</span>;

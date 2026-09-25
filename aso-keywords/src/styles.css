@@ -1080,7 +1080,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   z-index: 4;
   min-height: 34px;
   display: grid;
-  grid-template-columns: 24px minmax(240px, 1fr) 110px 116px;
+  grid-template-columns: 24px minmax(220px, 1fr) minmax(260px, 1.35fr) 170px;
   align-items: center;
   gap: 12px;
   padding: 0 12px;
@@ -1099,7 +1099,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .suggestions-page .suggestion-list > button {
   min-height: 54px;
   display: grid;
-  grid-template-columns: 24px minmax(240px, 1fr) 110px 116px;
+  grid-template-columns: 24px minmax(220px, 1fr) minmax(260px, 1.35fr) 170px;
   gap: 12px;
   padding: 8px 12px;
   border: 1px solid transparent;
@@ -1115,6 +1115,37 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .suggestion-score > b { font-size: 11px; text-align: right; }
 .suggestion-score > i { height: 3px; display: block; border-radius: 999px; background: var(--line); overflow: hidden; }
 .suggestion-score > i > em { display: block; height: 100%; border-radius: inherit; background: var(--chart-violet); }
+.suggestions-page .suggestion-list > button { align-items: start; }
+.suggestions-page .suggestion-copy small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.suggestion-table-head > span:last-child .traffic-info-button::after { width: min(420px, 80vw); white-space: pre-line; }
+.idea-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 20px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.idea-filters > button { height: 26px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--border-control); border-radius: 999px; background: var(--surface); color: var(--ink-secondary); font: inherit; font-size: 11px; cursor: pointer; }
+.idea-filters > button > span { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+.idea-filters > button:hover { background: var(--surface-hover); }
+.idea-filters > button.active { border-color: var(--accent); background: var(--surface-selected); color: var(--ink); }
+.idea-filters > small { margin-left: auto; color: var(--ink-muted); font-size: 10.5px; }
+.idea-origin { min-width: 0; display: grid; gap: 3px; }
+.idea-origin > small { color: var(--ink-secondary); font-size: 10.5px; line-height: 1.35; }
+.idea-origin > small + small { color: var(--ink-muted); }
+.idea-gain { min-width: 0; display: grid; gap: 4px; justify-items: stretch; cursor: help; }
+.idea-gain-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.idea-gain-head > em { padding: 2px 7px; border-radius: 999px; font-size: 10px; font-style: normal; font-weight: 600; }
+.idea-gain-head > b { color: var(--ink-secondary); font-size: 11px; font-variant-numeric: tabular-nums; }
+.idea-gain > i { height: 3px; display: block; border-radius: 999px; background: var(--line); overflow: hidden; }
+.idea-gain > i > em { display: block; height: 100%; border-radius: inherit; }
+.idea-gain > small { color: var(--ink-muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+.gain-high .idea-gain-head > em { background: var(--ds-good-soft); color: var(--ds-good); }
+.gain-high > i > em { background: var(--ds-good); }
+.gain-medium .idea-gain-head > em { background: var(--ds-warn-soft); color: var(--ds-warn); }
+.gain-medium > i > em { background: var(--ds-warn); }
+.gain-low .idea-gain-head > em { background: var(--ds-panel-2); color: var(--ds-muted); }
+.gain-low > i > em { background: var(--ds-subtle); }
+.idea-rejected { margin-top: 12px; border: 1px solid var(--line); border-radius: var(--radius-card); background: var(--surface); }
+.idea-rejected > summary { padding: 10px 12px; color: var(--ink-muted); font-size: 11px; cursor: pointer; }
+.idea-rejected > ul { margin: 0; padding: 0 12px 10px; list-style: none; display: grid; gap: 4px; }
+.idea-rejected li { display: grid; grid-template-columns: minmax(160px, 260px) minmax(0, 1fr); gap: 12px; font-size: 10.5px; }
+.idea-rejected li > b { color: var(--ink-secondary); font-weight: 600; overflow-wrap: anywhere; }
+.idea-rejected li > span { color: var(--ink-muted); }
 .suggestions-page > footer { min-height: 48px; padding: 7px 20px; border-top: 1px solid var(--line); background: var(--surface); }
 .analytics-page .analytics-controls { margin-left: auto; }
 .analytics-page .analytics-content { flex: 1; min-height: 0; padding: 14px 20px 24px; overflow: auto; }
@@ -1142,10 +1173,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .page-scope { width: 100%; }
   .suggestions-page .suggestion-search { width: auto; flex: 1; }
   .suggestions-page .suggestion-list { padding-inline: 12px; }
-  .suggestion-table-head { grid-template-columns: 24px minmax(180px, 1fr) 90px; }
-  .suggestion-table-head > span:last-child { display: none; }
-  .suggestions-page .suggestion-list > button { grid-template-columns: 24px minmax(180px, 1fr) 90px; }
-  .suggestion-score { display: none; }
+  .suggestion-table-head { grid-template-columns: 24px minmax(0, 1fr) 110px; }
+  .suggestion-table-head > span:nth-child(3) { display: none; }
+  .suggestions-page .suggestion-list > button { grid-template-columns: 24px minmax(0, 1fr) 110px; }
+  .idea-origin { display: none; }
+  .idea-filters { padding-inline: 12px; }
+  .idea-filters > small { width: 100%; margin-left: 0; }
+  .idea-rejected li { grid-template-columns: 1fr; gap: 0; }
   .analytics-page .analytics-content { padding-inline: 12px; }
 }
 
