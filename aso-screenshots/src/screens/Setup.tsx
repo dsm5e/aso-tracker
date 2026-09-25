@@ -250,9 +250,13 @@ function ToolCard({
 
 function RecentCard({ project, onOpen, onDelete }: { project: ArchivedProject; onOpen: () => void; onDelete: (e: React.MouseEvent) => void }) {
   return (
-    <button
-      type="button"
+    // A card with its own delete button inside: the card is a div with a button
+    // role so the nested <button> stays valid HTML.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}
       className="ds-tile"
       style={{
         position: 'relative',
@@ -313,7 +317,7 @@ function RecentCard({ project, onOpen, onDelete }: { project: ArchivedProject; o
       >
         <Trash2 size={14} />
       </button>
-    </button>
+    </div>
   );
 }
 
@@ -326,9 +330,13 @@ function RecentPPOCard({ session, onOpen, onDelete }: { session: ArchivedPPOExpe
     ? `${apiBase}/ppo/proxy-image?url=${encodeURIComponent(session.thumbUrl)}&w=400`
     : null;
   return (
-    <button
-      type="button"
+    // A card with its own delete button inside: the card is a div with a button
+    // role so the nested <button> stays valid HTML.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}
       className="ds-tile"
       style={{
         position: 'relative',
@@ -395,6 +403,6 @@ function RecentPPOCard({ session, onOpen, onDelete }: { session: ArchivedPPOExpe
       >
         <Trash2 size={14} />
       </button>
-    </button>
+    </div>
   );
 }
