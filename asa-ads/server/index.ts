@@ -12,7 +12,8 @@ import { enqueue, apply, cancel, type Action } from "./actions.ts";
 import { attach, broadcast } from "./sse.ts";
 import { checkAndSendAlerts, listAlerts, loadAlertsConfig } from "./alerts.ts";
 import { loadSettings, updateSettings, suggestSettings } from "./settings.ts";
-import { getCredentialsMasked, setCredentials, type Provider } from "./credentials.ts";
+import { getCredentialsMasked, setCredentials, PROVIDERS, type Provider } from "./credentials.ts";
+import { integrationsStatus } from "./integrations.ts";
 import { fetchRevenueRows } from "./revenue.ts";
 import { commandCenter, accountHealth } from "./command-center.ts";
 import { PlatformApiClient } from "./platform-api-client.ts";
@@ -401,16 +402,19 @@ app.get("/api/settings/suggest", (req, res) => {
 
 app.get("/api/credentials/:provider", (req, res) => {
   const provider = req.params.provider as Provider;
-  if (provider !== "asa" && provider !== "asc") { res.status(400).json({ error: "invalid provider" }); return; }
+  if (!PROVIDERS.includes(provider)) { res.status(400).json({ error: "invalid provider" }); return; }
   res.json(getCredentialsMasked(provider));
 });
 
 app.put("/api/credentials/:provider", (req, res) => {
   const provider = req.params.provider as Provider;
-  if (provider !== "asa" && provider !== "asc") { res.status(400).json({ error: "invalid provider" }); return; }
+  if (!PROVIDERS.includes(provider)) { res.status(400).json({ error: "invalid provider" }); return; }
   setCredentials(provider, req.body || {});
   res.json({ ok: true, restartRequired: true });
 });
+
+// Connection status for the «Подключить» gate in every studio product (no secret values).
+app.get("/api/integrations", (_req, res) => res.json(integrationsStatus()));
 
 app.get("/api/alerts", (_req, res) => res.json(listAlerts()));
 app.post("/api/alerts/check", async (_req, res) => {

@@ -22,6 +22,7 @@ import Competitors from './screens/Competitors';
 import DecisionMatrix from './screens/DecisionMatrix';
 import Overview from './screens/Overview';
 import AcquisitionFunnel from './screens/AcquisitionFunnel';
+import ConnectGate from './components/ConnectGate';
 import Experiments from './screens/Experiments';
 import { TopFiveArtwork } from './components/KeywordResultsDrawer';
 
@@ -773,29 +774,25 @@ export default function App() {
           <button className={view === 'overview' ? 'selected' : ''} onClick={() => { setView('overview'); setMobileNavOpen(false); }}>
             <span className="nav-label">Обзор</span>
           </button>
-          <button className={view === 'funnel' ? 'selected' : ''} onClick={() => { setView('funnel'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
-            <span className="nav-label">Воронка</span>
-          </button>
-          <button className={view === 'matrix' ? 'selected' : ''} onClick={() => { setView('matrix'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
-            <span className="nav-label">Матрица решений</span>
-          </button>
-          <button className={view === 'keywords' && keywordView === 'positions' ? 'selected' : ''} onClick={() => openKeywordView('positions')}>
+          <button className={view === 'keywords' ? 'selected' : ''} onClick={() => openKeywordView(view === 'keywords' ? keywordView : 'positions')}>
             <span className="nav-label">Ключевые слова</span>
-          </button>
-          <button className={view === 'traffic' ? 'selected' : ''} onClick={() => { setView('traffic'); setMobileNavOpen(false); }}>
-            <span className="nav-label">Аналитика трафика</span>
           </button>
           <button className={view === 'competitors' ? 'selected' : ''} onClick={() => { setView('competitors'); setMobileNavOpen(false); }} disabled={!selectedApp}>
             <span className="nav-label">Конкуренты</span>
           </button>
+          <button className={view === 'funnel' ? 'selected' : ''} onClick={() => { setView('funnel'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
+            <span className="nav-label">Воронка</span>
+          </button>
           <button className={view === 'experiments' ? 'selected' : ''} onClick={() => { setView('experiments'); setMobileNavOpen(false); }} disabled={!selectedApp}>
             <span className="nav-label">Эксперименты</span>
           </button>
-          <button className={view === 'keywords' && keywordView === 'ideas' ? 'selected' : ''} onClick={() => openKeywordView('ideas')} disabled={!selectedApp || !locale}>
-            <span className="nav-label">Идеи</span>
+          {/* Apple Ads screens stay here until they move into the Apple Ads product. */}
+          <div className="sidebar-section-label nav-group-label">Apple Ads</div>
+          <button className={view === 'matrix' ? 'selected' : ''} onClick={() => { setView('matrix'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
+            <span className="nav-label">Матрица решений</span>
           </button>
-          <button className={view === 'keywords' && keywordView === 'analytics' ? 'selected' : ''} onClick={() => openKeywordView('analytics')} disabled={!selectedApp}>
-            <span className="nav-label">Аналитика</span>
+          <button className={view === 'traffic' ? 'selected' : ''} onClick={() => { setView('traffic'); setMobileNavOpen(false); }}>
+            <span className="nav-label">Аналитика трафика</span>
           </button>
         </nav>
 
@@ -852,7 +849,14 @@ export default function App() {
         <header className="view-header">
           <div className="page-title-row">
             <div>
-              <h1>{keywordView === 'positions' ? 'Ключевые слова' : keywordView === 'analytics' ? 'Динамика позиций' : 'Идеи ключевых слов'}</h1>
+              <h1>Ключевые слова</h1>
+              <div className="segmented page-tabs" role="tablist" aria-label="Раздел ключевых слов">
+                {([['positions', 'Позиции'], ['ideas', 'Идеи'], ['analytics', 'Динамика']] as const).map(([id, label]) => (
+                  <button key={id} role="tab" aria-selected={keywordView === id} className={keywordView === id ? 'selected' : ''}
+                    disabled={id !== 'positions' && (!selectedApp || (id === 'ideas' && !locale))}
+                    onClick={() => openKeywordView(id)}>{label}</button>
+                ))}
+              </div>
               <p>{keywordView === 'positions'
                 ? 'Отслеживайте позиции, релевантность и приложения, лидирующие по каждому запросу.'
                 : keywordView === 'analytics'
@@ -988,13 +992,14 @@ export default function App() {
       ) : view === 'competitors' ? (
         selectedApp ? <Competitors app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} /> : null
       ) : view === 'matrix' ? (
-        selectedApp ? <DecisionMatrix app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId, bundle: selectedApp.bundle, iconUrl: selectedApp.iconUrl }} locale={locale} artworks={artworks} sharedTopFive={sharedTopFive} sharedTopFiveStatus={sharedTopFiveStatus} onResolveTopFive={resolveTopFive} onEnsureArtworks={ensureArtworkForTop5} /> : null
+        selectedApp ? <ConnectGate requires={['asa']} title="Матрица решений"><DecisionMatrix app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId, bundle: selectedApp.bundle, iconUrl: selectedApp.iconUrl }} locale={locale} artworks={artworks} sharedTopFive={sharedTopFive} sharedTopFiveStatus={sharedTopFiveStatus} onResolveTopFive={resolveTopFive} onEnsureArtworks={ensureArtworkForTop5} /></ConnectGate> : null
       ) : view === 'funnel' ? (
-        selectedApp ? <AcquisitionFunnel app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} countries={Object.keys(keywordMap)} /> : null
+        selectedApp ? <ConnectGate requires={['adapty', 'asc']} title="Воронка"><AcquisitionFunnel app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} countries={Object.keys(keywordMap)} /></ConnectGate> : null
       ) : view === 'experiments' ? (
         selectedApp ? <Experiments app={{ id: selectedApp.id, name: selectedApp.name }} locales={Object.keys(keywordMap)} activeLocale={locale} /> : null
       ) : (
         selectedApp ? (
+          <ConnectGate requires={['asa']} title="Аналитика трафика">
           <TrafficIntelligence
             className="content"
             app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId, bundle: selectedApp.bundle, iconUrl: selectedApp.iconUrl }}
@@ -1007,6 +1012,7 @@ export default function App() {
             onEnsureArtworks={ensureArtworkForTop5}
             onOpenCompetitor={(bundleID) => setCompetitorBundle(bundleID)}
           />
+          </ConnectGate>
         ) : null
       )}
       </div>

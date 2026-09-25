@@ -1,3 +1,4 @@
+import { getCredentials } from "./credentials.ts";
 import { execFileSync } from "node:child_process";
 import type Database from "better-sqlite3";
 
@@ -89,6 +90,9 @@ function stage(row?: AdaptySegment): AdaptyFunnelStage {
 }
 
 function secret(): string {
+  // Studio credentials (Подключить → Adapty) first, then env, then the MedScan Secret Manager entry.
+  const stored = getCredentials("adapty").secret_key;
+  if (stored) return stored;
   if (process.env.ADAPTY_ANALYTICS_KEY) return process.env.ADAPTY_ANALYTICS_KEY;
   try {
     return execFileSync("gcloud", [

@@ -62,3 +62,8 @@
 }
 body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-font); }
 .brand-mark { background: var(--ds-accent); box-shadow: none; }
+
+/* Keywords sub-sections live as tabs under the page title (positions / ideas / trend). */
+.page-tabs { display: inline-flex; width: max-content; margin: 10px 0 2px; }
+.page-tabs button:disabled { opacity: .45; cursor: default; }
+.nav-group-label { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ds-border); }
