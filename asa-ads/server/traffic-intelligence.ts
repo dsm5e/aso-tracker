@@ -1,5 +1,6 @@
 import type Database from "better-sqlite3";
 import { PlatformApiClient, PlatformApiError, appleFilter, type PlatformRequestMeta, type PlatformRead } from "./platform-api-client.ts";
+import { toPopularity5to100, type KeywordPopularityService } from "./keyword-popularity.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -29,7 +30,7 @@ interface TrafficCacheEntry {
 
 const TRAFFIC_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 const TRAFFIC_STALE_RETRY_MS = 2 * 60 * 1000;
-const TRAFFIC_CACHE_SCHEMA = "traffic-intelligence-v3";
+const TRAFFIC_CACHE_SCHEMA = "traffic-intelligence-v4";
 
 interface SourceOk<T> {
   status: "ok";
@@ -92,8 +93,11 @@ export interface ModeledMetric {
 export interface TrafficTermModel {
   term: string;
   origins: string[];
+  /** Apple Ads popularity 5–100 (one scale only; see keyword-popularity.ts). */
   demandIndex: number | null;
-  demandScale: "apple_1_to_100" | "apple_1_to_5_x20" | null;
+  demandScale: "apple_5_to_100" | null;
+  /** Apple's coarse impression-share bucket (1–5). Informational — never mixed into demandIndex. */
+  popularityBucket1to5: number | null;
   share: { low: number; high: number; mid: number; history: JsonRecord[] } | null;
   rank: number | null;
   competitorsAhead: number | null;
@@ -381,16 +385,21 @@ export function modelTermTraffic(args: {
   impressionShareRows: JsonRecord[];
   popularityRows: JsonRecord[];
   suggestionPopularity?: number | null;
+  /** Canonical per-storefront value from KeywordPopularityService. */
+  storedPopularity?: number | null;
   keywords: LocalKeywordRow[];
   searchTerm?: LocalSearchTermRow;
 }): TrafficTermModel {
   const shareHistory = [...args.impressionShareRows].sort((a, b) => String(a.week ?? a.day ?? "").localeCompare(String(b.week ?? b.day ?? "")));
   const latestShare = latestByDate(shareHistory);
   const latestPopularity = latestByDate(args.popularityRows);
-  const popularity100 = numberOrNull(latestPopularity?.searchPopularity1to100 ?? args.suggestionPopularity);
-  const popularity5 = numberOrNull(latestPopularity?.searchPopularity1to5 ?? latestShare?.searchPopularity1to5);
-  const demandIndex = popularity100 ?? (popularity5 === null ? null : Math.min(100, popularity5 * 20));
-  const demandScale = popularity100 !== null ? "apple_1_to_100" as const : popularity5 !== null ? "apple_1_to_5_x20" as const : null;
+  // One scale only. The 1–5 impression-share bucket used to be multiplied by
+  // 20 as a fallback, so the same term read 7 or 40 depending on the batch.
+  const demandIndex = toPopularity5to100(args.storedPopularity)
+    ?? toPopularity5to100(latestPopularity?.searchPopularity1to100)
+    ?? toPopularity5to100(args.suggestionPopularity);
+  const demandScale = demandIndex !== null ? "apple_5_to_100" as const : null;
+  const popularityBucket1to5 = numberOrNull(latestPopularity?.searchPopularity1to5 ?? latestShare?.searchPopularity1to5);
   const low = numberOrNull(latestShare?.lowImpressionShare);
   const high = numberOrNull(latestShare?.highImpressionShare);
   const share = low === null || high === null ? null : {
@@ -447,6 +456,7 @@ export function modelTermTraffic(args: {
     origins: [...new Set(args.origins)].sort(),
     demandIndex,
     demandScale,
+    popularityBucket1to5,
     share,
     rank,
     competitorsAhead,
@@ -483,10 +493,12 @@ export function modelTermTraffic(args: {
 export class TrafficIntelligenceService {
   private readonly db: Database.Database;
   private readonly client: PlatformApiClient;
+  private readonly popularity?: KeywordPopularityService;
 
-  constructor(db: Database.Database, client: PlatformApiClient) {
+  constructor(db: Database.Database, client: PlatformApiClient, popularity?: KeywordPopularityService) {
     this.db = db;
     this.client = client;
+    this.popularity = popularity;
     // Tests and older local databases may not have run the main migration yet.
     // CREATE IF NOT EXISTS is cheap and keeps this service independently safe.
     this.db.exec(`
@@ -713,12 +725,20 @@ export class TrafficIntelligenceService {
       if (popularityValue !== null) suggestionPopularity.set(normalizeTerm(row.text), popularityValue);
     });
 
+    // Canonical popularity: read the per-day store (single-term Apple values)
+    // and let it fill the rest in the background.
+    // Only requested and owned terms are queued for a fetch — suggestion and
+    // impression-share corpora can run to hundreds of unrelated terms.
+    const stored = this.popularity?.peek(input.appId, input.country, [...origins.keys()], false);
+    this.popularity?.peek(input.appId, input.country, [...input.terms, ...localData.keywords.map((row) => row.text)]);
+
     const terms = [...origins.keys()].map((normalized) => modelTermTraffic({
       term: displayTerms.get(normalized) ?? normalized,
       origins: [...(origins.get(normalized) ?? [])],
       impressionShareRows: shareMap.get(normalized) ?? [],
       popularityRows: popularityMap.get(normalized) ?? [],
       suggestionPopularity: suggestionPopularity.get(normalized),
+      storedPopularity: stored?.get(normalized)?.popularity ?? null,
       keywords: localKeywordMap.get(normalized) ?? [],
       searchTerm: localSearchTermMap.get(normalized)?.[0],
     })).sort((a, b) => (b.opportunity.value ?? -1) - (a.opportunity.value ?? -1) || (b.demandIndex ?? -1) - (a.demandIndex ?? -1) || a.term.localeCompare(b.term));

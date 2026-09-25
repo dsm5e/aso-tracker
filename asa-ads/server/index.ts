@@ -23,6 +23,7 @@ import { PlatformApiClient } from "./platform-api-client.ts";
 import { PLATFORM_API_METHODS } from "./platform-api-methods.ts";
 import { PlatformReadService } from "./platform-read-service.ts";
 import { parseTrafficQuery, TrafficIntelligenceService } from "./traffic-intelligence.ts";
+import { KeywordPopularityService } from "./keyword-popularity.ts";
 import { TrafficSyncScheduler } from "./traffic-sync-scheduler.ts";
 import { dataQuality } from "./data-quality.ts";
 import { AscAnalyticsService } from "./asc-analytics.ts";
@@ -36,7 +37,8 @@ const asa = new AsaClient(cfg.asa);
 const asc = new AscClient(cfg.asc);
 const platform = new PlatformApiClient(asa, cfg.asa.orgId);
 const platformReads = new PlatformReadService(getDb(), platform);
-const trafficIntelligence = new TrafficIntelligenceService(getDb(), platform);
+const keywordPopularity = new KeywordPopularityService(getDb(), platform);
+const trafficIntelligence = new TrafficIntelligenceService(getDb(), platform, keywordPopularity);
 const trafficSyncScheduler = new TrafficSyncScheduler(getDb(), trafficIntelligence, {
   enabled: process.env.TRAFFIC_SYNC_ENABLED !== "false",
   concurrency: Number(process.env.TRAFFIC_SYNC_CONCURRENCY ?? 1),
@@ -135,6 +137,26 @@ app.get("/api/traffic-intelligence", async (req, res) => {
     res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
   }
 });
+
+// One consistent Apple Ads popularity (5–100) per keyword × storefront, cached
+// per UTC day. GET for ≤100 terms, POST { app_id, country, terms[], wait_ms }
+// for up to 2000. Missing values fill in the background (`pending`).
+async function keywordPopularityHandler(query: Record<string, unknown>, res: express.Response) {
+  const appId = Number(query.app_id ?? query.appId ?? query.itunesId ?? 0);
+  const country = String(query.country ?? "").trim().toUpperCase();
+  const terms = Array.isArray(query.terms)
+    ? query.terms.map(String)
+    : String(query.terms ?? "").split(",");
+  const waitMs = Math.max(0, Math.min(20_000, Number(query.wait_ms ?? query.wait ?? 0) || 0));
+  try {
+    res.set("Cache-Control", "no-store");
+    res.json(await keywordPopularity.lookup(appId, country, terms.filter((term) => term.trim()), waitMs));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+}
+app.get("/api/keyword-popularity", (req, res) => keywordPopularityHandler(req.query as Record<string, unknown>, res));
+app.post("/api/keyword-popularity", (req, res) => keywordPopularityHandler((req.body ?? {}) as Record<string, unknown>, res));
 
 app.get("/api/decision-matrix", async (req, res) => {
   const appId = Number(req.query.app_id ?? req.query.appId ?? req.query.itunesId ?? 0);

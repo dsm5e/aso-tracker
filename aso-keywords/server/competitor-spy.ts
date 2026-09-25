@@ -2,7 +2,7 @@ import type { Express, Request, Response } from 'express';
 import { db } from './db.js';
 import { assertSafeAppId, loadApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
 import { searchItunes, type SearchResult } from './itunes.js';
-import { asaTerms, normalized, tokenize } from './suggestions.js';
+import { asaPopularity, normalized, tokenize } from './suggestions.js';
 
 // Competitor spy: reverse keyword lookup + gap analysis for one competitor in
 // one storefront. Everything is built from App Store result sets we actually
@@ -309,31 +309,16 @@ function rankIn(serp: Serp, target: { trackId: number | null; bundleId: string }
 
 // --- Apple Ads popularity (optional) ------------------------------------------
 
-const popularityCache = new Map<string, { expiresAt: number; value: number | null }>();
-
+/** Popularity from the Ads service's per-day store (one 5–100 scale). Values
+ * still being fetched count as unknown — never cached here as null. */
 async function popularityFor(app: AppConfig, country: string, terms: string[]): Promise<{ values: Map<string, number | null>; status: 'ok' | 'no-data' | 'unavailable' }> {
   const values = new Map<string, number | null>();
-  const missing: string[] = [];
-  for (const term of terms) {
-    const cached = popularityCache.get(`${country}|${term}`);
-    if (cached && cached.expiresAt > Date.now()) values.set(term, cached.value);
-    else missing.push(term);
-  }
-  let reachable = missing.length === 0;
-  for (let i = 0; i < missing.length; i += 100) {
-    const chunk = missing.slice(i, i + 100);
-    const rows = await asaTerms(app, country, chunk);
-    if (!rows) continue;
-    reachable = true;
-    const byTerm = new Map(rows.map((row) => [row.term, row.demandIndex]));
-    for (const term of chunk) {
-      const value = byTerm.get(term) ?? null;
-      values.set(term, value);
-      popularityCache.set(`${country}|${term}`, { expiresAt: Date.now() + 6 * 60 * 60_000, value });
-    }
-  }
+  if (!terms.length) return { values, status: 'no-data' };
+  const result = await asaPopularity(app, country, terms, 6_000);
+  if (!result) return { values, status: 'unavailable' };
+  for (const term of terms) values.set(term, result.values.get(normalized(term))?.popularity ?? null);
   const known = [...values.values()].filter((value) => value != null).length;
-  return { values, status: !reachable ? 'unavailable' : known ? 'ok' : 'no-data' };
+  return { values, status: known ? 'ok' : 'no-data' };
 }
 
 // --- Report -------------------------------------------------------------------
@@ -506,6 +491,55 @@ export async function competitorSpyReport(appId: string, competitorRef: string, 
     rows,
     candidates,
     formula: SPY_FORMULA,
+  };
+}
+
+// --- Difficulty / Chance for the positions table ----------------------------------
+
+export interface KeywordDifficulty {
+  difficulty: number | null;
+  chance: number | null;
+  /** Result set depth the estimate is based on and where it came from. */
+  depth: number;
+  source: Serp['source'] | null;
+  checkedAt: string | null;
+}
+
+/** Difficulty and Chance (spec §4) for our own tracked keywords in one
+ * storefront, from the same best-available result sets and app facts the spy
+ * report uses. `ourStrength` is A on the 0–100 scale (exact-title counted per keyword). */
+export async function keywordDifficulty(appId: string, storefront: string, keywords: string[]): Promise<{ ourStrength: number; rows: Map<string, KeywordDifficulty> }> {
+  const app = loadApps().find((item) => item.id === appId);
+  if (!app) throw new Error(`unknown app ${appId}`);
+  const country = storefront.split('-')[0].toLowerCase();
+  const ours = await appMeta(app.iTunesId || app.bundle, country).catch(() => null);
+  const serps = storefrontSerps(storefront);
+  const facts = new Map<number, { ratings: number | null; updatedAt: string | null }>();
+  for (const serp of serps.values()) {
+    for (const item of serp.apps) {
+      if (item.tid == null) continue;
+      const current = facts.get(item.tid);
+      facts.set(item.tid, { ratings: item.ratings ?? current?.ratings ?? null, updatedAt: item.updatedAt ?? current?.updatedAt ?? null });
+    }
+  }
+  if (ours?.trackId) facts.set(ours.trackId, { ratings: ours.ratings, updatedAt: ours.updatedAt });
+  const ourTitle = ours?.name ?? app.name;
+  const rows = new Map<string, KeywordDifficulty>();
+  for (const keyword of keywords) {
+    const term = normalized(keyword);
+    const serp = serps.get(term);
+    if (!serp) { rows.set(term, { difficulty: null, chance: null, depth: 0, source: null, checkedAt: null }); continue; }
+    const top: StrengthInput[] = serp.apps.slice(0, 10).map((item) => {
+      const fact = item.tid != null ? facts.get(item.tid) : undefined;
+      return { ratings: item.ratings ?? fact?.ratings ?? null, exactInTitle: containsPhrase(item.name, serp.term), updatedDaysAgo: daysAgo(item.updatedAt ?? fact?.updatedAt) };
+    });
+    const d = difficulty(top);
+    const a = 100 * appStrength({ ratings: ours?.ratings ?? null, exactInTitle: containsPhrase(ourTitle, term), updatedDaysAgo: daysAgo(ours?.updatedAt) });
+    rows.set(term, { difficulty: d, chance: chance(d, a), depth: serp.depth, source: serp.source, checkedAt: serp.checkedAt });
+  }
+  return {
+    ourStrength: Math.round(100 * appStrength({ ratings: ours?.ratings ?? null, exactInTitle: false, updatedDaysAgo: daysAgo(ours?.updatedAt) })),
+    rows,
   };
 }
 

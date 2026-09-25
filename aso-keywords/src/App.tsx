@@ -29,6 +29,8 @@ import Picker from './components/Picker';
 import { useDismiss } from './components/useDismiss';
 import CountryPalette from './components/CountryPalette';
 import CountryMatrix from './screens/CountryMatrix';
+import PositionsTable from './screens/PositionsTable';
+import BulkAddDialog from './components/BulkAddDialog';
 import {
   columnSets,
   countriesApi,
@@ -198,8 +200,7 @@ export default function App() {
       return localStorage.getItem('theme') === 'dark' ? 'dark' : 'light';
     }
   );
-  const [pageSize, setPageSize] = useState<number>(() => Number(localStorage.getItem('pageSize')) || 0); // 0 = all
-  const [page, setPage] = useState(0);
+  const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [detailKeyword, setDetailKeyword] = useState<string | null>(null);
   const [localeAvgByApp, setLocaleAvgByApp] = useState<Record<string, LocaleAvg[]>>({});
 
@@ -224,7 +225,8 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (selectedAppID) params.set('app', selectedAppID); else params.delete('app');
     const matrix = view === 'keywords' && keywordView === 'matrix';
-    if (locale && !matrix) params.set('locale', locale); else params.delete('locale');
+    // Before the keyword list loads `locale` is empty — keep a deep-linked ?locale= until then.
+    if (locale && !matrix) params.set('locale', locale); else if (locale || matrix) params.delete('locale');
     if (matrix && matrixSetId) params.set('set', matrixSetId); else params.delete('set');
     const search = params.toString();
     const next = `${window.location.pathname}${search ? `?${search}` : ''}#${route}`;
@@ -253,8 +255,6 @@ export default function App() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
-  useEffect(() => { localStorage.setItem('pageSize', String(pageSize)); }, [pageSize]);
-  useEffect(() => { setPage(0); }, [locale, query, pageSize, selectedAppID]);
 
   const selectedApp = apps.find((app) => app.id === selectedAppID) ?? apps[0];
 
@@ -379,12 +379,6 @@ export default function App() {
     }).length;
     return { total: rows.length, ranked: ranked.length, top10, average, improved };
   }, [rows]);
-
-  const pageCount = pageSize > 0 ? Math.max(1, Math.ceil(rows.length / pageSize)) : 1;
-  const pagedRows = useMemo(
-    () => (pageSize > 0 ? rows.slice(page * pageSize, (page + 1) * pageSize) : rows),
-    [rows, page, pageSize]
-  );
 
   const saveKeywords = async (next: Record<string, string[]>) => {
     if (!selectedApp) return;
@@ -589,12 +583,8 @@ export default function App() {
     }
   };
 
-  const openKeywordsDialog = () => setDialog({
-    kind: 'keywords',
-    title: 'Добавить ключевые слова',
-    message: `Добавьте ключевые слова для ${locale.toUpperCase()}. Разделяйте фразы запятой или новой строкой.`,
-    placeholder: 'habit tracker\ndaily habits\nroutine planner',
-  });
+  // Bulk add: N keywords × M storefronts, storefronts preselected by the keyword's language.
+  const openKeywordsDialog = () => setBulkAddOpen(true);
 
   const openLocaleDialog = () => setDialog({
     kind: 'locale',
@@ -1013,7 +1003,7 @@ export default function App() {
           ><Icon name="target" /> Релевантность</button>
           <label className="search-field">
             <Icon name="search" />
-            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск ключевых слов" />
+            <input id="kw-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск ключевых слов (⌘F)" />
           </label>
         </div>}
         </header>
@@ -1039,64 +1029,36 @@ export default function App() {
           <div><span>В топ-10</span><strong>{positionSummary.top10}</strong><small>Рост за сутки: {positionSummary.improved}</small></div>
           <div><span>Средняя позиция</span><strong>{positionSummary.average == null ? 'Нет данных' : `#${positionSummary.average.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`}</strong><small>по найденным ключам</small></div>
         </section>
-        <div className="table-wrap rankings-table-wrap">
-          <table className="keyword-table">
-            <thead>
-              <tr>
-                <th className="keyword-column">Ключевое слово <span className="th-info" title="Поисковый запрос, по которому отслеживается приложение"><Icon name="info" size={14} /></span></th>
-                <th>Обновлено</th>
-                <th>Позиция <span className="th-info" title="Место приложения в результатах поиска App Store; меньше — лучше"><Icon name="info" size={14} /></span></th>
-                <th>24 часа</th>
-                <th>7 дней</th>
-                <th>Тренд</th>
-                <th>Приложения в выдаче <span className="th-info" title="Первые пять приложений в выдаче; нажмите иконку, чтобы открыть карточку конкурента"><Icon name="info" size={14} /></span></th>
-                <th aria-label="Действия" />
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                Array.from({ length: 14 }).map((_, index) => <SkeletonRow key={index} />)
-              ) : rows.length === 0 ? (
-                <tr><td colSpan={8}><div className="table-empty">В этом регионе пока нет ключевых слов.</div></td></tr>
-              ) : pagedRows.map(({ keyword, ranking }) => (
-                <KeywordRow
-                  key={keyword}
-                  keyword={keyword}
-                  ranking={ranking}
-                  onRemove={() => removeKeyword(keyword)}
-                  artworks={artworks}
-                  onEnsureArtworks={ensureArtworkForTop5}
-                  updateState={rowUpdates[keyword]}
-                  onRefresh={() => refreshOne(keyword)}
-                  onOpenCompetitor={setCompetitorBundle}
-                  onOpenDetail={() => setDetailKeyword(keyword)}
-                  relevance={relevanceOn ? relevance[`${locale}|${keyword.toLocaleLowerCase()}`] : undefined}
-                  ownApp={selectedApp}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <footer className="statusbar">
-          <span>{rows.length} ключевых слов</span>
-          <span>{localeFlag(locale)} {locale.toUpperCase()}</span>
-          {pageSize > 0 && pageCount > 1 && (
-            <span className="pager">
-              <button className="ds-icon-btn" onClick={() => setPage(Math.max(0, page - 1))} disabled={page === 0} aria-label="Предыдущая страница"><Icon name="chevronLeft" /></button>
-              {page + 1} / {pageCount}
-              <button className="ds-icon-btn" onClick={() => setPage(Math.min(pageCount - 1, page + 1))} disabled={page >= pageCount - 1} aria-label="Следующая страница"><Icon name="chevronRight" /></button>
-            </span>
-          )}
-          <select className="ds-select ds-btn-sm page-size" value={pageSize} onChange={(event) => setPageSize(Number(event.target.value))}>
-            <option value={0}>Все строки</option>
-            <option value={25}>25 / стр.</option>
-            <option value={50}>50 / стр.</option>
-            <option value={100}>100 / стр.</option>
-          </select>
-          <span className="statusbar-spacer" />
-          <span>Последний снимок: <strong>{freshnessLabel(selectedApp?.lastSnapshot)}</strong></span>
-        </footer>
+        {selectedApp && (
+          <PositionsTable
+            appId={selectedApp.id}
+            appName={selectedApp.name}
+            locale={locale}
+            keywords={keywordMap[locale] ?? []}
+            keywordMap={keywordMap}
+            rankings={rankingByKeyword}
+            loading={loading}
+            query={query}
+            rowUpdates={rowUpdates}
+            refreshKey={matrixRefreshKey}
+            favorites={countrySets?.favorites ?? []}
+            presets={matrixSets.filter((set) => set.kind !== 'builtin')}
+            renderKeywordExtra={(keyword) => {
+              const row = relevanceOn ? relevance[`${locale}|${keyword.toLocaleLowerCase()}`] : undefined;
+              return row ? (
+                <span className={`relevance-chip relevance-${row.flag}`} title={`Совпадение жанра в топ-5: ${row.matchCount}/5 · ${row.genreHistogram.map((g) => `${g.genre} ×${g.count}`).join(', ')}`}>
+                  {RELEVANCE_LABEL[row.flag]}
+                </span>
+              ) : null;
+            }}
+            renderTop5={(ranking) => <TopApps apps={ranking?.top5 ?? []} artworks={artworks} onOpen={setCompetitorBundle} ownApp={selectedApp} country={ranking?.locale ?? locale} onEnsureArtworks={ensureArtworkForTop5} />}
+            renderUpdated={(keyword, ranking) => <UpdateStatus state={rowUpdates[keyword]} timestamp={ranking?.lastUpdated} />}
+            onOpenDetail={setDetailKeyword}
+            onRefresh={(keyword) => void refreshOne(keyword)}
+            onRemove={(keyword) => void removeKeyword(keyword)}
+            onKeywordsChanged={(map) => { setKeywordMap(map); setMatrixRefreshKey((key) => key + 1); loadApps().catch(() => {}); }}
+          />
+        )}
         </> : keywordView === 'ideas' ? (
           <SuggestionsPanel
             locale={locale}
@@ -1119,6 +1081,17 @@ export default function App() {
       )}
       </div>
       {dialog && <InputDialog dialog={dialog} busy={dialogBusy} existingLocales={Object.keys(keywordMap)} onClose={() => setDialog(null)} onSubmit={submitDialog} />}
+      {bulkAddOpen && selectedApp && (
+        <BulkAddDialog
+          appId={selectedApp.id}
+          currentLocale={locale}
+          keywordMap={keywordMap}
+          favorites={countrySets?.favorites ?? []}
+          presets={matrixSets.filter((set) => set.kind !== 'builtin')}
+          onClose={() => setBulkAddOpen(false)}
+          onDone={(map) => { setBulkAddOpen(false); setKeywordMap(map); setMatrixRefreshKey((key) => key + 1); loadApps().catch(() => {}); }}
+        />
+      )}
       {detailKeyword && selectedApp && (
         <KeywordDrawer
           keyword={detailKeyword}
@@ -1187,69 +1160,6 @@ const RELEVANCE_LABEL: Record<RelevanceRow['flag'], string> = {
   unknown: '?',
 };
 
-function KeywordRow({
-  keyword,
-  ranking,
-  onRemove,
-  artworks,
-  updateState,
-  onRefresh,
-  onOpenCompetitor,
-  onOpenDetail,
-  onEnsureArtworks,
-  relevance,
-  ownApp,
-}: {
-  keyword: string;
-  ranking?: RankingRow;
-  onRemove: () => void;
-  artworks: Record<string, string>;
-  updateState?: RowUpdateState;
-  onRefresh: () => void;
-  onOpenCompetitor: (bundleID: string) => void;
-  onOpenDetail: () => void;
-  onEnsureArtworks: (candidates: TopFiveCandidate[], country: string) => void;
-  relevance?: RelevanceRow;
-  ownApp?: OwnAppIdentity;
-}) {
-  const dayDelta = delta(ranking?.yesterday ?? null, ranking?.today ?? null);
-  const weekDelta = delta(ranking?.w1 ?? null, ranking?.today ?? null);
-  const tone = rankTone(ranking?.today ?? null);
-
-  return (
-    <tr>
-      <td className="keyword-cell">
-        <button className="keyword-open" type="button" onClick={onOpenDetail} aria-label={`Открыть аналитику ключевого слова ${keyword}`}>
-        <strong>{keyword}</strong>
-        {ranking?.today != null && ranking.today <= 10 && <span className="keyword-dot" />}
-        {relevance && (
-          <span
-            className={`relevance-chip relevance-${relevance.flag}`}
-            title={`Совпадение жанра в топ-5: ${relevance.matchCount}/5 · ${relevance.genreHistogram.map((g) => `${g.genre} ×${g.count}`).join(', ')}`}
-          >
-            {RELEVANCE_LABEL[relevance.flag]}
-          </span>
-        )}
-        </button>
-      </td>
-      <td><UpdateStatus state={updateState} timestamp={ranking?.lastUpdated} /></td>
-      <td>{ranking?.today
-        ? <span className={`rank rank-${tone}`}>#{ranking.today}</span>
-        : <span className="rank-none" title="Нет в выдаче" aria-label="Нет в выдаче">—</span>}</td>
-      <td><Delta value={dayDelta} /></td>
-      <td><Delta value={weekDelta} /></td>
-      <td><MiniTrend values={ranking?.trend ?? []} /></td>
-      <td><TopApps apps={ranking?.top5 ?? []} artworks={artworks} onOpen={onOpenCompetitor} ownApp={ownApp} country={ranking?.locale ?? 'us'} onEnsureArtworks={onEnsureArtworks} /></td>
-      <td>
-        <div className="row-actions">
-          <button className="ds-icon-btn row-action" onClick={onRefresh} title="Обновить это ключевое слово" aria-label={`Обновить ${keyword}`}><Icon name="refresh" /></button>
-          <button className="ds-icon-btn row-action row-remove" onClick={onRemove} title="Удалить ключевое слово" aria-label={`Удалить ${keyword}`}><Icon name="close" /></button>
-        </div>
-      </td>
-    </tr>
-  );
-}
-
 function UpdateStatus({ state, timestamp }: { state?: RowUpdateState; timestamp?: number | null }) {
   if (!state) return <span className="muted-cell">{formatRelativeTime(timestamp)}</span>;
   if (state.status === 'queued') return <span className="update-status update-queued"><i /> В очереди</span>;
@@ -1276,21 +1186,6 @@ function formatRelativeTime(timestamp?: number | null) {
 function Delta({ value }: { value: number | null }) {
   if (value == null || value === 0) return <span className="delta delta-flat">—</span>;
   return <span className={`delta ${value > 0 ? 'delta-up' : 'delta-down'}`}>{value > 0 ? '↑' : '↓'} {Math.abs(value)}</span>;
-}
-
-function MiniTrend({ values }: { values: number[] }) {
-  const cleanValues = values.filter((value) => Number.isFinite(value) && value > 0).slice(-16);
-  if (cleanValues.length < 2) return <span className="muted-cell">—</span>;
-  const start = cleanValues[0];
-  const end = cleanValues.at(-1)!;
-  // Rank: smaller is better, so a falling number is growth.
-  const color = end < start ? 'var(--ds-good)' : end > start ? 'var(--ds-bad)' : 'var(--ds-c1)';
-  const labels = cleanValues.map((_, index) => `Снимок ${index + 1} из ${cleanValues.length}`);
-  return (
-    <div className="position-trend" style={{ width: 104 }} aria-label={`Позиция изменилась с ${start} на ${end}. Меньше значит лучше.`}>
-      <ChartSparkline values={cleanValues} labels={labels} color={color} height={30} invert label="Позиция" fmt={(value) => `#${value}`} />
-    </div>
-  );
 }
 
 function TopApps({ apps, artworks, onOpen, ownApp, country, onEnsureArtworks }: {
@@ -2018,13 +1913,5 @@ function MoversList({ title, tone, movers }: { title: string; tone: 'positive' |
         </div>
       )}
     </section>
-  );
-}
-
-function SkeletonRow() {
-  return (
-    <tr className="skeleton-row">
-      <td><i /></td><td><i /></td><td><i /></td><td><i /></td><td><i /></td><td><i /></td><td><i /></td><td />
-    </tr>
   );
 }

@@ -28,6 +28,7 @@ import {
 } from './metadata-history.js';
 import { createPaidObservation, getPaidObservations } from './paid-observations.js';
 import { registerCountryRoutes } from './routes-countries.js';
+import { registerKeywordTableRoutes } from './routes-keyword-table.js';
 
 const app = express();
 app.use(express.json());
@@ -247,6 +248,7 @@ app.get('/api/apps/:id/rankings', (req, res) => {
 });
 
 registerCountryRoutes(app); // storefronts, keyword × storefront matrix, country sets
+registerKeywordTableRoutes(app); // positions table metrics, tags/notes, bulk keyword × storefront edits
 
 // --- Locale stats (for the locale strip) ---
 app.get('/api/apps/:id/locales', (req, res) => {

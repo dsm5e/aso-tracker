@@ -274,7 +274,7 @@ export function estimateGain(input: GainInputs): { score: number; level: GainLev
   if (input.asaPopularity != null) {
     const value = 0.2 + 0.8 * clamp((input.asaPopularity - 5) / 25);
     demandParts.push(value);
-    lines.push(`Спрос: популярность Apple Ads ${input.asaPopularity}/100 → ${fmt(value)}`);
+    lines.push(`Спрос: популярность Apple Ads ${input.asaPopularity <= 5 ? '≤5' : input.asaPopularity}/100 → ${fmt(value)}`);
   }
   if (input.autocomplete) {
     const { index, total, seed, seeds } = input.autocomplete;
@@ -380,11 +380,71 @@ async function appleHints(seed: string, country: string): Promise<string[]> {
 
 export interface AsaTerm { term: string; demandIndex: number | null; origins: string[] }
 
-/** Apple Ads popularity through the local Ads service. Optional: the service
- * may be down or the app may have no Ads account — then ideas are scored
- * without it. */
+/** Ads API base. In the one-process studio the Ads API is mounted at
+ * /asa-api on the same port; ASA_ADS_API_URL points at a standalone Ads
+ * server root (legacy multi-process setup, e.g. http://localhost:5194). */
+export function adsApiUrl(path: string): string {
+  const standalone = process.env.ASA_ADS_API_URL;
+  if (standalone) return `${standalone.replace(/\/$/, '')}/api${path}`;
+  return `http://127.0.0.1:${process.env.STUDIO_PORT || 5173}/asa-api${path}`;
+}
+
+export type AsaPopularityStatus = 'ok' | 'stale' | 'pending' | 'none' | 'error';
+export interface AsaPopularity {
+  term: string;
+  /** Apple Ads popularity 5–100 (5 = «≤5», low volume — never zero). */
+  popularity: number | null;
+  label: string | null;
+  day: string | null;
+  status: AsaPopularityStatus;
+}
+export interface AsaPopularityResult {
+  source: string;
+  sourceLabel: string;
+  day: string;
+  pending: number;
+  values: Map<string, AsaPopularity>;
+}
+
+/** One consistent Apple Ads popularity (5–100) per keyword × storefront from
+ * the Ads service (`/keyword-popularity`, cached there per day). Values not
+ * cached yet come back `pending` and fill in the background. Null when the
+ * Ads service is unreachable or the app has no numeric App Store id. */
+export async function asaPopularity(app: AppConfig, country: string, terms: string[], waitMs = 0): Promise<AsaPopularityResult | null> {
+  if (!/^\d+$/.test(String(app.iTunesId)) || !terms.length) return null;
+  try {
+    const response = await fetch(adsApiUrl('/keyword-popularity'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ app_id: String(app.iTunesId), country: country.toUpperCase(), terms: terms.slice(0, 2000), wait_ms: waitMs }),
+      signal: AbortSignal.timeout(waitMs + 8_000),
+    });
+    if (!response.ok) return null;
+    const payload = (await response.json()) as { source?: string; sourceLabel?: string; day?: string; pending?: number; items?: Array<Partial<AsaPopularity>> };
+    if (!Array.isArray(payload.items)) return null;
+    const values = new Map<string, AsaPopularity>();
+    for (const item of payload.items) {
+      if (typeof item.term !== 'string') continue;
+      const term = normalized(item.term);
+      values.set(term, {
+        term,
+        popularity: typeof item.popularity === 'number' ? item.popularity : null,
+        label: item.label ?? null,
+        day: item.day ?? null,
+        status: (item.status ?? 'pending') as AsaPopularityStatus,
+      });
+    }
+    return { source: payload.source ?? 'apple-ads', sourceLabel: payload.sourceLabel ?? 'Apple Ads', day: payload.day ?? '', pending: payload.pending ?? 0, values };
+  } catch {
+    return null;
+  }
+}
+
+/** Apple Ads suggestions + popularity through the local Ads service. Optional:
+ * the service may be down or the app may have no Ads account — then ideas are
+ * scored without it. Popularity comes from the per-day store (one 5–100
+ * scale), so a term never reads 7 in one batch and 40 in the next. */
 export async function asaTerms(app: AppConfig, country: string, terms: string[]): Promise<AsaTerm[] | null> {
-  const base = process.env.ASA_ADS_API_URL ?? 'http://localhost:5194';
   if (!/^\d+$/.test(String(app.iTunesId)) || !terms.length) return null;
   const params = new URLSearchParams({
     app_id: String(app.iTunesId),
@@ -392,13 +452,20 @@ export async function asaTerms(app: AppConfig, country: string, terms: string[])
     terms: terms.slice(0, 100).join(','),
   });
   try {
-    const response = await fetch(`${base}/api/traffic-intelligence?${params}`, { signal: AbortSignal.timeout(9_000) });
+    const [response, popularity] = await Promise.all([
+      fetch(adsApiUrl(`/traffic-intelligence?${params}`), { signal: AbortSignal.timeout(9_000) }),
+      asaPopularity(app, country, terms.slice(0, 100), 4_000),
+    ]);
     if (!response.ok) return null;
     const payload = (await response.json()) as { terms?: Array<{ term?: string; demandIndex?: number | null; origins?: string[] }> };
     if (!Array.isArray(payload.terms)) return null;
     return payload.terms
       .filter((row) => typeof row.term === 'string')
-      .map((row) => ({ term: normalized(row.term!), demandIndex: typeof row.demandIndex === 'number' ? row.demandIndex : null, origins: row.origins ?? [] }));
+      .map((row) => {
+        const term = normalized(row.term!);
+        const stored = popularity?.values.get(term)?.popularity;
+        return { term, demandIndex: stored ?? (typeof row.demandIndex === 'number' ? row.demandIndex : null), origins: row.origins ?? [] };
+      });
   } catch {
     return null;
   }
@@ -641,7 +708,7 @@ async function computeSuggestions(appId: string, locale: string): Promise<Keywor
       origin.push(`В названии ${n} ${plural(n, 'конкурента', 'конкурентов', 'конкурентов')} из топ-5 по ${listQuoted(keywords)} — например, ${quote(example)}`);
     }
     if (candidate.sources.has('asa_suggestion')) origin.push('Рекомендация Apple Ads для этой страны');
-    if (candidate.asaPopularity != null) origin.push(`Популярность Apple Ads: ${candidate.asaPopularity} из 100`);
+    if (candidate.asaPopularity != null) origin.push(`Популярность Apple Ads: ${candidate.asaPopularity <= 5 ? '≤5 (низкий объём)' : candidate.asaPopularity} из 100`);
 
     // Exact-phrase evidence: an older snapshot, or a cached App Store search.
     let ourRank: GainInputs['ourRank'] = null;
