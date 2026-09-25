@@ -170,7 +170,10 @@ export function EditorScreen() {
     }
   }, [selectedPresetId, screenshots.length, pickPreset]);
 
-  // Measure canvas wrap to fit
+  // Measure canvas wrap to fit. The wrap only mounts once screenshots exist (the
+  // empty state returns early), so re-attach when that flips — opening /editor
+  // directly used to leave the canvas unmeasured and blank.
+  const hasScreenshots = screenshots.length > 0;
   useEffect(() => {
     if (!canvasWrapRef.current) return;
     const ro = new ResizeObserver(() => {
@@ -181,7 +184,7 @@ export function EditorScreen() {
     });
     ro.observe(canvasWrapRef.current);
     return () => ro.disconnect();
-  }, []);
+  }, [hasScreenshots]);
 
   const active = screenshots.find((s) => s.id === activeScreenshotId);
   const activeDevice = active?.device ?? 'iphone';
