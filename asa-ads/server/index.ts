@@ -157,6 +157,12 @@ async function keywordPopularityHandler(query: Record<string, unknown>, res: exp
 }
 app.get("/api/keyword-popularity", (req, res) => keywordPopularityHandler(req.query as Record<string, unknown>, res));
 app.post("/api/keyword-popularity", (req, res) => keywordPopularityHandler((req.body ?? {}) as Record<string, unknown>, res));
+// Popularity cache health for the studio: cache size, hit rate, queue, 429
+// backoff, nightly prefetch and the last Apple errors (messages are redacted).
+app.get("/api/keyword-popularity/status", (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json(keywordPopularity.status());
+});
 
 app.get("/api/decision-matrix", async (req, res) => {
   const appId = Number(req.query.app_id ?? req.query.appId ?? req.query.itunesId ?? 0);
@@ -459,6 +465,11 @@ export function start(): void {
   if (started) return;
   started = true;
   trafficSyncScheduler.start();
+  // Refresh popularity for terms requested in the last week, an hour after the traffic sync.
+  keywordPopularity.startNightlyPrefetch(
+    Number(process.env.POPULARITY_PREFETCH_HOUR_UTC ?? (Number(process.env.TRAFFIC_SYNC_HOUR_UTC ?? 2) + 1) % 24),
+    Number(process.env.POPULARITY_PREFETCH_DAYS ?? 7),
+  );
   const alertCfg = loadAlertsConfig();
   if (alertCfg.enabled) {
     const intervalMin = Number(process.env.ALERT_INTERVAL_MIN ?? 30);

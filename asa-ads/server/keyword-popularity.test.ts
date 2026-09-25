@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import Database from "better-sqlite3";
+import { readFileSync } from "node:fs";
 import test from "node:test";
-import type { PlatformApiClient, PlatformRequestMeta } from "./platform-api-client.ts";
+import { PlatformApiError, type PlatformApiClient, type PlatformRequestMeta } from "./platform-api-client.ts";
 import { KeywordPopularityService, popularityLabel, toPopularity5to100 } from "./keyword-popularity.ts";
 import { modelTermTraffic } from "./traffic-intelligence.ts";
 
@@ -96,4 +97,127 @@ test("traffic model never mixes the 1–5 impression-share bucket into popularit
   });
   assert.equal(withStored.demandIndex, 7);
   assert.equal(withStored.demandScale, "apple_5_to_100");
+});
+
+// Recorded 2026-09-25 from the live Apple Ads Platform API (text/popularity only).
+interface FixtureRow { text: string; popularity: number }
+interface Fixtures {
+  singles: Record<string, { countries: string[]; totalCount: number; rows: FixtureRow[] }>;
+  batches: Array<{ label: string; terms: string[]; identicalToSingleOf: string; echoed: FixtureRow[] }>;
+}
+const FIXTURES = JSON.parse(readFileSync(new URL("./keyword-popularity.fixtures.json", import.meta.url), "utf8")) as Fixtures;
+
+// Replays Apple's observed behaviour: any query answers for terms[0] only.
+function replayClient(options: { failFirst?: number } = {}) {
+  const calls: string[][] = [];
+  let fail = options.failFirst ?? 0;
+  return {
+    calls,
+    client: {
+      queryRows: async (_path: string, body: { filters: Array<{ field: string; value: unknown }> }) => {
+        const terms = body.filters.find((filter) => filter.field === "terms")?.value as string[];
+        calls.push(terms);
+        if (fail > 0) {
+          fail -= 1;
+          throw new PlatformApiError("Apple Ads POST /suggestions/keywords/query failed (429)", 429, undefined, true);
+        }
+        return { data: FIXTURES.singles[terms[0]]?.rows ?? [{ text: terms[0], popularity: 5 }], meta };
+      },
+    } as unknown as Pick<PlatformApiClient, "queryRows">,
+  };
+}
+
+test("recorded batches: Apple answers terms[0] only and sibling values are not the term's own", () => {
+  for (const batch of FIXTURES.batches) {
+    assert.equal(batch.identicalToSingleOf, batch.terms[0], batch.label);
+    for (const echoed of batch.echoed) {
+      const own = FIXTURES.singles[echoed.text]?.rows.find((row) => row.text === echoed.text);
+      if (echoed.text === batch.terms[0]) assert.equal(echoed.popularity, own?.popularity, batch.label);
+    }
+  }
+  // The counter-examples that rule out an «echoed exact-match» batching rule.
+  const tracker = FIXTURES.singles["pregnancy tracker"].rows;
+  const app = FIXTURES.singles["pregnancy app"].rows;
+  assert.equal(tracker.find((row) => row.text === "pregnancy app")?.popularity, 9);
+  assert.equal(app.find((row) => row.text === "pregnancy app")?.popularity, 53);
+  assert.equal(FIXTURES.singles.dicom.rows.find((row) => row.text === "horos")?.popularity, 16);
+  assert.equal(FIXTURES.singles.horos.rows.find((row) => row.text === "horos")?.popularity, 7);
+});
+
+test("service stores each term's own single-call value, never a sibling's", async () => {
+  const db = new Database(":memory:");
+  const { client, calls } = replayClient();
+  const service = new KeywordPopularityService(db, client, { now: () => new Date("2026-09-25T10:00:00Z") });
+  const res = await service.lookup(6771391236, "US", ["pregnancy tracker", "pregnancy app", "baby tracker"], 1000);
+  const value = (term: string) => res.items.find((item) => item.term === term)?.popularity;
+  assert.equal(value("pregnancy tracker"), 9);
+  assert.equal(value("pregnancy app"), 53);
+  assert.equal(value("baby tracker"), 53);
+  assert.ok(calls.every((terms) => terms.length === 1));
+  assert.equal(calls.length, 3);
+  db.close();
+});
+
+test("in-flight lookups for the same term share one Apple call; status reports hits", async () => {
+  const db = new Database(":memory:");
+  const { client, calls } = replayClient();
+  const service = new KeywordPopularityService(db, client, { now: () => new Date("2026-09-25T10:00:00Z"), concurrency: 8 });
+  await Promise.all([
+    service.lookup(6762091560, "US", ["dicom", "horos"], 1000),
+    service.lookup(6762091560, "us", ["DICOM", "horos"], 1000),
+  ]);
+  assert.equal(calls.length, 2);
+  await service.lookup(6762091560, "US", ["dicom"], 0);
+  const status = service.status();
+  assert.equal(status.queue.concurrency, 2, "concurrency is capped at 2");
+  assert.equal(status.cache.rows, 2);
+  assert.equal(status.cache.todayRows, 2);
+  assert.equal(status.api.calls, 2);
+  assert.equal(status.lookups.fresh, 1);
+  assert.equal(status.lookups.miss, 4);
+  assert.equal(status.lookups.hitRate, 0.2);
+  assert.equal(status.batching.enabled, false);
+  db.close();
+});
+
+test("a 429 pauses the queue with backoff and retries the same term", async () => {
+  const db = new Database(":memory:");
+  const { client, calls } = replayClient({ failFirst: 2 });
+  const service = new KeywordPopularityService(db, client, {
+    now: () => new Date("2026-09-25T10:00:00Z"),
+    concurrency: 1,
+    backoffBaseMs: 20,
+    backoffMaxMs: 40,
+  });
+  const started = Date.now();
+  const res = await service.lookup(6762091560, "US", ["dicom"], 2000);
+  assert.equal(res.items[0].popularity, 7);
+  assert.equal(res.items[0].status, "ok");
+  assert.deepEqual(calls, [["dicom"], ["dicom"], ["dicom"]]);
+  assert.ok(Date.now() - started >= 55, "waited 20 ms + 40 ms of backoff");
+  const status = service.status();
+  assert.equal(status.api.rateLimited, 2);
+  assert.equal(status.lastErrors[0].status, 429);
+  assert.equal(status.backoff.nextDelayMs, 20, "backoff resets after a success");
+  service.stop();
+  db.close();
+});
+
+test("nightly prefetch refreshes terms requested in the last week", async () => {
+  const db = new Database(":memory:");
+  const { client, calls } = replayClient();
+  let now = new Date("2026-09-20T10:00:00Z");
+  const service = new KeywordPopularityService(db, client, { now: () => now });
+  await service.lookup(6762091560, "US", ["dicom"], 1000);
+  now = new Date("2026-09-24T10:00:00Z");
+  await service.lookup(6771391236, "GB", ["baby tracker"], 1000);
+  now = new Date("2026-09-25T03:05:00Z");
+  calls.length = 0;
+  assert.equal(service.prefetchRecent(7), 2);
+  await service.lookup(6762091560, "US", ["dicom"], 1000);
+  await service.lookup(6771391236, "GB", ["baby tracker"], 1000);
+  assert.equal(calls.length, 2, "lookups after the prefetch are served from today's cache");
+  assert.equal(service.prefetchRecent(7), 0, "nothing left to refresh today");
+  assert.equal(service.status().prefetch.lastEnqueued, 0);
+  db.close();
 });

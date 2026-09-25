@@ -1,0 +1,366 @@
+{
+ "recordedAt": "2026-09-25",
+ "endpoint": "POST /v1/suggestions/keywords/query",
+ "note": "Read-only Apple Ads Platform API responses (text/popularity only), trimmed to the requested terms plus a few siblings. US, GB and US+GB returned identical rows for every term. A multi-term request returned exactly the rows of a single request for terms[0].",
+ "singles": {
+  "ct scan": {
+   "countries": [
+    "US"
+   ],
+   "totalCount": 1,
+   "rows": [
+    {
+     "text": "ct scan",
+     "popularity": 5
+    }
+   ]
+  },
+  "radiology": {
+   "countries": [
+    "US"
+   ],
+   "totalCount": 10,
+   "rows": [
+    {
+     "text": "radiology",
+     "popularity": 11
+    },
+    {
+     "text": "ivue patient app",
+     "popularity": 19
+    },
+    {
+     "text": "radiology group",
+     "popularity": 16
+    },
+    {
+     "text": "mackay radiology",
+     "popularity": 9
+    },
+    {
+     "text": "ser patient results",
+     "popularity": 6
+    }
+   ]
+  },
+  "pregnancy tracker": {
+   "countries": [
+    "US"
+   ],
+   "totalCount": 78,
+   "rows": [
+    {
+     "text": "pregnancy app",
+     "popularity": 9
+    },
+    {
+     "text": "pregnancy tracker",
+     "popularity": 9
+    },
+    {
+     "text": "flo",
+     "popularity": 52
+    },
+    {
+     "text": "pregnancy",
+     "popularity": 46
+    },
+    {
+     "text": "schwangerschaft",
+     "popularity": 33
+    },
+    {
+     "text": "embarazo semana a semana",
+     "popularity": 31
+    }
+   ]
+  },
+  "pregnancy app": {
+   "countries": [
+    "US"
+   ],
+   "totalCount": 30,
+   "rows": [
+    {
+     "text": "pregnancy tracker",
+     "popularity": 58
+    },
+    {
+     "text": "pregnancy app",
+     "popularity": 53
+    },
+    {
+     "text": "baby tracker",
+     "popularity": 28
+    },
+    {
+     "text": "pregnancy",
+     "popularity": 50
+    },
+    {
+     "text": "free pregnancy tracker",
+     "popularity": 31
+    },
+    {
+     "text": "baby app pregnancy",
+     "popularity": 27
+    },
+    {
+     "text": "my pregnancy notes",
+     "popularity": 27
+    }
+   ]
+  },
+  "baby tracker": {
+   "countries": [
+    "US"
+   ],
+   "totalCount": 78,
+   "rows": [
+    {
+     "text": "baby tracker",
+     "popularity": 53
+    },
+    {
+     "text": "pregnancy tracker",
+     "popularity": 41
+    },
+    {
+     "text": "pregnancy app",
+     "popularity": 5
+    },
+    {
+     "text": "huckleberry baby tracker",
+     "popularity": 46
+    },
+    {
+     "text": "what to expect",
+     "popularity": 39
+    },
+    {
+     "text": "baby",
+     "popularity": 36
+    },
+    {
+     "text": "pregnancy",
+     "popularity": 34
+    }
+   ]
+  },
+  "dicom viewer": {
+   "countries": [
+    "GB"
+   ],
+   "totalCount": 42,
+   "rows": [
+    {
+     "text": "horos",
+     "popularity": 16
+    },
+    {
+     "text": "dicom",
+     "popularity": 9
+    },
+    {
+     "text": "dicom viewer",
+     "popularity": 8
+    },
+    {
+     "text": "identity v",
+     "popularity": 38
+    },
+    {
+     "text": "compteur calories",
+     "popularity": 33
+    },
+    {
+     "text": "norton 360",
+     "popularity": 30
+    },
+    {
+     "text": "exlibris",
+     "popularity": 25
+    }
+   ]
+  },
+  "dicom": {
+   "countries": [
+    "US"
+   ],
+   "totalCount": 25,
+   "rows": [
+    {
+     "text": "horos",
+     "popularity": 16
+    },
+    {
+     "text": "dicom viewer",
+     "popularity": 8
+    },
+    {
+     "text": "dicom",
+     "popularity": 7
+    },
+    {
+     "text": "identity v",
+     "popularity": 38
+    },
+    {
+     "text": "entrust identity",
+     "popularity": 15
+    },
+    {
+     "text": "dbd",
+     "popularity": 14
+    },
+    {
+     "text": "mimicry",
+     "popularity": 13
+    }
+   ]
+  },
+  "horos": {
+   "countries": [
+    "US"
+   ],
+   "totalCount": 83,
+   "rows": [
+    {
+     "text": "dicom viewer",
+     "popularity": 18
+    },
+    {
+     "text": "horos",
+     "popularity": 7
+    },
+    {
+     "text": "dicom",
+     "popularity": 7
+    },
+    {
+     "text": "co star",
+     "popularity": 43
+    },
+    {
+     "text": "garmin iq",
+     "popularity": 36
+    },
+    {
+     "text": "photomath",
+     "popularity": 34
+    },
+    {
+     "text": "garmin connect iq",
+     "popularity": 32
+    }
+   ]
+  }
+ },
+ "batches": [
+  {
+   "label": "US batch5 med",
+   "terms": [
+    "dicom",
+    "dicom viewer",
+    "horos",
+    "mri viewer",
+    "pacs"
+   ],
+   "totalCount": 25,
+   "identicalToSingleOf": "dicom",
+   "echoed": [
+    {
+     "text": "horos",
+     "popularity": 16
+    },
+    {
+     "text": "dicom viewer",
+     "popularity": 8
+    },
+    {
+     "text": "dicom",
+     "popularity": 7
+    }
+   ]
+  },
+  {
+   "label": "US batch5 elara",
+   "terms": [
+    "pregnancy tracker",
+    "pregnancy app",
+    "baby tracker",
+    "due date calculator",
+    "contraction timer"
+   ],
+   "totalCount": 78,
+   "identicalToSingleOf": "pregnancy tracker",
+   "echoed": [
+    {
+     "text": "pregnancy app",
+     "popularity": 9
+    },
+    {
+     "text": "pregnancy tracker",
+     "popularity": 9
+    }
+   ]
+  },
+  {
+   "label": "US batch15 med-app",
+   "terms": [
+    "dicom",
+    "dicom viewer",
+    "horos",
+    "mri viewer",
+    "pacs",
+    "ct scan",
+    "x ray",
+    "radiology",
+    "pregnancy tracker",
+    "pregnancy app",
+    "baby tracker",
+    "due date calculator",
+    "contraction timer",
+    "baby names",
+    "ovulation tracker"
+   ],
+   "totalCount": 25,
+   "identicalToSingleOf": "dicom",
+   "echoed": [
+    {
+     "text": "horos",
+     "popularity": 16
+    },
+    {
+     "text": "dicom viewer",
+     "popularity": 8
+    },
+    {
+     "text": "dicom",
+     "popularity": 7
+    }
+   ]
+  },
+  {
+   "label": "US batch8 med reversed",
+   "terms": [
+    "radiology",
+    "x ray",
+    "ct scan",
+    "pacs",
+    "mri viewer",
+    "horos",
+    "dicom viewer",
+    "dicom"
+   ],
+   "totalCount": 10,
+   "identicalToSingleOf": "radiology",
+   "echoed": [
+    {
+     "text": "radiology",
+     "popularity": 11
+    }
+   ]
+  }
+ ]
+}
