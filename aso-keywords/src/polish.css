@@ -156,3 +156,12 @@ body.pt-resizing, body.pt-resizing * { cursor: col-resize !important; user-selec
 .kw-progress-warn { color: var(--ds-warn); font-weight: 500; }
 .kw-progress-spacer { flex: 1; }
 .kba-warn { color: var(--ds-bad); font-weight: 500; }
+
+/* ---------- Global keywords ---------- */
+.pt-global { flex: none; font-size: 12px; line-height: 1; opacity: .8; }
+.kba-scope { margin-left: auto; margin-right: 8px; }
+.kba-global { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: var(--ds-radius-card); background: var(--ds-panel-2); align-self: start; }
+.kba-global strong { color: var(--ds-strong); font-size: 14px; font-weight: 600; }
+.kba-global p { margin: 0; color: var(--ds-text); font-size: 13px; line-height: 19px; }
+.kba-global .kba-global-muted { color: var(--ds-muted); }
+.kba-global .kba-global-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ds-warn); }

@@ -1,5 +1,5 @@
 import type { Express } from 'express';
-import { loadApps, loadKeywords, saveKeywords } from './config.js';
+import { loadApps, loadKeywordLayers, loadKeywords, saveKeywords, updateGlobalKeywords } from './config.js';
 import { db } from './db.js';
 import { keywordDifficulty, opportunity, SPY_FORMULA } from './competitor-spy.js';
 import { asaPopularity } from './suggestions.js';
@@ -40,6 +40,7 @@ export function registerKeywordTableRoutes(app: Express) {
     const appConfig = loadApps().find((item) => item.id === req.params.id);
     if (!appConfig) { res.status(404).json({ error: 'app not found' }); return; }
     const keywords = loadKeywords(appConfig.id)[storefront] ?? [];
+    const globalSet = new Set(loadKeywordLayers(appConfig.id).global.map((k) => k.trim().toLocaleLowerCase()));
     const waitMs = Math.max(0, Math.min(8_000, Number(req.query.wait_ms ?? 2_500) || 0));
     try {
       const started = Date.now();
@@ -77,6 +78,8 @@ export function registerKeywordTableRoutes(app: Express) {
           serpSource: d?.source ?? null,
           tags: tags.tags[key] ?? [],
           note: notes[key] ?? '',
+          /** Tracked through the app's global list (every storefront), not this storefront's own list. */
+          global: globalSet.has(keyword.trim().toLocaleLowerCase()),
         };
       });
       res.set('Cache-Control', 'no-store');
@@ -133,6 +136,24 @@ export function registerKeywordTableRoutes(app: Express) {
     const result = applyPairs(loadKeywords(req.params.id), add, remove);
     saveKeywords(req.params.id, result.map);
     clearMatrixCache(db);
-    res.json({ added: result.added, removed: result.removed, existing: result.existing, keywords: result.map });
+    res.json({ added: result.added, removed: result.removed, existing: result.existing, keywords: loadKeywords(req.params.id), global: loadKeywordLayers(req.params.id).global });
+  });
+
+  /** Global keywords — tracked in every storefront of the app, including future ones. */
+  app.get('/api/apps/:id/keywords/global', (req, res) => {
+    const { global, local } = loadKeywordLayers(req.params.id);
+    res.json({ global, storefronts: Object.keys(local).length });
+  });
+
+  /** { add?: string[], remove?: string[] }. Adding moves the keyword out of storefront
+   * lists into the global one; removing drops it from every storefront. */
+  app.put('/api/apps/:id/keywords/global', (req, res) => {
+    const list = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x.trim().length > 0).map((x) => x.trim()) : []);
+    const add = list(req.body?.add), remove = list(req.body?.remove);
+    if (!add.length && !remove.length) { res.status(400).json({ error: 'add or remove required' }); return; }
+    if (!loadApps().some((item) => item.id === req.params.id)) { res.status(404).json({ error: 'app not found' }); return; }
+    const layers = updateGlobalKeywords(req.params.id, add, remove);
+    clearMatrixCache(db);
+    res.json({ global: layers.global, keywords: loadKeywords(req.params.id) });
   });
 }

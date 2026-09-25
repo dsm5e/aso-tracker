@@ -317,6 +317,17 @@ export default function PositionsTable({
 
   // --- bulk actions ----------------------------------------------------------------
   const [dialog, setDialog] = useState<'copy' | 'remove' | null>(null);
+  const makeGlobal = async () => {
+    if (!selectedKeywords.length) return;
+    try {
+      const result = await keywordTableApi.setGlobal(appId, selectedKeywords);
+      setNotice(`${selectedKeywords.length} ${selectedKeywords.length === 1 ? 'ключ теперь общий' : 'ключей теперь общие'} — отслеживаются во всех странах.`);
+      setSelected(new Set());
+      onKeywordsChanged(result.keywords);
+    } catch (reason) {
+      setNotice(`Не получилось: ${(reason as Error).message}`);
+    }
+  };
   /** The row whose × was pressed — the remove dialog then targets just that keyword. */
   const [rowRemove, setRowRemove] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -482,6 +493,7 @@ export default function PositionsTable({
         <div className="pt-bulk" role="toolbar" aria-label="Действия с выделенными">
           <strong>Выбрано {selected.size}</strong>
           <TagMenu palette={tags} selectedRows={allRows.filter((row) => selected.has(row.key))} onApply={applyTags} />
+          <button type="button" className="ds-btn ds-btn-sm" onClick={() => void makeGlobal()} title="Отслеживать выделенные ключи во всех странах приложения, включая будущие">🌐 Сделать общими</button>
           <button type="button" className="ds-btn ds-btn-sm" onClick={() => setDialog('copy')}><Icon name="plus" size={14} /> Скопировать в страны…</button>
           <button type="button" className="ds-btn ds-btn-sm ds-btn-danger" onClick={() => setDialog('remove')}><Icon name="close" size={14} /> Удалить из стран…</button>
           <button type="button" className="ds-btn ds-btn-sm" onClick={exportCsv}>Экспорт CSV</button>
@@ -684,6 +696,7 @@ const PositionRow = memo(function PositionRow({
       <td className="pt-kw pt-sticky-1">
         <button className="keyword-open" type="button" onClick={() => onOpenDetail(row.keyword)} aria-label={`Открыть аналитику ключевого слова ${row.keyword}`}>
           <strong title={row.keyword}>{row.keyword}</strong>
+          {row.m?.global ? <span className="pt-global" {...tipProps(row.keyword, [[null, 'Общий ключ', 'отслеживается во всех странах приложения'], [null, 'Удаление', 'убирает из всех стран']])}>🌐</span> : null}
           {renderKeywordExtra(row.keyword)}
         </button>
       </td>

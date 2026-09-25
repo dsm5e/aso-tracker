@@ -239,3 +239,17 @@ npm --workspace aso-keywords run snapshot -- --app=<id> [--locales=us,de]
 ## License
 
 MIT.
+
+## Adding keywords (for agents)
+
+Keywords live per storefront in `~/.aso-studio/keywords/files/<app>.json`; the special key `"*"` is the
+app's **global list** — tracked in every storefront of the app, including storefronts added later.
+Readers (`GET /api/apps/:id/keywords`) get the effective per-storefront map with globals merged in.
+
+- Brand, competitor names, English terms → global, one call:
+  `PUT /api/apps/:id/keywords/global {"add": ["dicom viewer", "medscan"]}` (`"remove"` drops them everywhere).
+- Localized phrases → only the storefronts of their language, one call:
+  `POST /api/apps/:id/keywords/bulk {"add": [{"keyword": "визуализатор dicom", "storefront": "ru"}, ...]}`.
+- Don't loop per storefront; don't copy a global keyword into storefront lists.
+- Removing a global keyword from *some* storefronts via `/keywords/bulk` turns it into targeted
+  keywords in the storefronts that keep it; removing it from all drops it from the global list.

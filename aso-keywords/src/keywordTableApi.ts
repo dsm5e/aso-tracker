@@ -25,6 +25,8 @@ export interface KeywordTableRow {
   serpSource: 'full' | 'cache' | 'snapshot' | null;
   tags: string[];
   note: string;
+  /** In the app's global list (tracked in every storefront). */
+  global?: boolean;
 }
 
 export interface KeywordTableResponse {
@@ -74,4 +76,7 @@ export const keywordTableApi = {
     post(`/api/apps/${appId}/notes`, { storefront, keyword, note }, 'PUT').then((r) => json<{ note: string }>(r)),
   bulk: (appId: string, add: KeywordPair[], remove: KeywordPair[]) =>
     post(`/api/apps/${appId}/keywords/bulk`, { add, remove }).then((r) => json<{ added: number; removed: number; existing: number; keywords: Record<string, string[]> }>(r)),
+  /** Global list: add moves keywords into «every storefront», remove drops them everywhere. */
+  setGlobal: (appId: string, add: string[], remove: string[] = []) =>
+    post(`/api/apps/${appId}/keywords/global`, { add, remove }, 'PUT').then((r) => json<{ global: string[]; keywords: Record<string, string[]> }>(r)),
 };

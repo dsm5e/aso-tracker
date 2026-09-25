@@ -50,6 +50,9 @@ export default function BulkAddDialog({
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // «Во все страны» = the app's global list (also every storefront added later);
+  // «В выбранные» = targeted pairs, for localized phrases.
+  const [scope, setScope] = useState<'global' | 'targeted'>('global');
 
   const parsed = useMemo(() => parseKeywordList(text), [text]);
   const items = useMemo(() => parsed.keywords.map((keyword) => {
@@ -98,6 +101,20 @@ export default function BulkAddDialog({
 
   const n = items.length, m = selected.size;
   const submit = async () => {
+    if (scope === 'global') {
+      if (!items.length) return;
+      setBusy(true);
+      setError(null);
+      try {
+        const result = await keywordTableApi.setGlobal(appId, items.map((item) => item.keyword));
+        onDone(result.keywords, items.length);
+      } catch (reason) {
+        setError((reason as Error).message);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!plan.pairs.length) return;
     setBusy(true);
     setError(null);
@@ -124,6 +141,10 @@ export default function BulkAddDialog({
       <section className="kb-card kba" role="dialog" aria-modal="true" aria-labelledby="kba-title" onMouseDown={(event) => event.stopPropagation()}>
         <header className="kb-head">
           <h2 id="kba-title">Добавить ключевые слова</h2>
+          <div className="ds-seg kba-scope" role="tablist" aria-label="Куда добавить">
+            <button type="button" role="tab" aria-selected={scope === 'global'} onClick={() => setScope('global')}>🌐 Во все страны</button>
+            <button type="button" role="tab" aria-selected={scope === 'targeted'} onClick={() => setScope('targeted')}>В выбранные</button>
+          </div>
           <button type="button" className="ds-icon-btn" onClick={onClose} aria-label="Закрыть"><Icon name="close" /></button>
         </header>
         <div className="kba-body">
@@ -153,6 +174,7 @@ export default function BulkAddDialog({
                       ])}>
                       {Object.entries(LANGUAGE_LABEL).map(([code, label]) => <option key={code} value={code}>{label}</option>)}
                     </select>
+                    {scope === 'targeted' && (
                     <span className="kba-kw-stat" {...tipProps(item.keyword, [
                       [null, 'Новые пары', [...selected].filter((code) => (!languageOnly || item.indexing.has(code)) && !existingKeys.get(code)?.has(tagKey(item.keyword))).map((code) => code.toUpperCase()).join(' ') || '—'],
                       [null, 'Уже отслеживается', [...selected].filter((code) => (!languageOnly || item.indexing.has(code)) && existingKeys.get(code)?.has(tagKey(item.keyword))).map((code) => code.toUpperCase()).join(' ') || '—'],
@@ -160,11 +182,22 @@ export default function BulkAddDialog({
                       → <b>{(stat?.target ?? 0) - (stat?.existing ?? 0)}</b>
                       {stat?.existing ? <em> · уже есть в {stat.existing}</em> : null}
                     </span>
+                    )}
                   </div>
                 );
               })}
             </div>
           </div>
+          {scope === 'global' ? (
+          <div className="kba-right kba-global">
+            <strong>Общий список приложения</strong>
+            <p>Ключ отслеживается во всех {tracked.length} {plural(tracked.length, 'стране', 'странах', 'странах')} приложения и автоматически — в странах, добавленных позже. Удаление общего ключа убирает его отовсюду.</p>
+            <p className="kba-global-muted">Для бренда, названий конкурентов и английских терминов. Локализованные фразы («визуализатор dicom», «ct ビューア») лучше добавлять «В выбранные» — в страны своего языка.</p>
+            {languages.some((lang) => lang !== 'en') && (
+              <p className="kba-global-hint">Среди ключей есть не английские ({languages.filter((lang) => lang !== 'en').map((lang) => LANGUAGE_LABEL[lang] ?? lang).join(', ')}). <button type="button" className="ds-btn ds-btn-sm" onClick={() => { setScope('targeted'); setLanguageOnly(true); setTouched(false); }}>В страны их языка</button></p>
+            )}
+          </div>
+          ) : (
           <div className="kba-right">
             <div className="kba-right-head">
               <span className="kba-label">Витрины · {m}</span>
@@ -197,20 +230,26 @@ export default function BulkAddDialog({
               Только где язык ключа индексируется
             </label>
           </div>
+          )}
         </div>
         <footer className="kba-foot">
           <div className="kba-preview" aria-live="polite">
+            {scope === 'global' ? <>
+              <strong>{n} {plural(n, 'ключ', 'ключа', 'ключей')} → общий список</strong>
+              <span>будут отслеживаться во всех {tracked.length} {plural(tracked.length, 'стране', 'странах', 'странах')}</span>
+            </> : <>
             <strong>{n} {plural(n, 'ключ', 'ключа', 'ключей')} × {m} {plural(m, 'страна', 'страны', 'стран')} = {n * m} пар</strong>
             <span>
               новых <b className="kba-new">{plan.pairs.length}</b>
               {plan.existing > 0 && <> · уже есть {plan.existing}</>}
               {languageOnly && plan.skippedLanguage > 0 && <> · язык не индексируется {plan.skippedLanguage}</>}
             </span>
+            </>}
             {error && <span className="kba-error">{error}</span>}
           </div>
           <button type="button" className="ds-btn" onClick={onClose}>Отмена</button>
-          <button type="button" className="ds-btn ds-btn-primary" disabled={busy || !plan.pairs.length} onClick={() => void submit()}>
-            {busy ? 'Добавляем…' : `Добавить ${plan.pairs.length} ${plural(plan.pairs.length, 'пару', 'пары', 'пар')}`}
+          <button type="button" className="ds-btn ds-btn-primary" disabled={busy || (scope === 'global' ? !n : !plan.pairs.length)} onClick={() => void submit()}>
+            {busy ? 'Добавляем…' : scope === 'global' ? `Добавить в общий список (${n})` : `Добавить ${plan.pairs.length} ${plural(plan.pairs.length, 'пару', 'пары', 'пар')}`}
           </button>
         </footer>
       </section>
