@@ -27,6 +27,7 @@ import {
   updateAsoExperiment,
 } from './metadata-history.js';
 import { createPaidObservation, getPaidObservations } from './paid-observations.js';
+import { registerCountryRoutes } from './routes-countries.js';
 
 const app = express();
 app.use(express.json());
@@ -244,6 +245,8 @@ app.get('/api/apps/:id/rankings', (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(getRankings(req.params.id, locale));
 });
+
+registerCountryRoutes(app); // storefronts, keyword × storefront matrix, country sets
 
 // --- Locale stats (for the locale strip) ---
 app.get('/api/apps/:id/locales', (req, res) => {

@@ -1,0 +1,77 @@
+/* «Все страны» matrix — ds table look, sticky keyword column + header, 40px rows. */
+.mx { --mx-kw-w: 260px; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.mx-toolbar { flex-wrap: wrap; }
+.mx-set-picker .picker-btn { min-width: 200px; }
+.mx-filter.active { background: var(--ds-accent-soft); border-color: var(--ds-accent); color: var(--ds-accent); font-weight: 600; }
+.mx-count { min-width: 20px; height: 20px; padding: 0 6px; display: inline-grid; place-items: center; border-radius: var(--ds-radius-pill); background: var(--ds-accent-soft); color: var(--ds-accent); font-size: 11px; font-weight: 600; }
+
+.mx-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; padding: 10px 20px; color: var(--ds-muted); font-size: 13px; }
+.mx-summary b { color: var(--ds-strong); font-weight: 600; font-variant-numeric: tabular-nums; }
+.mx-legend { display: inline-flex; align-items: center; gap: 4px; }
+.mx-legend .mx-rank { min-width: 0; padding: 0 6px; font-style: normal; font-size: 11px; }
+.mx-latency { font-variant-numeric: tabular-nums; }
+
+.mx-scroll { flex: 1; min-height: 0; overflow: auto; margin: 0 20px 16px; border: 1px solid var(--ds-hairline); border-radius: var(--ds-radius-card); background: var(--ds-panel); overscroll-behavior: contain; }
+.mx-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: 14px; font-variant-numeric: tabular-nums; }
+.mx-table th { position: sticky; top: 0; z-index: 2; height: 52px; padding: 0; background: var(--ds-panel); border-bottom: 1px solid var(--ds-hairline); color: var(--ds-strong); font-weight: 600; text-align: left; white-space: nowrap; }
+.mx-table th > button:first-child { width: 100%; height: 100%; display: flex; align-items: center; gap: 4px; padding: 0 12px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; text-align: left; }
+.mx-table th > button:first-child:hover { background: var(--ds-accent-soft); }
+.mx-sort-mark { color: var(--ds-accent); }
+.mx-table td { height: 40px; padding: 0; border-bottom: 1px solid var(--ds-hairline); background: var(--ds-panel); }
+.mx-table tbody tr:hover td { background: var(--ds-accent-soft); }
+.mx-sticky { position: sticky; left: 0; z-index: 1; border-right: 1px solid var(--ds-hairline); }
+.mx-sticky-2 { position: sticky; left: var(--mx-kw-w); z-index: 1; border-right: 1px solid var(--ds-hairline); box-shadow: 4px 0 8px -6px rgba(1, 0, 48, .18); }
+.mx-table th.mx-sticky, .mx-table th.mx-sticky-2 { z-index: 3; }
+.mx-kw { padding: 0 12px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-text); font-weight: 500; }
+.mx-best { text-align: center; }
+
+.mx-col-head { position: relative; }
+.mx-col-head > button:first-child { flex-direction: column; justify-content: center; align-items: center !important; gap: 0 !important; padding: 0 4px !important; }
+.mx-col-flag { font-size: 16px; line-height: 18px; }
+.mx-col-code { display: inline-flex; align-items: center; gap: 2px; font-size: 12px; line-height: 16px; }
+.mx-col-head small { color: var(--ds-muted); font-size: 11px; font-weight: 500; line-height: 14px; }
+.mx-col-sorted { box-shadow: inset 0 -2px 0 var(--ds-accent); }
+.mx-col-open { position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; display: grid; place-items: center; padding: 0; border: 0; border-radius: var(--ds-radius-inner); background: var(--ds-panel); color: var(--ds-muted); opacity: 0; cursor: pointer; }
+.mx-col-head:hover .mx-col-open, .mx-col-open:focus-visible { opacity: 1; }
+.mx-col-open:hover { color: var(--ds-accent); background: var(--ds-accent-soft); }
+
+.mx-cell { text-align: center; border-left: 1px solid var(--ds-hairline); }
+.mx-untracked { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--ds-panel-2) 6px 7px) !important; }
+.mx-cell-btn { width: 100%; height: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 3px; padding: 0 4px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.mx-cell-btn:hover .mx-rank, .mx-cell-btn:focus-visible .mx-rank { box-shadow: 0 0 0 1.5px var(--ds-accent); }
+.mx-cell-btn:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: -2px; border-radius: var(--ds-radius-inner); }
+
+/* Rank scale: top 3 / top 10 / top 50 / deeper — ds semantic tokens. */
+.mx-rank { display: inline-grid; place-items: center; min-width: 30px; height: 22px; padding: 0 5px; border-radius: var(--ds-radius-inner); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.mx-top3 { background: var(--ds-good); color: var(--ds-on-accent); }
+.mx-top10 { background: var(--ds-good-soft); color: var(--ds-good); }
+.mx-top50 { background: var(--ds-warn-soft); color: var(--ds-warn); }
+.mx-deep { background: var(--ds-panel-2); color: var(--ds-muted); font-weight: 500; }
+.mx-out, .mx-out-text { color: var(--ds-subtle); font-weight: 500; }
+.mx-legend .mx-out { background: none; }
+.mx-pending { color: var(--ds-subtle); }
+.mx-delta { min-width: 22px; font-size: 11px; font-weight: 600; text-align: left; }
+.mx-delta-up { color: var(--ds-good); }
+.mx-delta-down { color: var(--ds-bad); }
+
+.mx-spacer td { height: auto; padding: 0; border: 0; background: none !important; }
+.mx-skeleton td i { display: block; height: 12px; margin: 0 12px; border-radius: var(--ds-radius-inner); background: var(--ds-panel-2); }
+.mx-empty { padding: 48px 20px; text-align: center; color: var(--ds-muted); }
+
+.mx-columns-pop { width: 380px; }
+.mx-columns-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.mx-columns-list { max-height: 300px; }
+.mx-columns-row { cursor: pointer; }
+.mx-columns-row input { accent-color: var(--ds-accent); }
+.mx-columns-row .cp-locales { flex: 0 0 auto; margin-left: auto; }
+.mx-columns-row small { margin-left: 0 !important; min-width: 22px; text-align: right; }
+.mx-columns-save { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid var(--ds-hairline); }
+.mx-columns-save .ds-input { flex: 1; min-width: 0; }
+.mx-columns-delete { align-self: flex-start; }
+
+@media (max-width: 720px) {
+  .mx { --mx-kw-w: 140px; }
+  .mx-scroll { margin: 0 12px 12px; }
+  .mx-summary { padding: 8px 12px; }
+  .mx-legend { display: none; }
+}

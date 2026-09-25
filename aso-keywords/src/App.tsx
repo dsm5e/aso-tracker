@@ -27,12 +27,23 @@ import { TopFiveArtwork } from './components/KeywordResultsDrawer';
 import Icon from './components/Icon';
 import Picker from './components/Picker';
 import { useDismiss } from './components/useDismiss';
+import CountryPalette from './components/CountryPalette';
+import CountryMatrix from './screens/CountryMatrix';
+import {
+  columnSets,
+  countriesApi,
+  loadRecent,
+  pushRecent,
+  resolveColumnSet,
+  storefrontOf,
+  type CountrySetsResponse,
+} from './countries';
 import { HBars, Legend, SERIES, Sparkline as ChartSparkline, type TipRow } from '../../shared/charts/Charts';
 
 type TopFiveCandidate = { id: string; tid?: number };
 
 type AppView = 'overview' | 'keywords' | 'competitors' | 'funnel' | 'experiments';
-type KeywordView = 'positions' | 'analytics' | 'ideas';
+type KeywordView = 'matrix' | 'positions' | 'analytics' | 'ideas';
 
 type DialogKind = 'keywords' | 'locale' | 'app' | 'error' | 'delete-app';
 type DialogState = {
@@ -188,7 +199,7 @@ export default function App() {
   });
   const [keywordView, setKeywordView] = useState<KeywordView>(() => {
     const requested = window.location.hash.slice(1);
-    return requested === 'analytics' || requested === 'ideas' ? requested : 'positions';
+    return requested === 'analytics' || requested === 'ideas' || requested === 'positions' ? requested : 'matrix';
   });
   const [theme, setTheme] = useState<'light' | 'dark'>(
     () => {
@@ -206,12 +217,52 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     localStorage.setItem('theme', theme);
   }, [theme]);
+  // Country navigation state. The URL carries app / storefront / column set / view
+  // (?app=medscan&locale=mx#positions, ?app=medscan&set=fav#matrix) so every view
+  // is linkable; user navigation pushes history entries, so back/forward works.
+  const [countrySets, setCountrySets] = useState<CountrySetsResponse | null>(null);
+  const [matrixSetId, setMatrixSetId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('set'));
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [recentTick, setRecentTick] = useState(0);
+  const [matrixRefreshKey, setMatrixRefreshKey] = useState(0);
+  const [cellDetail, setCellDetail] = useState<{ keyword: string; locale: string; ranking?: RankingRow; loading: boolean } | null>(null);
+  const pushNextUrl = useRef(false);
+  const markNavigation = () => { pushNextUrl.current = true; };
+
   useEffect(() => {
     const route = view === 'keywords' ? keywordView : view;
-    if (window.location.hash !== `#${route}`) {
-      window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#${route}`);
-    }
-  }, [keywordView, view]);
+    const params = new URLSearchParams(window.location.search);
+    if (selectedAppID) params.set('app', selectedAppID); else params.delete('app');
+    const matrix = view === 'keywords' && keywordView === 'matrix';
+    if (locale && !matrix) params.set('locale', locale); else params.delete('locale');
+    if (matrix && matrixSetId) params.set('set', matrixSetId); else params.delete('set');
+    const search = params.toString();
+    const next = `${window.location.pathname}${search ? `?${search}` : ''}#${route}`;
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (next === current) { pushNextUrl.current = false; return; }
+    if (pushNextUrl.current) window.history.pushState(null, '', next);
+    else window.history.replaceState(null, '', next);
+    pushNextUrl.current = false;
+  }, [keywordView, view, selectedAppID, locale, matrixSetId]);
+
+  useEffect(() => {
+    const onPop = () => {
+      const params = new URLSearchParams(window.location.search);
+      const route = window.location.hash.slice(1);
+      if (route === 'overview' || route === 'competitors' || route === 'funnel' || route === 'experiments') setView(route);
+      else {
+        setView('keywords');
+        setKeywordView(route === 'analytics' || route === 'ideas' || route === 'positions' ? route : 'matrix');
+      }
+      const app = params.get('app');
+      if (app) setSelectedAppID(app);
+      const nextLocale = params.get('locale');
+      if (nextLocale) setLocale(nextLocale.toLowerCase());
+      if (params.has('set')) setMatrixSetId(params.get('set'));
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
   useEffect(() => { localStorage.setItem('pageSize', String(pageSize)); }, [pageSize]);
   useEffect(() => { setPage(0); }, [locale, query, pageSize, selectedAppID]);
 
@@ -378,6 +429,7 @@ export default function App() {
     if (event.type === 'done' || event.type === 'abort') {
       setRefreshing(false);
       setRowUpdates({});
+      setMatrixRefreshKey((key) => key + 1);
       const app = selectedAppRef.current;
       const currentLocale = localeRef.current;
       if (app && currentLocale) {
@@ -582,6 +634,7 @@ export default function App() {
   };
 
   const openKeywordView = (next: KeywordView) => {
+    markNavigation();
     setView('keywords');
     setKeywordView(next);
     setMobileNavOpen(false);
@@ -607,22 +660,155 @@ export default function App() {
     return () => { cancelled = true; };
   }, [view, apps]);
 
-  // ⌘K opens the App Store search dialog from anywhere.
+  // --- Country navigation -------------------------------------------------------
+  useEffect(() => {
+    if (!selectedApp) return;
+    let cancelled = false;
+    countriesApi.countrySets(selectedApp.id)
+      .then((sets) => { if (!cancelled) setCountrySets(sets); })
+      .catch(() => { if (!cancelled) setCountrySets(null); });
+    return () => { cancelled = true; };
+  }, [selectedApp?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Recents are a per-viewer convenience (localStorage); recentTick re-reads them.
+  const recentStorefronts = useMemo(() => (selectedApp ? loadRecent(selectedApp.id) : []), [selectedApp, recentTick]); // eslint-disable-line react-hooks/exhaustive-deps
+  const matrixSets = useMemo(() => columnSets(countrySets, keywordMap), [countrySets, keywordMap]);
+  const activeMatrixSet = resolveColumnSet(matrixSets, matrixSetId);
+  const trackedStorefronts = useMemo(
+    () => Object.keys(keywordMap).sort((a, b) => storefrontOf(a).name.localeCompare(storefrontOf(b).name, 'ru')),
+    [keywordMap]
+  );
+  const [paletteAvg, setPaletteAvg] = useState<Record<string, number | null>>({});
+  const paletteStats = useMemo(() => Object.fromEntries(trackedStorefronts.map((code) => [
+    code, { keywords: keywordMap[code]?.length ?? 0, avg: paletteAvg[code] ?? null },
+  ])), [keywordMap, paletteAvg, trackedStorefronts]);
+  useEffect(() => {
+    if (!paletteOpen || !selectedApp) return;
+    let cancelled = false;
+    api.appLocales(selectedApp.id)
+      .then((rows) => { if (!cancelled) setPaletteAvg(Object.fromEntries(rows.map((row) => [row.code.toLowerCase(), row.avg]))); })
+      .catch(() => { /* averages are decoration */ });
+    return () => { cancelled = true; };
+  }, [paletteOpen, selectedApp]);
+
+  const isMatrix = view === 'keywords' && keywordView === 'matrix';
+
+  const selectStorefront = useCallback((code: string) => {
+    if (!keywordMap[code]) return;
+    markNavigation();
+    setLocale(code);
+    if (selectedApp) { pushRecent(selectedApp.id, code); setRecentTick((tick) => tick + 1); }
+    // Storefront-scoped views stay put; the matrix and cross-app views open positions.
+    if (view !== 'keywords' && view !== 'competitors') setView('keywords');
+    if (view !== 'competitors' && (view !== 'keywords' || keywordView === 'matrix')) setKeywordView('positions');
+    setPaletteOpen(false);
+  }, [keywordMap, keywordView, selectedApp, view]);
+
+  const openMatrix = useCallback((setId?: string) => {
+    markNavigation();
+    if (setId) setMatrixSetId(setId);
+    setView('keywords');
+    setKeywordView('matrix');
+    setPaletteOpen(false);
+    setMobileNavOpen(false);
+  }, []);
+
+  const stepStorefront = useCallback((direction: 1 | -1) => {
+    if (!trackedStorefronts.length) return;
+    const index = trackedStorefronts.indexOf(locale);
+    const next = trackedStorefronts[(index + direction + trackedStorefronts.length) % trackedStorefronts.length];
+    selectStorefront(next);
+  }, [locale, selectStorefront, trackedStorefronts]);
+
+  const saveCountrySets = async (update: (current: CountrySetsResponse) => { favorites: string[]; sets: CountrySetsResponse['sets'] }) => {
+    if (!selectedApp) return;
+    const base = countrySets ?? { favorites: [], sets: [], presets: [] };
+    const next = update(base);
+    setCountrySets({ ...base, ...next });
+    try {
+      const saved = await countriesApi.saveCountrySets(selectedApp.id, next);
+      setCountrySets(saved);
+      return saved;
+    } catch (error) {
+      setCountrySets(base);
+      setDialog({ kind: 'error', title: 'Не удалось сохранить наборы стран', message: (error as Error).message });
+      return undefined;
+    }
+  };
+  const toggleFavorite = (code: string) => saveCountrySets((current) => ({
+    sets: current.sets,
+    favorites: current.favorites.includes(code) ? current.favorites.filter((item) => item !== code) : [...current.favorites, code],
+  }));
+  const saveMatrixSet = async (name: string, locales: string[]) => {
+    const before = new Set((countrySets?.sets ?? []).map((set) => set.id));
+    const saved = await saveCountrySets((current) => ({ favorites: current.favorites, sets: [...current.sets, { id: '', name, locales }] }));
+    const created = saved?.sets.find((set) => !before.has(set.id));
+    if (created) { markNavigation(); setMatrixSetId(created.id); }
+  };
+  const deleteMatrixSet = async (id: string) => {
+    await saveCountrySets((current) => ({ favorites: current.favorites, sets: current.sets.filter((set) => set.id !== id) }));
+    setMatrixSetId(null);
+  };
+
+  const keyRefs = useRef({ selectStorefront, openMatrix, stepStorefront, favorites: countrySets?.favorites ?? [], paletteOpen });
+  useEffect(() => {
+    keyRefs.current = { selectStorefront, openMatrix, stepStorefront, favorites: (countrySets?.favorites ?? []).filter((code) => keywordMap[code]), paletteOpen };
+  });
+
+  // ⌘K — storefront palette; ⌘1…⌘9 — favorites; ⌘0 — «Все страны»; ⌘[ / ⌘] — previous /
+  // next storefront. Browsers reserve some ⌘-digits for tabs, so ⌥ / Ctrl + digit work too.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+      const refs = keyRefs.current;
+      const mod = event.metaKey || event.ctrlKey;
+      if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') {
         event.preventDefault();
-        setDialog({
-          kind: 'app',
-          title: 'Добавить приложение',
-          message: 'Найдите приложение по названию, bundle ID или вставьте числовой App Store ID.',
-          placeholder: 'Найти приложение или ввести App Store ID',
-        });
+        setPaletteOpen((open) => !open);
+        return;
+      }
+      if (refs.paletteOpen) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      const digit = /^Digit([0-9])$/.exec(event.code)?.[1];
+      if (digit != null && (mod || event.altKey) && !event.shiftKey) {
+        if (digit === '0') { event.preventDefault(); refs.openMatrix(); return; }
+        const code = refs.favorites[Number(digit) - 1];
+        if (code) { event.preventDefault(); refs.selectStorefront(code); }
+        return;
+      }
+      if (mod && !event.shiftKey && (event.code === 'BracketLeft' || event.code === 'BracketRight')) {
+        event.preventDefault();
+        refs.stepStorefront(event.code === 'BracketLeft' ? -1 : 1);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  // Matrix cell → keyword drawer for that storefront (rankings of one storefront are small).
+  const openCell = useCallback((keyword: string, cellLocale: string) => {
+    if (!selectedApp) return;
+    setCellDetail({ keyword, locale: cellLocale, loading: true });
+    api.rankings(selectedApp.id, cellLocale)
+      .then((rows) => {
+        const ranking = rows.find((row) => row.keyword.toLocaleLowerCase() === keyword.toLocaleLowerCase());
+        if (ranking?.top5?.length) ensureArtworkForTop5(ranking.top5, cellLocale);
+        setCellDetail((current) => current && current.keyword === keyword && current.locale === cellLocale ? { ...current, ranking, loading: false } : current);
+      })
+      .catch(() => setCellDetail((current) => current ? { ...current, loading: false } : current));
+  }, [ensureArtworkForTop5, selectedApp]);
+
+  const refreshCell = async () => {
+    if (!selectedApp || !cellDetail) return;
+    const { keyword, locale: cellLocale } = cellDetail;
+    try {
+      await api.refreshKeyword(selectedApp.id, cellLocale, keyword);
+      openCell(keyword, cellLocale);
+      setMatrixRefreshKey((key) => key + 1);
+    } catch (error) {
+      setDialog({ kind: 'error', title: 'Не удалось обновить ключевое слово', message: (error as Error).message });
+    }
+  };
 
   const requestDeleteApp = (app: AppStats) => setDialog({
     kind: 'delete-app',
@@ -703,19 +889,19 @@ export default function App() {
         </div>
 
         <nav className="utility-nav" aria-label="Рабочая область">
-          <button className={view === 'overview' ? 'selected' : ''} onClick={() => { setView('overview'); setMobileNavOpen(false); }}>
+          <button className={view === 'overview' ? 'selected' : ''} onClick={() => { markNavigation(); setView('overview'); setMobileNavOpen(false); }}>
             <span className="nav-label">Обзор</span>
           </button>
-          <button className={view === 'keywords' ? 'selected' : ''} onClick={() => openKeywordView(view === 'keywords' ? keywordView : 'positions')}>
+          <button className={view === 'keywords' ? 'selected' : ''} onClick={() => openKeywordView(view === 'keywords' ? keywordView : 'matrix')}>
             <span className="nav-label">Ключевые слова</span>
           </button>
-          <button className={view === 'competitors' ? 'selected' : ''} onClick={() => { setView('competitors'); setMobileNavOpen(false); }} disabled={!selectedApp}>
+          <button className={view === 'competitors' ? 'selected' : ''} onClick={() => { markNavigation(); setView('competitors'); setMobileNavOpen(false); }} disabled={!selectedApp}>
             <span className="nav-label">Конкуренты</span>
           </button>
-          <button className={view === 'funnel' ? 'selected' : ''} onClick={() => { setView('funnel'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
+          <button className={view === 'funnel' ? 'selected' : ''} onClick={() => { markNavigation(); setView('funnel'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
             <span className="nav-label">Воронка</span>
           </button>
-          <button className={view === 'experiments' ? 'selected' : ''} onClick={() => { setView('experiments'); setMobileNavOpen(false); }} disabled={!selectedApp}>
+          <button className={view === 'experiments' ? 'selected' : ''} onClick={() => { markNavigation(); setView('experiments'); setMobileNavOpen(false); }} disabled={!selectedApp}>
             <span className="nav-label">Эксперименты</span>
           </button>
         </nav>
@@ -738,23 +924,36 @@ export default function App() {
               label="Приложение"
               searchPlaceholder="Найти приложение"
               value={selectedApp.id}
-              onChange={setSelectedAppID}
+              onChange={(id) => { markNavigation(); setSelectedAppID(id); }}
               options={apps.map((app) => ({ value: app.id, label: app.name, lead: <AppIcon app={app} size={20} /> }))}
             />
           )}
           {locale && view !== 'overview' && view !== 'funnel' && view !== 'experiments' && (
-            <Picker
-              label="Витрина"
-              searchPlaceholder="Найти страну или код"
-              value={locale}
-              onChange={setLocale}
-              options={Object.keys(keywordMap).sort().map((code) => ({
-                value: code,
-                label: APP_STORE_LOCALES.find((item) => item.code === code)?.name ?? code.toUpperCase(),
-                hint: code.toUpperCase(),
-                lead: <span className="picker-flag" aria-hidden="true">{localeFlag(code)}</span>,
-              }))}
-            />
+            <span className="storefront-step">
+              <button
+                type="button"
+                className="storefront-btn"
+                onClick={() => setPaletteOpen(true)}
+                aria-haspopup="dialog"
+                aria-label={isMatrix ? `Витрина: все страны, набор ${activeMatrixSet?.name ?? ''}` : `Витрина: ${storefrontOf(locale).name}`}
+                title="Выбрать витрину (⌘K)"
+              >
+                {isMatrix ? <>
+                  <Icon name="globe" className="sf-globe" />
+                  <span className="sf-label">Все страны</span>
+                  <span className="sf-code">{activeMatrixSet ? (activeMatrixSet.id === 'all' ? `${activeMatrixSet.locales.length}` : `${activeMatrixSet.name} · ${activeMatrixSet.locales.length}`) : ''}</span>
+                </> : <>
+                  <span className="sf-flag" aria-hidden="true">{storefrontOf(locale).flag}</span>
+                  <span className="sf-label">{storefrontOf(locale).name}</span>
+                  <span className="sf-code">{locale.toUpperCase()}</span>
+                </>}
+                <kbd>⌘K</kbd>
+              </button>
+              {!isMatrix && trackedStorefronts.length > 1 && <>
+                <button type="button" className="ds-icon-btn" onClick={() => stepStorefront(-1)} aria-label="Предыдущая витрина" title="Предыдущая витрина (⌘[)"><Icon name="chevronLeft" /></button>
+                <button type="button" className="ds-icon-btn" onClick={() => stepStorefront(1)} aria-label="Следующая витрина" title="Следующая витрина (⌘])"><Icon name="chevronRight" /></button>
+              </>}
+            </span>
           )}
           <span className="context-freshness" aria-live="polite">
             {freshnessLabel(selectedApp?.lastSnapshot)}
@@ -767,7 +966,7 @@ export default function App() {
         <Overview
           apps={apps}
           localeAvgByApp={localeAvgByApp}
-          onOpenApp={(id) => { setSelectedAppID(id); setKeywordView('positions'); setView('keywords'); }}
+          onOpenApp={(id) => { markNavigation(); setSelectedAppID(id); setKeywordView('matrix'); setView('keywords'); }}
           onDeleteApp={requestDeleteApp}
           onRunAll={() => startSnapshot('all')}
           refreshing={refreshing}
@@ -780,14 +979,16 @@ export default function App() {
             <div>
               <h1 className="ds-page-title">Ключевые слова</h1>
               <div className="ds-seg page-tabs" role="tablist" aria-label="Раздел ключевых слов">
-                {([['positions', 'Позиции'], ['ideas', 'Идеи'], ['analytics', 'Динамика']] as const).map(([id, label]) => (
+                {([['matrix', 'Матрица'], ['positions', 'Позиции'], ['ideas', 'Идеи'], ['analytics', 'Динамика']] as const).map(([id, label]) => (
                   <button key={id} role="tab" aria-selected={keywordView === id}
                     disabled={id !== 'positions' && (!selectedApp || (id === 'ideas' && !locale))}
                     onClick={() => openKeywordView(id)}>{label}</button>
                 ))}
               </div>
-              <p className="ds-page-sub">{keywordView === 'positions'
-                ? 'Отслеживайте позиции, релевантность и приложения, лидирующие по каждому запросу.'
+              <p className="ds-page-sub">{keywordView === 'matrix'
+                ? 'Позиции каждого ключа во всех странах набора. Клик по ячейке — история и выдача, ⌘K — выбор страны.'
+                : keywordView === 'positions'
+                ? `Позиции в витрине ${storefrontOf(locale).flag} ${storefrontOf(locale).name}: релевантность и приложения, лидирующие по каждому запросу.`
                 : keywordView === 'analytics'
                   ? 'Сравнивайте рост, падение и видимость ключевых слов за выбранный период.'
                   : 'Проверяйте подсказки Apple и запросы конкурентов перед добавлением в отслеживание.'}</p>
@@ -843,7 +1044,21 @@ export default function App() {
         </div>}
         </header>
 
-        {keywordView === 'positions' ? <>
+        {keywordView === 'matrix' ? (
+          selectedApp ? (
+            <CountryMatrix
+              appId={selectedApp.id}
+              sets={matrixSets}
+              activeSet={activeMatrixSet}
+              onSetChange={(id) => { markNavigation(); setMatrixSetId(id); }}
+              onSaveSet={saveMatrixSet}
+              onDeleteSet={deleteMatrixSet}
+              onOpenCell={openCell}
+              onOpenStorefront={selectStorefront}
+              refreshKey={matrixRefreshKey}
+            />
+          ) : null
+        ) : keywordView === 'positions' ? <>
         <section className="rankings-summary" aria-label="Сводка позиций">
           <div><span>Отслеживается</span><strong>{positionSummary.total}</strong><small>ключевых слов</small></div>
           <div><span>В выдаче</span><strong>{positionSummary.ranked}</strong><small>из {positionSummary.total}</small></div>
@@ -942,6 +1157,41 @@ export default function App() {
           onRefresh={() => refreshOne(detailKeyword)}
           onCopyPrompt={() => copyClaudePrompt(detailKeyword)}
           onOpenCompetitor={(bundleID) => { setDetailKeyword(null); setCompetitorBundle(bundleID); }}
+        />
+      )}
+      {cellDetail && selectedApp && (
+        <KeywordDrawer
+          keyword={cellDetail.keyword}
+          ranking={cellDetail.ranking}
+          locale={cellDetail.locale}
+          artworks={artworks}
+          ownApp={selectedApp}
+          loading={cellDetail.loading}
+          onClose={() => setCellDetail(null)}
+          onRefresh={() => void refreshCell()}
+          onCopyPrompt={async () => {
+            const { prompt } = await api.claudePrompt(selectedApp.id, cellDetail.keyword, cellDetail.locale);
+            await navigator.clipboard.writeText(prompt);
+          }}
+          onOpenCompetitor={(bundleID) => { setCellDetail(null); setCompetitorBundle(bundleID); }}
+          onOpenStorefront={() => { const target = cellDetail.locale; setCellDetail(null); selectStorefront(target); }}
+        />
+      )}
+      {paletteOpen && selectedApp && (
+        <CountryPalette
+          current={locale}
+          matrixActive={isMatrix}
+          stats={paletteStats}
+          favorites={countrySets?.favorites ?? []}
+          recent={recentStorefronts}
+          sets={matrixSets}
+          activeSetId={activeMatrixSet?.id}
+          onSelect={selectStorefront}
+          onSelectMatrix={() => openMatrix()}
+          onSelectSet={(id) => openMatrix(id)}
+          onToggleFavorite={(code) => void toggleFavorite(code)}
+          onAdd={(code) => { setPaletteOpen(false); void commitLocale(code).then(() => { markNavigation(); setView('keywords'); setKeywordView('positions'); }); }}
+          onClose={() => setPaletteOpen(false)}
         />
       )}
       {competitorBundle && selectedApp && (
@@ -1539,6 +1789,8 @@ function KeywordDrawer({
   onRefresh,
   onCopyPrompt,
   onOpenCompetitor,
+  onOpenStorefront,
+  loading = false,
 }: {
   keyword: string;
   ranking?: RankingRow;
@@ -1550,6 +1802,9 @@ function KeywordDrawer({
   onRefresh: () => void;
   onCopyPrompt: () => Promise<void>;
   onOpenCompetitor: (bundleID: string) => void;
+  /** Matrix drawer: jump to this storefront's positions view. */
+  onOpenStorefront?: () => void;
+  loading?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
   const dayDelta = delta(ranking?.yesterday ?? null, ranking?.today ?? null);
@@ -1571,7 +1826,12 @@ function KeywordDrawer({
           <span className={`drawer-rank rank rank-${rankTone(ranking?.today ?? null)}`}>{ranking?.today ? `#${ranking.today}` : '—'}</span>
           <div>
             <h2>{keyword}</h2>
-            <p>{localeFlag(locale)} {locale.toUpperCase()} · обновлено {formatRelativeTime(ranking?.lastUpdated).toLowerCase()}</p>
+            <p>{localeFlag(locale)} {onOpenStorefront ? `${storefrontOf(locale).name} · ` : ''}{locale.toUpperCase()} · {loading ? 'загрузка…' : `обновлено ${formatRelativeTime(ranking?.lastUpdated).toLowerCase()}`}</p>
+            {onOpenStorefront && (
+              <button type="button" className="ds-btn ds-btn-sm drawer-open-storefront" onClick={onOpenStorefront}>
+                Все ключи {storefrontOf(locale).flag} {locale.toUpperCase()} <Icon name="chevronRight" size={14} />
+              </button>
+            )}
             {relevance && (
               <div className="competitor-badges">
                 <b className={`relevance-chip relevance-${relevance.flag}`} style={{ marginLeft: 0 }}>{RELEVANCE_LABEL[relevance.flag]}</b>
@@ -1598,7 +1858,9 @@ function KeywordDrawer({
 
           <section>
             <div className="sheet-section-title">Топ приложений в выдаче</div>
-            {!ranking?.top5?.length ? (
+            {loading ? (
+              <p className="sheet-empty">Загружаем выдачу…</p>
+            ) : !ranking?.top5?.length ? (
               <p className="sheet-empty">Данных снимка пока нет. Запустите обновление для этого ключевого слова.</p>
             ) : (
               <div className="drawer-top5">
