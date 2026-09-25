@@ -1,4 +1,5 @@
 import { getDb } from "./db.ts";
+import { CAMPAIGN_SERVES_COUNTRY, normalizeCountry } from "./queries.ts";
 
 export interface BidRecommendation {
   keyword_id: number;
@@ -31,13 +32,21 @@ function targetCpi(country: string): number {
   return TIER1.has(country) ? 1.0 : 0.6;
 }
 
-export function recommend(daysBack = 7, campaignId?: number, appId?: number): BidRecommendation[] {
+/**
+ * A keyword bid is one number for every storefront of its campaign, so the
+ * recommendation is always computed from the keyword's world metrics. A
+ * country filter only narrows WHICH keywords are listed (campaigns serving
+ * that storefront); it never turns one country's numbers into a global bid.
+ */
+export function recommend(daysBack = 7, campaignId?: number, appId?: number, countryFilter?: string): BidRecommendation[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
-  const where = `${campaignId ? `AND k.campaign_id = ?` : ``}${appId ? ` AND c.app_id = ?` : ``}`;
+  const country = normalizeCountry(countryFilter);
+  const where = `${campaignId ? `AND k.campaign_id = ?` : ``}${appId ? ` AND c.app_id = ?` : ``}${country ? ` AND ${CAMPAIGN_SERVES_COUNTRY}` : ``}`;
   const args: unknown[] = [start];
   if (campaignId) args.push(campaignId);
   if (appId) args.push(appId);
+  if (country) args.push(country);
 
   const rows = db.prepare(`
     SELECT k.id AS keyword_id, k.text, k.match_type, k.bid, c.country,
@@ -120,11 +129,14 @@ export interface SearchTermSuggestion {
   reason: string;
 }
 
-export function suggestSearchTermActions(daysBack = 14, appId?: number, minImpForNegative = 30, minTapForNegative = 5): SearchTermSuggestion[] {
+export function suggestSearchTermActions(daysBack = 14, appId?: number, minImpForNegative = 30, minTapForNegative = 5, countryFilter?: string): SearchTermSuggestion[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
-  const where = appId ? `AND c.app_id = ?` : ``;
-  const args: unknown[] = appId ? [start, appId] : [start];
+  const country = normalizeCountry(countryFilter);
+  const where = `${country ? "AND s.country = ?" : ""} ${appId ? `AND c.app_id = ?` : ``}`;
+  const args: unknown[] = [start];
+  if (country) args.push(country);
+  if (appId) args.push(appId);
   const rows = db.prepare(`
     SELECT s.campaign_id, c.name AS campaign_name, s.term,
            SUM(s.impressions) AS imp,
@@ -133,7 +145,7 @@ export function suggestSearchTermActions(daysBack = 14, appId?: number, minImpFo
            SUM(s.spend) AS spend,
            (SELECT 1 FROM asa_negatives n WHERE n.campaign_id = s.campaign_id AND n.text = s.term) AS is_neg,
            (SELECT 1 FROM asa_keywords k WHERE k.campaign_id = s.campaign_id AND lower(k.text) = lower(s.term) AND k.deleted = 0) AS is_kw
-    FROM asa_search_terms s
+    FROM ${country ? "asa_st_geo_daily" : "asa_search_terms"} s
     JOIN asa_campaigns c ON c.id = s.campaign_id
     WHERE s.date >= ? ${where}
     GROUP BY s.campaign_id, s.term

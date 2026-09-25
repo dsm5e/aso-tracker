@@ -155,6 +155,8 @@ export interface AdaptyGeoEconomics {
   rows: Array<{ country: string; trials: number; paid: number; revenueUsd: number }>;
   /** Net revenue per install-cohort day (YYYY-MM-DD), summed over countries. */
   dailyRevenue: Array<{ date: string; revenueUsd: number }>;
+  /** Same series per storefront (ISO alpha-2 → days), for the country filter. */
+  dailyRevenueByCountry?: Record<string, Array<{ date: string; revenueUsd: number }>>;
 }
 
 export async function fetchAdaptyGeoEconomics(
@@ -180,13 +182,20 @@ export async function fetchAdaptyGeoEconomics(
 
   // Each country row carries its per-day series (period_unit=day).
   const byDay = new Map<string, number>();
+  const byCountryDay = new Map<string, Map<string, number>>();
   for (const row of countryRows(revenueMetric)) {
+    const country = (row.type ?? "").toUpperCase();
+    const days = byCountryDay.get(country) ?? new Map<string, number>();
     for (const point of row.values ?? []) {
       const date = String(point.x ?? "").slice(0, 10);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
       byDay.set(date, (byDay.get(date) ?? 0) + (Number(point.y) || 0));
+      days.set(date, (days.get(date) ?? 0) + (Number(point.y) || 0));
     }
+    byCountryDay.set(country, days);
   }
+  const series = (m: Map<string, number>) => [...m.entries()].sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, v]) => ({ date, revenueUsd: Math.round(v * 100) / 100 }));
 
   return {
     rows: [...countries].map((country) => ({
@@ -195,8 +204,8 @@ export async function fetchAdaptyGeoEconomics(
       paid: paid.get(country) ?? 0,
       revenueUsd: revenue.get(country) ?? 0,
     })).sort((a, b) => b.revenueUsd - a.revenueUsd),
-    dailyRevenue: [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, v]) => ({ date, revenueUsd: Math.round(v * 100) / 100 })),
+    dailyRevenue: series(byDay),
+    dailyRevenueByCountry: Object.fromEntries([...byCountryDay.entries()].map(([country, m]) => [country, series(m)])),
   };
 }
 

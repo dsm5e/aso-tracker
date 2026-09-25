@@ -1,6 +1,6 @@
 import { ADAPTY_ANALYTICS_APP_ID, type AppConfig } from "./config.ts";
 import { fetchAdaptyGeoEconomics, type AdaptyGeoEconomics } from "./revenue-client.ts";
-import { spendWindow } from "./queries.ts";
+import { normalizeCountry, spendWindow } from "./queries.ts";
 
 export interface RevenueRow { country: string; trials: number; paid: number; revenueUsd: number }
 export interface DailyRevenue { date: string; revenueUsd: number }
@@ -22,7 +22,8 @@ function cachedEconomics(window: { start: string; end: string }): Promise<Adapty
 
 /** Geo-level real revenue rows for an app, [] when no feed is configured.
  *  Shared by /api/revenue and the Command Center aggregator. */
-export async function fetchRevenueRows(_cfg: AppConfig, appId: number | undefined, days: number): Promise<{ rows: RevenueRow[]; daily: DailyRevenue[]; error?: string }> {
+export async function fetchRevenueRows(_cfg: AppConfig, appId: number | undefined, days: number, countryFilter?: string): Promise<{ rows: RevenueRow[]; daily: DailyRevenue[]; feed: boolean; error?: string }> {
+  const country = normalizeCountry(countryFilter);
   try {
     if (appId && appId === ADAPTY_ANALYTICS_APP_ID) {
       // Adapty's own Apple Ads attribution, segmented by country and joined to
@@ -30,11 +31,16 @@ export async function fetchRevenueRows(_cfg: AppConfig, appId: number | undefine
       // Same window as the Apple Ads spend it is divided by (ends at the last
       // synced spend day), otherwise unsynced days add trials without spend.
       const economics = await cachedEconomics(spendWindow(days));
-      const rows = economics.rows.map((row) => ({ ...row, revenueUsd: Math.round(row.revenueUsd * 100) / 100 }));
-      return { rows, daily: economics.dailyRevenue };
+      const rows = economics.rows
+        .filter((row) => !country || row.country.toUpperCase() === country)
+        .map((row) => ({ ...row, revenueUsd: Math.round(row.revenueUsd * 100) / 100 }));
+      const daily = country ? economics.dailyRevenueByCountry?.[country] ?? [] : economics.dailyRevenue;
+      // `feed`: the app has an attribution source even when the selected
+      // storefront has no rows (0 revenue is a fact, not a missing feed).
+      return { rows, daily, feed: true };
     }
-    return { rows: [], daily: [] };
+    return { rows: [], daily: [], feed: false };
   } catch (e) {
-    return { rows: [], daily: [], error: (e as Error).message };
+    return { rows: [], daily: [], feed: false, error: (e as Error).message };
   }
 }

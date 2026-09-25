@@ -268,6 +268,133 @@ export async function syncGeoDaily(asa: AsaClient, startDate: string, endDate: s
   return n;
 }
 
+function storefront(value: string | undefined | null): string | null {
+  const country = value?.trim().toUpperCase();
+  return country && /^[A-Z]{2}$/.test(country) ? country : null;
+}
+
+/** Apple returns every day of a keyword × storefront row, mostly zeros
+ *  (~96% of the 90-day split); the window is cleared first, so skip them. */
+function isEmptyDay(t: ReturnType<typeof totalsFrom>): boolean {
+  return t.imp === 0 && t.taps === 0 && t.installs === 0 && t.spend === 0;
+}
+
+export interface GeoSubSyncResult { campaigns: number; failed: number; rows: number; calls: number }
+
+/**
+ * Keyword × storefront delivery for every reporting campaign. One paged report
+ * per campaign; a failed campaign keeps its previous rows (the window is
+ * cleared per campaign only after its report arrived).
+ */
+export async function syncKeywordGeoDaily(
+  asa: Pick<AsaClient, "keywordGeoReport">,
+  startDate: string,
+  endDate: string,
+  campaignIds: number[],
+): Promise<GeoSubSyncResult> {
+  const db = getDb();
+  const clear = db.prepare(`DELETE FROM asa_kw_geo_daily WHERE campaign_id = ? AND date BETWEEN ? AND ?`);
+  const up = db.prepare(`
+    INSERT INTO asa_kw_geo_daily (keyword_id, campaign_id, date, country, impressions, taps, installs, spend)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(keyword_id, date, country) DO UPDATE SET
+      campaign_id=excluded.campaign_id, impressions=excluded.impressions, taps=excluded.taps,
+      installs=excluded.installs, spend=excluded.spend
+  `);
+  const result: GeoSubSyncResult = { campaigns: 0, failed: 0, rows: 0, calls: 0 };
+  for (const cid of campaignIds) {
+    let rows;
+    try {
+      result.calls++;
+      rows = await asa.keywordGeoReport(cid, startDate, endDate);
+    } catch (e) {
+      result.failed++;
+      console.warn(`keywordGeoReport(${cid}) failed: ${(e as Error).message}`);
+      continue;
+    }
+    db.transaction(() => {
+      clear.run(cid, startDate, endDate);
+      for (const row of rows) {
+        const country = storefront(row.metadata.countryOrRegion);
+        if (!country || !row.metadata.keywordId) continue;
+        for (const g of row.granularity ?? []) {
+          const t = totalsFrom(g);
+          if (isEmptyDay(t)) continue;
+          up.run(row.metadata.keywordId, cid, g.date, country, t.imp, t.taps, t.installs, t.spend);
+          result.rows++;
+        }
+      }
+    })();
+    result.campaigns++;
+  }
+  return result;
+}
+
+/** Search term × storefront delivery; same per-campaign soft-fail contract. */
+export async function syncSearchTermGeoDaily(
+  asa: Pick<AsaClient, "searchTermGeoReport">,
+  startDate: string,
+  endDate: string,
+  campaignIds: number[],
+): Promise<GeoSubSyncResult> {
+  const db = getDb();
+  const clear = db.prepare(`DELETE FROM asa_st_geo_daily WHERE campaign_id = ? AND date BETWEEN ? AND ?`);
+  // Apple can return the same term twice for one keyword (e.g. two sources):
+  // accumulate instead of overwriting.
+  const up = db.prepare(`
+    INSERT INTO asa_st_geo_daily (campaign_id, date, country, term, source_keyword_id, match_type, impressions, taps, installs, spend)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(campaign_id, date, country, term, source_keyword_id) DO UPDATE SET
+      impressions=impressions+excluded.impressions, taps=taps+excluded.taps,
+      installs=installs+excluded.installs, spend=spend+excluded.spend
+  `);
+  const result: GeoSubSyncResult = { campaigns: 0, failed: 0, rows: 0, calls: 0 };
+  for (const cid of campaignIds) {
+    let rows;
+    try {
+      result.calls++;
+      rows = await asa.searchTermGeoReport(cid, startDate, endDate);
+    } catch (e) {
+      result.failed++;
+      console.warn(`searchTermGeoReport(${cid}) failed: ${(e as Error).message}`);
+      continue;
+    }
+    db.transaction(() => {
+      clear.run(cid, startDate, endDate);
+      for (const row of rows) {
+        const country = storefront(row.metadata.countryOrRegion);
+        if (!country) continue;
+        const term = row.metadata.searchTermText ?? "";
+        for (const g of row.granularity ?? []) {
+          const t = totalsFrom(g);
+          if (isEmptyDay(t)) continue;
+          up.run(cid, g.date, country, term, row.metadata.keywordId ?? 0, row.metadata.matchType ?? null, t.imp, t.taps, t.installs, t.spend);
+          result.rows++;
+        }
+      }
+    })();
+    result.campaigns++;
+  }
+  return result;
+}
+
+/**
+ * Campaigns whose keywords / search terms get the storefront split: every
+ * reporting campaign plus any campaign (paused or deleted since) that
+ * delivered in the window — otherwise the country view would lose history
+ * that the world view still shows.
+ */
+export function geoSplitCampaignIds(startDate: string, endDate: string, reportIds: number[]): number[] {
+  const rows = getDb().prepare(`
+    SELECT campaign_id AS id FROM asa_daily
+     WHERE date BETWEEN ? AND ? AND (impressions > 0 OR spend > 0)
+    UNION
+    SELECT campaign_id AS id FROM asa_geo_daily
+     WHERE date BETWEEN ? AND ? AND (impressions > 0 OR spend > 0)
+  `).all(startDate, endDate, startDate, endDate) as Array<{ id: number }>;
+  return [...new Set([...reportIds, ...rows.map((row) => row.id)])];
+}
+
 export async function syncAscEvents(asc: AscClient, dates: string[]): Promise<void> {
   const db = getDb();
   const upsert = db.prepare(`
@@ -460,7 +587,10 @@ export function campaignSyncScopes(campaigns: RawCampaign[]): {
   };
 }
 
-export async function fullSync(asa: AsaClient, asc: AscClient, days = 14): Promise<{ campaigns: number; adGroups: number; keywords: number }> {
+export async function fullSync(asa: AsaClient, asc: AscClient, days = 14): Promise<{
+  campaigns: number; adGroups: number; keywords: number;
+  countrySplit?: { keywordRows: number; searchTermRows: number; campaigns: number; failed: number; appleRequests: number; ms: number };
+}> {
   const db = getDb();
   const startedAt = now();
   const log = db.prepare(`INSERT INTO sync_log (kind, started_at) VALUES (?, ?)`).run("full", startedAt);
@@ -479,6 +609,20 @@ export async function fullSync(asa: AsaClient, asc: AscClient, days = 14): Promi
     await syncDailyReports(asa, startDate, endDate, reportIds);
     await syncGeoDaily(asa, startDate, endDate);
 
+    const geoIds = geoSplitCampaignIds(startDate, endDate, reportIds);
+    setPhase("geo", `Splitting keywords & search terms by country (${geoIds.length} campaigns)`, 0.62, startedAt);
+    const geoStarted = Date.now();
+    const geoRequests = asa.requestCount;
+    const kwGeo = await syncKeywordGeoDaily(asa, startDate, endDate, geoIds);
+    const stGeo = await syncSearchTermGeoDaily(asa, startDate, endDate, geoIds);
+    const countrySplit = {
+      keywordRows: kwGeo.rows, searchTermRows: stGeo.rows, campaigns: geoIds.length,
+      failed: kwGeo.failed + stGeo.failed, appleRequests: asa.requestCount - geoRequests, ms: Date.now() - geoStarted,
+    };
+    console.log(`country split: keywords ${kwGeo.rows} rows (${kwGeo.calls} calls, ${kwGeo.failed} failed), `
+      + `search terms ${stGeo.rows} rows (${stGeo.calls} calls, ${stGeo.failed} failed), `
+      + `${asa.requestCount - geoRequests} Apple requests, ${Date.now() - geoStarted} ms`);
+
     setPhase("asc", `Pulling ${days} days of ASC subscription events`, 0.8, startedAt);
     await syncAscEvents(asc, listDates(startDate, endDate));
 
@@ -488,7 +632,7 @@ export async function fullSync(asa: AsaClient, asc: AscClient, days = 14): Promi
     setPhase("done", "Complete", 1.0, startedAt);
     db.prepare(`UPDATE sync_log SET finished_at = ?, ok = 1 WHERE id = ?`).run(now(), log.lastInsertRowid);
     setTimeout(() => { currentSync = null; }, 3000);
-    return { campaigns: campaigns.length, adGroups: adGroups.length, keywords: keywords.length };
+    return { campaigns: campaigns.length, adGroups: adGroups.length, keywords: keywords.length, countrySplit };
   } catch (e) {
     const msg = (e as Error).message;
     if (currentSync) { currentSync.active = false; currentSync.error = msg; currentSync.ok = 0; }

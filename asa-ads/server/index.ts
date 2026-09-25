@@ -8,7 +8,7 @@ import { openDb, getDb } from "./db.ts";
 import { AsaClient } from "./asa-client.ts";
 import { AscClient } from "./asc-client.ts";
 import { fullSync, getSyncStatus } from "./sync.ts";
-import { listCampaignsWithMetrics, listKeywordsWithMetrics, listSearchTerms, listActions, dailyTotals, listApps, geoBreakdown } from "./queries.ts";
+import { listCampaignsWithMetrics, listKeywordsWithMetrics, listSearchTerms, listActions, dailyTotals, listApps, geoBreakdown, listAppCountries, keywordDaily, normalizeCountry, CAMPAIGN_SERVES_COUNTRY } from "./queries.ts";
 import { recommend, suggestSearchTermActions } from "./bid-engine.ts";
 import { projectCampaign, projectKeyword } from "./roi-engine.ts";
 import { enqueue, apply, cancel, type Action } from "./actions.ts";
@@ -56,6 +56,17 @@ app.get("/sse", (_req, res) => attach(res));
 app.get("/api/health", (_req, res) => res.json({ ok: true, ts: Date.now() }));
 
 app.get("/api/apps", (_req, res) => res.json(listApps()));
+
+/** `country=XX` storefront filter shared by the data endpoints; absent/ALL = world. */
+function countryQ(req: express.Request): string | undefined {
+  return normalizeCountry(req.query.country);
+}
+
+// Options of the global country filter: storefronts with Apple Ads delivery.
+app.get("/api/countries", (req, res) => {
+  const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
+  res.json(listAppCountries(appId, Number(req.query.days ?? 90)));
+});
 
 app.get("/api/platform/methods", (_req, res) => {
   const sections = [...new Set(PLATFORM_API_METHODS.map((method) => method.section))];
@@ -263,6 +274,12 @@ app.post("/api/app-store-analytics/request", async (req, res) => {
 
 app.get("/api/negatives", (req, res) => {
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
+  const country = countryQ(req);
+  // Storefront view: negatives of campaigns that target that storefront.
+  const conds = [appId ? "c.app_id = ?" : "", country ? CAMPAIGN_SERVES_COUNTRY : ""].filter(Boolean);
+  const args: unknown[] = [];
+  if (appId) args.push(appId);
+  if (country) args.push(country);
   const rows = getDb().prepare(`
     SELECT n.id, n.campaign_id, c.name AS campaign_name,
            -- a multi-country campaign has no single storefront
@@ -270,9 +287,9 @@ app.get("/api/negatives", (req, res) => {
            n.text, n.match_type, n.remote_id, n.added_at
     FROM asa_negatives n
     LEFT JOIN asa_campaigns c ON c.id = n.campaign_id
-    ${appId ? `WHERE c.app_id = ?` : ``}
+    ${conds.length ? `WHERE ${conds.join(" AND ")}` : ``}
     ORDER BY n.id DESC
-  `).all(...(appId ? [appId] : []));
+  `).all(...args);
   res.json(rows);
 });
 
@@ -280,13 +297,13 @@ app.get("/api/negatives", (req, res) => {
 app.get("/api/geo", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
-  res.json(geoBreakdown(days, appId));
+  res.json(geoBreakdown(days, appId, countryQ(req)));
 });
 
 app.get("/api/campaigns", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
-  res.json(listCampaignsWithMetrics(days, appId));
+  res.json(listCampaignsWithMetrics(days, appId, countryQ(req)));
 });
 
 // Geo-level real revenue, server-side proxy so the function key never reaches
@@ -295,7 +312,7 @@ app.get("/api/campaigns", (req, res) => {
 app.get("/api/revenue", async (req, res) => {
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
   const days = Number(req.query.days ?? 30);
-  const r = await fetchRevenueRows(cfg, appId, days);
+  const r = await fetchRevenueRows(cfg, appId, days, countryQ(req));
   res.json(r);
 });
 
@@ -305,7 +322,7 @@ app.get("/api/command-center", async (req, res) => {
   const days = Number(req.query.days ?? 30);
   if (!appId) { res.status(400).json({ error: "app_id required" }); return; }
   try {
-    res.json(await commandCenter(cfg, appId, days));
+    res.json(await commandCenter(cfg, appId, days, countryQ(req)));
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
   }
@@ -323,35 +340,24 @@ app.get("/api/daily", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const cid = req.query.campaign_id ? Number(req.query.campaign_id) : undefined;
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
-  res.json(dailyTotals(days, cid, appId));
+  res.json(dailyTotals(days, cid, appId, countryQ(req)));
 });
 
 app.get("/api/keywords/:id/daily", (req, res) => {
-  const id = Number(req.params.id);
-  const days = Number(req.query.days ?? 14);
-  const start = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
-  const rows = getDb().prepare(`
-    SELECT date, impressions, taps, installs, spend,
-           CASE WHEN taps > 0 THEN spend/taps ELSE 0 END AS cpt,
-           CASE WHEN installs > 0 THEN spend/installs ELSE 0 END AS cpi
-    FROM asa_kw_daily
-    WHERE keyword_id = ? AND date >= ?
-    ORDER BY date
-  `).all(id, start);
-  res.json(rows);
+  res.json(keywordDaily(Number(req.params.id), Number(req.query.days ?? 14), countryQ(req)));
 });
 
 app.get("/api/keywords", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const cid = req.query.campaign_id ? Number(req.query.campaign_id) : undefined;
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
-  res.json(listKeywordsWithMetrics(days, cid, appId));
+  res.json(listKeywordsWithMetrics(days, cid, appId, countryQ(req)));
 });
 
 app.get("/api/search-terms", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
-  res.json(listSearchTerms(days, appId));
+  res.json(listSearchTerms(days, appId, countryQ(req)));
 });
 
 app.get("/api/roi/campaign/:id", (req, res) => {
@@ -374,13 +380,13 @@ app.get("/api/recommendations/bids", (req, res) => {
   const days = Number(req.query.days ?? 7);
   const cid = req.query.campaign_id ? Number(req.query.campaign_id) : undefined;
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
-  res.json(recommend(days, cid, appId));
+  res.json(recommend(days, cid, appId, countryQ(req)));
 });
 
 app.get("/api/recommendations/search-terms", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
-  res.json(suggestSearchTermActions(days, appId));
+  res.json(suggestSearchTermActions(days, appId, undefined, undefined, countryQ(req)));
 });
 
 app.post("/api/actions", (req, res) => {

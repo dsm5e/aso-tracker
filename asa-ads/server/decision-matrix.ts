@@ -24,6 +24,13 @@ interface BaseKeywordRow {
   cohortStart: string | null;
   cohortEnd: string | null;
   observedThrough: string | null;
+  /** Country scope only: this keyword's slice of the keyword × storefront report. */
+  geoImpressions?: number;
+  geoTaps?: number;
+  geoInstalls?: number;
+  geoSpend?: number;
+  /** 1 when the campaign has keyword × storefront rows in the window. */
+  geoCovered?: number;
 }
 
 interface SignalRow {
@@ -184,9 +191,33 @@ function loadBaseRows(db: Database.Database, appId: number, country: string | un
        WHERE UPPER(CAST(value AS TEXT)) = ?
     )
     OR (c.countries_json IS NULL AND UPPER(c.country) = ?)
+    -- delivered there in the window even if the targeting changed since
+    OR EXISTS (SELECT 1 FROM asa_kw_geo_daily x WHERE x.campaign_id = c.id AND x.country = ? AND x.date BETWEEN ? AND ?)
   )` : "";
-  const args: Array<string | number> = [start, end, appId];
-  if (country) args.push(country, country);
+  const args: Array<string | number> = [start, end];
+  if (country) args.push(start, end, country, start, end);
+  args.push(appId);
+  if (country) args.push(country, country, country, start, end);
+  // Country scope also reads the keyword × storefront report so multi-country
+  // campaigns contribute their real share of that storefront.
+  const geoCtes = country ? `,
+    geo AS (
+      SELECT keyword_id, SUM(impressions) AS impressions, SUM(taps) AS taps,
+             SUM(installs) AS installs, SUM(spend) AS spend
+        FROM asa_kw_geo_daily
+       WHERE date BETWEEN ? AND ? AND country = ?
+       GROUP BY keyword_id
+    ),
+    geo_campaigns AS (
+      SELECT DISTINCT campaign_id FROM asa_kw_geo_daily WHERE date BETWEEN ? AND ?
+    )` : "";
+  const geoColumns = country ? `,
+           COALESCE(gd.impressions, 0) AS geoImpressions,
+           COALESCE(gd.taps, 0) AS geoTaps,
+           COALESCE(gd.installs, 0) AS geoInstalls,
+           COALESCE(gd.spend, 0) AS geoSpend,
+           CASE WHEN k.campaign_id IN (SELECT campaign_id FROM geo_campaigns) THEN 1 ELSE 0 END AS geoCovered` : "";
+  const geoJoin = country ? "LEFT JOIN geo gd ON gd.keyword_id = k.id" : "";
   return db.prepare(`
     WITH delivery AS (
       SELECT keyword_id,
@@ -197,7 +228,7 @@ function loadBaseRows(db: Database.Database, appId: number, country: string | un
         FROM asa_kw_daily
        WHERE date BETWEEN ? AND ?
        GROUP BY keyword_id
-    )
+    )${geoCtes}
     SELECT k.id AS keywordId, k.campaign_id AS campaignId,
            c.name AS campaignName, UPPER(c.country) AS country,
            c.countries_json AS countriesJson,
@@ -212,11 +243,12 @@ function loadBaseRows(db: Database.Database, appId: number, country: string | un
            COALESCE(r.revenue_usd, 0) AS revenueUsd,
            r.updated_at AS revenueUpdatedAt,
            r.cohort_start AS cohortStart, r.cohort_end AS cohortEnd,
-           r.observed_through AS observedThrough
+           r.observed_through AS observedThrough${geoColumns}
       FROM asa_keywords k
       JOIN asa_campaigns c ON c.id = k.campaign_id
       JOIN asa_ad_groups g ON g.id = k.ad_group_id
       LEFT JOIN delivery d ON d.keyword_id = k.id
+      ${geoJoin}
       LEFT JOIN asa_kw_revenue r
         ON r.keyword_id = k.id AND r.campaign_id = k.campaign_id AND r.bounded = 1
      WHERE c.app_id = ? ${countryClause}
@@ -285,15 +317,16 @@ export function buildDecisionMatrix(
     const economics = geoByKeyword.get(row.keywordId);
     const storefronts = targetCountries(row);
     const multiCountry = storefronts.length > 1;
+    // A multi-country campaign's keyword totals span every storefront. Use the
+    // keyword × storefront report when the campaign has it; without that split
+    // the delivery cannot be assigned to one storefront and stays out (0).
+    const split = multiCountry && row.geoCovered === 1;
     return {
       ...row,
-      // Apple keyword delivery/spend for a multi-country campaign is campaign
-      // total and cannot be assigned to one storefront. Adapty is queried with
-      // an explicit country filter, so its acquisition economics remains exact.
-      impressions: multiCountry ? 0 : row.impressions,
-      taps: multiCountry ? 0 : row.taps,
-      installs: multiCountry ? 0 : row.installs,
-      spend: multiCountry ? 0 : row.spend,
+      impressions: split ? Number(row.geoImpressions ?? 0) : multiCountry ? 0 : row.impressions,
+      taps: split ? Number(row.geoTaps ?? 0) : multiCountry ? 0 : row.taps,
+      installs: split ? Number(row.geoInstalls ?? 0) : multiCountry ? 0 : row.installs,
+      spend: split ? Number(row.geoSpend ?? 0) : multiCountry ? 0 : row.spend,
       attributedInstalls: economics?.attributedInstalls ?? 0,
       trials: economics?.trials ?? 0,
       paid: economics?.paid ?? 0,
@@ -466,7 +499,7 @@ export function buildDecisionMatrix(
     partialErrors: geoError ? [{ scope: "Adapty · ключ × страна", message: geoError }] : [],
     limitations: {
       allScope: "Доставка, атрибутированные установки, триалы, оплаты, расход и выручка суммируются. Популярность и доля — средние по витринам, где Apple вернула сигнал.",
-      countryScope: "Country-level installs, trials, paid and net revenue use an explicit Adapty country filter. Apple delivery/spend from multi-country campaigns is excluded because Apple keyword reports cannot split it by storefront.",
+      countryScope: "Country-level installs, trials, paid and net revenue use an explicit Adapty country filter. Apple delivery/spend of multi-country campaigns comes from the keyword × storefront report (groupBy countryOrRegion); campaigns without that split yet are excluded rather than guessed.",
       maturity: "Keyword-level D7/D30/D60 maturity is not available in the current Adapty segmentation and is never inferred.",
       relevance: `${rejectedDiscovery} non-medical Apple signals were kept out of the decision queue by the MedScan relevance gate.`,
     },

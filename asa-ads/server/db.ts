@@ -107,6 +107,40 @@ function migrate(d: Database.Database): void {
       PRIMARY KEY (keyword_id, date)
     );
 
+    -- Keyword × storefront × day (keyword report with groupBy countryOrRegion).
+    -- asa_kw_daily only has the keyword total across every storefront of a
+    -- multi-country campaign; this table is what the country filter reads.
+    CREATE TABLE IF NOT EXISTS asa_kw_geo_daily (
+      keyword_id INTEGER NOT NULL,
+      campaign_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      country TEXT NOT NULL,
+      impressions INTEGER NOT NULL DEFAULT 0,
+      taps INTEGER NOT NULL DEFAULT 0,
+      installs INTEGER NOT NULL DEFAULT 0,
+      spend REAL NOT NULL DEFAULT 0,
+      PRIMARY KEY (keyword_id, date, country)
+    );
+    CREATE INDEX IF NOT EXISTS idx_kwgeo_campaign_date ON asa_kw_geo_daily(campaign_id, date);
+    CREATE INDEX IF NOT EXISTS idx_kwgeo_country_date ON asa_kw_geo_daily(country, date);
+
+    -- Search term × storefront × day (search-term report with groupBy
+    -- countryOrRegion). source_keyword_id is 0 when Apple gives no keyword.
+    CREATE TABLE IF NOT EXISTS asa_st_geo_daily (
+      campaign_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      country TEXT NOT NULL,
+      term TEXT NOT NULL,
+      source_keyword_id INTEGER NOT NULL DEFAULT 0,
+      match_type TEXT,
+      impressions INTEGER NOT NULL DEFAULT 0,
+      taps INTEGER NOT NULL DEFAULT 0,
+      installs INTEGER NOT NULL DEFAULT 0,
+      spend REAL NOT NULL DEFAULT 0,
+      PRIMARY KEY (campaign_id, date, country, term, source_keyword_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_stgeo_country_date ON asa_st_geo_daily(country, date);
+
     CREATE TABLE IF NOT EXISTS asa_search_terms (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       campaign_id INTEGER NOT NULL,

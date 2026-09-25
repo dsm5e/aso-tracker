@@ -1,5 +1,19 @@
 import { getDb } from "./db.ts";
 
+/** "BR" for a storefront filter; undefined for world ("ALL", empty, junk). */
+export function normalizeCountry(value: unknown): string | undefined {
+  const country = String(value ?? "").trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(country) ? country : undefined;
+}
+
+/** SQL predicate: campaign `c` targets storefront `?` (countries_json, or the
+ *  legacy single-country column when the list is missing). One bound arg. */
+export const CAMPAIGN_SERVES_COUNTRY = `EXISTS (
+  SELECT 1 FROM json_each(CASE WHEN json_valid(c.countries_json) AND json_array_length(c.countries_json) > 0
+                               THEN c.countries_json ELSE json_array(c.country) END)
+   WHERE UPPER(CAST(value AS TEXT)) = ?
+)`;
+
 export interface CampaignWithMetrics {
   id: number;
   name: string;
@@ -23,9 +37,40 @@ export interface CampaignWithMetrics {
   trial_starts: number;
 }
 
-export function listCampaignsWithMetrics(daysBack = 14, appId?: number): CampaignWithMetrics[] {
+export function listCampaignsWithMetrics(daysBack = 14, appId?: number, countryFilter?: string): CampaignWithMetrics[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const country = normalizeCountry(countryFilter);
+  if (country) {
+    // Storefront view: campaigns that target the country (or delivered there
+    // in the window), with that storefront's slice of the geo report.
+    const args: unknown[] = [country, start, start, country, country, start, country];
+    if (appId) args.push(appId);
+    return db.prepare(`
+      SELECT c.id, c.name, c.country, c.status, c.serving_status, c.app_id,
+             c.daily_budget, c.lifetime_budget, c.bidding_strategy, c.start_time, c.end_time,
+             COALESCE(SUM(g.impressions), 0) AS impressions,
+             COALESCE(SUM(g.taps), 0) AS taps,
+             COALESCE(SUM(g.installs), 0) AS installs,
+             COALESCE(SUM(g.spend), 0) AS spend,
+             CASE WHEN SUM(g.installs) > 0 THEN SUM(g.spend) / SUM(g.installs) ELSE 0 END AS cpi,
+             CASE WHEN SUM(g.taps) > 0 THEN SUM(g.spend) / SUM(g.taps) ELSE 0 END AS cpt,
+             CASE WHEN SUM(g.impressions) > 0 THEN 1.0 * SUM(g.taps) / SUM(g.impressions) ELSE 0 END AS ttr,
+             CASE WHEN SUM(g.taps) > 0 THEN 1.0 * SUM(g.installs) / SUM(g.taps) ELSE 0 END AS install_rate,
+             COALESCE((
+               SELECT SUM(events) FROM asc_events_daily e
+               WHERE e.app_id = c.app_id AND UPPER(e.country) = ? AND e.date >= ?
+                 AND e.event_type = 'Start Introductory Offer'
+             ), 0) AS trial_starts
+      FROM asa_campaigns c
+      LEFT JOIN asa_geo_daily g ON g.campaign_id = c.id AND g.date >= ? AND g.country = ?
+      WHERE (${CAMPAIGN_SERVES_COUNTRY}
+             OR EXISTS (SELECT 1 FROM asa_geo_daily x WHERE x.campaign_id = c.id AND x.date >= ? AND x.country = ?))
+        ${appId ? "AND c.app_id = ?" : ""}
+      GROUP BY c.id
+      ORDER BY spend DESC
+    `).all(...args) as CampaignWithMetrics[];
+  }
   const where = appId ? `AND c.app_id = ?` : ``;
   const args = appId ? [start, start, appId] : [start, start];
   return db.prepare(`
@@ -73,13 +118,23 @@ export interface KeywordWithMetrics {
   cpt: number;
 }
 
-export function listKeywordsWithMetrics(daysBack = 14, campaignId?: number, appId?: number): KeywordWithMetrics[] {
+export function listKeywordsWithMetrics(daysBack = 14, campaignId?: number, appId?: number, countryFilter?: string): KeywordWithMetrics[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const country = normalizeCountry(countryFilter);
   const where = `${campaignId ? `AND k.campaign_id = ?` : ``}${appId ? ` AND c.app_id = ?` : ``}`;
-  const args: unknown[] = [start];
+  // World: keyword totals. Storefront: keywords of campaigns that target it
+  // (or delivered there), metrics from the keyword × country report.
+  const args: unknown[] = country ? [start, country, country, start, country] : [start];
   if (campaignId) args.push(campaignId);
   if (appId) args.push(appId);
+  const join = country
+    ? `LEFT JOIN asa_kw_geo_daily d ON d.keyword_id = k.id AND d.date >= ? AND d.country = ?`
+    : `LEFT JOIN asa_kw_daily d ON d.keyword_id = k.id AND d.date >= ?`;
+  const scope = country
+    ? `AND (${CAMPAIGN_SERVES_COUNTRY}
+            OR EXISTS (SELECT 1 FROM asa_kw_geo_daily x WHERE x.keyword_id = k.id AND x.date >= ? AND x.country = ?))`
+    : "";
   return db.prepare(`
     SELECT k.id, k.campaign_id, k.ad_group_id, c.name AS campaign_name, c.country,
            k.text, k.match_type, k.bid, k.status,
@@ -91,11 +146,26 @@ export function listKeywordsWithMetrics(daysBack = 14, campaignId?: number, appI
            CASE WHEN SUM(d.taps) > 0 THEN SUM(d.spend) / SUM(d.taps) ELSE 0 END AS cpt
     FROM asa_keywords k
     JOIN asa_campaigns c ON c.id = k.campaign_id
-    LEFT JOIN asa_kw_daily d ON d.keyword_id = k.id AND d.date >= ?
-    WHERE k.deleted = 0 ${where}
+    ${join}
+    WHERE k.deleted = 0 ${scope} ${where}
     GROUP BY k.id
     ORDER BY spend DESC, impressions DESC
   `).all(...args) as KeywordWithMetrics[];
+}
+
+/** Daily delivery of one keyword; storefront slice when a country is set. */
+export function keywordDaily(keywordId: number, daysBack = 14, countryFilter?: string): Array<Record<string, unknown>> {
+  const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const country = normalizeCountry(countryFilter);
+  return getDb().prepare(`
+    SELECT date, SUM(impressions) AS impressions, SUM(taps) AS taps, SUM(installs) AS installs, SUM(spend) AS spend,
+           CASE WHEN SUM(taps) > 0 THEN SUM(spend)/SUM(taps) ELSE 0 END AS cpt,
+           CASE WHEN SUM(installs) > 0 THEN SUM(spend)/SUM(installs) ELSE 0 END AS cpi
+    FROM ${country ? "asa_kw_geo_daily" : "asa_kw_daily"}
+    WHERE keyword_id = ? AND date >= ? ${country ? "AND country = ?" : ""}
+    GROUP BY date
+    ORDER BY date
+  `).all(...(country ? [keywordId, start, country] : [keywordId, start])) as Array<Record<string, unknown>>;
 }
 
 export interface SearchTerm {
@@ -112,11 +182,18 @@ export interface SearchTerm {
   is_negative: number;
 }
 
-export function listSearchTerms(daysBack = 14, appId?: number): SearchTerm[] {
+export function listSearchTerms(daysBack = 14, appId?: number, countryFilter?: string): SearchTerm[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const country = normalizeCountry(countryFilter);
   const where = appId ? `AND c.app_id = ?` : ``;
-  const args: unknown[] = appId ? [start, appId] : [start];
+  const args: unknown[] = [start];
+  if (country) args.push(country);
+  if (appId) args.push(appId);
+  const source = country
+    ? `(SELECT campaign_id, date, term, NULLIF(source_keyword_id, 0) AS source_keyword_id, match_type,
+               impressions, taps, installs, spend, country FROM asa_st_geo_daily)`
+    : "asa_search_terms";
   return db.prepare(`
     SELECT s.campaign_id, c.name AS campaign_name, c.country,
            s.term, s.source_keyword_id, s.match_type,
@@ -125,9 +202,9 @@ export function listSearchTerms(daysBack = 14, appId?: number): SearchTerm[] {
            SUM(s.installs) AS installs,
            SUM(s.spend) AS spend,
            (SELECT 1 FROM asa_negatives n WHERE n.campaign_id = s.campaign_id AND n.text = s.term) AS is_negative
-    FROM asa_search_terms s
+    FROM ${source} s
     JOIN asa_campaigns c ON c.id = s.campaign_id
-    WHERE s.date >= ? ${where}
+    WHERE s.date >= ? ${country ? "AND s.country = ?" : ""} ${where}
     GROUP BY s.campaign_id, s.term, s.source_keyword_id
     ORDER BY impressions DESC
   `).all(...args) as SearchTerm[];
@@ -210,16 +287,19 @@ export interface DailyTotals {
   trial_starts: number;
 }
 
-export function dailyTotals(daysBack = 14, campaignId?: number, appId?: number): DailyTotals[] {
+export function dailyTotals(daysBack = 14, campaignId?: number, appId?: number, countryFilter?: string): DailyTotals[] {
   const db = getDb();
   const start = new Date(Date.now() - daysBack * 86400_000).toISOString().slice(0, 10);
+  const country = normalizeCountry(countryFilter);
 
   const conds: string[] = [];
   const args: unknown[] = [start];
+  if (country) { conds.push("d.country = ?"); args.push(country); }
   if (campaignId) { conds.push("d.campaign_id = ?"); args.push(campaignId); }
   if (appId) { conds.push("c.app_id = ?"); args.push(appId); }
   const where = conds.length ? "AND " + conds.join(" AND ") : "";
 
+  // A storefront reads the campaign × country report; world the campaign totals.
   const asa = db.prepare(`
     SELECT d.date,
            SUM(d.impressions) AS impressions,
@@ -229,7 +309,7 @@ export function dailyTotals(daysBack = 14, campaignId?: number, appId?: number):
            CASE WHEN SUM(d.installs) > 0 THEN SUM(d.spend) / SUM(d.installs) ELSE 0 END AS cpi,
            CASE WHEN SUM(d.taps) > 0 THEN SUM(d.spend) / SUM(d.taps) ELSE 0 END AS cpt,
            CASE WHEN SUM(d.impressions) > 0 THEN 1.0 * SUM(d.taps) / SUM(d.impressions) ELSE 0 END AS ttr
-    FROM asa_daily d
+    FROM ${country ? "asa_geo_daily" : "asa_daily"} d
     JOIN asa_campaigns c ON c.id = d.campaign_id
     WHERE d.date >= ? ${where}
     GROUP BY d.date
@@ -238,8 +318,9 @@ export function dailyTotals(daysBack = 14, campaignId?: number, appId?: number):
 
   const trialArgs: unknown[] = [start];
   // Only apps with Apple Ads campaigns: other apps in the ASC account have no spend here.
-  const trialWhere = appId ? "AND app_id = ?" : "AND app_id IN (SELECT DISTINCT app_id FROM asa_campaigns)";
+  let trialWhere = appId ? "AND app_id = ?" : "AND app_id IN (SELECT DISTINCT app_id FROM asa_campaigns)";
   if (appId) trialArgs.push(appId);
+  if (country) { trialWhere += " AND UPPER(country) = ?"; trialArgs.push(country); }
   const trials = db.prepare(`
     SELECT date, SUM(events) AS events
     FROM asc_events_daily
@@ -282,7 +363,7 @@ export interface GeoBreakdownRow {
  * put all of "WW — Rest of World" into LV and left the other storefronts with
  * a sliver of spend against their full trial counts.
  */
-export function geoBreakdown(days: number, appId?: number): GeoBreakdownRow[] {
+export function geoBreakdown(days: number, appId?: number, countryFilter?: string): GeoBreakdownRow[] {
   const db = getDb();
   const { start, end } = spendWindow(days);
   const appCond = appId ? "AND c.app_id = ?" : "";
@@ -320,5 +401,24 @@ export function geoBreakdown(days: number, appId?: number): GeoBreakdownRow[] {
     GROUP BY country
   `).all(start, end, ...appArg) as Array<{ country: string; n: number }>;
   const trials = new Map(trialRows.map((t) => [t.country.toUpperCase(), t.n]));
-  return rows.map((r) => ({ ...r, trials: trials.get(r.country.toUpperCase()) ?? 0 }));
+  const country = normalizeCountry(countryFilter);
+  return rows
+    .filter((r) => !country || r.country.toUpperCase() === country)
+    .map((r) => ({ ...r, trials: trials.get(r.country.toUpperCase()) ?? 0 }));
+}
+
+export interface AppCountry { code: string; spend: number; installs: number; impressions: number }
+
+/** Storefronts with Apple Ads delivery for the app(s) in the last `days`,
+ *  biggest spend first — the options of the global country filter. */
+export function listAppCountries(appId?: number, days = 90): AppCountry[] {
+  const start = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
+  return getDb().prepare(`
+    SELECT g.country AS code, SUM(g.spend) AS spend, SUM(g.installs) AS installs, SUM(g.impressions) AS impressions
+    FROM asa_geo_daily g JOIN asa_campaigns c ON c.id = g.campaign_id
+    WHERE g.date >= ? ${appId ? "AND c.app_id = ?" : ""}
+    GROUP BY g.country
+    HAVING SUM(g.spend) > 0 OR SUM(g.impressions) > 0
+    ORDER BY spend DESC, impressions DESC, code
+  `).all(...(appId ? [start, appId] : [start])) as AppCountry[];
 }

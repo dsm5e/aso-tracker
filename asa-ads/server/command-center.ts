@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { getDb } from "./db.ts";
 import type { AppConfig } from "./config.ts";
 import { fetchRevenueRows, type RevenueRow } from "./revenue.ts";
-import { geoBreakdown } from "./queries.ts";
+import { geoBreakdown, normalizeCountry } from "./queries.ts";
 
 // ---------------------------------------------------------------------------
 // Command Center — one screen per app: ASA spend/installs ⋈ real revenue ⋈
@@ -125,7 +125,7 @@ function verdictFor(spend: number, installs: number, revenue: number, roas: numb
   return { verdict: "no-data", reason: "" };
 }
 
-export async function commandCenter(cfg: AppConfig, appId: number, days: number): Promise<{
+export async function commandCenter(cfg: AppConfig, appId: number, days: number, countryFilter?: string): Promise<{
   rows: CommandGeoRow[];
   revenueSource: boolean;
   aso: { slug: string | null; snapshotDate: string | null };
@@ -164,7 +164,10 @@ export async function commandCenter(cfg: AppConfig, appId: number, days: number)
     };
   });
 
-  return { rows, revenueSource: hasFeed, aso: { slug: asoData.slug, snapshotDate: asoData.snapshotDate }, revenueError };
+  // The storefront filter narrows the table; the feed flag stays app-level.
+  const country = normalizeCountry(countryFilter);
+  const scoped = country ? rows.filter((row) => row.country.toUpperCase() === country) : rows;
+  return { rows: scoped, revenueSource: hasFeed, aso: { slug: asoData.slug, snapshotDate: asoData.snapshotDate }, revenueError };
 }
 
 export interface AccountHealth {

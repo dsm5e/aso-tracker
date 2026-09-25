@@ -28,6 +28,8 @@ export class AsaApiError extends Error {
 
 export class AsaClient {
   private cached?: CachedToken;
+  /** Apple API requests made by this client (sync cost diagnostics). */
+  requestCount = 0;
   private keyPromise?: Promise<KeyLike | Uint8Array>;
   private inflight?: Promise<string>;
 
@@ -106,6 +108,7 @@ export class AsaClient {
     path: string,
     opts: { body?: unknown; query?: Record<string, string | number> } = {},
   ): Promise<T> {
+    this.requestCount++;
     const token = await this.token();
     const url = new URL(`${this.cfg.apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`);
     if (opts.query) {
@@ -202,6 +205,54 @@ export class AsaClient {
       if (rows.length < limit || offset + limit >= total) break;
     }
     return out;
+  }
+
+  /** Rows of a campaign-level sub-report (keywords / searchterms) split by
+   *  storefront. Apple accepts groupBy countryOrRegion on both (verified
+   *  2026-09-25) but only without row totals; empty rows are skipped. */
+  private async pagedGeoSubReport<T>(path: string, startDate: string, endDate: string, extra: Record<string, unknown> = {}, orderField = "localSpend"): Promise<T[]> {
+    const out: T[] = [];
+    const limit = 1000;
+    for (let offset = 0; offset < 50_000; offset += limit) {
+      const r = await this.req<{ data: { reportingDataResponse: { row: T[] } }; pagination?: { totalResults?: number } }>(
+        "POST",
+        path,
+        {
+          body: {
+            startTime: startDate,
+            endTime: endDate,
+            granularity: "DAILY",
+            groupBy: ["countryOrRegion"],
+            returnRowTotals: false,
+            returnRecordsWithNoMetrics: false,
+            ...extra,
+            selector: {
+              // Reports skip deleted keywords by default; their delivery is
+              // still in the keyword totals, so ask for both (verified: the
+              // split then sums exactly to the campaign's keyword total).
+              conditions: [{ field: "deleted", operator: "IN", values: ["true", "false"] }],
+              orderBy: [{ field: orderField, sortOrder: "DESCENDING" }],
+              pagination: { offset, limit },
+            },
+          },
+        },
+      );
+      const rows = r.data?.reportingDataResponse?.row ?? [];
+      out.push(...rows);
+      const total = r.pagination?.totalResults ?? 0;
+      if (rows.length < limit || offset + limit >= total) break;
+    }
+    return out;
+  }
+
+  /** Keyword report of one campaign split by storefront. */
+  keywordGeoReport(campaignId: number, startDate: string, endDate: string): Promise<RawKeywordGeoReport[]> {
+    return this.pagedGeoSubReport<RawKeywordGeoReport>(`/reports/campaigns/${campaignId}/keywords`, startDate, endDate);
+  }
+
+  /** Search-term report of one campaign split by storefront. */
+  searchTermGeoReport(campaignId: number, startDate: string, endDate: string): Promise<RawSearchTermGeoReport[]> {
+    return this.pagedGeoSubReport<RawSearchTermGeoReport>(`/reports/campaigns/${campaignId}/searchterms`, startDate, endDate, { timeZone: "ORTZ" }, "impressions");
   }
 
   async keywordReport(campaignId: number, startDate: string, endDate: string): Promise<RawKeywordReport[]> {
@@ -369,5 +420,15 @@ export interface RawKeywordReport {
 export interface RawSearchTermReport {
   metadata: { searchTermText: string; searchTermSource: string; keywordId?: number; matchType?: string; campaignId: number };
   total: ReportTotals;
+  granularity: Array<ReportTotals & { date: string }>;
+}
+
+export interface RawKeywordGeoReport {
+  metadata: { keywordId: number; campaignId: number; countryOrRegion?: string };
+  granularity: Array<ReportTotals & { date: string }>;
+}
+
+export interface RawSearchTermGeoReport {
+  metadata: { campaignId: number; countryOrRegion?: string; searchTermText?: string | null; keywordId?: number | null; matchType?: string | null };
   granularity: Array<ReportTotals & { date: string }>;
 }
