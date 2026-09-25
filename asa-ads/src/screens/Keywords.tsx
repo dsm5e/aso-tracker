@@ -6,6 +6,7 @@ import BidChangeConfirm from "../components/BidChangeConfirm.tsx";
 import BulkApplyConfirm from "../components/BulkApplyConfirm.tsx";
 import { exportRows } from "../lib/csv.ts";
 import { campaignDisplayName } from "../lib/campaignNames.ts";
+import Dropdown from "../components/Dropdown.tsx";
 
 interface Props { reloadKey: number }
 
@@ -190,29 +191,19 @@ export default function Keywords({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <div><h2>Ключевые слова</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Все страны выбранного приложения · ставки меняются только после подтверждения</div></div>
+        <div><h1 className="ds-page-title">Ключевые слова</h1><p className="ds-page-sub">Все страны выбранного приложения · ставки меняются только после подтверждения</p></div>
         <div className="controls">
           <input type="text" aria-label="Поиск ключевых слов" placeholder="Найти ключ или кампанию" value={filter} onChange={(e) => setFilter(e.target.value)} />
-          <div className="btn-group" title="Filter by keyword status">
-            <button className={`compact ${statusFilter === "all" ? "primary" : ""}`} onClick={() => setStatusFilter("all")}>Все {rows.length}</button>
-            <button className={`compact ${statusFilter === "active" ? "primary" : ""}`} onClick={() => setStatusFilter("active")}>Активные {counts.active}</button>
-            <button className={`compact ${statusFilter === "paused" ? "primary" : ""}`} onClick={() => setStatusFilter("paused")}>Пауза {counts.paused}</button>
+          <div className="ds-seg" title="Filter by keyword status">
+            <button className={statusFilter === "all" ? "on" : ""} onClick={() => setStatusFilter("all")}>Все {rows.length}</button>
+            <button className={statusFilter === "active" ? "on" : ""} onClick={() => setStatusFilter("active")}>Активные {counts.active}</button>
+            <button className={statusFilter === "paused" ? "on" : ""} onClick={() => setStatusFilter("paused")}>Пауза {counts.paused}</button>
           </div>
           {counts.orphan > 0 && (
             <span className="badge warn" title="Активные ключи в неработающих кампаниях; расходов и показов по ним не будет.">⚠ без показа: {counts.orphan}</span>
           )}
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)}>
-            <option value="spend">↓ Расход</option>
-            <option value="installs">↓ Установки</option>
-            <option value="cpt">↓ CPT</option>
-            <option value="imp">↓ Показы</option>
-          </select>
-          <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={3}>3 дня</option>
-            <option value={7}>7 дней</option>
-            <option value={14}>14 дней</option>
-            <option value={30}>30 дней</option>
-          </select>
+          <Dropdown ariaLabel="Сортировка" value={sortBy} onChange={(v) => setSortBy(v as typeof sortBy)} options={[{ value: "spend", label: "↓ Расход" }, { value: "installs", label: "↓ Установки" }, { value: "cpt", label: "↓ CPT" }, { value: "imp", label: "↓ Показы" }]} />
+          <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 3, label: "3 дня" }, { value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }]} />
           <button onClick={() => exportRows(
             `keywords-${new Date().toISOString().slice(0, 10)}.csv`,
             ["text", "campaign_name", "country", "match_type", "bid", "status", "impressions", "taps", "installs", "spend", "cpt"],
@@ -222,18 +213,18 @@ export default function Keywords({ reloadKey }: Props) {
       </div>
 
       <div className="card">
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div className="card-toolbar card-toolbar-flush">
           <div>
             <strong>{recs.length}</strong> рекомендаций
             {selected.size > 0 && <> · выбрано с рекомендацией: {selectedWithRec}</>}
-            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>Быстрый выбор:</div>
+            <div className="note">Быстрый выбор:</div>
           </div>
           <div className="btn-group">
             <button className="compact" onClick={() => selectByConfidence("high")} title="Только рекомендации с высокой уверенностью (winners)">Только надёжные</button>
             <button className="compact" onClick={() => selectAllVisible(true)} title="Все ключи у которых есть рекомендация">Все с рекомендацией</button>
             <button className="compact" onClick={() => setSelected(new Set())} disabled={selected.size === 0}>Снять выбор</button>
             <button
-              className="primary"
+              className="compact primary"
               disabled={selectedWithRec === 0 || bulkRunning}
               onClick={requestBulkApply}
               title="Покажет окно с прогнозом impact и подтверждением перед применением"
@@ -263,10 +254,11 @@ export default function Keywords({ reloadKey }: Props) {
       )}
 
       {loading ? <div className="data-state loading">Загружаем ключевые слова…</div> : filtered.length === 0 ? <div className="data-state">По этому фильтру нет ключевых слов.</div> : (
-        <table>
+        <div className="table-wrap">
+        <table className="keywords-table">
           <thead>
             <tr>
-              <th style={{ width: 28 }}>
+              <th className="col-check">
                 <input
                   type="checkbox"
                   checked={filtered.length > 0 && filtered.every((k) => selected.has(k.id))}
@@ -287,7 +279,7 @@ export default function Keywords({ reloadKey }: Props) {
               <th className="num">CPT</th>
               <th className="num">Расход</th>
               <th>Рекомендация</th>
-              <th style={{ minWidth: 200 }}>Изменение ставки</th>
+              <th className="col-bid">Изменение ставки</th>
             </tr>
           </thead>
           <tbody>
@@ -304,16 +296,16 @@ export default function Keywords({ reloadKey }: Props) {
                   <td>
                     <input type="checkbox" checked={selected.has(k.id)} onChange={() => toggle(k.id)} disabled={!rec} />
                   </td>
-                  <td>
-                    <span className={`expand-toggle ${isExp ? "open" : ""}`} style={{ marginRight: 6 }} onClick={() => toggleExpand(k.id)}>▸</span>
+                  <td className="nowrap">
+                    <span className={`expand-toggle inline-label ${isExp ? "open" : ""}`} onClick={() => toggleExpand(k.id)}>▸</span>
                     {k.text}
                   </td>
-                  <td className="muted" style={{ fontSize: 11 }}>{campaignDisplayName(k.campaign_name)}</td>
+                  <td className="muted cell-clip" title={campaignDisplayName(k.campaign_name)}>{campaignDisplayName(k.campaign_name)}</td>
                   <td><span className="badge">{k.match_type}</span></td>
                   <td>
                     <span className={`badge ${k.status === "ACTIVE" ? "ok" : "warn"}`}>{k.status.toLowerCase()}</span>
                     {k.status === "ACTIVE" && k.campaign_serving_status && k.campaign_serving_status !== "RUNNING" && (
-                      <span className="badge warn" title={`Campaign serving: ${k.campaign_serving_status}`} style={{ marginLeft: 4 }}>⚠ camp</span>
+                      <span className="badge warn inline-gap" title={`Campaign serving: ${k.campaign_serving_status}`}>⚠ camp</span>
                     )}
                   </td>
                   <td className="num">{fmtBid(k.bid)}</td>
@@ -324,11 +316,11 @@ export default function Keywords({ reloadKey }: Props) {
                   <td className="num">{fmtBid(k.spend)}</td>
                   <td>
                     {rec && !alreadyAtRec ? (
-                      <span title={rec.reason}>
+                      <span title={rec.reason} className="rec-cell">
                         <span className={`badge ${rec.confidence === "high" ? "ok" : rec.confidence === "medium" ? "warn" : ""}`}>
                           {delta > 0 ? "↑" : "↓"} {fmtBid(rec.recommended_bid)}
-                        </span>{" "}
-                        <span className="muted" style={{ fontSize: 11 }}>{rec.reason}</span>
+                        </span>
+                        <span className="rec-reason">{rec.reason}</span>
                       </span>
                     ) : flashed.has(k.id) ? (
                       <span className="badge ok">✓ обновлено</span>
@@ -341,7 +333,7 @@ export default function Keywords({ reloadKey }: Props) {
                       <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Снизить ставку на 10% для контролируемого теста") } title={`Снизить на 10% → ${fmtBid(down10)}`}>−10%</button>
                       <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Повысить ставку на 10% для контролируемого теста")} title={`Повысить на 10% → ${fmtBid(up10)}`}>+10%</button>
                       {rec && !alreadyAtRec && (
-                        <button className={`compact ${delta > 0 ? "primary up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={rec.reason}>
+                        <button className={`compact ${delta > 0 ? "up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={rec.reason}>
                           → {fmtBid(rec.recommended_bid)}
                         </button>
                       )}
@@ -359,6 +351,7 @@ export default function Keywords({ reloadKey }: Props) {
             })}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

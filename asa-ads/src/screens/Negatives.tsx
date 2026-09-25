@@ -43,7 +43,7 @@ export default function Negatives() {
   return (
     <>
       <div className="topbar">
-        <div><h2>Минус-слова</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Все страны выбранного приложения · защита от нерелевантных запросов и пересечения кампаний</div></div>
+        <div><h1 className="ds-page-title">Минус-слова</h1><p className="ds-page-sub">Все страны выбранного приложения · защита от нерелевантных запросов и пересечения кампаний</p></div>
         <div className="controls">
           <input type="text" aria-label="Поиск минус-слов" placeholder="Найти слово или кампанию" value={filter} onChange={(e) => setFilter(e.target.value)} />
           <button onClick={doExport} disabled={filtered.length === 0}>Экспорт CSV</button>
@@ -60,6 +60,7 @@ export default function Negatives() {
       {loading ? <div className="data-state loading">Загружаем минус-слова…</div> : filtered.length === 0 ? (
         <div className="data-state">Нет минус-слов по этому фильтру.</div>
       ) : (
+        <div className="table-wrap">
         <table>
           <thead>
             <tr>
@@ -76,14 +77,15 @@ export default function Negatives() {
               <tr key={r.id}>
                 <td><strong>{r.text}</strong></td>
                 <td><span className="badge">{r.match_type}</span></td>
-                <td className="muted" style={{ fontSize: 11 }}>{r.campaign_name ? campaignDisplayName(r.campaign_name) : "—"}</td>
+                <td className="muted">{r.campaign_name ? campaignDisplayName(r.campaign_name) : "—"}</td>
                 <td>{r.country ?? "—"}</td>
-                <td className="muted" style={{ fontSize: 11 }}>{new Date(r.added_at).toLocaleString()}</td>
+                <td className="muted nowrap">{new Date(r.added_at).toLocaleString()}</td>
                 <td className="num muted">{r.remote_id ?? "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

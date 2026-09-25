@@ -29,11 +29,11 @@ export default function KeywordExpand({ keyword }: Props) {
   }, [keyword.id, spend]);
 
   return (
-    <div className="expand-grid" style={{ gridTemplateColumns: "1.4fr 1fr", gap: 24 }}>
+    <div className="expand-grid kw-expand">
       {/* Left: history charts */}
       <div>
-        <div className="muted" style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>История за 14 дней</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div className="field-label">История за 14 дней</div>
+        <div className="kw-expand-sparks">
           <Sparkline
             title="Показы"
             value={String(daily.reduce((a, d) => a + d.impressions, 0))}
@@ -79,26 +79,26 @@ export default function KeywordExpand({ keyword }: Props) {
 
       {/* Right: ROI projection */}
       <div>
-        <div className="muted" style={{ fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8 }}>Сценарий расхода</div>
-        <div className="btn-group" style={{ flexWrap: "wrap", marginBottom: 12 }}>
+        <div className="field-label">Сценарий расхода</div>
+        <div className="ds-seg kw-expand-block">
           {SPEND_LEVELS.map((s) => (
-            <button key={s} className={`compact ${s === spend ? "primary" : ""}`} onClick={() => setSpend(s)}>${s}</button>
+            <button key={s} className={s === spend ? "on" : ""} onClick={() => setSpend(s)}>${s}</button>
           ))}
         </div>
 
         {loading || !proj ? <div className="loading">Считаем прогноз…</div> : (
           <>
-            <div className={`roi ${proj.verdict.kind}`} style={{ fontSize: 14, marginBottom: 6 }}>{proj.verdict.label}</div>
-            <div className="muted" style={{ fontSize: 11, lineHeight: 1.5, marginBottom: 12 }}>{proj.verdict.reason}</div>
+            <div className={`roi ${proj.verdict.kind}`}>{proj.verdict.label}</div>
+            <div className="note kw-expand-block">{proj.verdict.reason}</div>
 
             {proj.next_step && (
-              <div style={{ padding: "8px 10px", background: "var(--bg-1)", borderLeft: "2px solid var(--yellow)", fontSize: 11, color: "var(--bone-dim)", lineHeight: 1.5, marginBottom: 12 }}>
-                <span style={{ color: "var(--yellow)", fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase", display: "block", marginBottom: 4 }}>Следующий шаг</span>
+              <div className="callout warn kw-expand-block">
+                <span className="callout-title">Следующий шаг</span>
                 {proj.next_step}
               </div>
             )}
 
-            <table style={{ fontSize: 11 }}>
+            <table>
               <tbody>
                 <tr><td className="muted">Достоверность</td><td className="num"><span className={`badge ${proj.confidence === "high" ? "ok" : proj.confidence === "medium" ? "cyan" : "warn"}`}>{confidenceLabel(proj.confidence)}</span></td></tr>
                 <tr><td className="muted">Установка → триал</td><td className="num cyan">{fmtPct(proj.install_to_trial_rate)}</td></tr>
@@ -110,7 +110,7 @@ export default function KeywordExpand({ keyword }: Props) {
                 {proj.paid_so_far > 0 && (
                   <tr>
                     <td className="muted">ROAS к текущему моменту {proj.revenue_source === "real" ? <span className="badge ok">факт</span> : <span className="badge cyan">собирается</span>}</td>
-                    <td className={`num ${proj.roas_so_far >= 1 ? "good" : "bad"}`}>{proj.roas_so_far.toFixed(2)}× <span className="muted" style={{ fontSize: 10 }}>({proj.paid_so_far} оплат)</span></td>
+                    <td className={`num ${proj.roas_so_far >= 1 ? "good" : "bad"}`}>{proj.roas_so_far.toFixed(2)}× <span className="muted small">({proj.paid_so_far} оплат)</span></td>
                   </tr>
                 )}
               </tbody>

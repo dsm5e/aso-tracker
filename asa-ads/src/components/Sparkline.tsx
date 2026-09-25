@@ -27,7 +27,7 @@ export default function Sparkline({
 }: Props) {
   if (data.length === 0) {
     return (
-      <div className="spark" onClick={onClick} style={{ cursor: onClick ? "pointer" : "default" }}>
+      <div className={`spark${onClick ? " clickable" : ""}`} onClick={onClick}>
         <div className="spark-head">
           <div className="spark-label">{title}</div>
           <div className="spark-value muted">—</div>
@@ -43,7 +43,7 @@ export default function Sparkline({
   const deltaPct = prev !== 0 ? (delta / prev) * 100 : 0;
 
   return (
-    <div className="spark" onClick={onClick} style={{ cursor: onClick ? "pointer" : "default" }}>
+    <div className={`spark${onClick ? " clickable" : ""}`} onClick={onClick}>
       <div className="spark-head">
         <div className="spark-label">{title}</div>
         <div className="spark-value">{value}</div>

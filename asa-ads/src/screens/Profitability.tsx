@@ -5,6 +5,7 @@ import Sparkline from "../components/Sparkline.tsx";
 import HeroChart from "../components/HeroChart.tsx";
 import { CostPerTrialBars, EfficiencyScatter, RoasByGeoBars, zoneColor, type GeoRow } from "../components/ProfitCharts.tsx";
 import { exportRows } from "../lib/csv.ts";
+import Dropdown from "../components/Dropdown.tsx";
 
 interface Props { reloadKey: number }
 
@@ -66,25 +67,20 @@ export default function Profitability({ reloadKey }: Props) {
   const dates = daily.map((d) => d.date);
   const dailyCpt = daily.map((d) => (d.trial_starts > 0 ? d.spend / d.trial_starts : 0));
 
-  function roasColor(roas: number, hasRev: boolean): string {
-    if (!hasRev) return "var(--bone-mute)";
-    if (roas >= 1) return "var(--green)";
-    if (roas >= 0.5) return "var(--amber)";
-    return "var(--red)";
+  function roasClass(roas: number, hasRev: boolean): string {
+    if (!hasRev) return "muted";
+    if (roas >= 1) return "good";
+    if (roas >= 0.5) return "warn";
+    return "bad";
   }
 
   return (
     <>
       <div className="topbar">
-        <div><h2>Экономика</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Все страны выбранного приложения · факт выручки и прогноз показываются раздельно</div></div>
+        <div><h1 className="ds-page-title">Экономика</h1><p className="ds-page-sub">Все страны выбранного приложения · факт выручки и прогноз показываются раздельно</p></div>
         <div className="controls">
           <span className="meta">{hasRevenue ? "Расход × выручка Adapty · факт" : "Расход × триалы · ASC"}</span>
-          <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={7}>7 дней</option>
-            <option value={14}>14 дней</option>
-            <option value={30}>30 дней</option>
-            <option value={90}>90 дней</option>
-          </select>
+          <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }, { value: 90, label: "90 дней" }]} />
         </div>
       </div>
 
@@ -103,27 +99,27 @@ export default function Profitability({ reloadKey }: Props) {
         <Sparkline title={hasRevenue ? "Оплаты" : "Установки"} value={String(hasRevenue ? t.paid : t.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--ds-c4)" format={(n) => String(Math.round(n))} />
       </div>
 
-      <div className="divider">Динамика</div>
+      <h2 className="ds-h2">Динамика</h2>
       <HeroChart daily={daily} />
 
       {hasRevenue && (
         <>
-          <div className="divider">ROAS по странам</div>
+          <h2 className="ds-h2">ROAS по странам</h2>
           <RoasByGeoBars rows={merged.map((r) => ({ country: r.country, spend: r.spend, revenue: r.revenue, roas: r.roas }))} />
 
-          <div className="divider">Калькулятор сценария</div>
-          <div className="card" style={{ padding: "14px 16px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-              <span className="muted" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em" }}>Pour</span>
-              <input type="number" value={projSpend} min={0} step={50}
-                onChange={(e) => setProjSpend(Math.max(0, Number(e.target.value)))}
-                style={{ width: 96 }} />
-              <span className="muted" style={{ fontSize: 11 }}>$ into a geo → projected revenue at its current ROAS (linear, holds only up to search-volume ceiling)</span>
+          <h2 className="ds-h2">Калькулятор сценария</h2>
+          <div className="card">
+            <div className="row calc-row">
+              <label className="field-label calc-label" htmlFor="calc-spend">Pour</label>
+              <input id="calc-spend" className="calc-input" type="number" value={projSpend} min={0} step={50}
+                onChange={(e) => setProjSpend(Math.max(0, Number(e.target.value)))} />
+              <span className="note">$ into a geo → projected revenue at its current ROAS (linear, holds only up to search-volume ceiling)</span>
             </div>
             {(() => {
               const profitable = merged.filter((r) => r.revenue > 0).sort((a, b) => b.roas - a.roas);
-              if (profitable.length === 0) return <div className="muted" style={{ fontSize: 12 }}>no geo with revenue yet</div>;
+              if (profitable.length === 0) return <div className="note">no geo with revenue yet</div>;
               return (
+                <div className="table-wrap">
                 <table>
                   <thead>
                     <tr><th>Geo</th><th className="num">ROAS</th><th className="num">Pour</th><th className="num">→ Revenue</th><th className="num">Net</th></tr>
@@ -134,16 +130,16 @@ export default function Profitability({ reloadKey }: Props) {
                       const net = proj - projSpend;
                       return (
                         <tr key={r.country}>
-                          <td style={{ fontWeight: 500 }}>{r.country}</td>
-                          <td className="num" style={{ color: r.roas >= 1 ? "var(--green)" : "var(--amber)" }}>{(r.roas * 100).toFixed(0)}%</td>
+                          <td className="strong">{r.country}</td>
+                          <td className={`num ${r.roas >= 1 ? "good" : "warn"}`}>{(r.roas * 100).toFixed(0)}%</td>
                           <td className="num">{fmtUsd(projSpend)}</td>
-                          <td className="num" style={{ color: "var(--green)" }}>{fmtUsd(proj)}</td>
-                          <td className="num" style={{ color: net >= 0 ? "var(--green)" : "var(--red)" }}>{net >= 0 ? "+" : ""}{fmtUsd(net)}</td>
+                          <td className="num good">{fmtUsd(proj)}</td>
+                          <td className={`num ${net >= 0 ? "good" : "bad"}`}>{net >= 0 ? "+" : ""}{fmtUsd(net)}</td>
                         </tr>
                       );
                     })}
-                    <tr>
-                      <td className="muted">Blended</td>
+                    <tr className="tot">
+                      <td>Blended</td>
                       <td className="num muted">{(t.roas * 100).toFixed(0)}%</td>
                       <td className="num muted">{fmtUsd(projSpend)}</td>
                       <td className="num muted">{fmtUsd(projSpend * t.roas)}</td>
@@ -151,27 +147,28 @@ export default function Profitability({ reloadKey }: Props) {
                     </tr>
                   </tbody>
                 </table>
+                </div>
               );
             })()}
-            <div className="muted" style={{ fontSize: 10, marginTop: 8 }}>
-              ⚠ Linear at observed ROAS — early Adapty log (~from 06-21) + thin paid counts; treat as directional, not a guarantee. Niche search volume caps how much a geo can actually absorb.
+            <div className="note section-foot">
+              Linear at observed ROAS — early Adapty log (~from 06-21) + thin paid counts; treat as directional, not a guarantee. Niche search volume caps how much a geo can actually absorb.
             </div>
           </div>
         </>
       )}
 
-      <div className="divider">Цена триала по странам</div>
+      <h2 className="ds-h2">Цена триала по странам</h2>
       {geo.length === 0 ? (
         <div className="data-state">{loading ? "Загружаем данные…" : "Нет данных за этот период."}</div>
       ) : (
         <CostPerTrialBars rows={geo} blended={t.cpt || 1} />
       )}
 
-      <div className="divider">Карта эффективности</div>
+      <h2 className="ds-h2">Карта эффективности</h2>
       {geo.length > 0 && <EfficiencyScatter rows={geo} blended={t.cpt || 1} />}
 
-      <div className="divider" style={{ justifyContent: "space-between" }}>
-        Разбивка по странам · {merged.length}{hasRevenue ? " · фактический ROAS" : ""}
+      <div className="section-head">
+        <h2 className="ds-h2">Разбивка по странам · {merged.length}{hasRevenue ? " · фактический ROAS" : ""}</h2>
         <button className="compact" onClick={() => exportRows(
           `profitability-${new Date().toISOString().slice(0, 10)}.csv`,
           ["country", "spend", "installs", "trials", "paid", "revenue", "roas", "cpi", "cpt"],
@@ -180,6 +177,7 @@ export default function Profitability({ reloadKey }: Props) {
       </div>
 
       {merged.length > 0 && (
+        <div className="table-wrap">
         <table>
           <thead>
             <tr>
@@ -196,28 +194,30 @@ export default function Profitability({ reloadKey }: Props) {
           <tbody>
             {merged.map((r) => {
               const cptColor = zoneColor(r.cpt, t.cpt || 1);
-              const rColor = roasColor(r.roas, hasRevenue);
+              const rClass = roasClass(r.roas, hasRevenue);
               const verdict = hasRevenue
                 ? (r.revenue === 0 ? (r.spend > 1 ? "no revenue" : "—") : r.roas >= 1 ? "profit" : r.roas >= 0.5 ? "watch" : "underwater")
                 : (r.cpt === null ? "waste" : r.cpt <= (t.cpt || 1) ? "efficient" : r.cpt <= (t.cpt || 1) * 2 ? "watch" : "weak");
-              const vColor = hasRevenue ? rColor : cptColor;
+              // cost-per-trial zones come from the chart palette (data-driven color)
+              const tone = hasRevenue ? { className: rClass } : { style: { color: cptColor } };
               return (
                 <tr key={r.country}>
-                  <td style={{ fontWeight: 500 }}>{r.country}</td>
+                  <td className="strong">{r.country}</td>
                   <td className="num">{fmtUsd(r.spend)}</td>
                   <td className="num">{r.installs}</td>
                   <td className="num">{r.trials}</td>
                   {hasRevenue && <td className="num">{r.paid}</td>}
-                  {hasRevenue && <td className="num" style={{ color: r.revenue > 0 ? "var(--green)" : "var(--bone-mute)" }}>{fmtUsd(r.revenue)}</td>}
-                  <td className="num" style={{ color: hasRevenue ? rColor : cptColor }}>
+                  {hasRevenue && <td className={`num ${r.revenue > 0 ? "good" : "muted"}`}>{fmtUsd(r.revenue)}</td>}
+                  <td className={`num ${tone.className ?? ""}`} style={tone.style}>
                     {hasRevenue ? (r.revenue > 0 ? `${(r.roas * 100).toFixed(0)}%` : "—") : (r.cpt === null ? "—" : fmtUsd(r.cpt))}
                   </td>
-                  <td><span className="roi" style={{ color: vColor, borderColor: vColor }}>{verdict}</span></td>
+                  <td><span className={`roi ${tone.className ?? ""}`} style={tone.style}>{verdict}</span></td>
                 </tr>
               );
             })}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

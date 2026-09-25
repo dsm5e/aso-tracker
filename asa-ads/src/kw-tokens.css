@@ -59,7 +59,7 @@
 .kw-scope :where(button) { all: revert; box-sizing: border-box; font: inherit; color: inherit; cursor: pointer; }
 .kw-scope :where(select) { min-height: 0; }
 
-.kw-screen { margin: -28px -32px -64px; min-height: 100vh; display: flex; flex-direction: column; }
+.kw-screen { margin: -24px -32px -64px; min-height: 100vh; display: flex; flex-direction: column; }
 .kw-screen > .content,
 .kw-screen > .decision-workspace,
 .kw-screen > .traffic-workspace { flex: 1; min-height: 0; }
@@ -67,11 +67,9 @@
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   padding: 10px 20px; border-bottom: 1px solid var(--ds-border); background: var(--ds-panel);
 }
-.kw-screen-context label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ds-muted); }
-.kw-screen-context select {
-  height: 30px; padding: 0 10px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-control);
-  background: var(--ds-input-bg); color: var(--ds-text); font: inherit; font-size: 13px;
-}
-.kw-screen-hint { margin-left: auto; font-size: 11.5px; color: var(--ds-subtle); }
+.kw-screen-context label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--ds-muted); }
+/* selects are .ds-select (40px) */
+.kw-screen-context select { cursor: pointer; }
+.kw-screen-hint { margin-left: auto; font-size: 13px; color: var(--ds-muted); }
 .kw-screen-note { margin: 28px 32px; padding: 18px 20px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-card); background: var(--ds-panel); color: var(--ds-muted); font-size: 13px; }
 .kw-screen-error { color: var(--ds-bad); }

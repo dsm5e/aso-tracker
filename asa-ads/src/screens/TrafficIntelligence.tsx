@@ -809,7 +809,7 @@ function ApiCoverage({ payload, loading, error }: {
       </div>
       <div className="traffic-filters traffic-coverage-filters">
         <label className="traffic-search"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти метод или путь" /></label>
-        <label className="traffic-field"><span>Группа</span><select value={group} onChange={(event) => setGroup(event.target.value)}><option value="all">Все группы</option>{groups.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
+        <label className="traffic-field"><span>Группа</span><select className="ds-select" value={group} onChange={(event) => setGroup(event.target.value)}><option value="all">Все группы</option>{groups.map((item) => <option value={item} key={item}>{item}</option>)}</select></label>
       </div>
       {visible.length ? (
         <div className="traffic-method-list">
@@ -1051,14 +1051,13 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
     <main className={`traffic-workspace ${className}`.trim()}>
       <header className="traffic-header">
         <div className="traffic-title-block">
-          <span className="traffic-eyebrow">Аналитика Apple Ads</span>
-          <div className="traffic-title-line"><h1>Аналитика трафика</h1>{isStale(payload) ? <span className="traffic-stale-badge">Данные устарели</span> : null}</div>
-          <p>{app.name} · {countryScope === 'ALL' ? 'Все страны' : countryScope} · последние 30 дней · Apple ID {app.iTunesId}</p>
+          <div className="traffic-title-line"><h1 className="ds-page-title">Аналитика трафика</h1>{isStale(payload) ? <span className="traffic-stale-badge">Данные устарели</span> : null}</div>
+          <p className="ds-page-sub">{app.name} · {countryScope === 'ALL' ? 'Все страны' : countryScope} · последние 30 дней · Apple ID {app.iTunesId}</p>
         </div>
         <div className="traffic-header-actions">
           <label className="traffic-country-control">
             <span>Страна</span>
-            <select value={countryScope} onChange={(event) => {
+            <select className="ds-select" value={countryScope} onChange={(event) => {
               setCountryByApp((current) => ({ ...current, [app.iTunesId]: event.target.value }));
               setSelectedRow(null);
             }}>
@@ -1067,7 +1066,7 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
             </select>
           </label>
           <span className="traffic-freshness">{generatedAt ? `Обновлено: ${generatedAt}${payload?.servedFromCache ? ' · сохранённый снимок' : ''}` : 'Время обновления неизвестно'}</span>
-          <button className="traffic-refresh-button" type="button" onClick={forceRefresh} disabled={loading}>↻ <span>{loading ? 'Обновление' : 'Обновить'}</span></button>
+          <button className="ds-btn traffic-refresh-button" type="button" onClick={forceRefresh} disabled={loading}>↻ <span>{loading ? 'Обновление' : 'Обновить'}</span></button>
         </div>
       </header>
 
@@ -1134,8 +1133,8 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
               </header>
               <div className="traffic-filters">
                 <label className="traffic-search"><span aria-hidden="true">⌕</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Найти ключевое слово" /></label>
-                <label className="traffic-field"><span>Фильтр</span><select value={filter} onChange={(event) => setFilter(event.target.value as RowFilter)}><option value="all">Все строки</option><option value="tracked">Отслеживаемые</option><option value="opportunity">Высокий потенциал</option><option value="measured">Доля измерена</option><option value="unmeasured">Доля недоступна</option></select></label>
-                <label className="traffic-field"><span>Сортировка</span><select value={sort} onChange={(event) => setSort(event.target.value as SortKey)}><option value="opportunity">Потенциал ↓</option><option value="popularity">Популярность ↓</option><option value="captured">Захвачено ↑</option><option value="difficulty">Сложность ↑</option><option value="keyword">Ключевое слово А–Я</option></select></label>
+                <label className="traffic-field"><span>Фильтр</span><select className="ds-select" value={filter} onChange={(event) => setFilter(event.target.value as RowFilter)}><option value="all">Все строки</option><option value="tracked">Отслеживаемые</option><option value="opportunity">Высокий потенциал</option><option value="measured">Доля измерена</option><option value="unmeasured">Доля недоступна</option></select></label>
+                <label className="traffic-field"><span>Сортировка</span><select className="ds-select" value={sort} onChange={(event) => setSort(event.target.value as SortKey)}><option value="opportunity">Потенциал ↓</option><option value="popularity">Популярность ↓</option><option value="captured">Захвачено ↑</option><option value="difficulty">Сложность ↑</option><option value="keyword">Ключевое слово А–Я</option></select></label>
               </div>
               <div className="traffic-formula-strip"><span><strong>Популярность</strong> — относительный индекс Apple, не число поисков.</span><span><strong>Захвачено / доступно</strong> — модель или оценка в диапазоне.</span><span><strong>Сложность / потенциал</strong> берутся из модели сервера; наведите на балл или откройте детали, чтобы увидеть факторы.</span></div>
               <KeywordTable

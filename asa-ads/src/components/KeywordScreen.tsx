@@ -33,7 +33,7 @@ export default function KeywordScreen({ title, children }: { title: string; chil
           <div className="kw-screen-context">
             <label>
               <span>Приложение</span>
-              <select value={app?.id ?? ""} onChange={(e) => bridge.selectApp(e.target.value)}>
+              <select className="ds-select" value={app?.id ?? ""} onChange={(e) => bridge.selectApp(e.target.value)}>
                 {!app && <option value="">—</option>}
                 {candidates.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -41,7 +41,7 @@ export default function KeywordScreen({ title, children }: { title: string; chil
             {app && locales.length > 0 && (
               <label>
                 <span>Витрина</span>
-                <select value={locale} onChange={(e) => bridge.setLocale(e.target.value)}>
+                <select className="ds-select" value={locale} onChange={(e) => bridge.setLocale(e.target.value)}>
                   {locales.map((code) => <option key={code} value={code}>{flag(code)} {code.toUpperCase()} · {LOCALE_NAMES.get(code) ?? code}</option>)}
                 </select>
               </label>

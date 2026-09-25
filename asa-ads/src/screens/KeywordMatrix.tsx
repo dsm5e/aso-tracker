@@ -835,20 +835,19 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
     <main className={`decision-workspace ${className}`.trim()}>
       <header className="decision-header">
         <div>
-          <span className="decision-eyebrow">Apple Ads · только чтение</span>
-          <div className="decision-title-line"><h1>Матрица ключей</h1>{stale ? <span className="decision-stale">Устаревший снимок</span> : null}</div>
-          <p>{app.name} · {countryScope === 'all' ? 'все страны' : `${countryName(countryScope)} (${countryScope.toUpperCase()})`} · {app.bundle}</p>
+          <div className="decision-title-line"><h1 className="ds-page-title">Матрица ключей</h1>{stale ? <span className="decision-stale">Устаревший снимок</span> : null}</div>
+          <p className="ds-page-sub">Apple Ads · только чтение · {app.name} · {countryScope === 'all' ? 'все страны' : `${countryName(countryScope)} (${countryScope.toUpperCase()})`} · {app.bundle}</p>
         </div>
         <div className="decision-header-actions">
           <label className="decision-country-select">
             <span>Страна</span>
-            <select value={countryScope} onChange={(event) => { setCountryScope(event.target.value); setAction('all'); }}>
+            <select className="ds-select" value={countryScope} onChange={(event) => { setCountryScope(event.target.value); setAction('all'); }}>
               <option value="all">Все страны</option>
               {countries.map((country) => <option key={country.code} value={country.code}>{countryFlag(country.code)} {countryName(country.code)} · {country.code}</option>)}
             </select>
           </label>
           <small>Обновлено: {freshness(payload?.generatedAt)}</small>
-          <button type="button" onClick={() => setRefresh((value) => value + 1)} disabled={loading}>↻ {loading ? 'Обновляем' : 'Обновить срез'}</button>
+          <button type="button" className="ds-btn" onClick={() => setRefresh((value) => value + 1)} disabled={loading}>↻ {loading ? 'Обновляем' : 'Обновить срез'}</button>
         </div>
       </header>
 

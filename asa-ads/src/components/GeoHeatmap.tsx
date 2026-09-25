@@ -63,39 +63,31 @@ export default function GeoHeatmap({ days }: Props) {
   ];
 
   return (
-    <div className="card" style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 10 }}>
-        <div style={{ fontSize: 12, color: "var(--ds-muted)" }}>География · {rows.length} стран</div>
-        <div className="btn-group">
+    <div className="card">
+      <div className="card-toolbar">
+        <div className="ds-card-title">География · <span className="muted">{rows.length} стран</span></div>
+        <div className="ds-seg">
           {(["spend", "installs", "cpi", "trials"] as const).map((m) => (
-            <button key={m} className={`compact ${m === metric ? "primary" : ""}`} onClick={() => setMetric(m)}>{METRIC_LABEL[m]}</button>
+            <button key={m} className={m === metric ? "on" : ""} onClick={() => setMetric(m)}>{METRIC_LABEL[m]}</button>
           ))}
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 6 }}>
+      <div className="geo-grid">
         {rows.map((r) => {
           const v = Number(r[metric] ?? 0);
           return (
             <div
               key={r.country}
               {...tipProps(`${FLAGS[r.country] ?? "🏳"} ${r.country}`, tipRows(r))}
-              style={{
-                padding: "8px 10px",
-                background: color(v),
-                border: "1px solid var(--ds-border)",
-                borderRadius: "var(--ds-radius-inner)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-                cursor: "default",
-              }}
+              className="geo-cell"
+              style={{ background: color(v) }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 16 }}>{FLAGS[r.country] ?? "🏳"}</span>
-                <span style={{ fontSize: 12, color: "var(--ds-text)", fontWeight: 600 }}>{r.country}</span>
-                <span style={{ fontSize: 11, color: "var(--ds-muted)", marginLeft: "auto" }}>×{r.campaigns}</span>
+              <div className="geo-cell-head">
+                <span className="geo-flag">{FLAGS[r.country] ?? "🏳"}</span>
+                <span className="geo-code">{r.country}</span>
+                <span className="geo-count">×{r.campaigns}</span>
               </div>
-              <div style={{ fontSize: 13, color: "var(--ds-strong)", fontVariantNumeric: "tabular-nums" }}>
+              <div className="geo-value">
                 {metric === "spend" ? fmtUsd(r.spend) : metric === "cpi" ? (r.cpi != null && r.cpi > 0 ? fmtUsd(r.cpi) : "—") : metric === "installs" ? r.installs : r.trials}
               </div>
             </div>

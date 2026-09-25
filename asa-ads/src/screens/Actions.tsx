@@ -37,12 +37,13 @@ export default function Actions({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <div><h2>Очередь действий</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Все изменения проходят через подтверждение, журнал и readback Apple Ads</div></div>
+        <div><h1 className="ds-page-title">Очередь действий</h1><p className="ds-page-sub">Все изменения проходят через подтверждение, журнал и readback Apple Ads</p></div>
       </div>
       {loading ? <div className="data-state loading">Загружаем очередь…</div> : rows.length === 0 ? (
         <div className="empty">Очередь пуста. Действия появятся здесь после подтверждения на экранах ключевых слов и поисковых запросов.</div>
       ) : (
-        <table>
+        <div className="table-wrap">
+        <table className="actions-table">
           <thead>
             <tr>
               <th>ID</th><th>Тип</th><th>Параметры</th><th>Статус</th><th>Создано</th><th>Применено</th><th>Результат</th><th />
@@ -53,7 +54,7 @@ export default function Actions({ reloadKey }: Props) {
               <tr key={a.id} className={flashed.has(a.id) ? "flash" : ""}>
                 <td>#{a.id}</td>
                 <td><span className="badge">{a.type}</span></td>
-                <td className="muted" style={{ fontSize: 11 }}>
+                <td className="cell-clip" title={a.payload}>
                   <code>{a.payload}</code>
                 </td>
                 <td>
@@ -61,21 +62,22 @@ export default function Actions({ reloadKey }: Props) {
                     {a.status}
                   </span>
                 </td>
-                <td className="muted" style={{ fontSize: 11 }}>{new Date(a.created_at).toLocaleString()}</td>
-                <td className="muted" style={{ fontSize: 11 }}>{a.applied_at ? new Date(a.applied_at).toLocaleString() : "—"}</td>
-                <td className="muted" style={{ fontSize: 11 }}>{a.result ?? a.error ?? "—"}</td>
-                <td>
+                <td className="muted nowrap">{new Date(a.created_at).toLocaleString()}</td>
+                <td className="muted nowrap">{a.applied_at ? new Date(a.applied_at).toLocaleString() : "—"}</td>
+                <td className="muted cell-clip" title={a.result ?? a.error ?? undefined}>{a.result ?? a.error ?? "—"}</td>
+                <td className="nowrap">
                   {a.status === "pending" && (
-                    <>
-                      <button onClick={() => applyOne(a.id)}>Применить</button>{" "}
+                    <div className="btn-group">
+                      <button onClick={() => applyOne(a.id)}>Применить</button>
                       <button className="danger" onClick={() => cancelOne(a.id)}>Отменить</button>
-                    </>
+                    </div>
                   )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

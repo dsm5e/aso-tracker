@@ -74,33 +74,33 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
   }
 
   return (
-    <div className="card" style={{ padding: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+    <div className="card">
+      <div className="card-head">
         <div>
-          <h3 style={{ margin: 0 }}>
+          <h3 className="card-head-title">
             {title} {allConfigured ? <span className="badge ok">настроено</span> : <span className="badge warn">не настроено</span>}
           </h3>
-          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{description} · <a href={helpUrl} target="_blank" rel="noreferrer">документация ↗</a></div>
+          <div className="note">{description} · <a href={helpUrl} target="_blank" rel="noreferrer">документация ↗</a></div>
         </div>
         <button onClick={() => setOpen((v) => !v)}>{open ? "− Свернуть" : "+ Редактировать"}</button>
       </div>
 
       {!open && (
-        <table style={{ marginTop: 8 }}>
+        <table className="cred-table">
           <tbody>
             {fields.map((f) => {
               const c = current[f.key];
               return (
                 <tr key={f.key}>
-                  <td style={{ width: "28%" }}><span className="muted">{f.label}</span></td>
-                  <td style={{ width: 60 }}>
+                  <td className="cred-label"><span className="muted">{f.label}</span></td>
+                  <td className="cred-source">
                     {c?.source === "db" && <span className="badge ok">db</span>}
                     {c?.source === "env" && <span className="badge cyan">.env</span>}
                     {c?.source === "none" && <span className="badge bad">нет</span>}
                   </td>
                   <td>
                     {c?.present ? (
-                      <span style={{ color: "var(--bone)", fontSize: 11 }}>{c.preview}</span>
+                      <code className="cred-preview">{c.preview}</code>
                     ) : (
                       <span className="bad">— не задано —</span>
                     )}
@@ -114,15 +114,15 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
 
       {open && (
         <>
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="cred-form">
             {fields.map((f) => (
               <div key={f.key}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                  <label style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--bone-dim)" }}>
+                <div className="cred-field-head">
+                  <label className="field-label">
                     {f.label}
                   </label>
                   {current[f.key]?.present && (
-                    <span className="muted" style={{ fontSize: 10 }}>текущее: {current[f.key]!.preview}</span>
+                    <span className="note">текущее: {current[f.key]!.preview}</span>
                   )}
                 </div>
                 {f.multiline ? (
@@ -130,17 +130,7 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
                     placeholder={f.placeholder ?? "вставьте значение…"}
                     value={edits[f.key] ?? ""}
                     onChange={(e) => setEdits((p) => ({ ...p, [f.key]: e.target.value }))}
-                    style={{
-                      width: "100%",
-                      minHeight: 100,
-                      background: "var(--void)",
-                      border: "1px solid var(--line)",
-                      color: "var(--bone)",
-                      fontFamily: "var(--mono)",
-                      fontSize: 11,
-                      padding: "8px 10px",
-                      resize: "vertical",
-                    }}
+                    className="ds-textarea cred-textarea"
                   />
                 ) : (
                   <input
@@ -148,25 +138,25 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
                     placeholder={f.placeholder ?? ""}
                     value={edits[f.key] ?? ""}
                     onChange={(e) => setEdits((p) => ({ ...p, [f.key]: e.target.value }))}
-                    style={{ width: "100%" }}
+                    className="ds-input cred-input"
                   />
                 )}
-                <div className="muted" style={{ fontSize: 10, marginTop: 3 }}>{f.hint}</div>
+                <div className="note cred-hint">{f.hint}</div>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div className="hint" style={{ fontSize: 11 }}>
+          <div className="cred-foot">
+            <div className="hint">
               {dirty
                 ? <><strong className="warn">изменений: {Object.keys(edits).length}</strong> · после сохранения перезапустите API, чтобы клиенты подхватили значения</>
                 : savedAt
                   ? <><span className="good">сохранено · {savedAt}</span> · перезапустите API для применения</>
-                  : <>Заполненные поля хранятся в зашифрованном виде в <code style={{ color: "var(--cyan)" }}>data/asa-ads.db</code>. Пустые поля игнорируются, существующие значения сохраняются.</>
+                  : <>Заполненные поля хранятся в зашифрованном виде в <code>data/asa-ads.db</code>. Пустые поля игнорируются, существующие значения сохраняются.</>
               }
             </div>
             <div className="btn-group">
               <button onClick={() => { setEdits({}); setOpen(false); }}>Отменить</button>
-              <button className="primary" disabled={!dirty || saving} onClick={save}>{saving ? "Сохраняем…" : "Сохранить"}</button>
+              <button disabled={!dirty || saving} onClick={save}>{saving ? "Сохраняем…" : "Сохранить"}</button>
             </div>
           </div>
         </>

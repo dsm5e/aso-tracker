@@ -22,17 +22,18 @@
   background: var(--surface);
 }
 .traffic-title-block { min-width: 0; }
-.traffic-eyebrow { display: block; margin-bottom: 2px; color: var(--ink-muted); font-size: 10.5px; font-weight: 600; }
+.traffic-eyebrow { display: block; margin-bottom: 2px; color: var(--ds-muted); font-size: 12px; line-height: 16px; font-weight: 600; }
 .traffic-title-line { display: flex; align-items: center; gap: 8px; }
-.traffic-title-line h1 { margin: 0; color: var(--ink); font-size: 21px; line-height: 1.25; font-weight: 650; letter-spacing: -.025em; }
-.traffic-title-block p { margin: 3px 0 0; color: var(--ink-muted); font-size: 11.5px; }
+/* title / subtitle use .ds-page-title / .ds-page-sub */
+.traffic-title-line .ds-page-title { margin: 0; }
+.traffic-title-block .ds-page-sub { margin-top: 4px; }
 .traffic-header-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.traffic-country-control { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--border-control); border-radius: var(--radius-control); background: var(--surface-subtle); }
-.traffic-country-control > span { color: var(--ink-subtle); font-size: 9.5px; font-weight: 600; }
-.traffic-country-control select { min-width: 112px; height: 28px; border: 0; outline: 0; background: transparent; color: var(--ink-secondary); font-size: 11px; font-weight: 600; cursor: pointer; }
-.traffic-country-control:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
-.traffic-freshness { color: var(--ink-subtle); font-size: 11px; white-space: nowrap; }
-.traffic-refresh-button,
+/* label + .ds-select (40px) */
+.traffic-country-control { display: flex; align-items: center; gap: 8px; }
+.traffic-country-control > span { color: var(--ds-muted); font-size: 12px; font-weight: 600; }
+.traffic-country-control select { min-width: 140px; cursor: pointer; }
+.traffic-freshness { color: var(--ds-muted); font-size: 13px; white-space: nowrap; }
+/* .traffic-refresh-button is a .ds-btn */
 .traffic-error-state > button {
   height: 32px;
   padding: 0 10px;
@@ -44,7 +45,6 @@
   font-weight: 600;
   cursor: pointer;
 }
-.traffic-refresh-button:hover,
 .traffic-error-state > button:hover { border-color: var(--border-strong); }
 .traffic-refresh-button:disabled { opacity: .5; cursor: default; }
 .traffic-stale-badge,
@@ -187,29 +187,22 @@
 }
 .traffic-search {
   width: min(320px, 42vw);
-  height: 32px;
+  height: var(--ds-control-h);
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 9px;
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-control);
-  background: var(--surface);
+  padding: 0 12px;
+  border: var(--ds-control-border);
+  border-radius: var(--ds-radius-control);
+  background: var(--ds-input-bg);
 }
 .traffic-search span { color: var(--ink-subtle); }
-.traffic-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 11.5px; }
+.traffic-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 14px; }
 .traffic-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
 .traffic-field { display: flex; align-items: center; gap: 6px; }
-.traffic-field > span { color: var(--ink-muted); font-size: 10.5px; }
-.traffic-field select {
-  height: 32px;
-  padding: 0 26px 0 9px;
-  border: 1px solid var(--border-control);
-  border-radius: var(--radius-control);
-  background: var(--surface);
-  color: var(--ink-secondary);
-  font-size: 11.5px;
-}
+.traffic-field > span { color: var(--ds-muted); font-size: 12px; font-weight: 600; }
+/* the select itself is a .ds-select (40px) */
+.traffic-field select { cursor: pointer; }
 .traffic-formula-strip {
   min-height: 35px;
   display: flex;
@@ -418,8 +411,7 @@
 :root[data-theme="dark"] .traffic-table tbody tr:hover td:first-child { background: var(--surface-hover); }
 .traffic-drawer { background: var(--surface); color: var(--ink); border-color: var(--overlay-border, var(--line)); }
 .traffic-drawer-backdrop { background: var(--overlay); }
-.traffic-search,
-.traffic-field select { background: var(--surface-subtle); color: var(--ink); border-color: var(--border-control); }
+.traffic-search { color: var(--ink); }
 .traffic-search input::placeholder { color: var(--ink-subtle); }
 .traffic-chart-wrap { padding: 8px 14px 10px; }
 .traffic-info-button {
@@ -484,7 +476,7 @@
   .traffic-header-actions { align-items: flex-end; flex-direction: column; gap: 4px; }
   .traffic-freshness { display: none; }
   .traffic-country-control { min-height: 44px; }
-  .traffic-country-control select { min-width: 126px; min-height: 40px; }
+  .traffic-country-control select { min-width: 126px; }
   .traffic-tabs,
 .traffic-content { padding-inline: 10px; }
   .traffic-scope-summary { grid-template-columns: 1fr; }

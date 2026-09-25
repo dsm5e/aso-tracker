@@ -31,21 +31,21 @@ export default function HeroChart({ daily }: Props) {
   const weekAgo = values.map((_, i) => (i >= 7 ? values[i - 7] : null));
 
   return (
-    <div className="card" style={{ padding: "14px 18px 10px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-        <div className="btn-group">
+    <div className="card">
+      <div className="card-toolbar">
+        <div className="ds-seg">
           {METRICS.map((mm) => (
             <button
               key={mm.key}
-              className={`compact ${mm.key === metric ? "primary" : ""}`}
+              className={mm.key === metric ? "on" : ""}
               onClick={() => setMetric(mm.key)}
             >
               {mm.label}
             </button>
           ))}
         </div>
-        <div style={{ fontSize: 12, color: "var(--ds-muted)" }}>
-          Последняя точка · <b style={{ color: "var(--ds-text)" }}>{m.format(values[values.length - 1] ?? 0)}</b>
+        <div className="note">
+          Последняя точка · <b className="strong">{m.format(values[values.length - 1] ?? 0)}</b>
         </div>
       </div>
       <Legend line items={[[CURRENT, `${m.label} · текущий период`], [WEEK_AGO, "Неделей ранее"]]} />
@@ -57,7 +57,7 @@ export default function HeroChart({ daily }: Props) {
           { label: "Неделей ранее", color: WEEK_AGO, values: weekAgo, dashed: true, width: 1.5 },
         ]}
       />
-      <div style={{ fontSize: 12, color: "var(--ds-muted)", marginTop: 4 }}>
+      <div className="note chart-note">
         Сплошная линия — текущий период; пунктир — те же дни неделей ранее. Это сравнение тренда, а не прогноз.
       </div>
     </div>

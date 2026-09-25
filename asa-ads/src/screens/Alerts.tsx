@@ -40,7 +40,7 @@ export default function Alerts({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <div><h2>Оповещения</h2><div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Контроль расхода, CPI и остановившихся кампаний</div></div>
+        <div><h1 className="ds-page-title">Оповещения</h1><p className="ds-page-sub">Контроль расхода, CPI и остановившихся кампаний</p></div>
         <div className="controls">
           <button onClick={runCheck} disabled={checking}>{checking ? "Проверяем…" : "Проверить сейчас"}</button>
         </div>
@@ -48,7 +48,7 @@ export default function Alerts({ reloadKey }: Props) {
 
       <div className="card">
         <h3>Правила</h3>
-        <div className="muted" style={{ fontSize: 12, lineHeight: 1.5 }}>
+        <div className="note">
           <strong>🔥 Burn:</strong> daily spend ≥ $5 with 0 installs<br />
           <strong>💸 High CPI:</strong> 7-day CPI ≥ $2.00 (min 3 installs)<br />
           <strong>⚠️ Stalled:</strong> campaign ENABLED but not RUNNING<br />
@@ -61,6 +61,7 @@ export default function Alerts({ reloadKey }: Props) {
       {loading ? <div className="data-state loading">Загружаем оповещения…</div> : rows.length === 0 ? (
         <div className="data-state">Оповещений пока нет. Проверьте конфигурацию и запустите проверку.</div>
       ) : (
+        <div className="table-wrap">
         <table>
           <thead>
             <tr>
@@ -73,7 +74,7 @@ export default function Alerts({ reloadKey }: Props) {
           <tbody>
             {rows.map((a) => (
               <tr key={a.id}>
-                <td className="muted" style={{ fontSize: 11 }}>{new Date(a.sent_at).toLocaleString()}</td>
+                <td className="muted nowrap">{new Date(a.sent_at).toLocaleString()}</td>
                 <td><span className="badge">{a.alert_type}</span></td>
                 <td dangerouslySetInnerHTML={{ __html: a.message }} />
                 <td>
@@ -83,6 +84,7 @@ export default function Alerts({ reloadKey }: Props) {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

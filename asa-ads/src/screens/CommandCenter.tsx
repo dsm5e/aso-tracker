@@ -3,16 +3,17 @@ import { api, type AccountHealth, type CommandCenterData, type CommandGeoRow } f
 import { useApp } from "../lib/AppContext.tsx";
 import { exportRows } from "../lib/csv.ts";
 import InfoTooltip from "../components/InfoTooltip.tsx";
+import Dropdown from "../components/Dropdown.tsx";
 
 interface Props { reloadKey: number }
 
 function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
 
-const VERDICT_STYLE: Record<CommandGeoRow["verdict"], { label: string; color: string }> = {
-  "scale": { label: "SCALE", color: "var(--green)" },
-  "hold": { label: "HOLD", color: "var(--amber)" },
-  "cut": { label: "CUT", color: "var(--red)" },
-  "no-data": { label: "NO DATA", color: "var(--bone-mute)" },
+const VERDICT_STYLE: Record<CommandGeoRow["verdict"], { label: string; kind: string }> = {
+  "scale": { label: "SCALE", kind: "scale" },
+  "hold": { label: "HOLD", kind: "hold" },
+  "cut": { label: "CUT", kind: "cut" },
+  "no-data": { label: "NO DATA", kind: "unknown" },
 };
 
 function snapshotAgeDays(date: string | null): number | null {
@@ -62,46 +63,41 @@ export default function CommandCenter({ reloadKey }: Props) {
     <>
       <div className="topbar">
         <div>
-          <h2>Матрица решений</h2>
-          <div className="muted" style={{ fontSize: 12, marginTop: 5 }}>Страны текущего приложения · ASA × органика × выручка</div>
+          <h1 className="ds-page-title">Матрица решений</h1>
+          <p className="ds-page-sub">Страны текущего приложения · ASA × органика × выручка</p>
         </div>
         <div className="controls">
           <span className="meta">Источник: Apple Ads, Adapty, ASO</span>
-          <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={7}>7 дней</option>
-            <option value={14}>14 дней</option>
-            <option value={30}>30 дней</option>
-            <option value={90}>90 дней</option>
-          </select>
+          <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }, { value: 90, label: "90 дней" }]} />
         </div>
       </div>
 
       {health?.billingSuspected && (
-        <div className="card" style={{ padding: "12px 16px", borderColor: "var(--red)", marginBottom: 12 }}>
-          <span style={{ color: "var(--red)", fontWeight: 600 }}>Аккаунт на удержании</span>
-          <span className="muted" style={{ marginLeft: 10, fontSize: 12 }}>
+        <div className="callout bad callout-block">
+          <span className="callout-title">Аккаунт на удержании</span>
+          <span>
             {health.onHold}/{health.totalEnabled} включённых кампаний находятся в ON_HOLD и не получают показы. Проверьте биллинг Apple Ads.
           </span>
         </div>
       )}
 
       <div className="spark-row">
-        <div className="card stat"><div className="muted">Расход · {days} дней</div><div className="big" style={{ color: "var(--amber)" }}>{fmtUsd(totals.spend)}</div></div>
+        <div className="card stat"><div className="muted">Расход · {days} дней</div><div className="big">{fmtUsd(totals.spend)}</div></div>
         <div className="card stat"><div className="muted">Установки</div><div className="big">{totals.installs}</div></div>
-        <div className="card stat"><div className="muted">Выручка</div><div className="big" style={{ color: "var(--green)" }}>{data?.revenueSource ? fmtUsd(totals.revenue) : "нет источника"}</div></div>
-        <div className="card stat"><div className="muted">Смешанный ROAS <InfoTooltip title="ROAS">Фактическая выручка, делённая на расход за одинаковое окно. Без подключённой выручки показатель не строится.</InfoTooltip></div><div className="big" style={{ color: totals.roas >= 1 ? "var(--green)" : "var(--red)" }}>{data?.revenueSource ? `${(totals.roas * 100).toFixed(0)}%` : "—"}</div></div>
+        <div className="card stat"><div className="muted">Выручка</div><div className={`big${data?.revenueSource ? " good" : ""}`}>{data?.revenueSource ? fmtUsd(totals.revenue) : "нет источника"}</div></div>
+        <div className="card stat"><div className="muted">Смешанный ROAS <InfoTooltip title="ROAS">Фактическая выручка, делённая на расход за одинаковое окно. Без подключённой выручки показатель не строится.</InfoTooltip></div><div className={`big ${!data?.revenueSource ? "" : totals.roas >= 1 ? "good" : "bad"}`}>{data?.revenueSource ? `${(totals.roas * 100).toFixed(0)}%` : "—"}</div></div>
         <div className="card stat">
           <div className="muted">Снимок ASO</div>
-          <div className="big" style={{ color: snapAge !== null && snapAge > 7 ? "var(--amber)" : "var(--bone)" }}>
+          <div className={`big big-sm ${snapAge !== null && snapAge > 7 ? "warn" : ""}`}>
             {data?.aso.snapshotDate ? `${data.aso.snapshotDate}${snapAge !== null && snapAge > 7 ? ` · устарел на ${snapAge} дн.` : ""}` : "нет данных"}
           </div>
         </div>
       </div>
 
-      {data?.revenueError && <div className="data-state error" style={{ minHeight: 0, margin: "6px 0" }}>Ошибка источника выручки: {data.revenueError}</div>}
+      {data?.revenueError && <div className="callout bad callout-block">Ошибка источника выручки: {data.revenueError}</div>}
 
-      <div className="divider" style={{ justifyContent: "space-between" }}>
-        Решения по странам · {data?.rows.length ?? 0}
+      <div className="section-head">
+        <h2 className="ds-h2">Решения по странам · {data?.rows.length ?? 0}</h2>
         {data && data.rows.length > 0 && (
           <button className="compact" onClick={() => exportRows(
             `command-center-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -121,6 +117,7 @@ export default function CommandCenter({ reloadKey }: Props) {
       ) : (data?.rows.length ?? 0) === 0 ? (
         <div className="data-state">Нет данных по странам в выбранном окне.</div>
       ) : (
+        <div className="table-wrap">
         <table>
           <thead>
             <tr>
@@ -140,33 +137,33 @@ export default function CommandCenter({ reloadKey }: Props) {
             {data!.rows.map((r) => {
               const v = VERDICT_STYLE[r.verdict];
               return (
-                <tr key={r.country} style={r.onHold > 0 ? { opacity: 0.75 } : undefined}>
-                  <td style={{ fontWeight: 500 }}>
+                <tr key={r.country} className={r.onHold > 0 ? "row-muted" : undefined}>
+                  <td className="strong">
                     {r.country}
-                    {r.onHold > 0 && <span className="muted" title="campaign on hold" style={{ marginLeft: 6, fontSize: 10 }}>⏸</span>}
+                    {r.onHold > 0 && <span className="muted inline-gap" title="campaign on hold">⏸</span>}
                   </td>
                   <td className="num">{fmtUsd(r.spend)}</td>
                   <td className="num">{r.installs}</td>
                   <td className="num">{r.cpi > 0 ? fmtUsd(r.cpi) : "—"}</td>
                   <td className="num">{r.trials}</td>
                   <td className="num">{r.paid}</td>
-                  <td className="num" style={{ color: r.revenue > 0 ? "var(--green)" : "var(--bone-mute)" }}>{r.revenue > 0 ? fmtUsd(r.revenue) : "—"}</td>
-                  <td className="num" style={{ color: r.roas === null ? "var(--bone-mute)" : r.roas >= 1 ? "var(--green)" : r.roas >= 0.5 ? "var(--amber)" : "var(--red)" }}>
+                  <td className={`num ${r.revenue > 0 ? "good" : "muted"}`}>{r.revenue > 0 ? fmtUsd(r.revenue) : "—"}</td>
+                  <td className={`num ${r.roas === null ? "muted" : r.roas >= 1 ? "good" : r.roas >= 0.5 ? "warn" : "bad"}`}>
                     {r.roas === null ? "—" : `${(r.roas * 100).toFixed(0)}%`}
                   </td>
                   <td>
-                    <span className="roi" style={{ color: v.color, borderColor: v.color }} title={r.reason}>{v.label}</span>
+                    <span className={`roi ${v.kind}`} title={r.reason}>{v.label}</span>
                   </td>
                   <td>
                     {r.aso ? (
-                      <span style={{ fontSize: 11 }}>
+                      <span className="small">
                         <b>{r.aso.top10}</b>/{r.aso.tracked} in top-10 · avg {r.aso.avgPos ?? "—"}
                         {r.aso.best.length > 0 && (
                           <span className="muted"> · {r.aso.best.map((b) => `${b.keyword} #${b.position}`).join(" · ")}</span>
                         )}
                       </span>
                     ) : (
-                      <span className="muted" style={{ fontSize: 11 }}>не отслеживается</span>
+                      <span className="muted small">не отслеживается</span>
                     )}
                   </td>
                 </tr>
@@ -174,9 +171,10 @@ export default function CommandCenter({ reloadKey }: Props) {
             })}
           </tbody>
         </table>
+        </div>
       )}
 
-      <div className="muted" style={{ fontSize: 10, marginTop: 10 }}>
+      <div className="note section-foot">
         Revenue = store-country grain (includes organic where attribution is blended) — directional, not per-keyword truth.
         Organic column = latest aso-keywords snapshot for the matching storefront; run a snapshot in Keywords if stale.
       </div>

@@ -15,7 +15,6 @@ export interface GeoRow {
 
 function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
 
-const caption: React.CSSProperties = { fontSize: 12, color: "var(--ds-muted)", marginBottom: 8 };
 
 /** Efficiency zone of a geo, relative to the blended cost-per-trial (data-driven,
  *  no LTV assumption): good ≤ blended, warn ≤ 2× blended, bad > 2× or no trials. */
@@ -44,8 +43,8 @@ export function CostPerTrialBars({ rows, blended }: { rows: GeoRow[]; blended: n
   const barVal = (d: typeof data[number]) => (d.cpt === null ? maxCpt : Math.min(d.cpt, maxCpt));
 
   return (
-    <div className="card" style={{ padding: "12px 16px" }}>
-      <div style={caption}>
+    <div className="card">
+      <div className="note chart-caption">
         Цена триала по странам · зелёный ≤ средней ({fmtUsd(blended)}) · жёлтый ≤ 2× · красный &gt; 2× или нет триалов
       </div>
       <HBars
@@ -79,8 +78,8 @@ export function RoasByGeoBars({ rows }: { rows: RoasRow[] }) {
   const color = (roas: number, rev: number) => rev <= 0 ? "var(--ds-bad)" : roas >= 1 ? "var(--ds-good)" : roas >= 0.5 ? "var(--ds-warn)" : "var(--ds-bad)";
 
   return (
-    <div className="card" style={{ padding: "12px 16px" }}>
-      <div style={caption}>
+    <div className="card">
+      <div className="note chart-caption">
         Реальный ROAS по странам · окупаемость = 100% (выручка = расход) · зелёный ≥100% · жёлтый ≥50%
       </div>
       <HBars
@@ -131,8 +130,8 @@ function Scatter({ data, blended }: { data: GeoRow[]; blended: number }) {
   const beClampY = beY2 > maxTrials ? maxTrials : beY2;
 
   return (
-    <div className="card" style={{ padding: "12px 16px" }}>
-      <div style={caption}>
+    <div className="card">
+      <div className="note chart-caption">
         Эффективность · по горизонтали расход · по вертикали триалы · размер — установки · ниже пунктира цена триала выше средней
       </div>
       <div className="dsc" ref={ref}>

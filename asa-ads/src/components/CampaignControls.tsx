@@ -59,7 +59,7 @@ export default function CampaignControls({ campaign, onChange }: Props) {
             min="1"
             value={bud}
             onChange={(e) => setBud(e.target.value)}
-            style={{ width: 60 }}
+            className="budget-input"
             autoFocus
             onKeyDown={(e) => { if (e.key === "Enter") void saveBudget(); if (e.key === "Escape") setEditing(false); }}
           />
