@@ -26,27 +26,13 @@ export default function KeywordScreen({ title, children }: { title: string; chil
   return (
     <ConnectGate requires={["asa"]} title={title}>
       <div className="kw-scope kw-screen">
-        {candidates.length > 0 && (
+        {/* The app is picked once, in the sidebar; this line only says where organic
+            and top-5 come from when that differs from the metrics' scope. */}
+        {app && locale && (isWorld || !countryTracked) && (
           <div className="kw-screen-context">
-            <label>
-              <span>Приложение</span>
-              <select className="ds-select" value={app?.id ?? ""} onChange={(e) => bridge.selectApp(e.target.value)}>
-                {!app && <option value="">—</option>}
-                {candidates.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </label>
-            {app && locale && (
-              <span
-                className="kw-screen-hint kw-screen-organic"
-                title={isWorld
-                  ? "Метрики — все страны; органика и топ‑5 — витрина по умолчанию из Keywords"
-                  : countryTracked
-                    ? "Органика и топ‑5 — выбранная страна (отслеживается в Keywords)"
-                    : `${label} не отслеживается в Keywords: органика и топ‑5 — витрина по умолчанию`}
-              >
-                Органика и топ‑5: {organicLabel}{!isWorld && !countryTracked ? ` · ${label} не отслеживается в Keywords` : ""}
-              </span>
-            )}
+            <span className="kw-screen-hint kw-screen-organic">
+              Органика и топ‑5: {organicLabel} · {isWorld ? "метрики — весь мир" : `${label} не отслеживается в Keywords`}
+            </span>
           </div>
         )}
         {body}
