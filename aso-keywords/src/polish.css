@@ -155,3 +155,4 @@ body.pt-resizing, body.pt-resizing * { cursor: col-resize !important; user-selec
 .kw-progress-kw { min-width: 0; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-subtle); }
 .kw-progress-warn { color: var(--ds-warn); font-weight: 500; }
 .kw-progress-spacer { flex: 1; }
+.kba-warn { color: var(--ds-bad); font-weight: 500; }

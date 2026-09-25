@@ -140,7 +140,6 @@ export default function PositionsTable({
   renderUpdated,
   onOpenDetail,
   onRefresh,
-  onRemove,
   onKeywordsChanged,
   toolbarLead,
   toolbarTrail,
@@ -165,7 +164,6 @@ export default function PositionsTable({
   renderUpdated: (keyword: string, ranking: RankingRow | undefined) => ReactNode;
   onOpenDetail: (keyword: string) => void;
   onRefresh: (keyword: string) => void;
-  onRemove: (keyword: string) => void;
   onKeywordsChanged: (map: Record<string, string[]>) => void;
 }) {
   // --- layout (per app) --------------------------------------------------------
@@ -319,6 +317,8 @@ export default function PositionsTable({
 
   // --- bulk actions ----------------------------------------------------------------
   const [dialog, setDialog] = useState<'copy' | 'remove' | null>(null);
+  /** The row whose × was pressed — the remove dialog then targets just that keyword. */
+  const [rowRemove, setRowRemove] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   useEffect(() => { if (!notice) return; const timer = window.setTimeout(() => setNotice(null), 5000); return () => window.clearTimeout(timer); }, [notice]);
   const applyTags = async (add: string[], remove: string[]) => {
@@ -542,7 +542,7 @@ export default function PositionsTable({
                   renderUpdated={renderUpdated}
                   onOpenDetail={onOpenDetail}
                   onRefresh={onRefresh}
-                  onRemove={onRemove}
+                  onRemove={(keyword: string) => { setRowRemove(keyword); setDialog('remove'); }}
                   onSaveNote={saveNote}
                 />
               ))}
@@ -566,12 +566,12 @@ export default function PositionsTable({
           mode={dialog}
           appId={appId}
           locale={locale}
-          keywords={selectedKeywords}
+          keywords={rowRemove ? [rowRemove] : selectedKeywords}
           keywordMap={keywordMap}
           favorites={favorites}
           presets={presets}
-          onClose={() => setDialog(null)}
-          onDone={(map, message) => { setDialog(null); setNotice(message); onKeywordsChanged(map); }}
+          onClose={() => { setDialog(null); setRowRemove(null); }}
+          onDone={(map, message) => { setDialog(null); setRowRemove(null); setNotice(message); onKeywordsChanged(map); }}
         />
       )}
     </div>
@@ -691,7 +691,7 @@ const PositionRow = memo(function PositionRow({
       <td>
         <div className="row-actions">
           <button className="ds-icon-btn row-action" onClick={() => onRefresh(row.keyword)} title="Обновить это ключевое слово" aria-label={`Обновить ${row.keyword}`}><Icon name="refresh" /></button>
-          <button className="ds-icon-btn row-action row-remove" onClick={() => onRemove(row.keyword)} title="Удалить из этой страны" aria-label={`Удалить ${row.keyword}`}><Icon name="close" /></button>
+          <button className="ds-icon-btn row-action row-remove" onClick={() => onRemove(row.keyword)} title="Удалить ключ из всех стран" aria-label={`Удалить ${row.keyword}`}><Icon name="close" /></button>
         </div>
       </td>
     </tr>
@@ -872,7 +872,11 @@ function StorefrontActionDialog({ mode, appId, locale, keywords, keywordMap, fav
     ? Object.keys(keywordMap).filter((code) => code !== locale)
     : Object.keys(keywordMap).filter((code) => (presence.get(code) ?? 0) > 0)
   ).sort(), [keywordMap, locale, mode, presence]);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(mode === 'remove' ? [locale] : []));
+  // Removing defaults to «everywhere»: a keyword lives in many storefronts, and
+  // cleaning it up one country at a time is the chore this dialog exists to avoid.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(mode === 'remove'
+    ? Object.keys(keywordMap).filter((code) => (keywordMap[code] ?? []).some((item) => keywords.some((keyword) => tagKey(keyword) === tagKey(item))))
+    : []));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const pairs: KeywordPair[] = [];
@@ -909,10 +913,11 @@ function StorefrontActionDialog({ mode, appId, locale, keywords, keywordMap, fav
     <div className="dialog-backdrop" role="presentation" onMouseDown={onClose}>
       <section className="kb-card kb-narrow" role="dialog" aria-modal="true" aria-labelledby="sfa-title" onMouseDown={(event) => event.stopPropagation()}>
         <header className="kb-head">
-          <h2 id="sfa-title">{mode === 'copy' ? 'Скопировать в страны' : 'Удалить из стран'}</h2>
+          <h2 id="sfa-title">{mode === 'copy' ? 'Скопировать в страны' : m === candidates.length ? `Удалить из всех ${m} стран` : `Удалить из ${m} стран`}</h2>
           <button type="button" className="ds-icon-btn" onClick={onClose} aria-label="Закрыть"><Icon name="close" /></button>
         </header>
         <p className="kb-sub">{n} {n % 10 === 1 && n % 100 !== 11 ? 'ключ' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'ключа' : 'ключей'}: {keywords.slice(0, 4).join(', ')}{n > 4 ? ` и ещё ${n - 4}` : ''}</p>
+        {mode === 'remove' && <p className="kb-sub kba-warn">{m === candidates.length ? `Ключ перестанет отслеживаться во всех странах (${m}). История позиций сохранится — при повторном добавлении вернётся.` : `Удалится из выбранных ${m} из ${candidates.length} стран.`} Снимите страны ниже, если нужно оставить.</p>}
         <StorefrontSelect
           candidates={candidates}
           selected={selected}

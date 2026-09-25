@@ -43,8 +43,10 @@ export default function BulkAddDialog({
   const tracked = useMemo(() => Object.keys(keywordMap).sort(), [keywordMap]);
   const [text, setText] = useState('');
   const [overrides, setOverrides] = useState<Record<string, string>>({});
-  const [languageOnly, setLanguageOnly] = useState(true);
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(currentLocale ? [currentLocale] : []));
+  const [languageOnly, setLanguageOnly] = useState(false);
+  // Default: every storefront the app is tracked in — adding a keyword country by
+  // country was the chore. The language filter stays available, off by default.
+  const [selected, setSelected] = useState<Set<string>>(() => new Set(Object.keys(keywordMap).length ? Object.keys(keywordMap) : currentLocale ? [currentLocale] : []));
   const [touched, setTouched] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,13 +58,15 @@ export default function BulkAddDialog({
     return { keyword, detected, lang, indexing: new Set(storefrontsForLanguage(lang, ALL_CODES)) };
   }), [overrides, parsed.keywords]);
 
-  // Auto preselect: every tracked storefront indexing a detected language — until the user edits the selection.
+  // Auto preselect: every tracked storefront (or, with the language filter on, those
+  // indexing a detected language) — until the user edits the selection.
   const autoSelection = useMemo(() => {
+    if (!languageOnly) return new Set(tracked);
     const langs = new Set(items.map((item) => item.lang));
     const out = new Set<string>();
     for (const lang of langs) for (const code of storefrontsForLanguage(lang, tracked)) out.add(code);
     return out;
-  }, [items, tracked]);
+  }, [items, languageOnly, tracked]);
   useEffect(() => {
     if (!touched && items.length) setSelected(autoSelection);
   }, [autoSelection, items.length, touched]);

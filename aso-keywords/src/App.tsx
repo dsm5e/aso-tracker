@@ -425,11 +425,6 @@ export default function App() {
     await saveKeywords(next);
   };
 
-  const removeKeyword = async (keyword: string) => {
-    const current = keywordMap[locale] ?? [];
-    await saveKeywords({ ...keywordMap, [locale]: current.filter((item) => item !== keyword) });
-  };
-
   const commitLocale = async (value: string) => {
     const normalized = value.trim().toLowerCase();
     if (!normalized || keywordMap[normalized]) return;
@@ -1145,7 +1140,6 @@ export default function App() {
             renderUpdated={(keyword, ranking) => <UpdateStatus state={rowUpdates[keyword]} timestamp={ranking?.lastUpdated} />}
             onOpenDetail={setDetailKeyword}
             onRefresh={(keyword) => void refreshOne(keyword)}
-            onRemove={(keyword) => void removeKeyword(keyword)}
             onKeywordsChanged={(map) => { setKeywordMap(map); setMatrixRefreshKey((key) => key + 1); loadApps().catch(() => {}); }}
             toolbarLead={positionsLead}
             toolbarTrail={positionsTrail}
