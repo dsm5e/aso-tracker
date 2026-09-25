@@ -208,7 +208,7 @@ export default function Keywords({ reloadKey }: Props) {
             `keywords-${new Date().toISOString().slice(0, 10)}.csv`,
             ["text", "campaign_name", "country", "match_type", "bid", "status", "impressions", "taps", "installs", "spend", "cpt"],
             filtered as unknown as Array<Record<string, unknown>>,
-          )}>export csv</button>
+          )}>Экспорт CSV</button>
         </div>
       </div>
 
@@ -217,7 +217,7 @@ export default function Keywords({ reloadKey }: Props) {
           <div>
             <strong>{recs.length}</strong> рекомендаций
             {selected.size > 0 && <> · выбрано с рекомендацией: {selectedWithRec}</>}
-            <div className="note">Быстрый выбор:</div>
+            <div className="note">Отметьте ключи или выберите группой справа — ставки меняются только после подтверждения.</div>
           </div>
           <div className="btn-group">
             <button className="compact" onClick={() => selectByConfidence("high")} title="Только рекомендации с высокой уверенностью (winners)">Только надёжные</button>
@@ -274,7 +274,7 @@ export default function Keywords({ reloadKey }: Props) {
               <th>Статус</th>
               <th className="num">Ставка</th>
               <th className="num">Показы</th>
-              <th className="num">Taps</th>
+              <th className="num">Тапы</th>
               <th className="num">Установки</th>
               <th className="num">CPT</th>
               <th className="num">Расход</th>
@@ -303,9 +303,9 @@ export default function Keywords({ reloadKey }: Props) {
                   <td className="muted cell-clip" title={campaignDisplayName(k.campaign_name)}>{campaignDisplayName(k.campaign_name)}</td>
                   <td><span className="badge">{k.match_type}</span></td>
                   <td>
-                    <span className={`badge ${k.status === "ACTIVE" ? "ok" : "warn"}`}>{k.status.toLowerCase()}</span>
+                    <span className={`badge ${k.status === "ACTIVE" ? "ok" : "warn"}`}>{k.status === "ACTIVE" ? "активен" : "пауза"}</span>
                     {k.status === "ACTIVE" && k.campaign_serving_status && k.campaign_serving_status !== "RUNNING" && (
-                      <span className="badge warn inline-gap" title={`Campaign serving: ${k.campaign_serving_status}`}>⚠ camp</span>
+                      <span className="badge warn inline-gap" title={`Кампания не показывается: ${k.campaign_serving_status}`}>⚠ кампания</span>
                     )}
                   </td>
                   <td className="num">{fmtBid(k.bid)}</td>

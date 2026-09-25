@@ -52,7 +52,7 @@ export default function SearchTerms({ reloadKey }: Props) {
               <th>Кампания</th>
               <th>Рекомендация</th>
               <th className="num">Показы</th>
-              <th className="num">Taps</th>
+              <th className="num">Тапы</th>
               <th className="num">Установки</th>
               <th className="num">Расход</th>
               <th>Причина</th>

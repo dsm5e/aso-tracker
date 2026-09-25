@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchAdaptyGeoRevenue, fetchKeywordRevenue } from "./revenue-client.ts";
+import { fetchAdaptyGeoEconomics, fetchAdaptyGeoRevenue, fetchKeywordRevenue } from "./revenue-client.ts";
 
-function response(metric: "common" | "net_revenue", rows: Array<{ type: string; value: number }>) {
+function response(metric: "common" | "net_revenue", rows: Array<{ type: string; value: number; values?: Array<{ x: string; y: number }> }>) {
   return new Response(JSON.stringify({ data: { [metric]: { data: rows } } }), {
     status: 200,
     headers: { "content-type": "application/json" },
@@ -79,4 +79,27 @@ test("filters keyword attribution by country without changing keyword-id grain",
   );
   assert.equal(result.rows[0].country, "US");
   assert.deepEqual((bodies[0].filters as { country: string[] }).country, ["US"]);
+});
+
+test("sums per-day net revenue across country rows for the revenue sparkline", async () => {
+  const day = (d: string, y: number) => ({ x: `${d}T00:00:00.000000+0000`, y });
+  const responses = [
+    response("common", [{ type: "us", value: 2 }]),
+    response("common", [{ type: "us", value: 1 }]),
+    response("net_revenue", [
+      { type: "us", value: 30, values: [day("2026-08-01", 10), day("2026-08-02", 20)] },
+      { type: "br", value: 5, values: [day("2026-08-02", 5)] },
+      { type: "total", value: 35, values: [day("2026-08-01", 10), day("2026-08-02", 25)] },
+    ]),
+  ];
+  const fetchImpl = async () => responses.shift()!;
+  const result = await fetchAdaptyGeoEconomics(
+    { start: "2026-08-01", end: "2026-08-02" },
+    { key: "test", fetchImpl: fetchImpl as typeof fetch, throttleMs: 0 },
+  );
+  // The aggregate "total" row must not be double-counted.
+  assert.deepEqual(result.dailyRevenue, [
+    { date: "2026-08-01", revenueUsd: 10 },
+    { date: "2026-08-02", revenueUsd: 25 },
+  ]);
 });

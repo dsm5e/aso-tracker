@@ -9,11 +9,16 @@ interface Props { reloadKey: number }
 
 function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
 
+/** "My App: Tagline" → "My App". */
+function shortAppName(name: string | null | undefined): string | undefined {
+  return name ? name.split(":")[0].split(" — ")[0].trim() : undefined;
+}
+
 const VERDICT_STYLE: Record<CommandGeoRow["verdict"], { label: string; kind: string }> = {
-  "scale": { label: "SCALE", kind: "scale" },
-  "hold": { label: "HOLD", kind: "hold" },
-  "cut": { label: "CUT", kind: "cut" },
-  "no-data": { label: "NO DATA", kind: "unknown" },
+  "scale": { label: "Масштабировать", kind: "scale" },
+  "hold": { label: "Держать", kind: "hold" },
+  "cut": { label: "Сократить", kind: "cut" },
+  "no-data": { label: "Мало данных", kind: "unknown" },
 };
 
 function snapshotAgeDays(date: string | null): number | null {
@@ -22,16 +27,21 @@ function snapshotAgeDays(date: string | null): number | null {
 }
 
 export default function CommandCenter({ reloadKey }: Props) {
-  const { selected } = useApp();
+  const { apps, selected, setSelected } = useApp();
   const [data, setData] = useState<CommandCenterData | null>(null);
   const [health, setHealth] = useState<AccountHealth | null>(null);
   const [days, setDays] = useState(30);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // A matrix joins app-specific Apple Ads, attribution and ASO data. Never pick
-  // an arbitrary first app when the portfolio selector is active.
-  const appId = selected !== "all" ? selected : undefined;
+  // A matrix joins app-specific Apple Ads, attribution and ASO data, so it is
+  // always built for one app. Under "all apps" it shows the top-spend app
+  // (the list comes sorted by 14-day spend) and lets you switch inline.
+  const [localApp, setLocalApp] = useState<number | null>(null);
+  const appId = selected !== "all" ? selected : (localApp ?? apps[0]?.app_id);
+  const shownApp = apps.find((a) => a.app_id === appId);
+  const pickApp = (id: number): void => { if (selected === "all") setLocalApp(id); else setSelected(id); };
+  const appOptions = apps.map((a) => ({ value: a.app_id, label: shortAppName(a.app_name) ?? `Приложение ${a.app_id}` }));
 
   useEffect(() => {
     if (!appId) return;
@@ -57,17 +67,23 @@ export default function CommandCenter({ reloadKey }: Props) {
 
   const snapAge = snapshotAgeDays(data?.aso.snapshotDate ?? null);
 
-  if (!appId) return <div className="data-state">Выберите приложение слева, чтобы построить матрицу по всем его странам. Портфель не смешивается с воронкой одного приложения.</div>;
+  if (!appId) {
+    return <div className="data-state">Нет приложений с кампаниями Apple Ads. Нажмите «Обновить данные» слева, чтобы загрузить кампании.</div>;
+  }
 
   return (
     <>
       <div className="topbar">
         <div>
           <h1 className="ds-page-title">Матрица решений</h1>
-          <p className="ds-page-sub">Страны текущего приложения · ASA × органика × выручка</p>
+          <p className="ds-page-sub">
+            {shortAppName(shownApp?.app_name) ?? `Приложение ${appId}`} · страны × Apple Ads × органика × выручка
+            {selected === "all" && localApp === null ? " · выбрано по наибольшему расходу за 14 дней" : ""}
+          </p>
         </div>
         <div className="controls">
           <span className="meta">Источник: Apple Ads, Adapty, ASO</span>
+          {appOptions.length > 1 && <Dropdown ariaLabel="Приложение" value={appId} onChange={pickApp} options={appOptions} />}
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }, { value: 90, label: "90 дней" }]} />
         </div>
       </div>
@@ -115,7 +131,7 @@ export default function CommandCenter({ reloadKey }: Props) {
       {error && !data ? <div className="data-state error">{error}</div> : loading && !data ? (
         <div className="data-state loading">Загружаем данные по странам…</div>
       ) : (data?.rows.length ?? 0) === 0 ? (
-        <div className="data-state">Нет данных по странам в выбранном окне.</div>
+        <div className="data-state">Нет расхода по странам за {days} дней. Увеличьте период или выберите другое приложение.</div>
       ) : (
         <div className="table-wrap">
         <table>
@@ -140,7 +156,7 @@ export default function CommandCenter({ reloadKey }: Props) {
                 <tr key={r.country} className={r.onHold > 0 ? "row-muted" : undefined}>
                   <td className="strong">
                     {r.country}
-                    {r.onHold > 0 && <span className="muted inline-gap" title="campaign on hold">⏸</span>}
+                    {r.onHold > 0 && <span className="muted inline-gap" title="Кампания на удержании (ON_HOLD)">⏸</span>}
                   </td>
                   <td className="num">{fmtUsd(r.spend)}</td>
                   <td className="num">{r.installs}</td>
@@ -157,7 +173,7 @@ export default function CommandCenter({ reloadKey }: Props) {
                   <td>
                     {r.aso ? (
                       <span className="small">
-                        <b>{r.aso.top10}</b>/{r.aso.tracked} in top-10 · avg {r.aso.avgPos ?? "—"}
+                        <b>{r.aso.top10}</b>/{r.aso.tracked} в топ-10 · средняя {r.aso.avgPos ?? "—"}
                         {r.aso.best.length > 0 && (
                           <span className="muted"> · {r.aso.best.map((b) => `${b.keyword} #${b.position}`).join(" · ")}</span>
                         )}
@@ -175,8 +191,8 @@ export default function CommandCenter({ reloadKey }: Props) {
       )}
 
       <div className="note section-foot">
-        Revenue = store-country grain (includes organic where attribution is blended) — directional, not per-keyword truth.
-        Organic column = latest aso-keywords snapshot for the matching storefront; run a snapshot in Keywords if stale.
+        Выручка считается по стране стора и включает органику там, где атрибуция смешанная, — это ориентир, а не точная выручка по ключу.
+        Органика — последний снимок позиций Keywords для этого стора; если он устарел, обновите снимок в Keywords.
       </div>
     </>
   );

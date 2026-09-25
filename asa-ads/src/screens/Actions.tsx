@@ -3,6 +3,41 @@ import { api, type ActionRow } from "../api.ts";
 
 interface Props { reloadKey: number }
 
+const ACTION_LABEL: Record<string, string> = {
+  update_bid: "Ставка ключа",
+  update_default_bid: "Ставка группы",
+  add_negative: "Минус-слово",
+  create_campaign_negative: "Минус-слово кампании",
+  pause_keyword: "Пауза ключа",
+  platform_pause_keyword: "Пауза ключа",
+  pause_campaign: "Пауза кампании",
+  resume_campaign: "Запуск кампании",
+  update_daily_budget: "Дневной бюджет",
+};
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "ждёт подтверждения",
+  applied: "применено",
+  failed: "ошибка",
+  cancelled: "отменено",
+};
+
+/** Human-readable parameters; the raw JSON stays in the cell tooltip. */
+function summarizePayload(payload: string): string {
+  try {
+    const p = JSON.parse(payload) as Record<string, unknown>;
+    const d = (p.data && typeof p.data === "object" ? p.data : p) as Record<string, unknown>;
+    const parts: string[] = [];
+    if (d.term ?? d.text) parts.push(`«${String(d.term ?? d.text)}»`);
+    if (d.amount !== undefined) parts.push(`$${String(d.amount)}`);
+    if (d.keyword_id ?? d.keywordId) parts.push(`ключ ${String(d.keyword_id ?? d.keywordId)}`);
+    if (d.campaign_id ?? d.campaignId) parts.push(`кампания ${String(d.campaign_id ?? d.campaignId)}`);
+    return parts.length ? parts.join(" · ") : payload;
+  } catch {
+    return payload;
+  }
+}
+
 export default function Actions({ reloadKey }: Props) {
   const [rows, setRows] = useState<ActionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,13 +88,13 @@ export default function Actions({ reloadKey }: Props) {
             {rows.map((a) => (
               <tr key={a.id} className={flashed.has(a.id) ? "flash" : ""}>
                 <td>#{a.id}</td>
-                <td><span className="badge">{a.type}</span></td>
+                <td><span className="badge" title={a.type}>{ACTION_LABEL[a.type] ?? a.type}</span></td>
                 <td className="cell-clip" title={a.payload}>
-                  <code>{a.payload}</code>
+                  {summarizePayload(a.payload)}
                 </td>
                 <td>
                   <span className={`badge ${a.status === "applied" ? "ok" : a.status === "failed" ? "bad" : a.status === "pending" ? "warn" : ""}`}>
-                    {a.status}
+                    {STATUS_LABEL[a.status] ?? a.status}
                   </span>
                 </td>
                 <td className="muted nowrap">{new Date(a.created_at).toLocaleString()}</td>

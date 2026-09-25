@@ -20,10 +20,8 @@ export default function AppSwitcher() {
         onChange={(e) => setSelected(e.target.value === "all" ? "all" : Number(e.target.value))}
       >
         <option value="all">Все приложения ({apps.length})</option>
-        {/* The Ads API can return one app_id under several store names (renames),
-            so the id alone is not a unique key. */}
         {apps.map((a) => (
-          <option key={`${a.app_id}:${a.app_name ?? ""}`} value={a.app_id}>
+          <option key={a.app_id} value={a.app_id}>
             {shortName(a.app_name)} · {a.active_count}/{a.campaign_count}
           </option>
         ))}

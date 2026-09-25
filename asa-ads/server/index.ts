@@ -8,7 +8,7 @@ import { openDb, getDb } from "./db.ts";
 import { AsaClient } from "./asa-client.ts";
 import { AscClient } from "./asc-client.ts";
 import { fullSync, getSyncStatus } from "./sync.ts";
-import { listCampaignsWithMetrics, listKeywordsWithMetrics, listSearchTerms, listActions, dailyTotals, listApps } from "./queries.ts";
+import { listCampaignsWithMetrics, listKeywordsWithMetrics, listSearchTerms, listActions, dailyTotals, listApps, geoBreakdown } from "./queries.ts";
 import { recommend, suggestSearchTermActions } from "./bid-engine.ts";
 import { projectCampaign, projectKeyword } from "./roi-engine.ts";
 import { enqueue, apply, cancel, type Action } from "./actions.ts";
@@ -236,7 +236,10 @@ app.post("/api/app-store-analytics/request", async (req, res) => {
 app.get("/api/negatives", (req, res) => {
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
   const rows = getDb().prepare(`
-    SELECT n.id, n.campaign_id, c.name AS campaign_name, c.country, n.text, n.match_type, n.remote_id, n.added_at
+    SELECT n.id, n.campaign_id, c.name AS campaign_name,
+           -- a multi-country campaign has no single storefront
+           CASE WHEN COALESCE(json_array_length(c.countries_json), 1) > 1 THEN 'WW' ELSE c.country END AS country,
+           n.text, n.match_type, n.remote_id, n.added_at
     FROM asa_negatives n
     LEFT JOIN asa_campaigns c ON c.id = n.campaign_id
     ${appId ? `WHERE c.app_id = ?` : ``}
@@ -245,32 +248,11 @@ app.get("/api/negatives", (req, res) => {
   res.json(rows);
 });
 
+// Apple Ads per storefront; multi-country campaigns split by the geo report.
 app.get("/api/geo", (req, res) => {
   const days = Number(req.query.days ?? 14);
   const appId = req.query.app_id ? Number(req.query.app_id) : undefined;
-  const start = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
-  const where = appId ? `AND c.app_id = ?` : ``;
-  const args = appId ? [start, start, appId] : [start, start];
-  const rows = getDb().prepare(`
-    SELECT c.country,
-           SUM(d.impressions) AS impressions,
-           SUM(d.taps) AS taps,
-           SUM(d.installs) AS installs,
-           SUM(d.spend) AS spend,
-           CASE WHEN SUM(d.installs) > 0 THEN SUM(d.spend)/SUM(d.installs) ELSE 0 END AS cpi,
-           COUNT(DISTINCT c.id) AS campaigns,
-           COALESCE((
-             SELECT SUM(events) FROM asc_events_daily e
-             WHERE e.country = c.country AND e.date >= ?
-               AND e.event_type = 'Start Introductory Offer'
-           ), 0) AS trials
-    FROM asa_campaigns c
-    LEFT JOIN asa_daily d ON d.campaign_id = c.id AND d.date >= ?
-    WHERE 1=1 ${where}
-    GROUP BY c.country
-    ORDER BY spend DESC
-  `).all(...args);
-  res.json(rows);
+  res.json(geoBreakdown(days, appId));
 });
 
 app.get("/api/campaigns", (req, res) => {

@@ -1,25 +1,40 @@
 import { ADAPTY_ANALYTICS_APP_ID, type AppConfig } from "./config.ts";
-import { fetchAdaptyGeoRevenue } from "./revenue-client.ts";
+import { fetchAdaptyGeoEconomics, type AdaptyGeoEconomics } from "./revenue-client.ts";
+import { spendWindow } from "./queries.ts";
 
 export interface RevenueRow { country: string; trials: number; paid: number; revenueUsd: number }
+export interface DailyRevenue { date: string; revenueUsd: number }
+
+// Adapty allows ~2 req/s and every read is 3 requests; Economics and the
+// decision matrix load the same window back to back, so share one answer.
+const CACHE_TTL_MS = 10 * 60_000;
+const cache = new Map<string, { at: number; value: Promise<AdaptyGeoEconomics> }>();
+
+function cachedEconomics(window: { start: string; end: string }): Promise<AdaptyGeoEconomics> {
+  const key = `${window.start}:${window.end}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  const value = fetchAdaptyGeoEconomics(window);
+  cache.set(key, { at: Date.now(), value });
+  value.catch(() => cache.delete(key)); // never cache a failure
+  return value;
+}
 
 /** Geo-level real revenue rows for an app, [] when no feed is configured.
  *  Shared by /api/revenue and the Command Center aggregator. */
-export async function fetchRevenueRows(_cfg: AppConfig, appId: number | undefined, days: number): Promise<{ rows: RevenueRow[]; error?: string }> {
+export async function fetchRevenueRows(_cfg: AppConfig, appId: number | undefined, days: number): Promise<{ rows: RevenueRow[]; daily: DailyRevenue[]; error?: string }> {
   try {
     if (appId && appId === ADAPTY_ANALYTICS_APP_ID) {
       // Adapty's own Apple Ads attribution, segmented by country and joined to
       // trials, paid subscriptions, and net revenue at the acquisition cohort.
-      const end = new Date();
-      const start = new Date(end.getTime() - Math.max(0, days - 1) * 86_400_000);
-      const rows = (await fetchAdaptyGeoRevenue({
-        start: start.toISOString().slice(0, 10),
-        end: end.toISOString().slice(0, 10),
-      })).map((row) => ({ ...row, revenueUsd: Math.round(row.revenueUsd * 100) / 100 }));
-      return { rows };
+      // Same window as the Apple Ads spend it is divided by (ends at the last
+      // synced spend day), otherwise unsynced days add trials without spend.
+      const economics = await cachedEconomics(spendWindow(days));
+      const rows = economics.rows.map((row) => ({ ...row, revenueUsd: Math.round(row.revenueUsd * 100) / 100 }));
+      return { rows, daily: economics.dailyRevenue };
     }
-    return { rows: [] };
+    return { rows: [], daily: [] };
   } catch (e) {
-    return { rows: [], error: (e as Error).message };
+    return { rows: [], daily: [], error: (e as Error).message };
   }
 }

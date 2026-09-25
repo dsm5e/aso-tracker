@@ -33,12 +33,12 @@ function envValueFor(provider: Provider, field: string): string | undefined {
     team_id: process.env.ASA_TEAM_ID ?? "",
     key_id: process.env.ASA_KEY_ID ?? "",
     org_id: process.env.ASA_ORG_ID ?? "",
-    private_key: process.env.ASA_PRIVATE_KEY_PATH ? "[loaded from file]" : "",
+    private_key: process.env.ASA_PRIVATE_KEY_PATH ? "[файл ключа загружен]" : "",
   } : {
     key_id: process.env.ASC_KEY_ID ?? "",
     issuer_id: process.env.ASC_ISSUER_ID ?? "",
     vendor_number: process.env.ASC_VENDOR_NUMBER ?? "",
-    private_key: process.env.ASC_PRIVATE_KEY_PATH ? "[loaded from file]" : "",
+    private_key: process.env.ASC_PRIVATE_KEY_PATH ? "[файл ключа загружен]" : "",
   };
   const v = map[field];
   return v ? v : undefined;

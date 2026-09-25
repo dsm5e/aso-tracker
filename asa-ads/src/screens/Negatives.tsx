@@ -78,7 +78,7 @@ export default function Negatives() {
                 <td><strong>{r.text}</strong></td>
                 <td><span className="badge">{r.match_type}</span></td>
                 <td className="muted">{r.campaign_name ? campaignDisplayName(r.campaign_name) : "—"}</td>
-                <td>{r.country ?? "—"}</td>
+                <td>{r.country === "WW" ? "Мультигео" : r.country ?? "—"}</td>
                 <td className="muted nowrap">{new Date(r.added_at).toLocaleString()}</td>
                 <td className="num muted">{r.remote_id ?? "—"}</td>
               </tr>

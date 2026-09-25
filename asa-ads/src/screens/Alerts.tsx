@@ -49,12 +49,12 @@ export default function Alerts({ reloadKey }: Props) {
       <div className="card">
         <h3>Правила</h3>
         <div className="note">
-          <strong>🔥 Burn:</strong> daily spend ≥ $5 with 0 installs<br />
-          <strong>💸 High CPI:</strong> 7-day CPI ≥ $2.00 (min 3 installs)<br />
-          <strong>⚠️ Stalled:</strong> campaign ENABLED but not RUNNING<br />
-          <strong>📈 Spend spike:</strong> today ≥ 2× yesterday (min $5)<br />
+          <strong>🔥 Слив:</strong> расход за день ≥ $5 без установок<br />
+          <strong>💸 Дорогой CPI:</strong> CPI за 7 дней ≥ $2.00 (от 3 установок)<br />
+          <strong>⚠️ Остановка:</strong> кампания включена, но не показывается<br />
+          <strong>📈 Скачок расхода:</strong> сегодня ≥ 2× вчерашнего (от $5)<br />
           <br />
-          Configure via <code>.env</code>: <code>ALERTS_ENABLED=true</code>, <code>TG_BOT_TOKEN</code>, <code>TG_CHAT_ID</code>, <code>ALERT_CPI_THRESHOLD</code>, <code>ALERT_SPEND_NO_INSTALL</code>, <code>ALERT_INTERVAL_MIN</code>.
+          Настройка в <code>.env</code>: <code>ALERTS_ENABLED=true</code>, <code>TG_BOT_TOKEN</code>, <code>TG_CHAT_ID</code>, <code>ALERT_CPI_THRESHOLD</code>, <code>ALERT_SPEND_NO_INSTALL</code>, <code>ALERT_INTERVAL_MIN</code>.
         </div>
       </div>
 

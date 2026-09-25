@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "../api.ts";
+import { api, type AppRow } from "../api.ts";
 import { useApp } from "./AppContext.tsx";
 import { keywordsApi, type KeywordsApp, type RankingRow } from "./keywordsApi.ts";
 
@@ -45,6 +45,13 @@ export interface KeywordsBridge {
   ensureArtworks: (candidates: TopFiveCandidate[], country: string) => void;
 }
 
+/** Name fallback when the ids differ: match any store name the Ads app carried. */
+function sameApp(ads: AppRow, keywordsName: string): boolean {
+  const target = shortName(keywordsName);
+  const names = ads.aliases?.length ? ads.aliases : [ads.app_name];
+  return names.some((n) => shortName(n) === target);
+}
+
 export function useKeywordsBridge(): KeywordsBridge {
   const { apps: adsApps, selected, setSelected } = useApp();
   const [kwApps, setKwApps] = useState<KeywordsApp[] | null>(null);
@@ -60,7 +67,7 @@ export function useKeywordsBridge(): KeywordsBridge {
   // Keywords apps that match any Ads app; order follows the keywords list.
   const candidates = useMemo(() => {
     if (!kwApps) return [];
-    return kwApps.filter((k) => adsApps.some((a) => String(a.app_id) === k.iTunesId || shortName(a.app_name) === shortName(k.name)));
+    return kwApps.filter((k) => adsApps.some((a) => String(a.app_id) === k.iTunesId || sameApp(a, k.name)));
   }, [adsApps, kwApps]);
 
   const app = useMemo(() => {
@@ -69,7 +76,7 @@ export function useKeywordsBridge(): KeywordsBridge {
       const ads = adsApps.find((a) => a.app_id === selected);
       const byId = kwApps.find((k) => k.iTunesId === String(selected));
       if (byId) return byId;
-      const byName = ads && kwApps.find((k) => shortName(k.name) === shortName(ads.app_name));
+      const byName = ads && kwApps.find((k) => sameApp(ads, k.name));
       if (byName) return byName;
       return null;
     }
@@ -80,7 +87,7 @@ export function useKeywordsBridge(): KeywordsBridge {
   const selectApp = useCallback((keywordsAppId: string) => {
     const k = kwApps?.find((x) => x.id === keywordsAppId);
     if (!k) return;
-    const ads = adsApps.find((a) => String(a.app_id) === k.iTunesId) ?? adsApps.find((a) => shortName(a.app_name) === shortName(k.name));
+    const ads = adsApps.find((a) => String(a.app_id) === k.iTunesId) ?? adsApps.find((a) => sameApp(a, k.name));
     if (ads) setSelected(ads.app_id);
   }, [adsApps, kwApps, setSelected]);
 

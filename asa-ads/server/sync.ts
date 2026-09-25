@@ -1,5 +1,5 @@
 import { getDb } from "./db.ts";
-import type { AsaClient, RawCampaign, RawAdGroup, RawKeyword, RawKeywordReport, RawSearchTermReport, ReportTotals } from "./asa-client.ts";
+import type { AsaClient, RawCampaign, RawAdGroup, RawKeyword, RawKeywordReport, RawSearchTermReport, RawCampaignGeoReport, ReportTotals } from "./asa-client.ts";
 import type { AscClient } from "./asc-client.ts";
 import { fetchKeywordRevenue } from "./revenue-client.ts";
 import { broadcast } from "./sse.ts";
@@ -233,6 +233,41 @@ export async function syncDailyReports(asa: AsaClient, startDate: string, endDat
   }
 }
 
+/** Storefront split of every campaign (dedicated and multi-country). Soft-fails:
+ *  without it the geo views fall back to campaign-country attribution. */
+export async function syncGeoDaily(asa: AsaClient, startDate: string, endDate: string): Promise<number> {
+  let rows: RawCampaignGeoReport[];
+  try {
+    rows = await asa.campaignGeoReport(startDate, endDate);
+  } catch (e) {
+    console.warn(`ASA geo report: ${(e as Error).message}`);
+    return 0;
+  }
+  const db = getDb();
+  const up = db.prepare(`
+    INSERT INTO asa_geo_daily (campaign_id, date, country, impressions, taps, installs, spend)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(campaign_id, date, country) DO UPDATE SET
+      impressions=excluded.impressions, taps=excluded.taps,
+      installs=excluded.installs, spend=excluded.spend
+  `);
+  let n = 0;
+  db.transaction(() => {
+    // The report omits empty rows, so clear the window first to drop rows that went to zero.
+    db.prepare(`DELETE FROM asa_geo_daily WHERE date BETWEEN ? AND ?`).run(startDate, endDate);
+    for (const row of rows) {
+      const country = row.metadata.countryOrRegion?.trim().toUpperCase();
+      if (!country || !/^[A-Z]{2}$/.test(country)) continue;
+      for (const g of row.granularity ?? []) {
+        const t = totalsFrom(g);
+        up.run(row.metadata.campaignId, g.date, country, t.imp, t.taps, t.installs, t.spend);
+        n++;
+      }
+    }
+  })();
+  return n;
+}
+
 export async function syncAscEvents(asc: AscClient, dates: string[]): Promise<void> {
   const db = getDb();
   const upsert = db.prepare(`
@@ -442,6 +477,7 @@ export async function fullSync(asa: AsaClient, asc: AscClient, days = 14): Promi
 
     setPhase("daily", `Fetching daily metrics + per-keyword + search terms (${reportIds.length} enabled campaigns)`, 0.45, startedAt);
     await syncDailyReports(asa, startDate, endDate, reportIds);
+    await syncGeoDaily(asa, startDate, endDate);
 
     setPhase("asc", `Pulling ${days} days of ASC subscription events`, 0.8, startedAt);
     await syncAscEvents(asc, listDates(startDate, endDate));

@@ -123,7 +123,7 @@ export default function CampaignDetail() {
             <th>Статус</th>
             <th className="num">Ставка</th>
             <th className="num">Показы</th>
-            <th className="num">Taps</th>
+            <th className="num">Тапы</th>
             <th className="num">Установки</th>
             <th className="num">CPT</th>
             <th className="num">Расход</th>
@@ -185,7 +185,7 @@ export default function CampaignDetail() {
             <tr>
               <th>Дата</th>
               <th className="num">Показы</th>
-              <th className="num">Taps</th>
+              <th className="num">Тапы</th>
               <th className="num">TTR</th>
               <th className="num">Установки</th>
               <th className="num">CPI</th>

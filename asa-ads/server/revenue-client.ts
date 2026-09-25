@@ -38,6 +38,7 @@ interface AdaptyMetricRow {
   title?: string;
   type?: string;
   value?: number;
+  values?: Array<{ x?: string; y?: number }>;
 }
 
 interface AdaptyMetric {
@@ -150,30 +151,58 @@ export async function fetchKeywordRevenue(
   };
 }
 
-export async function fetchAdaptyGeoRevenue(
+export interface AdaptyGeoEconomics {
+  rows: Array<{ country: string; trials: number; paid: number; revenueUsd: number }>;
+  /** Net revenue per install-cohort day (YYYY-MM-DD), summed over countries. */
+  dailyRevenue: Array<{ date: string; revenueUsd: number }>;
+}
+
+export async function fetchAdaptyGeoEconomics(
   cohortWindow: { start: string; end: string },
   options: { key?: string; fetchImpl?: FetchLike; throttleMs?: number } = {},
-): Promise<Array<{ country: string; trials: number; paid: number; revenueUsd: number }>> {
+): Promise<AdaptyGeoEconomics> {
   const key = options.key ?? analyticsKey();
   const fetchImpl = options.fetchImpl ?? fetch;
   const throttleMs = options.throttleMs ?? 550;
+  const countryRows = (metric?: AdaptyMetric) => (metric?.data ?? [])
+    .filter((row) => /^[A-Za-z]{2}$/.test(row.type ?? ""));
   const asCountryMap = (metric?: AdaptyMetric) => new Map(
-    (metric?.data ?? [])
-      .filter((row) => /^[A-Za-z]{2}$/.test(row.type ?? ""))
-      .map((row) => [(row.type ?? "").toUpperCase(), Number(row.value) || 0]),
+    countryRows(metric).map((row) => [(row.type ?? "").toUpperCase(), Number(row.value) || 0]),
   );
 
   const trials = asCountryMap((await requestMetric(key, "trials_new", cohortWindow, "country", fetchImpl)).common);
   if (throttleMs) await pause(throttleMs);
   const paid = asCountryMap((await requestMetric(key, "subscriptions_new", cohortWindow, "country", fetchImpl)).common);
   if (throttleMs) await pause(throttleMs);
-  const revenue = asCountryMap((await requestMetric(key, "revenue", cohortWindow, "country", fetchImpl)).net_revenue);
+  const revenueMetric = (await requestMetric(key, "revenue", cohortWindow, "country", fetchImpl)).net_revenue;
+  const revenue = asCountryMap(revenueMetric);
   const countries = new Set([...trials.keys(), ...paid.keys(), ...revenue.keys()]);
 
-  return [...countries].map((country) => ({
-    country,
-    trials: trials.get(country) ?? 0,
-    paid: paid.get(country) ?? 0,
-    revenueUsd: revenue.get(country) ?? 0,
-  })).sort((a, b) => b.revenueUsd - a.revenueUsd);
+  // Each country row carries its per-day series (period_unit=day).
+  const byDay = new Map<string, number>();
+  for (const row of countryRows(revenueMetric)) {
+    for (const point of row.values ?? []) {
+      const date = String(point.x ?? "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      byDay.set(date, (byDay.get(date) ?? 0) + (Number(point.y) || 0));
+    }
+  }
+
+  return {
+    rows: [...countries].map((country) => ({
+      country,
+      trials: trials.get(country) ?? 0,
+      paid: paid.get(country) ?? 0,
+      revenueUsd: revenue.get(country) ?? 0,
+    })).sort((a, b) => b.revenueUsd - a.revenueUsd),
+    dailyRevenue: [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({ date, revenueUsd: Math.round(v * 100) / 100 })),
+  };
+}
+
+export async function fetchAdaptyGeoRevenue(
+  cohortWindow: { start: string; end: string },
+  options: { key?: string; fetchImpl?: FetchLike; throttleMs?: number } = {},
+): Promise<AdaptyGeoEconomics["rows"]> {
+  return (await fetchAdaptyGeoEconomics(cohortWindow, options)).rows;
 }

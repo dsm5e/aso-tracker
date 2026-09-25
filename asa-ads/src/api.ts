@@ -92,6 +92,7 @@ export interface DailyTotals {
 export interface AppRow {
   app_id: number;
   app_name: string | null;
+  aliases?: string[];
   campaign_count: number;
   active_count: number;
   spend_14d: number;
@@ -186,7 +187,7 @@ export const api = {
   alerts: () => get<Array<{ id: number; campaign_id: number | null; alert_type: string; message: string; sent_at: string; delivered: number }>>("/api/alerts"),
   checkAlerts: () => post<{ checked: number; sent: number; skipped: number }>("/api/alerts/check"),
   revenue: (days = 30, appId?: number | "all") =>
-    get<{ rows: Array<{ country: string; trials: number; paid: number; revenueUsd: number }>; error?: string }>(`/api/revenue?days=${days}${appQ(appId)}`),
+    get<{ rows: Array<{ country: string; trials: number; paid: number; revenueUsd: number }>; daily?: Array<{ date: string; revenueUsd: number }>; error?: string }>(`/api/revenue?days=${days}${appQ(appId)}`),
   roiCampaign: (id: number, spend = 1000, days = 14) =>
     get<Projection>(`/api/roi/campaign/${id}?spend=${spend}&days=${days}`),
   roiKeyword: (id: number, spend = 100, days = 14) =>

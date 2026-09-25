@@ -83,6 +83,19 @@ function migrate(d: Database.Database): void {
       PRIMARY KEY (campaign_id, date)
     );
 
+    -- Campaign × storefront × day. Multi-country campaigns report one row per
+    -- storefront here; asa_daily only has the campaign total.
+    CREATE TABLE IF NOT EXISTS asa_geo_daily (
+      campaign_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      country TEXT NOT NULL,
+      impressions INTEGER NOT NULL DEFAULT 0,
+      taps INTEGER NOT NULL DEFAULT 0,
+      installs INTEGER NOT NULL DEFAULT 0,
+      spend REAL NOT NULL DEFAULT 0,
+      PRIMARY KEY (campaign_id, date, country)
+    );
+
     CREATE TABLE IF NOT EXISTS asa_kw_daily (
       keyword_id INTEGER NOT NULL,
       date TEXT NOT NULL,

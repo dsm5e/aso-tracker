@@ -49,7 +49,7 @@ export function CostPerTrialBars({ rows, blended }: { rows: GeoRow[]; blended: n
       </div>
       <HBars
         max={maxCpt}
-        labelWidth={56}
+        labelWidth={84}
         valueWidth={130}
         marker={{ value: blended, label: `средняя ${fmtUsd(blended)}` }}
         rows={data.map((d) => {
@@ -84,7 +84,7 @@ export function RoasByGeoBars({ rows }: { rows: RoasRow[] }) {
       </div>
       <HBars
         max={maxRoas}
-        labelWidth={56}
+        labelWidth={84}
         valueWidth={170}
         marker={maxRoas >= 1 ? { value: 1, label: "100%" } : undefined}
         rows={data.map((d) => {
