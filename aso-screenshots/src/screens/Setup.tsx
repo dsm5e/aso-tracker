@@ -68,10 +68,10 @@ export function SetupScreen() {
       <div style={{ width: '100%', maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 24 }}>
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: 28, fontWeight: 700, letterSpacing: '-0.02em' }}>
+            <h1 className="ds-page-title" style={{ margin: 0 }}>
               {hasActiveWork ? (appName || 'Draft project') : 'New project'}
             </h1>
-            <p style={{ margin: '8px 0 0', color: 'var(--fg-2)', fontSize: 13 }}>
+            <p className="ds-page-sub" style={{ margin: '4px 0 0' }}>
               {hasActiveWork
                 ? 'Editing in progress. Finish via Export to archive, or start over.'
                 : 'Set the basics. You can change anything later.'}
@@ -86,7 +86,7 @@ export function SetupScreen() {
 
         <Card>
           <Card.Section title="Device targets">
-            <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--fg-2)' }}>
+            <p className="ds-note" style={{ margin: '0 0 12px' }}>
               Generate at the largest size — App Store Connect auto-scales for smaller iPhones / iPads.
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
@@ -98,23 +98,22 @@ export function SetupScreen() {
                     key={d.value}
                     type="button"
                     onClick={() => setProject({ devices: d.value })}
+                    className="btn"
                     style={{
-                      display: 'flex',
+                      height: 'auto',
                       flexDirection: 'column',
                       alignItems: 'flex-start',
+                      justifyContent: 'flex-start',
+                      textAlign: 'left',
                       gap: 6,
                       padding: 14,
-                      borderRadius: 'var(--r-3)',
-                      border: `1px solid ${active ? 'var(--accent)' : 'var(--line-1)'}`,
-                      background: active ? 'var(--accent-soft)' : 'var(--bg-2)',
-                      cursor: 'pointer',
-                      transition: 'all .12s',
+                      ...(active ? { background: 'var(--ds-accent-soft)', borderColor: 'var(--ds-accent)', color: 'var(--ds-accent)' } : null),
                     }}
                   >
-                    <Icon size={18} color={active ? 'var(--fg-0)' : 'var(--fg-1)'} />
+                    <Icon size={18} color={active ? 'var(--ds-accent)' : 'var(--fg-1)'} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: active ? 'var(--fg-0)' : 'var(--fg-1)' }}>{d.label}</span>
-                      <span style={{ fontSize: 11, color: 'var(--fg-2)' }}>{d.sub}</span>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: active ? 'var(--ds-accent)' : 'var(--fg-0)' }}>{d.label}</span>
+                      <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--fg-2)', whiteSpace: 'normal' }}>{d.sub}</span>
                     </div>
                   </button>
                 );
@@ -136,7 +135,7 @@ export function SetupScreen() {
             each gets its own entry section rather than a cramped button row. */}
         <ToolCard
           title="Product Page Optimization"
-          gradient="linear-gradient(135deg, #14B8A6, #5EEAD4)"
+          gradient="var(--ds-accent-soft)"
           icon={<FlaskConical size={34} />}
           heading="Run multi-strategy screenshot A/B tests"
           description="Upload source screens once, generate N treatments via different AI prompts, and export each ready for an App Store Connect PPO experiment."
@@ -146,7 +145,7 @@ export function SetupScreen() {
         />
         <ToolCard
           title="Icon Generator"
-          gradient="linear-gradient(135deg, #7C3AED, #A78BFA)"
+          gradient="var(--ds-accent-soft)"
           icon={<Shapes size={34} />}
           heading="Generate 1024 app-icon variants"
           description="Render square iOS icon variants from a base image + prompt. Icons ship inside the app binary as alternate icons, then get selected as PPO icon treatments."
@@ -156,15 +155,15 @@ export function SetupScreen() {
         />
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8 }}>
-          <Button variant="primary" size="lg" onClick={() => nav('/catalog')}>
+          <Button variant="primary" onClick={() => nav('/catalog')}>
             Continue → Style
           </Button>
         </div>
 
         {archivedProjects.length > 0 && (
           <section style={{ marginTop: 32 }}>
-            <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em' }}>
-              Recent projects <span style={{ color: 'var(--fg-3)', fontSize: 12, fontWeight: 400 }}>· {archivedProjects.length}</span>
+            <h2 className="ds-card-title" style={{ margin: '0 0 12px' }}>
+              Recent projects <span style={{ color: 'var(--fg-2)', fontSize: 14, fontWeight: 400 }}>· {archivedProjects.length}</span>
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
               {archivedProjects.map((p) => (
@@ -176,8 +175,8 @@ export function SetupScreen() {
 
         {archivedPPOExperiments.length > 0 && (
           <section style={{ marginTop: 32 }}>
-            <h2 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 600, letterSpacing: '-0.01em' }}>
-              Recent PPO <span style={{ color: 'var(--fg-3)', fontSize: 12, fontWeight: 400 }}>· {archivedPPOExperiments.length}</span>
+            <h2 className="ds-card-title" style={{ margin: '0 0 12px' }}>
+              Recent PPO <span style={{ color: 'var(--fg-2)', fontSize: 14, fontWeight: 400 }}>· {archivedPPOExperiments.length}</span>
             </h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
               {archivedPPOExperiments.map((p) => (
@@ -220,28 +219,27 @@ function ToolCard({
             style={{
               width: 72,
               height: 72,
-              borderRadius: 18,
+              borderRadius: 8,
               flex: 'none',
               background: gradient,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#fff',
-              boxShadow: '0 8px 24px -8px rgba(0,0,0,0.4)',
+              color: 'var(--ds-accent)',
             }}
           >
             {icon}
           </div>
           <div style={{ flex: 1, minWidth: 240 }}>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--fg-0)', marginBottom: 4 }}>
+            <div className="ds-card-title" style={{ marginBottom: 4 }}>
               {heading}
             </div>
-            <p style={{ margin: 0, fontSize: 13, color: 'var(--fg-2)', lineHeight: 1.6 }}>
+            <p style={{ margin: 0, fontSize: 14, lineHeight: '20px', color: 'var(--fg-2)' }}>
               {description}
               {countLabel && <> · <strong>{countLabel}</strong></>}
             </p>
           </div>
-          <Button variant="primary" size="lg" rightIcon={<ArrowRight size={16} />} onClick={onClick}>
+          <Button rightIcon={<ArrowRight size={16} />} onClick={onClick}>
             {cta}
           </Button>
         </div>
@@ -252,22 +250,20 @@ function ToolCard({
 
 function RecentCard({ project, onOpen, onDelete }: { project: ArchivedProject; onOpen: () => void; onDelete: (e: React.MouseEvent) => void }) {
   return (
-    <button
-      type="button"
+    // A card with its own delete button inside: the card is a div with a button
+    // role so the nested <button> stays valid HTML.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}
+      className="ds-tile"
       style={{
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
         padding: 10,
-        borderRadius: 'var(--r-3)',
-        border: '1px solid var(--line-1)',
-        background: 'var(--bg-1)',
-        cursor: 'pointer',
-        textAlign: 'left',
-        font: 'inherit',
-        color: 'inherit',
       }}
       title="Open in Editor"
     >
@@ -289,13 +285,13 @@ function RecentCard({ project, onOpen, onDelete }: { project: ArchivedProject; o
         )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {project.appName}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {project.presetName} · {project.slotCount} slot{project.slotCount === 1 ? '' : 's'}
         </span>
-        <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>
+        <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>
           {new Date(project.archivedAt).toLocaleDateString()}
         </span>
       </div>
@@ -306,12 +302,12 @@ function RecentCard({ project, onOpen, onDelete }: { project: ArchivedProject; o
         aria-label="Delete project"
         style={{
           position: 'absolute',
-          top: 6,
-          right: 6,
-          width: 22,
-          height: 22,
+          top: 14,
+          right: 14,
+          width: 28,
+          height: 28,
           border: 0,
-          borderRadius: '50%',
+          borderRadius: 6,
           background: 'rgba(0,0,0,0.55)',
           color: '#fff',
           cursor: 'pointer',
@@ -319,9 +315,9 @@ function RecentCard({ project, onOpen, onDelete }: { project: ArchivedProject; o
           placeItems: 'center',
         }}
       >
-        <Trash2 size={11} />
+        <Trash2 size={14} />
       </button>
-    </button>
+    </div>
   );
 }
 
@@ -334,22 +330,20 @@ function RecentPPOCard({ session, onOpen, onDelete }: { session: ArchivedPPOExpe
     ? `${apiBase}/ppo/proxy-image?url=${encodeURIComponent(session.thumbUrl)}&w=400`
     : null;
   return (
-    <button
-      type="button"
+    // A card with its own delete button inside: the card is a div with a button
+    // role so the nested <button> stays valid HTML.
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onOpen(); } }}
+      className="ds-tile"
       style={{
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
         gap: 8,
         padding: 10,
-        borderRadius: 'var(--r-3)',
-        border: '1px solid var(--line-1)',
-        background: 'var(--bg-1)',
-        cursor: 'pointer',
-        textAlign: 'left',
-        font: 'inherit',
-        color: 'inherit',
       }}
       title="Resume PPO session"
     >
@@ -377,13 +371,13 @@ function RecentPPOCard({ session, onOpen, onDelete }: { session: ArchivedPPOExpe
         )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-        <span style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 14, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {session.title}
         </span>
-        <span style={{ fontSize: 11, color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <span style={{ fontSize: 12, color: 'var(--fg-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {session.strategyCount} strateg{session.strategyCount === 1 ? 'y' : 'ies'} · {session.renderedCount} rendered
         </span>
-        <span style={{ fontSize: 10, color: 'var(--fg-3)' }}>
+        <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>
           {new Date(session.savedAt).toLocaleDateString()}
         </span>
       </div>
@@ -394,12 +388,12 @@ function RecentPPOCard({ session, onOpen, onDelete }: { session: ArchivedPPOExpe
         aria-label="Delete PPO session"
         style={{
           position: 'absolute',
-          top: 6,
-          right: 6,
-          width: 22,
-          height: 22,
+          top: 14,
+          right: 14,
+          width: 28,
+          height: 28,
           border: 0,
-          borderRadius: '50%',
+          borderRadius: 6,
           background: 'rgba(0,0,0,0.55)',
           color: '#fff',
           cursor: 'pointer',
@@ -407,8 +401,8 @@ function RecentPPOCard({ session, onOpen, onDelete }: { session: ArchivedPPOExpe
           placeItems: 'center',
         }}
       >
-        <Trash2 size={11} />
+        <Trash2 size={14} />
       </button>
-    </button>
+    </div>
   );
 }

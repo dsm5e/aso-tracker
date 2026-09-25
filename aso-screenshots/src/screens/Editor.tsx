@@ -10,7 +10,7 @@ import { useHighlight } from '../state/highlight';
 import { useEnhance } from '../lib/useEnhance';
 import { useKeyGate } from '../state/keyGate';
 import { getPreset } from '../lib/presets';
-import { formatDimensions, getIPhoneProfile, IPAD_CANVAS, IPHONE_PROFILES, type IPhoneModel } from '../lib/deviceProfiles';
+import { formatDimensions, getIPadCanvas, getIPhoneProfile, IPHONE_PROFILES, type IPadModel, type IPhoneModel } from '../lib/deviceProfiles';
 
 // /api on direct :5180/studio/, /studio-api when proxied via Keywords origin :5173/studio/.
 const API_BASE = import.meta.env.BASE_URL === '/' ? '/api' : '/studio-api';
@@ -26,6 +26,7 @@ export function EditorScreen() {
     viewMode,
     setViewMode,
     iphoneModel,
+    ipadModel,
     setProject,
   } = useStudio();
 
@@ -169,7 +170,10 @@ export function EditorScreen() {
     }
   }, [selectedPresetId, screenshots.length, pickPreset]);
 
-  // Measure canvas wrap to fit
+  // Measure canvas wrap to fit. The wrap only mounts once screenshots exist (the
+  // empty state returns early), so re-attach when that flips — opening /editor
+  // directly used to leave the canvas unmeasured and blank.
+  const hasScreenshots = screenshots.length > 0;
   useEffect(() => {
     if (!canvasWrapRef.current) return;
     const ro = new ResizeObserver(() => {
@@ -180,12 +184,12 @@ export function EditorScreen() {
     });
     ro.observe(canvasWrapRef.current);
     return () => ro.disconnect();
-  }, []);
+  }, [hasScreenshots]);
 
   const active = screenshots.find((s) => s.id === activeScreenshotId);
   const activeDevice = active?.device ?? 'iphone';
   const activeProfile = getIPhoneProfile(iphoneModel);
-  const activeDimensions = activeDevice === 'ipad' ? IPAD_CANVAS : activeProfile.canvas;
+  const activeDimensions = activeDevice === 'ipad' ? getIPadCanvas(ipadModel) : activeProfile.canvas;
   const sourceDimensionsMismatch = activeDevice === 'iphone'
     && active?.sourcePixelWidth
     && active?.sourcePixelHeight
@@ -224,7 +228,7 @@ export function EditorScreen() {
   if (screenshots.length === 0) {
     return (
       <div style={{ padding: 'var(--s-9)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
-        <h2 style={{ margin: 0 }}>No screenshots yet</h2>
+        <h2 className="ds-h2" style={{ margin: 0 }}>No screenshots yet</h2>
         <p style={{ color: 'var(--fg-2)', textAlign: 'center', maxWidth: 460 }}>
           Add at least one simulator screenshot in Setup to start composing.
         </p>
@@ -239,6 +243,7 @@ export function EditorScreen() {
 
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg-canvas)' }}>
         <div
+          className="ds-dense"
           style={{
             height: 48,
             padding: '0 16px',
@@ -269,7 +274,7 @@ export function EditorScreen() {
               aria-label="iPhone screenshot model"
               value={iphoneModel}
               onChange={(e) => changeIphoneModel(e.target.value as IPhoneModel)}
-              style={{ width: 'auto', minWidth: 164, height: 30, padding: '0 28px 0 10px', fontSize: 11 }}
+              style={{ width: 'auto', minWidth: 164 }}
             >
               {IPHONE_PROFILES.map((profile) => (
                 <option key={profile.id} value={profile.id}>
@@ -278,13 +283,25 @@ export function EditorScreen() {
               ))}
             </select>
           )}
-          <span className="tabular muted" style={{ fontSize: 11 }}>
+          {active && activeDevice === 'ipad' && (
+            <select
+              className="select"
+              aria-label="iPad screenshot size"
+              value={ipadModel ?? 'ipad-pro-12.9'}
+              onChange={(e) => setProject({ ipadModel: e.target.value as IPadModel })}
+              style={{ width: 'auto', minWidth: 164 }}
+            >
+              <option value="ipad-pro-12.9">iPad Pro 12.9" · 2048×2732</option>
+              <option value="ipad-pro-13">iPad Pro 13" · 2064×2752</option>
+            </select>
+          )}
+          <span className="tabular muted" style={{ fontSize: 13 }}>
             {active ? formatDimensions(activeDimensions) : ''}
           </span>
           {sourceDimensionsMismatch && (
             <span
               title={`Uploaded screenshot is ${active.sourcePixelWidth} × ${active.sourcePixelHeight}; selected model expects ${formatDimensions(activeProfile.canvas)}.`}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--warn, #F59E0B)', fontSize: 11 }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, color: 'var(--warn)', fontSize: 13 }}
             >
               <AlertTriangle size={13} />
               Source size differs
@@ -299,7 +316,7 @@ export function EditorScreen() {
             onClick={resetLayout}
             disabled={!active}
           >
-            <RotateCcw size={14} />
+            <RotateCcw size={16} />
           </Button>
           <Button
             variant="ghost"
@@ -309,7 +326,7 @@ export function EditorScreen() {
             onClick={resetTemplate}
             disabled={!selectedPresetId}
           >
-            <RefreshCcw size={14} />
+            <RefreshCcw size={16} />
           </Button>
           {hasResult && active?.kind === 'action' && (
             <Button
@@ -449,7 +466,7 @@ export function EditorScreen() {
                 inset: 0,
                 display: 'grid',
                 placeItems: 'center',
-                background: 'rgba(0,0,0,0.45)',
+                background: 'rgba(1, 0, 48, 0.18)',
                 backdropFilter: 'blur(4px)',
                 zIndex: 5,
               }}
@@ -463,7 +480,7 @@ export function EditorScreen() {
                   padding: '20px 28px',
                   background: 'var(--bg-1)',
                   borderRadius: 'var(--r-3)',
-                  boxShadow: '0 30px 80px rgba(0,0,0,0.45)',
+                  boxShadow: 'var(--ds-shadow-pop)',
                   border: '1px solid var(--line-1)',
                 }}
               >
@@ -489,9 +506,9 @@ export function EditorScreen() {
               style={{
                 position: 'absolute',
                 top: 12, left: 12, right: 12,
-                background: 'rgba(220, 38, 38, 0.12)',
-                border: '1px solid rgba(220, 38, 38, 0.4)',
-                color: '#fca5a5',
+                background: 'var(--ds-bad-soft)',
+                border: '1px solid var(--ds-bad)',
+                color: 'var(--ds-bad)',
                 borderRadius: 'var(--r-3)',
                 padding: '10px 14px',
                 fontSize: 12,

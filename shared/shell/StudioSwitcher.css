@@ -1,0 +1,69 @@
+/* Studio product switcher (shared/shell/StudioSwitcher.tsx).
+   Tokens from shared/ds.css only. Selectors are 3 classes deep on purpose:
+   products carry generic rules (".sidebar-titlebar span", "button", "a:hover")
+   that must not reshape this block. aso-inapp/index.html keeps a synced copy. */
+
+.studio-sw { position: relative; display: flex; flex: none; min-width: 0; }
+
+.studio-sw .studio-sw-btn.studio-sw-btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  height: 40px; min-width: 0; max-width: 100%; margin: 0;
+  padding: 0 8px 0 6px;
+  border: 0; border-radius: var(--ds-radius-control);
+  background: transparent; box-shadow: none;
+  color: var(--ds-text); font-family: var(--ds-font); font-variant-numeric: normal; text-align: left;
+  cursor: pointer;
+}
+.studio-sw .studio-sw-btn.studio-sw-btn:hover,
+.studio-sw .studio-sw-btn.studio-sw-btn.is-open { background: var(--ds-hover); }
+.studio-sw .studio-sw-btn.studio-sw-btn:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: 1px; }
+
+/* product icon: 28px square, radius 8, white glyph */
+.studio-sw .studio-sw-icon,
+.studio-sw-pop .studio-sw-row .studio-sw-icon {
+  width: 28px; height: 28px; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 8px; color: #fff; box-shadow: none; margin: 0;
+}
+.studio-sw-icon--keywords    { background: var(--ds-accent); }
+.studio-sw-icon--ads         { background: var(--ds-c4); }
+.studio-sw-icon--screenshots { background: var(--ds-c2); }
+.studio-sw-icon--video       { background: var(--ds-c3); }
+.studio-sw-icon--inapp       { background: var(--ds-good); }
+
+.studio-sw .studio-sw-btn .studio-sw-text,
+.studio-sw-pop .studio-sw-row .studio-sw-text {
+  display: flex; flex-direction: column; min-width: 0; margin: 0;
+}
+.studio-sw .studio-sw-btn .studio-sw-name {
+  font-size: 14px; line-height: 18px; font-weight: 600; letter-spacing: 0;
+  color: var(--ds-strong); margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.studio-sw .studio-sw-btn .studio-sw-cap {
+  font-size: 12px; line-height: 16px; font-weight: 400; letter-spacing: 0; text-transform: none;
+  color: var(--ds-muted); margin: 0; white-space: nowrap;
+}
+.studio-sw .studio-sw-btn .studio-sw-chev { flex: none; color: var(--ds-muted); margin-left: 2px; }
+
+/* popover (portalled to <body>, fixed at the button's bottom-left) */
+.ds-pop.studio-sw-pop {
+  position: fixed; z-index: 10000; width: 300px; box-sizing: border-box;
+  display: flex; flex-direction: column; gap: 2px;
+  font-family: var(--ds-font); font-variant-numeric: normal;
+}
+.studio-sw-pop .studio-sw-row.studio-sw-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 8px; border-radius: var(--ds-radius-inner);
+  color: var(--ds-text); text-decoration: none; background: none; border: 0;
+}
+.studio-sw-pop .studio-sw-row.studio-sw-row:hover { background: var(--ds-accent-soft); text-decoration: none; }
+.studio-sw-pop .studio-sw-row.studio-sw-row:focus-visible { outline: 2px solid var(--ds-accent); outline-offset: -2px; }
+.studio-sw-pop .studio-sw-row.on { background: var(--ds-accent-soft); }
+.studio-sw-pop .studio-sw-row .studio-sw-name {
+  font-size: 14px; line-height: 18px; font-weight: 500; color: var(--ds-strong); letter-spacing: 0;
+}
+.studio-sw-pop .studio-sw-row.on .studio-sw-name { color: var(--ds-accent); font-weight: 600; }
+.studio-sw-pop .studio-sw-row .studio-sw-cap {
+  font-size: 12px; line-height: 16px; font-weight: 400; color: var(--ds-muted); letter-spacing: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}

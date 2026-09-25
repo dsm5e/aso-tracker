@@ -1,6 +1,7 @@
 import { db } from './db.js';
 import { loadApps, loadKeywords } from './config.js';
 import { getGenre, getGenreById, getGenresBatch } from './genres.js';
+import { appleJson } from './itunes.js';
 
 export interface Top5Item {
   name: string;
@@ -78,14 +79,11 @@ export async function keywordRelevance(
   let ourRealBundleId = app.bundle;
   if (app.iTunesId) {
     try {
-      const res = await fetch(
+      const data = await appleJson<{ results?: Array<{ bundleId?: string }> }>(
         `https://itunes.apple.com/lookup?id=${encodeURIComponent(app.iTunesId)}`,
-        { signal: AbortSignal.timeout(8_000) }
+        { timeoutMs: 8_000 }
       );
-      if (res.ok) {
-        const data = (await res.json()) as { results?: Array<{ bundleId?: string }> };
-        if (data.results?.[0]?.bundleId) ourRealBundleId = data.results[0].bundleId;
-      }
+      if (data.results?.[0]?.bundleId) ourRealBundleId = data.results[0].bundleId;
     } catch {}
   }
   const selfBundles = new Set([app.bundle, ourRealBundleId].filter(Boolean));

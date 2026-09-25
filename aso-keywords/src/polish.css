@@ -1,0 +1,100 @@
+/* Adapty-style polish for the Keywords product (loaded last).
+   No hard dividers: surfaces separate by tone, shadow and spacing; tables read
+   by a soft header band and alternating rows instead of grid lines. */
+
+.workspace {
+  /* every divider in the product is drawn with these — retire them in one place */
+  --ds-hairline: transparent;
+  --line: transparent;
+  --line-soft: transparent;
+  --ds-head-bg: var(--ds-panel-2);
+  --ds-row-alt: color-mix(in srgb, var(--ds-panel-2) 55%, var(--ds-panel));
+}
+
+/* ---------- shell ---------- */
+.context-bar { background: var(--ds-bg); }
+.statusbar { background: var(--ds-bg); }
+.suggestions-page > footer { background: var(--ds-bg); box-shadow: 0 -10px 18px -16px rgba(1, 0, 48, .25); }
+
+/* ---------- Keywords header: one row, folds while the list scrolls ---------- */
+.content > .view-header .page-title-row { display: flex; align-items: center; gap: 16px; min-height: 0; padding: 16px 20px 8px; transition: padding .2s ease; }
+.content > .view-header .ds-page-title { max-width: 280px; margin: 0; overflow: hidden; font-size: 20px; line-height: 28px; white-space: nowrap; transition: max-width .2s ease, opacity .15s ease, margin .2s ease; }
+.content > .view-header .page-tabs { margin: 0; }
+.content > .view-header .page-title-row > .ds-btn { margin-left: auto; }
+.content > .view-header .toolbar { padding: 8px 20px; }
+.content.is-compact > .view-header .page-title-row { padding-top: 10px; }
+.content.is-compact > .view-header .ds-page-title { max-width: 0; margin-right: -16px; opacity: 0; }
+
+.kw-stats { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px; max-height: 40px; padding: 4px 20px 4px; overflow: hidden; color: var(--ds-muted); font-size: 13px; line-height: 20px; transition: max-height .2s ease, opacity .15s ease, padding .2s ease; }
+.kw-stats b { margin-left: 2px; color: var(--ds-strong); font-weight: 600; font-variant-numeric: tabular-nums; }
+.kw-stats > span:first-child b { margin: 0 2px 0 0; }
+.kw-stats em { margin-left: 6px; color: var(--ds-good); font-style: normal; font-weight: 500; }
+.mx-summary { max-height: 80px; overflow: hidden; transition: max-height .2s ease, opacity .15s ease, padding .2s ease; }
+.content.is-compact .kw-stats,
+.content.is-compact .mx-summary { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; }
+
+/* ---------- tables: soft card, header band, zebra rows ---------- */
+.pt-scroll, .mx-scroll, .rankings-table-wrap, .competitor-keyword-table { border: 0; background: var(--ds-panel); box-shadow: var(--ds-shadow); }
+.pt-table th, .mx-table th,
+.keyword-table th, .keyword-table .keyword-column,
+.suggestion-table-head { background: var(--ds-head-bg); color: var(--ds-muted); font-size: 13px; font-weight: 600; }
+.pt-table th > button:hover, .mx-table th > button:first-child:hover { background: color-mix(in srgb, var(--ds-accent) 8%, var(--ds-head-bg)); color: var(--ds-strong); }
+.pt-sorted, .mx-col-sorted { color: var(--ds-accent); box-shadow: none; }
+.mx-col-head small { color: var(--ds-subtle); }
+.mx-col-code, .mx-table th > button { color: var(--ds-text); }
+
+.pt-table tbody tr.pt-alt td,
+.mx-table tbody tr.mx-alt td,
+.keyword-table tbody tr:nth-child(even) td,
+.suggestions-page .suggestion-list > button:nth-of-type(even) { background: var(--ds-row-alt); }
+.pt-table tbody tr:hover td,
+.mx-table tbody tr:hover td,
+.keyword-table tbody tr:hover td { background: var(--ds-accent-soft); }
+.pt-table tbody tr.pt-row-selected td { background: color-mix(in srgb, var(--ds-accent) 12%, var(--ds-panel)); }
+/* sticky columns: solid surface, no edge rule */
+.mx-sticky-2, .pt-sticky-1 { box-shadow: none; }
+
+/* ---------- matrix cells: the rank chip sits dead centre, the delta hangs to its right ---------- */
+.mx-table td.mx-untracked { background: var(--ds-panel) !important; }
+.mx-table tr.mx-alt td.mx-untracked { background: var(--ds-row-alt) !important; }
+.mx-table tbody tr:hover td.mx-untracked { background: var(--ds-accent-soft) !important; }
+.mx-cell-btn { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; column-gap: 4px; padding: 0 2px; }
+.mx-cell-btn > :first-child { grid-column: 2; }
+.mx-cell-btn > .mx-delta { grid-column: 3; justify-self: start; min-width: 0; white-space: nowrap; }
+.mx-best, .mx-table th.mx-sticky-2 > button { justify-content: center; text-align: center; }
+
+/* ---------- ideas ---------- */
+.suggestions-page .suggestion-list > button { border-color: transparent; }
+.suggestion-table-head { border-color: transparent; }
+
+/* ---------- competitors ---------- */
+.competitor-kpi small.competitor-evidence { display: inline-flex; width: auto; margin: 0 0 4px; }
+.competitor-keyword-table .keyword-table { min-width: 1080px; table-layout: auto; }
+.competitor-keyword-table .keyword-table th { width: auto; }
+
+/* ---------- Positions: one action row (page actions + filters + view) ---------- */
+.pt-filters.toolbar { flex-wrap: wrap; gap: 8px; padding: 8px 20px 12px; color: var(--ds-muted); font-size: 13px; }
+.pt-filters .pt-seg { height: var(--ds-control-h); padding: 3px; }
+.pt-filters .pt-seg > button { height: 32px; font-size: 14px; }
+.pt-filters .search-field { width: 220px; }
+.pt-filter-on { background: var(--ds-accent-soft); border-color: var(--ds-accent); color: var(--ds-accent); font-weight: 600; }
+.pt-filter-pop { width: 320px; display: grid; gap: 10px; padding: 12px; }
+.pt-filter-pop .pt-filter { display: flex; align-items: center; gap: 8px; color: var(--ds-text); font-size: 13px; }
+.pt-filter-pop .pt-filter-label { flex: 1; color: var(--ds-muted); }
+.pt-filter-pop .pt-select { min-width: 120px; }
+.pt-csv { flex: none; }
+.content > .view-header .page-title-row > .search-field { width: 240px; margin-left: auto; }
+.content > .view-header .page-title-row > .search-field + .ds-btn { margin-left: 0; }
+.kw-stats .snapshot-status { order: 9; margin-left: auto; }
+.content.is-compact .kw-stats.kw-stats-busy { max-height: 40px; padding: 4px 20px; opacity: 1; }
+.pt-csv { width: var(--ds-control-h); height: var(--ds-control-h); border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); }
+
+/* ---------- other tables in the product: same band + zebra ---------- */
+.acquisition-funnel-table th, .experiments-table th { background: var(--ds-head-bg); color: var(--ds-muted); font-size: 13px; font-weight: 600; }
+.experiments-table tbody tr:nth-child(even) td { background: var(--ds-row-alt); }
+.acquisition-funnel-cohort-summary p { white-space: normal; }
+
+/* ---------- competitors list: one line per meta, no ragged wraps ---------- */
+.competitors-list { grid-template-columns: minmax(0, 1fr); }
+.competitors-list button { min-width: 0; }
+.competitors-list button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

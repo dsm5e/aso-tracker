@@ -1,0 +1,63 @@
+{
+  "id": "pdfsign-docusign",
+  "name": "02 · Docusign — Quiet Outline",
+  "kind": "real",
+  "description": "Тёплый белый фон, тонкий цветной контур и спокойная типографика.",
+  "recommendedFor": "PDFSign / PDF signing",
+  "background": {
+    "type": "solid",
+    "css": "#f9f6f3"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 450,
+    "color": "#3e3549",
+    "align": "center",
+    "uppercase": false
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "decorationsHint": "Reference-derived layout. Keep headline zones empty in artwork; all marketing copy is a live localized layer.",
+  "samples": [
+    {
+      "verb": "Open, sign,\nsend & done.",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/docusign-1.png",
+      "text": {
+        "yFraction": 0.09,
+        "titlePx": 143,
+        "subPx": 70,
+        "color": "#3e3549",
+        "safeBottomFraction": 0.29
+      }
+    },
+    {
+      "verb": "One signature.\nReady to reuse.",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/docusign-2.png",
+      "text": {
+        "yFraction": 0.48,
+        "titlePx": 143,
+        "subPx": 70,
+        "color": "#3e3549",
+        "safeBottomFraction": 0.66
+      }
+    },
+    {
+      "verb": "Keep your signed\ndocuments close.",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-competitors/artwork/docusign-3.png",
+      "text": {
+        "yFraction": 0.09,
+        "titlePx": 143,
+        "subPx": 70,
+        "color": "#3e3549",
+        "safeBottomFraction": 0.29
+      }
+    }
+  ]
+}

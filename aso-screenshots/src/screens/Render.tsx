@@ -21,7 +21,7 @@ import { applyLocaleToSlot } from '../lib/applyLocale';
 import {
   APP_STORE_IPHONE_CANVAS,
   APP_STORE_IPHONE_MODEL,
-  IPAD_CANVAS,
+  getIPadCanvas,
 } from '../lib/deviceProfiles';
 
 export function RenderScreen() {
@@ -33,6 +33,7 @@ export function RenderScreen() {
   const screenshots = useStudio((s) => s.screenshots);
   const locales = useStudio((s) => s.locales);
   const iphoneModel = useStudio((s) => s.iphoneModel);
+  const ipadModel = useStudio((s) => s.ipadModel);
 
   const slot = screenshots.find((s) => s.id === slotId);
   const locale = localeCode ? locales.find((l) => l.code === localeCode) ?? null : null;
@@ -55,7 +56,7 @@ export function RenderScreen() {
   if (!slot) return <div data-render-missing>slot {slotId} not found</div>;
 
   const device = slot.device ?? 'iphone';
-  const dims = device === 'ipad' ? IPAD_CANVAS : APP_STORE_IPHONE_CANVAS;
+  const dims = device === 'ipad' ? getIPadCanvas(ipadModel) : APP_STORE_IPHONE_CANVAS;
   const localised = applyLocaleToSlot(slot, locale);
 
   return (
@@ -71,7 +72,7 @@ export function RenderScreen() {
         fitHeight={dims.h}
         showDropZone={false}
         viewModeOverride={slot.action?.aiImageUrl ? 'enhanced' : 'scaffold'}
-        localeMeta={locale ? { rtl: locale.rtl, fontOverride: locale.fontOverride } : undefined}
+        localeMeta={locale ? { rtl: locale.rtl, fontOverride: locale.fontOverride, lang: locale.code } : undefined}
       />
     </div>
   );

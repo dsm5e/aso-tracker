@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { BidRec, Keyword } from "../api.ts";
+import { campaignDisplayName } from "../lib/campaignNames.ts";
 
 interface Props {
   items: Array<{ keyword: Keyword; rec: BidRec }>;
@@ -40,83 +41,68 @@ export default function BulkApplyConfirm({ items, onConfirm, onCancel }: Props) 
   return (
     <>
       <div className="drawer-overlay" onClick={onCancel} />
-      <div style={{
-        position: "fixed",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: "min(640px, 92vw)",
-        maxHeight: "85vh",
-        overflowY: "auto",
-        background: "var(--bg-1)",
-        border: "1px solid var(--amber-dim)",
-        padding: 24,
-        zIndex: 200,
-        boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingBottom: 14, marginBottom: 16, borderBottom: "1px solid var(--line)" }}>
+      <div className="dialog dialog-wide" role="dialog" aria-modal="true">
+        <div className="dialog-head">
           <div>
-            <div style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--amber)" }}>
-              ▮ Bulk apply
-            </div>
-            <div style={{ fontSize: 16, marginTop: 4, color: "var(--bone)" }}>
-              Apply ROI-engine bids to {items.length} keyword{items.length > 1 ? "s" : ""}
+            <div className="dialog-kicker accent-text">Групповое изменение</div>
+            <div className="dialog-title">
+              Применить рекомендации по ставкам для {items.length} ключ{items.length === 1 ? "а" : items.length < 5 ? "ей" : "ей"}
             </div>
           </div>
-          <button className="compact" onClick={onCancel}>esc</button>
+          <button className="compact" onClick={onCancel}>Esc</button>
         </div>
 
-        <div className="hint" style={{ marginBottom: 16 }}>
-          Для каждого ключа будет вызван ASA API <code style={{ color: "var(--cyan)" }}>PUT /targetingkeywords/bulk</code> с новым bid из «recommended». Действия попадут в Actions queue (можно откатить). Реальные деньги тратятся когда Apple показывает рекламу — не сейчас.
+        <div className="hint dialog-block">
+          Для каждого ключа будет создано подтверждённое действие с новой ставкой. Технический путь API <code>PUT /targetingkeywords/bulk</code>. Действия попадут в очередь и останутся в журнале; деньги расходуются только когда Apple начинает показывать рекламу.
         </div>
 
-        <div className="divider" style={{ margin: "0 0 12px" }}>Impact summary</div>
-        <table style={{ marginBottom: 16 }}>
+        <div className="dialog-section">Сводка влияния</div>
+        <table className="dialog-table">
           <tbody>
             <tr>
-              <td className="muted">Total changes</td>
+              <td className="muted">Всего изменений</td>
               <td className="num">{items.length} ключ(ей)</td>
             </tr>
             <tr>
-              <td className="muted">▲ Raises</td>
+              <td className="muted">▲ Повышения</td>
               <td className="num good">{ups}</td>
             </tr>
             <tr>
-              <td className="muted">▼ Lowers</td>
+              <td className="muted">▼ Снижения</td>
               <td className="num bad">{downs}</td>
             </tr>
             {sames > 0 && (
               <tr>
-                <td className="muted">≡ Unchanged</td>
+                <td className="muted">≡ Без изменений</td>
                 <td className="num muted">{sames}</td>
               </tr>
             )}
             <tr>
-              <td className="muted">High-confidence</td>
+              <td className="muted">Высокая достоверность</td>
               <td className="num">{highConfCount} / {items.length}</td>
             </tr>
             <tr>
-              <td className="muted">Estimated daily spend change</td>
+              <td className="muted">Оценка изменения расхода в день</td>
               <td className={`num ${estDailyDelta > 0 ? "warn" : estDailyDelta < 0 ? "good" : ""}`}>
-                {estDailyDelta >= 0 ? "+" : ""}{fmtUsd(estDailyDelta)}/day
+                {estDailyDelta >= 0 ? "+" : ""}{fmtUsd(estDailyDelta)}/день
               </td>
             </tr>
             <tr>
-              <td className="muted">≈ Weekly spend change</td>
+              <td className="muted">≈ Изменение расхода в неделю</td>
               <td className="num">{estDailyDelta >= 0 ? "+" : ""}{fmtUsd(estDailyDelta * 7)}</td>
             </tr>
           </tbody>
         </table>
 
-        <div className="divider" style={{ margin: "0 0 12px" }}>Preview (first 8)</div>
-        <div className="table-wrap" style={{ maxHeight: 220, overflow: "auto", marginBottom: 16 }}>
+        <div className="dialog-section">Предпросмотр (первые 8)</div>
+        <div className="table-wrap dialog-block dialog-preview">
           <table>
             <thead>
               <tr>
-                <th>Keyword</th>
-                <th>Campaign</th>
-                <th className="num">Bid →</th>
-                <th>Conf</th>
+                <th>Ключ</th>
+                <th>Кампания</th>
+                <th className="num">Ставка →</th>
+                <th>Достоверность</th>
               </tr>
             </thead>
             <tbody>
@@ -125,7 +111,7 @@ export default function BulkApplyConfirm({ items, onConfirm, onCancel }: Props) 
                 return (
                   <tr key={k.id}>
                     <td>{k.text}</td>
-                    <td className="muted" style={{ fontSize: 10 }}>{k.campaign_name}</td>
+                    <td className="muted small">{campaignDisplayName(k.campaign_name)}</td>
                     <td className={`num ${dir}`}>
                       {fmtUsd(k.bid)} → {fmtUsd(rec.recommended_bid)}
                     </td>
@@ -140,20 +126,20 @@ export default function BulkApplyConfirm({ items, onConfirm, onCancel }: Props) 
             </tbody>
           </table>
           {items.length > 8 && (
-            <div className="muted" style={{ fontSize: 10, padding: "8px 12px" }}>… and {items.length - 8} more</div>
+            <div className="note dialog-more">… и ещё {items.length - 8}</div>
           )}
         </div>
 
-        <div className="hint" style={{ fontSize: 10, marginBottom: 14 }}>
-          ⚠ Применяет последовательно через API. На 100 ключей займёт ~30 сек. Откатить можно через Actions queue (вручную или новой bulk-операцией).
+        <div className="callout warn dialog-block">
+          Действия выполняются последовательно. На 100 ключей потребуется около 30 секунд. Откат доступен через очередь действий или новым изменением ставок.
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span className="muted" style={{ fontSize: 10 }}>⌘ + Enter to confirm · Esc to cancel</span>
+        <div className="dialog-foot">
+          <span className="note">⌘ + Enter — подтвердить · Esc — отменить</span>
           <div className="btn-group">
-            <button onClick={onCancel}>cancel</button>
+            <button onClick={onCancel}>Отменить</button>
             <button className="primary" onClick={onConfirm}>
-              apply to {items.length} keyword{items.length > 1 ? "s" : ""}
+              Применить для {items.length} ключ{items.length === 1 ? "а" : items.length < 5 ? "ей" : "ей"}
             </button>
           </div>
         </div>

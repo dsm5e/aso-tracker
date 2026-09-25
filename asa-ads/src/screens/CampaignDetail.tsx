@@ -4,6 +4,8 @@ import { api, type Campaign, type DailyTotals, type Keyword, type BidRec } from 
 import Sparkline from "../components/Sparkline.tsx";
 import CampaignControls from "../components/CampaignControls.tsx";
 import BidChangeConfirm from "../components/BidChangeConfirm.tsx";
+import { campaignDisplayName, campaignTechnicalName } from "../lib/campaignNames.ts";
+import Dropdown from "../components/Dropdown.tsx";
 
 function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
 function fmtPct(n: number): string { return `${(n * 100).toFixed(1)}%`; }
@@ -72,8 +74,8 @@ export default function CampaignDetail() {
     }
   }
 
-  if (loading && !campaign) return <div className="empty">Loading…</div>;
-  if (!campaign) return <div className="empty">Campaign not found. <Link to="/">Back</Link></div>;
+  if (loading && !campaign) return <div className="data-state loading">Загружаем кампанию…</div>;
+  if (!campaign) return <div className="data-state">Кампания не найдена. <Link to="/">Вернуться к обзору</Link></div>;
 
   return (
     <>
@@ -88,47 +90,45 @@ export default function CampaignDetail() {
       )}
       <div className="topbar">
         <div>
-          <Link to="/" className="muted" style={{ fontSize: 12 }}>← Dashboard</Link>
-          <h2 style={{ marginTop: 4 }}>{campaign.name}</h2>
-          <div className="muted" style={{ fontSize: 12, marginTop: 2 }}>
-            {campaign.country} · {campaign.bidding_strategy} · daily {fmtUsd(campaign.daily_budget)} · lifetime {fmtUsd(campaign.lifetime_budget)} · {campaign.status}
-          </div>
+          <Link to="/" className="back-link">← Обзор</Link>
+          <h1 className="ds-page-title">{campaignDisplayName(campaign.name)}</h1>
+          {campaignTechnicalName(campaign.name) && <p className="note">{campaign.name}</p>}
+          <p className="ds-page-sub">
+            {campaign.country} · {campaign.bidding_strategy} · дневной лимит {fmtUsd(campaign.daily_budget)} · лимит на весь срок {fmtUsd(campaign.lifetime_budget)} · {campaign.status}
+          </p>
         </div>
-        <div className="controls" style={{ alignItems: "center" }}>
+        <div className="controls">
           <CampaignControls campaign={campaign} onChange={() => void load()} />
-          <select value={days} onChange={(e) => setDays(Number(e.target.value))}>
-            <option value={7}>7 days</option>
-            <option value={14}>14 days</option>
-            <option value={30}>30 days</option>
-          </select>
+          <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }]} />
         </div>
       </div>
 
       <div className="spark-row">
-        <Sparkline title="Spend / day" value={fmtUsd(campaign.spend)} data={daily.map((d) => d.spend)} labels={dates} color="#4ade80" format={fmtUsd} />
-        <Sparkline title="Installs / day" value={String(campaign.installs)} data={daily.map((d) => d.installs)} labels={dates} color="#60a5fa" format={(n) => String(Math.round(n))} />
-        <Sparkline title="CPI" value={campaign.cpi > 0 ? fmtUsd(campaign.cpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="#facc15" format={fmtUsd} />
-        <Sparkline title="Impressions / day" value={String(campaign.impressions)} data={daily.map((d) => d.impressions)} labels={dates} color="#a78bfa" format={(n) => String(Math.round(n))} />
+        <Sparkline title="Расход" value={fmtUsd(campaign.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--ds-c1)" format={fmtUsd} />
+        <Sparkline title="Установки" value={String(campaign.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--ds-c2)" format={(n) => String(Math.round(n))} />
+        <Sparkline title="CPI" value={campaign.cpi > 0 ? fmtUsd(campaign.cpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
+        <Sparkline title="Показы" value={String(campaign.impressions)} data={daily.map((d) => d.impressions)} labels={dates} color="var(--ds-c4)" format={(n) => String(Math.round(n))} />
       </div>
 
       <div className="card">
-        <h3>Keywords ({keywords.length}) · {recs.length} recommendations</h3>
+        <h3>Ключевые слова ({keywords.length}) · рекомендаций: {recs.length}</h3>
       </div>
 
+      <div className="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Keyword</th>
-            <th>Match</th>
-            <th>Status</th>
-            <th className="num">Bid</th>
-            <th className="num">Imp</th>
-            <th className="num">Taps</th>
-            <th className="num">Inst</th>
+            <th>Ключевое слово</th>
+            <th>Тип соответствия</th>
+            <th>Статус</th>
+            <th className="num">Ставка</th>
+            <th className="num">Показы</th>
+            <th className="num">Тапы</th>
+            <th className="num">Установки</th>
             <th className="num">CPT</th>
-            <th className="num">Spend</th>
-            <th>Recommendation</th>
-            <th style={{ minWidth: 200 }}>Quick bid</th>
+            <th className="num">Расход</th>
+            <th>Рекомендация</th>
+            <th className="col-bid">Ставка</th>
           </tr>
         </thead>
         <tbody>
@@ -152,20 +152,20 @@ export default function CampaignDetail() {
                 <td className="num">{fmtUsd(k.spend)}</td>
                 <td>
                   {rec && !alreadyAtRec ? (
-                    <span title={rec.reason} className="muted" style={{ fontSize: 11 }}>
+                    <span title={rec.reason} className="rec-cell">
                       <span className={`badge ${rec.confidence === "high" ? "ok" : rec.confidence === "medium" ? "warn" : ""}`}>
                         {delta > 0 ? "↑" : "↓"} {fmtUsd(rec.recommended_bid)}
-                      </span>{" "}
-                      {rec.reason}
+                      </span>
+                      <span className="rec-reason">{rec.reason}</span>
                     </span>
                   ) : <span className="muted">—</span>}
                 </td>
                 <td>
                   <div className="btn-group">
-                    <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Lower bid 10%")} title={`Lower 10% → ${fmtUsd(down10)}`}>−10%</button>
-                    <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Raise bid 10%")} title={`Raise 10% → ${fmtUsd(up10)}`}>+10%</button>
+                    <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Контролируемое снижение ставки на 10%")} title={`Снизить на 10% → ${fmtUsd(down10)}`}>−10%</button>
+                    <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Контролируемое повышение ставки на 10%")} title={`Повысить на 10% → ${fmtUsd(up10)}`}>+10%</button>
                     {rec && !alreadyAtRec && (
-                      <button className={`compact ${delta > 0 ? "primary up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={rec.reason}>
+                      <button className={`compact ${delta > 0 ? "up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={rec.reason}>
                         → {fmtUsd(rec.recommended_bid)}
                       </button>
                     )}
@@ -176,19 +176,20 @@ export default function CampaignDetail() {
           })}
         </tbody>
       </table>
+      </div>
 
-      <div className="divider">Daily breakdown</div>
-      <div style={{ fontSize: 12, color: "var(--bone-dim)" }}>
-        <table style={{ marginTop: 8, fontSize: 12 }}>
+      <h2 className="ds-h2">Разбивка по дням</h2>
+      <div className="table-wrap">
+        <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th className="num">Imp</th>
-              <th className="num">Taps</th>
+              <th>Дата</th>
+              <th className="num">Показы</th>
+              <th className="num">Тапы</th>
               <th className="num">TTR</th>
-              <th className="num">Inst</th>
+              <th className="num">Установки</th>
               <th className="num">CPI</th>
-              <th className="num">Spend</th>
+              <th className="num">Расход</th>
             </tr>
           </thead>
           <tbody>

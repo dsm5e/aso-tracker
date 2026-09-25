@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { getDb } from "./db.ts";
 import type { AppConfig } from "./config.ts";
 import { fetchRevenueRows, type RevenueRow } from "./revenue.ts";
+import { geoBreakdown } from "./queries.ts";
 
 // ---------------------------------------------------------------------------
 // Command Center — one screen per app: ASA spend/installs ⋈ real revenue ⋈
@@ -51,29 +52,49 @@ export function asoSummary(appId: number): { slug: string | null; snapshotDate: 
   if (!slug) return empty;
   const db = openRankings();
   if (!db) return { ...empty, slug };
-  const last = db.prepare(`SELECT MAX(date) AS d FROM snapshots WHERE app = ?`).get(slug) as { d: string | null };
-  if (!last?.d) return { ...empty, slug };
-  const rows = db.prepare(`
-    SELECT locale,
-           COUNT(*) AS tracked,
-           COUNT(position) AS ranked,
-           SUM(CASE WHEN position <= 10 THEN 1 ELSE 0 END) AS top10,
-           AVG(position) AS avgPos
-    FROM snapshots WHERE app = ? AND date = ?
-    GROUP BY locale
-  `).all(slug, last.d) as Array<{ locale: string; tracked: number; ranked: number; top10: number; avgPos: number | null }>;
-  const bestStmt = db.prepare(`
-    SELECT keyword, position FROM snapshots
-    WHERE app = ? AND date = ? AND locale = ? AND position IS NOT NULL
-    ORDER BY position ASC LIMIT 3
-  `);
-  const locales = rows.map((r) => ({
-    ...r,
-    date: last.d as string,
-    avgPos: r.avgPos === null ? null : Math.round(r.avgPos * 10) / 10,
-    best: bestStmt.all(slug, last.d, r.locale) as Array<{ keyword: string; position: number }>,
-  }));
-  return { slug, snapshotDate: last.d, locales };
+  // Every storefront is refreshed independently. A single global MAX(date)
+  // silently discarded older-but-valid locales; select the newest row per
+  // locale/query and resolve duplicate runs on the same day by the largest id.
+  const latest = db.prepare(`
+    WITH latest_date AS (
+      SELECT locale, keyword, MAX(date) AS date
+        FROM snapshots
+       WHERE app = ?
+    GROUP BY locale, keyword
+    ), latest_id AS (
+      SELECT s.locale, s.keyword, MAX(s.id) AS id
+        FROM snapshots s
+        JOIN latest_date d
+          ON d.locale = s.locale AND d.keyword = s.keyword AND d.date = s.date
+       WHERE s.app = ?
+    GROUP BY s.locale, s.keyword
+    )
+    SELECT s.locale, s.keyword, s.date, s.position
+      FROM snapshots s
+      JOIN latest_id l ON l.id = s.id
+  `).all(slug, slug) as Array<{ locale: string; keyword: string; date: string; position: number | null }>;
+  if (latest.length === 0) return { ...empty, slug };
+
+  const grouped = new Map<string, typeof latest>();
+  for (const row of latest) grouped.set(row.locale, [...(grouped.get(row.locale) ?? []), row]);
+  const locales = Array.from(grouped.entries()).map(([locale, rows]) => {
+    const ranked = rows.filter((row) => row.position !== null);
+    const positionSum = ranked.reduce((sum, row) => sum + Number(row.position), 0);
+    return {
+      locale,
+      date: rows.map((row) => row.date).sort().at(-1) as string,
+      tracked: rows.length,
+      ranked: ranked.length,
+      top10: ranked.filter((row) => Number(row.position) <= 10).length,
+      avgPos: ranked.length ? Math.round((positionSum / ranked.length) * 10) / 10 : null,
+      best: ranked
+        .sort((a, b) => Number(a.position) - Number(b.position))
+        .slice(0, 3)
+        .map((row) => ({ keyword: row.keyword, position: Number(row.position) })),
+    };
+  });
+  const snapshotDate = latest.map((row) => row.date).sort().at(-1) ?? null;
+  return { slug, snapshotDate, locales };
 }
 
 export type Verdict = "scale" | "hold" | "cut" | "no-data";
@@ -95,11 +116,11 @@ export interface CommandGeoRow {
 }
 
 function verdictFor(spend: number, installs: number, revenue: number, roas: number | null, hasFeed: boolean): { verdict: Verdict; reason: string } {
-  if (spend < 2 && installs < 5) return { verdict: "no-data", reason: "spend/installs too thin" };
-  if (!hasFeed) return { verdict: "hold", reason: "no revenue feed — CPI-only signal" };
-  if (roas !== null && roas >= 1.2) return { verdict: "scale", reason: `ROAS ${(roas * 100).toFixed(0)}% — raise bids/budget` };
-  if (roas !== null && roas >= 0.6) return { verdict: "hold", reason: `ROAS ${(roas * 100).toFixed(0)}% — watch` };
-  if (spend >= 5 && revenue === 0) return { verdict: "cut", reason: `$${spend.toFixed(2)} spent, $0 revenue` };
+  if (spend < 2 && installs < 5) return { verdict: "no-data", reason: "мало расхода и установок" };
+  if (!hasFeed) return { verdict: "hold", reason: "нет источника выручки — оценка только по CPI" };
+  if (roas !== null && roas >= 1.2) return { verdict: "scale", reason: `ROAS ${(roas * 100).toFixed(0)}% — поднять ставки и бюджет` };
+  if (roas !== null && roas >= 0.6) return { verdict: "hold", reason: `ROAS ${(roas * 100).toFixed(0)}% — наблюдать` };
+  if (spend >= 5 && revenue === 0) return { verdict: "cut", reason: `$${spend.toFixed(2)} потрачено, выручки нет` };
   if (roas !== null) return { verdict: "cut", reason: `ROAS ${(roas * 100).toFixed(0)}%` };
   return { verdict: "no-data", reason: "" };
 }
@@ -110,27 +131,8 @@ export async function commandCenter(cfg: AppConfig, appId: number, days: number)
   aso: { slug: string | null; snapshotDate: string | null };
   revenueError?: string;
 }> {
-  const db = getDb();
-  const start = new Date(Date.now() - days * 86400_000).toISOString().slice(0, 10);
-  const geo = db.prepare(`
-    SELECT c.country,
-           COUNT(DISTINCT c.id) AS campaigns,
-           SUM(CASE WHEN c.status = 'ENABLED' AND c.display_status = 'ON_HOLD' THEN 1 ELSE 0 END) AS onHold,
-           COALESCE(SUM(d.impressions), 0) AS impressions,
-           COALESCE(SUM(d.taps), 0) AS taps,
-           COALESCE(SUM(d.installs), 0) AS installs,
-           COALESCE(SUM(d.spend), 0) AS spend,
-           COALESCE((
-             SELECT SUM(events) FROM asc_events_daily e
-             WHERE e.country = c.country AND e.date >= ? AND e.app_id = c.app_id
-               AND e.event_type = 'Start Introductory Offer'
-           ), 0) AS trials
-    FROM asa_campaigns c
-    LEFT JOIN asa_daily d ON d.campaign_id = c.id AND d.date >= ?
-    WHERE c.app_id = ?
-    GROUP BY c.country
-    ORDER BY spend DESC
-  `).all(start, start, appId) as Array<{ country: string; campaigns: number; onHold: number; installs: number; spend: number; trials: number }>;
+  // Storefront grain: multi-country campaigns are split by the geo report.
+  const geo = geoBreakdown(days, appId);
 
   const { rows: revRows, error: revenueError } = await fetchRevenueRows(cfg, appId, days);
   const revBy = new Map<string, RevenueRow>(revRows.map((r) => [r.country.toUpperCase(), r]));

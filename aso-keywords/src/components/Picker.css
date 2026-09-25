@@ -1,0 +1,22 @@
+/* Custom dropdown — the admin dashboard's ms-btn / ms-pop on shared/ds tokens. */
+.picker { position: relative; display: inline-flex; min-width: 0; }
+.picker-btn { display: inline-flex; align-items: center; gap: 8px; height: var(--ds-control-h); min-width: 0; max-width: 280px; padding: 0 10px 0 12px; background: var(--ds-input-bg); border: var(--ds-control-border); border-radius: var(--ds-radius-control); color: var(--ds-text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.picker-btn:hover { border-color: var(--ds-muted); }
+.picker-btn:focus-visible { outline: 2px solid var(--ds-accent-soft); border-color: var(--ds-accent); }
+.picker-btn[aria-expanded="true"] { border-color: var(--ds-accent); }
+.picker-value { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-caret { flex: none; color: var(--ds-muted); }
+.picker-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 60; width: max(100%, 260px); display: flex; flex-direction: column; gap: 6px; }
+.picker-pop-end { left: auto; right: 0; }
+.picker-search { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; background: var(--ds-input-bg); border: var(--ds-control-border); border-radius: var(--ds-radius-control); color: var(--ds-muted); }
+.picker-search:focus-within { border-color: var(--ds-accent); }
+.picker-search input { flex: 1; min-width: 0; height: 100%; padding: 0; background: none; border: 0; outline: 0; color: var(--ds-text); font: inherit; font-size: 14px; }
+.picker-search input::placeholder { color: var(--ds-subtle); }
+.picker-list { display: flex; flex-direction: column; gap: 1px; max-height: 320px; overflow-y: auto; }
+.picker-list .ds-pop-row[aria-selected="true"] { background: var(--ds-accent-soft); }
+.picker-row-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-list .ds-pop-row small { margin-left: auto; color: var(--ds-muted); font-size: 12px; font-weight: 500; }
+.picker-check { flex: none; margin-left: auto; }
+.picker-list .ds-pop-row small + .picker-check { margin-left: 0; }
+.picker-empty { padding: 10px; color: var(--ds-muted); font-size: 13px; }
+.picker-flag { flex: none; width: 20px; text-align: center; font-size: 15px; line-height: 1; }

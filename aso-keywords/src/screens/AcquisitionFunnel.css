@@ -1,0 +1,125 @@
+.acquisition-funnel {
+  /* studio tokens (shared/ds.css) — switch with <html data-theme> */
+  --af-canvas: var(--ds-panel);
+  --af-subtle: var(--ds-panel-2);
+  --af-line: var(--ds-hairline);
+  --af-ink: var(--ds-text);
+  --af-secondary: var(--ds-text);
+  --af-muted: var(--ds-muted);
+  --af-accent: var(--ds-accent);
+  --af-accent-soft: var(--ds-accent-soft);
+  --af-positive: var(--ds-good);
+  --af-positive-soft: var(--ds-good-soft);
+  --af-warning: var(--ds-warn);
+  --af-warning-soft: var(--ds-warn-soft);
+  --af-negative: var(--ds-bad);
+  --af-negative-soft: var(--ds-bad-soft);
+  min-height: 100%;
+  overflow: auto;
+  color: var(--af-ink);
+  background: var(--ds-bg);
+}
+
+.acquisition-funnel-header { display: flex; align-items: center; gap: 16px; padding: 20px 20px 12px; }
+.acquisition-funnel-header > div:first-child { min-width: 0; }
+.acquisition-funnel h1, .acquisition-funnel h2, .acquisition-funnel p { margin: 0; }
+.acquisition-funnel h1.ds-page-title { margin-bottom: 4px; }
+.acquisition-funnel-section-heading p { margin-top: 0; color: var(--af-muted); font-size: 14px; line-height: 20px; }
+.acquisition-funnel-actions { display: flex; gap: 8px; margin-left: auto; }
+.acquisition-funnel-error button { height: var(--ds-control-h); border-radius: var(--ds-radius-control); padding: 0 14px; border: var(--ds-control-border); background: var(--ds-input-bg); color: var(--ds-text); font-size: 14px; font-weight: 500; cursor: pointer; }
+.acquisition-funnel-error button:hover { border-color: var(--ds-muted); }
+.acquisition-funnel-actions button:disabled { opacity: .55; cursor: default; }
+.acquisition-funnel-actions button:focus-visible, .acquisition-funnel-error button:focus-visible { outline: 2px solid var(--af-accent); outline-offset: 2px; }
+.acquisition-funnel-message { margin: 12px 20px 0 !important; padding: 10px 12px; border: 0; border-radius: var(--ds-radius-card); background: var(--af-subtle); color: var(--af-secondary); font-size: 13px; line-height: 19px; }
+.acquisition-funnel-content { padding: 12px 20px 28px; background: var(--ds-bg); }
+.acquisition-funnel-section, .acquisition-funnel-sources { margin-bottom: 16px; border: 0; border-radius: var(--ds-radius-card); background: var(--af-canvas); box-shadow: var(--ds-shadow); overflow: hidden; }
+.acquisition-funnel-quality { margin-top: 4px; border: 0; border-radius: var(--ds-radius-card); background: var(--af-canvas); box-shadow: var(--ds-shadow); overflow: hidden; }
+.acquisition-funnel-quality > summary { min-height: 48px; display: flex; align-items: center; padding: 0 16px; color: var(--af-secondary); font-size: 16px; font-weight: 600; cursor: pointer; list-style: none; }
+.acquisition-funnel-quality > summary::-webkit-details-marker { display: none; }
+.acquisition-funnel-quality > summary::before { width: 14px; margin-right: 7px; color: var(--af-muted); content: '›'; font-size: 16px; line-height: 1; }
+.acquisition-funnel-quality[open] > summary { border-bottom: 1px solid var(--af-line); }
+.acquisition-funnel-quality[open] > summary::before { transform: rotate(90deg); }
+.acquisition-funnel-quality .data-quality { border: 0; border-radius: 0; box-shadow: none; }
+.acquisition-funnel-section-heading { min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--af-line); }
+.acquisition-funnel-section-heading h2 { font-size: 16px; line-height: 24px; font-weight: 600; }
+.acquisition-funnel-window { margin-left: auto; color: var(--af-muted); font-size: 13px; white-space: nowrap; }
+.acquisition-funnel-spend { margin-left: auto; color: var(--af-ink); font-size: 14px; font-weight: 600; white-space: nowrap; }
+.acquisition-funnel-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.acquisition-funnel-steps-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.acquisition-funnel-steps-four .acquisition-funnel-step:nth-child(n+4) { border-top: 0; }
+.acquisition-funnel-steps-four .acquisition-funnel-step:nth-child(3n) { border-right: 1px solid var(--af-line); }
+.acquisition-funnel-steps-four .acquisition-funnel-step:nth-child(4n) { border-right: 0; }
+.acquisition-funnel-steps .acquisition-funnel-step:nth-child(n+4) { border-top: 1px solid var(--af-line); }
+.acquisition-funnel-steps .acquisition-funnel-step:nth-child(3n) { border-right: 0; }
+.acquisition-funnel-step { position: relative; min-height: 118px; padding: 16px; border-right: 1px solid var(--af-line); }
+.acquisition-funnel-step:last-child { border-right: 0; }
+.acquisition-funnel-step-number { position: absolute; top: 16px; right: 16px; color: var(--af-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.acquisition-funnel-step-label { display: block; max-width: 22ch; color: var(--af-secondary); font-size: 14px; line-height: 20px; font-weight: 600; }
+.acquisition-funnel-step strong { display: block; margin: 8px 0 2px; color: var(--ds-strong); font-size: 24px; line-height: 28px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.acquisition-funnel-step small { display: block; overflow: hidden; color: var(--af-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.acquisition-funnel-step p { max-width: 34ch; margin-top: 8px; padding-right: 64px; color: var(--af-muted); font-size: 13px; line-height: 19px; }
+.acquisition-funnel-kind { position: absolute; right: 16px; bottom: 14px; display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--ds-radius-pill); background: var(--af-subtle); color: var(--af-secondary); font-size: 11px; font-weight: 600; }
+.acquisition-funnel-kind-fact { background: var(--af-positive-soft); color: var(--af-positive); }
+.acquisition-funnel-kind-model { background: var(--af-accent-soft); color: var(--af-accent); }
+.acquisition-funnel-kind-unavailable { background: var(--af-warning-soft); color: var(--af-warning); }
+.acquisition-funnel-conversions { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border-top: 1px solid var(--af-line); background: var(--af-subtle); }
+.acquisition-funnel-conversion { min-height: 76px; padding: 12px 16px; border-right: 1px solid var(--af-line); }
+.acquisition-funnel-conversion:last-child { border-right: 0; }
+.acquisition-funnel-conversion span, .acquisition-funnel-conversion small { display: block; }
+.acquisition-funnel-conversion span { color: var(--af-secondary); font-size: 14px; font-weight: 600; }
+.acquisition-funnel-conversion strong { display: block; margin-top: 4px; color: var(--ds-strong); font-size: 20px; line-height: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.acquisition-funnel-conversion small { margin-top: 4px; color: var(--af-muted); font-size: 13px; line-height: 19px; }
+.acquisition-funnel-conversion-unavailable strong { color: var(--af-warning); }
+.acquisition-funnel-scope { display: inline-flex; align-items: center; height: var(--ds-control-h); gap: 2px; margin-left: auto; padding: 3px; border: var(--ds-control-border); border-radius: var(--ds-radius-control); background: var(--ds-input-bg); }
+.acquisition-funnel-scope button { height: 32px; border: 0; border-radius: var(--ds-radius-inner); padding: 0 10px; background: transparent; color: var(--ds-text); font-size: 14px; font-weight: 500; cursor: pointer; }
+.acquisition-funnel-scope button:hover { background: var(--ds-accent-soft); }
+.acquisition-funnel-scope button.selected { background: var(--ds-accent-soft); color: var(--ds-accent); font-weight: 600; box-shadow: none; }
+.acquisition-funnel-gap { display: grid; gap: 4px; padding: 16px; background: var(--af-warning-soft); color: var(--af-secondary); font-size: 14px; }
+.acquisition-funnel-gap strong { color: var(--af-warning); font-size: 14px; font-weight: 600; }
+.acquisition-funnel-gap small { color: var(--af-muted); font-size: 13px; }
+.acquisition-funnel-note { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--af-line); background: var(--af-canvas); color: var(--af-muted); font-size: 13px; line-height: 19px; }
+.acquisition-funnel-note strong { flex: none; color: var(--af-secondary); }
+.acquisition-funnel-table-wrap { width: 100%; overflow-x: auto; }
+.acquisition-funnel-table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.acquisition-funnel-table th, .acquisition-funnel-table td { min-width: 112px; padding: 10px 12px; border-bottom: 1px solid var(--af-line); text-align: right; white-space: nowrap; }
+.acquisition-funnel-table th:first-child, .acquisition-funnel-table td:first-child { min-width: 190px; text-align: left; }
+.acquisition-funnel-table th { color: var(--ds-strong); background: var(--af-canvas); font-size: 14px; font-weight: 600; }
+.acquisition-funnel-table tbody tr:last-child td { border-bottom: 0; }
+.acquisition-funnel-table tbody tr:hover td { background: var(--ds-accent-soft); }
+.acquisition-funnel-table td strong, .acquisition-funnel-table td small { display: block; }
+.acquisition-funnel-table td strong { color: var(--af-ink); font-size: 14px; font-weight: 600; }
+.acquisition-funnel-table td small { margin-top: 2px; color: var(--af-muted); font-size: 12px; }
+.acquisition-funnel-cohort-summary { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-bottom: 1px solid var(--af-line); }
+.acquisition-funnel-cohort-summary article { min-width: 0; padding: 12px 16px; border-right: 1px solid var(--af-line); }
+.acquisition-funnel-cohort-summary article:last-child { border-right: 0; }
+.acquisition-funnel-cohort-summary article > div { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.acquisition-funnel-cohort-summary span { color: var(--af-accent); font-size: 14px; font-weight: 600; }
+.acquisition-funnel-cohort-summary small { color: var(--af-muted); font-size: 12px; font-weight: 500; }
+.acquisition-funnel-cohort-summary strong { display: block; margin-top: 8px; color: var(--ds-strong); font-size: 20px; line-height: 24px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+.acquisition-funnel-cohort-summary strong small { display: inline; margin-left: 3px; }
+.acquisition-funnel-cohort-summary p { margin-top: 4px; overflow: hidden; color: var(--af-muted); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.acquisition-funnel-info { display: inline-grid; width: 13px; height: 13px; margin-left: 5px; place-items: center; border: 1px solid var(--af-line); border-radius: var(--ds-radius-inner); color: var(--af-muted); font-size: 8px; font-weight: 700; cursor: help; }
+.acquisition-funnel-cohort-table th:not(:first-child), .acquisition-funnel-cohort-table td:not(:first-child) { min-width: 132px; }
+.acquisition-funnel-cohort-table td > span { display: inline-flex; align-items: center; height: 20px; margin-top: 4px; padding: 0 8px; border-radius: var(--ds-radius-pill); font-size: 11px; font-weight: 600; }
+.acquisition-funnel-cohort-table td.acquisition-funnel-cohort-mature > span { background: var(--af-positive-soft); color: var(--af-positive); }
+.acquisition-funnel-cohort-table td.acquisition-funnel-cohort-immature { background: color-mix(in srgb, var(--af-warning-soft) 42%, var(--af-canvas)); }
+.acquisition-funnel-cohort-table td.acquisition-funnel-cohort-immature > strong,
+.acquisition-funnel-cohort-table td.acquisition-funnel-cohort-immature > small { color: var(--af-muted); }
+.acquisition-funnel-cohort-table td.acquisition-funnel-cohort-immature > span { background: var(--af-warning-soft); color: var(--af-warning); }
+.acquisition-funnel-sources ul { margin: 0; padding: 0; list-style: none; }
+.acquisition-funnel-sources li { min-height: 52px; display: grid; grid-template-columns: 8px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--af-line); }
+.acquisition-funnel-sources li:last-child { border-bottom: 0; }
+.acquisition-funnel-source-status { width: 7px; height: 7px; border-radius: 50%; background: var(--af-muted); }
+.acquisition-funnel-source-status-ok { background: var(--af-positive); }.acquisition-funnel-source-status-stale { background: var(--af-warning); }.acquisition-funnel-source-status-error { background: var(--af-negative); }
+.acquisition-funnel-sources strong, .acquisition-funnel-sources small { display: block; }.acquisition-funnel-sources strong { font-size: 14px; font-weight: 600; }.acquisition-funnel-sources small { margin-top: 2px; color: var(--af-muted); font-size: 13px; }.acquisition-funnel-sources b { color: var(--af-muted); font-size: 13px; font-weight: 600; }
+.acquisition-funnel-no-sources, .acquisition-funnel-loading { padding: 16px; color: var(--af-muted); font-size: 14px; }.acquisition-funnel-loading { display: grid; gap: 8px; margin: 12px 20px; border: 0; border-radius: var(--ds-radius-card); background: var(--af-canvas); box-shadow: var(--ds-shadow); }
+.acquisition-funnel-loading span { display: block; height: 54px; border-radius: var(--ds-radius-inner); background: linear-gradient(90deg, var(--af-subtle), var(--af-line), var(--af-subtle)); background-size: 200% 100%; animation: acquisition-funnel-skeleton 1.3s ease-in-out infinite; }
+.acquisition-funnel-error { display: grid; gap: 5px; margin: 14px 20px; padding: 16px; border: 0; border-radius: var(--ds-radius-card); background: var(--af-negative-soft); color: var(--af-secondary); font-size: 14px; }.acquisition-funnel-error strong { color: var(--af-negative); }.acquisition-funnel-error button { width: max-content; margin-top: 4px; }
+
+@keyframes acquisition-funnel-skeleton { to { background-position: -200% 0; } }
+
+@media (prefers-reduced-motion: reduce) { .acquisition-funnel-loading span { animation: none; } }
+
+@media (max-width: 980px) { .acquisition-funnel-cohort-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }.acquisition-funnel-cohort-summary article:nth-child(3n) { border-right: 0; }.acquisition-funnel-cohort-summary article:nth-child(n+4) { border-top: 1px solid var(--af-line); } }
+
+@media (max-width: 760px) { .acquisition-funnel-header { align-items: flex-start; flex-direction: column; }.acquisition-funnel-actions { width: 100%; margin-left: 0; flex-wrap: wrap; }.acquisition-funnel-country { flex: 1; }.acquisition-funnel-country .picker-btn { width: 100%; max-width: none; }.acquisition-funnel-content { padding-inline: 10px; }.acquisition-funnel-message, .acquisition-funnel-error, .acquisition-funnel-loading { margin-inline: 10px !important; }.acquisition-funnel-steps, .acquisition-funnel-steps-four { grid-template-columns: 1fr; }.acquisition-funnel-step, .acquisition-funnel-step:last-child, .acquisition-funnel-steps-four .acquisition-funnel-step:nth-child(3n) { border-right: 0; border-bottom: 1px solid var(--af-line); }.acquisition-funnel-step:last-child { border-bottom: 0; }.acquisition-funnel-steps .acquisition-funnel-step:nth-child(n+4) { border-top: 0; }.acquisition-funnel-conversions { grid-template-columns: 1fr; }.acquisition-funnel-conversion { border-right: 0; border-bottom: 1px solid var(--af-line); }.acquisition-funnel-conversion:last-child { border-bottom: 0; }.acquisition-funnel-section-heading { align-items: flex-start; flex-direction: column; }.acquisition-funnel-scope { margin-left: 0; }.acquisition-funnel-window, .acquisition-funnel-spend { margin-left: 0; }.acquisition-funnel-note { flex-direction: column; }.acquisition-funnel-cohort-summary { grid-template-columns: 1fr; }.acquisition-funnel-cohort-summary article, .acquisition-funnel-cohort-summary article:nth-child(3n) { border-right: 0; }.acquisition-funnel-cohort-summary article + article { border-top: 1px solid var(--af-line); } }

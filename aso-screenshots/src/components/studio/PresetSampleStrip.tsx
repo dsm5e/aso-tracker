@@ -120,7 +120,8 @@ export function PresetSampleStrip({ preset, accentOverride, primarySourceUrl, sa
                 preset={preset}
                 verb={s.verb}
                 descriptor={s.descriptor}
-                sourceUrl={sourceUrl}
+                sourceUrl={s.sourceLayout === 'full-bleed' ? s.screenSrc : sourceUrl}
+                sourceLayout={s.sourceLayout}
                 accentOverride={accentOverride}
                 device={s.device}
                 text={s.text}

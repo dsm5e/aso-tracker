@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NodeShell, inputStyle, labelStyle, patchData, triggerRun, stopProp } from './common';
+import { NodeShell, patchData, triggerRun, stopProp } from './common';
 import { openLightbox } from '../components/Lightbox';
 import { HistoryPicker } from '../components/HistoryPicker';
 import { API } from '../store/graphClient';
@@ -85,39 +85,42 @@ function MultiShotEditor({ id, shots }: { id: string; shots: { prompt: string; d
   return (
     <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, minHeight: 0 }}>
       {shots.map((s, i) => (
-        <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: 8, background: '#0a0a0a', border: '1px solid #2a2a2a', borderRadius: 6, flex: 1, minHeight: 120 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ ...labelStyle, flex: 1 }}>Shot {i + 1}</span>
-            <input
+        <div key={i} className="vid-subcard" style={{ flex: 1, minHeight: 120 }}>
+          <div className="vid-row">
+            <span className="vid-label" style={{ flex: 1, margin: 0 }}>Shot {i + 1}</span>
+            <input className="ds-input"
               type="number" min={1} max={15} step={1}
               value={s.duration}
               onChange={(e) => update(i, { duration: Number(e.target.value) })}
-              style={{ ...inputStyle, width: 60 }}
+              style={{ width: 64 }}
             />
-            <span style={{ fontSize: 10, color: '#9CA3AF' }}>s</span>
+            <span className="vid-meta">s</span>
             {shots.length > 1 && (
-              <span
+              <button
+                type="button"
+                className="ds-icon-btn"
                 onClick={() => remove(i)}
-                title="remove shot"
-                style={{ cursor: 'pointer', color: '#EF4444', fontSize: 14, padding: '0 4px' }}
-              >×</span>
+                title="Remove shot"
+                style={{ width: 28, height: 28, fontSize: 16 }}
+              >×</button>
             )}
           </div>
-          <textarea
+          <textarea className="ds-textarea"
             value={s.prompt}
             onChange={(e) => update(i, { prompt: e.target.value })}
             placeholder={`shot ${i + 1} prompt — what happens here…`}
-            style={{ ...inputStyle, minHeight: 50, flex: 1, resize: 'none' }}
+            style={{ minHeight: 50, flex: 1, resize: 'none' }}
           />
         </div>
       ))}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <div className="vid-row">
         <button
+          type="button"
+          className="ds-btn ds-btn-sm"
           onClick={add}
           disabled={total >= 15}
-          style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '4px 10px', cursor: total >= 15 ? 'not-allowed' : 'pointer', fontSize: 11, opacity: total >= 15 ? 0.4 : 1 }}
-        >+ shot</button>
-        <span style={{ fontSize: 10, color: total > 15 ? '#EF4444' : '#9CA3AF' }}>
+        >+ Shot</button>
+        <span className="vid-meta" style={{ color: total > 15 ? 'var(--ds-bad)' : undefined }}>
           total {total}s {total > 15 && '(over Kling 15s cap)'}
         </span>
       </div>
@@ -143,20 +146,20 @@ function StageTimeline({ stage, progress }: { stage?: string; progress?: number 
     if (FAL_STAGES[i].matches(stage)) { activeIdx = i; break; }
   }
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: '#9CA3AF' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--ds-muted)' }}>
       {FAL_STAGES.map((s, i) => {
         const past = i < activeIdx;
         const active = i === activeIdx;
-        const dotColor = past ? '#22C55E' : (active ? '#F97316' : '#3a3a3a');
+        const dotColor = past ? 'var(--ds-good)' : (active ? 'var(--ds-warn)' : 'var(--ds-dim)');
         return (
           <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1 }}>
-            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: dotColor, boxShadow: active ? `0 0 4px ${dotColor}` : 'none', animation: active ? 'asov-pulse 1.2s ease-in-out infinite' : undefined, flex: '0 0 auto' }} />
-            <span style={{ color: active ? '#FBBF24' : (past ? '#22C55E' : '#6b7280'), fontWeight: active ? 600 : 400, whiteSpace: 'nowrap' }}>{s.label}</span>
-            {i < FAL_STAGES.length - 1 && <span style={{ flex: 1, height: 1, background: past ? '#22C55E' : '#3a3a3a', minWidth: 6 }} />}
+            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: dotColor, boxShadow: active ? `0 0 4px ${dotColor}` : 'none', animation: active ? 'asov-pulse 1.2s ease-in-out infinite' : undefined, flex: '0 0 auto' }} />
+            <span style={{ color: active ? 'var(--ds-warn)' : (past ? 'var(--ds-good)' : 'var(--ds-subtle)'), fontWeight: active ? 600 : 400, whiteSpace: 'nowrap' }}>{s.label}</span>
+            {i < FAL_STAGES.length - 1 && <span style={{ flex: 1, height: 1, background: past ? 'var(--ds-good)' : 'var(--ds-dim)', minWidth: 6 }} />}
           </div>
         );
       })}
-      {typeof progress === 'number' && <span style={{ color: '#FBBF24', fontSize: 10, marginLeft: 4 }}>{Math.round(progress * 100)}%</span>}
+      {typeof progress === 'number' && <span style={{ color: 'var(--ds-warn)', fontSize: 11, fontWeight: 600, marginLeft: 4 }}>{Math.round(progress * 100)}%</span>}
     </div>
   );
 }
@@ -188,11 +191,11 @@ function InflightControls({ nodeId, stage, progress }: { nodeId: string; stage?:
     } finally { setBusy(false); }
   };
   return (
-    <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 8, background: '#1f1410', border: '1px solid #422', borderRadius: 6 }}>
+    <div className="nodrag vid-subcard" style={{ background: 'var(--ds-warn-soft)' }}>
       <StageTimeline stage={stage} progress={progress} />
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={cancel} disabled={busy} title="Cancel the fal job — stops compute, no cost for unfinished work" style={{ flex: 1, background: '#171717', color: '#FCA5A5', border: '1px solid #422', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>⏹ Stop</button>
-        <button onClick={regenerate} disabled={busy} title="Cancel and immediately resubmit with current settings" style={{ flex: 1, background: '#3B82F6', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>↻ Regenerate</button>
+      <div className="vid-row">
+        <button onClick={cancel} disabled={busy} title="Cancel the fal job — stops compute, no cost for unfinished work" className="ds-btn ds-btn-sm ds-btn-danger" style={{ flex: 1 }}>⏹ Stop</button>
+        <button onClick={regenerate} disabled={busy} title="Cancel and immediately resubmit with current settings" className="ds-btn ds-btn-sm vid-run" style={{ flex: 1 }}>↻ Regenerate</button>
       </div>
     </div>
   );
@@ -224,28 +227,29 @@ function RecoverFalJob({ nodeId, mode, suggestedRequestId }: { nodeId: string; m
   if (!open) {
     return (
       <button
-        className="nodrag"
+        className="ds-btn ds-btn-sm ds-btn-ghost nodrag"
         onClick={() => setOpen(true)}
         title="Attach to a fal.ai request_id from the dashboard and pull the result"
-        style={{ background: '#171717', color: '#9CA3AF', border: '1px dashed #2a2a2a', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', textAlign: 'left' }}
+        style={{ justifyContent: 'flex-start', color: 'var(--ds-muted)' }}
       >🔌 Recover existing fal job…</button>
     );
   }
   return (
-    <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 11, padding: 6, background: '#0e0e0e', border: '1px dashed #2a2a2a', borderRadius: 6 }}>
-      <span style={{ color: '#9CA3AF', fontSize: 10 }}>Paste fal.ai request_id to pull the existing result:</span>
+    <div className="nodrag vid-subcard">
+      <span className="vid-meta">Paste fal.ai request_id to pull the existing result:</span>
       <input
         type="text"
         value={reqId}
         onChange={(e) => setReqId(e.target.value)}
         placeholder="00000000-0000-0000-0000-000000000000"
-        style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '4px 6px', fontSize: 11, fontFamily: 'monospace' }}
+        className="ds-input"
+        style={{ fontFamily: 'var(--ds-font-mono)', fontSize: 12 }}
       />
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={recover} disabled={busy} style={{ flex: 1, background: '#3B82F6', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>{busy ? '…' : 'Recover'}</button>
-        <button onClick={() => setOpen(false)} style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '4px 8px', fontSize: 11, cursor: 'pointer' }}>×</button>
+      <div className="vid-row">
+        <button onClick={recover} disabled={busy} className="ds-btn ds-btn-sm vid-run" style={{ flex: 1 }}>{busy ? '…' : 'Recover'}</button>
+        <button onClick={() => setOpen(false)} className="ds-btn ds-btn-sm" title="Close">×</button>
       </div>
-      {msg && <span style={{ color: msg.startsWith('✓') ? '#22C55E' : '#EF4444', fontSize: 10 }}>{msg}</span>}
+      {msg && <span style={{ color: msg.startsWith('✓') ? 'var(--ds-good)' : 'var(--ds-bad)', fontSize: 12 }}>{msg}</span>}
     </div>
   );
 }
@@ -273,7 +277,7 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
           label: data.model === 'kling' ? 'image @Element1' : 'image 2',
           // Match the Reference Image node header colour so the binding reads
           // as "drop a reference image here" at a glance.
-          color: data.model === 'kling' ? '#7C3AED' : undefined,
+          color: data.model === 'kling' ? 'var(--vid-cat-source)' : undefined,
         },
         { id: 'prompt', label: 'prompt' },
       ]}
@@ -286,17 +290,17 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
         onPick={(url) => patchData(id, { status: 'done', outputUrl: url, error: undefined })}
       />
       <div className="nodrag">
-        <span style={labelStyle}>Mode</span>
-        <select className="nodrag" onMouseDown={stopProp} value={data.mode} onChange={(e) => patchData(id, { mode: e.target.value })} style={inputStyle}>
+        <span className="vid-label">Mode</span>
+        <select className="nodrag ds-select" onMouseDown={stopProp} value={data.mode} onChange={(e) => patchData(id, { mode: e.target.value })}>
           <option value="image">image</option>
           <option value="text">text</option>
         </select>
       </div>
-      <div className="nodrag" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      <div className="nodrag vid-grid2">
         <div>
-          <span style={labelStyle}>Model</span>
+          <span className="vid-label">Model</span>
           <select
-            className="nodrag"
+            className="nodrag ds-select"
             onMouseDown={stopProp}
             value={data.model}
             onChange={(e) => {
@@ -304,7 +308,6 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
               const res = SUPPORTED[m].includes(data.resolution) ? data.resolution : SUPPORTED[m][0];
               patchData(id, { model: m, resolution: res });
             }}
-            style={inputStyle}
           >
             <option value="kling">Kling v3 Pro</option>
             <option value="seedance">Seedance 2.0</option>
@@ -312,8 +315,8 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
           </select>
         </div>
         <div>
-          <span style={labelStyle}>Resolution</span>
-          <select className="nodrag" onMouseDown={stopProp} value={data.resolution} onChange={(e) => patchData(id, { resolution: e.target.value })} style={inputStyle}>
+          <span className="vid-label">Resolution</span>
+          <select className="nodrag ds-select" onMouseDown={stopProp} value={data.resolution} onChange={(e) => patchData(id, { resolution: e.target.value })}>
             {supported.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </div>
@@ -321,28 +324,28 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
             Hide it to stop misleading the user. */}
         {!data.multiShot && (
           <div>
-            <span style={labelStyle}>Duration</span>
-            <select className="nodrag" onMouseDown={stopProp} value={data.duration} onChange={(e) => patchData(id, { duration: Number(e.target.value) })} style={inputStyle}>
+            <span className="vid-label">Duration</span>
+            <select className="nodrag ds-select" onMouseDown={stopProp} value={data.duration} onChange={(e) => patchData(id, { duration: Number(e.target.value) })}>
               {[3, 5, 10, 15].map((d) => <option key={d} value={d}>{d}s</option>)}
             </select>
           </div>
         )}
         {data.multiShot && (
           <div>
-            <span style={labelStyle}>Total (computed)</span>
-            <div style={{ ...inputStyle, color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>
+            <span className="vid-label">Total (computed)</span>
+            <div className="ds-input" style={{ color: 'var(--ds-muted)', display: 'flex', alignItems: 'center' }}>
               {totalDuration(data)}s
             </div>
           </div>
         )}
       </div>
-      <label className="nodrag" style={{ fontSize: 11, display: 'flex', gap: 6, alignItems: 'center' }}>
+      <label className="nodrag vid-check">
         <input type="checkbox" checked={data.audio} onChange={(e) => patchData(id, { audio: e.target.checked })} />
         audio
       </label>
       {data.model === 'kling' && (
         <>
-          <label className="nodrag" style={{ fontSize: 11, display: 'flex', gap: 6, alignItems: 'center' }}>
+          <label className="nodrag vid-check">
             <input
               type="checkbox"
               checked={!!data.multiShot}
@@ -360,13 +363,12 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
           </label>
           {data.multiShot && (
             <div className="nodrag">
-              <span style={labelStyle}>Shot type</span>
+              <span className="vid-label">Shot type</span>
               <select
-                className="nodrag"
+                className="nodrag ds-select"
                 onMouseDown={stopProp}
                 value={data.shotType ?? 'customize'}
                 onChange={(e) => patchData(id, { shotType: e.target.value as 'customize' | 'intelligent' })}
-                style={inputStyle}
               >
                 <option value="customize">customize (follow durations literally)</option>
                 <option value="intelligent">intelligent (Kling decides cuts)</option>
@@ -380,16 +382,16 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
         <MultiShotEditor id={id} shots={data.shots ?? []} />
       ) : (
         <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-          <span style={labelStyle}>Prompt</span>
-          <textarea
+          <span className="vid-label">Prompt</span>
+          <textarea className="ds-textarea"
             value={data.prompt ?? ''}
             onChange={(e) => patchData(id, { prompt: e.target.value })}
             placeholder="describe the motion…"
-            style={{ ...inputStyle, minHeight: 50, flex: 1, resize: 'none' }}
+            style={{ minHeight: 50, flex: 1, resize: 'none' }}
           />
         </div>
       )}
-      {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div className="vid-err">{data.error}</div>}
       {/* In-flight controls — Stop / Regenerate when a fal job is running.
           Without this the Generate button would just submit a second parallel
           job and we'd pay for both. */}
@@ -399,13 +401,14 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
       {/* Surface the fal request_id so the operator can cross-reference in
           the fal dashboard and recover the result if state was lost. */}
       {data.falRequestId && (
-        <div className="nodrag" style={{ fontSize: 10, color: '#9CA3AF', wordBreak: 'break-all', display: 'flex', gap: 6, alignItems: 'center' }}>
+        <div className="nodrag vid-row vid-meta" style={{ wordBreak: 'break-all' }}>
           <span style={{ opacity: 0.7 }}>fal:</span>
-          <code style={{ background: '#0e0e0e', padding: '2px 4px', borderRadius: 3, fontSize: 10, flex: 1 }}>{data.falRequestId}</code>
+          <code style={{ background: 'var(--ds-panel-2)', padding: '4px 6px', borderRadius: 'var(--ds-radius-inner)', fontSize: 11, fontFamily: 'var(--ds-font-mono)', flex: 1 }}>{data.falRequestId}</code>
           <button
             onClick={() => navigator.clipboard?.writeText(data.falRequestId!)}
             title="copy"
-            style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 3, padding: '1px 6px', fontSize: 10, cursor: 'pointer' }}
+            className="ds-icon-btn"
+            style={{ width: 28, height: 28 }}
           >📋</button>
         </div>
       )}
@@ -414,14 +417,13 @@ export function VideoGenNode({ id, data }: { id: string; data: Data }) {
       )}
       {data.status === 'done' && data.outputUrl && (
         <>
-          <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 6, background: '#000' }} />
-          <div className="nodrag" style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 10, color: '#9CA3AF' }}>
+          <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 'var(--ds-radius-control)', background: '#000' }} />
+          <div className="nodrag vid-row vid-meta">
             <span>cost ${data.cost?.toFixed(3)} · {data.elapsed?.toFixed(1)}s</span>
             <div style={{ flex: 1 }} />
-            <button
+            <button className="ds-btn ds-btn-sm"
               onClick={() => openLightbox({ kind: 'video', src: data.outputUrl! })}
               title="open fullscreen"
-              style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 8px', cursor: 'zoom-in', fontSize: 11 }}
             >⛶ fullscreen</button>
           </div>
         </>

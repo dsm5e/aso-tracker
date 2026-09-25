@@ -27,7 +27,7 @@ export function Modal({ open, onClose, children, width = 720, className = '' }: 
         position: 'fixed',
         inset: 0,
         zIndex: 1000,
-        background: 'rgba(0,0,0,0.6)',
+        background: 'rgba(1, 0, 48, 0.28)',
         display: 'grid',
         placeItems: 'center',
       }}

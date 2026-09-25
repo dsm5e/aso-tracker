@@ -20,6 +20,13 @@ export default defineConfig({
         target: "http://localhost:5194",
         rewrite: (p) => p.replace(/^\/asa-api/, "/api"),
       },
+      // Keywords API (rankings, data quality, app list) for the keyword screens;
+      // same prefix the umbrella proxy on :5173 serves.
+      "/keywords-api": {
+        target: "http://localhost:5174",
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/keywords-api/, "/api"),
+      },
       "/asa-sse": {
         target: "http://localhost:5194",
         changeOrigin: true,

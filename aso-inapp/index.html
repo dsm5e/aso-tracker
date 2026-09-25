@@ -3,66 +3,257 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>ASO Studio — In-App Events</title>
+<title>In-App</title>
+<script>
+  // Theme: ?theme=dark|light, else saved choice, else light (shared studio convention).
+  (function(){try{var q=new URLSearchParams(location.search).get("theme");
+    var t=q==="dark"||q==="light"?q:(localStorage.getItem("theme")==="dark"?"dark":"light");
+    document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme="light";}})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#f4f5f8; --panel:#ffffff; --panel2:#f0f1f4; --line:#e3e4ea; --line2:#d2d4dc;
-    --text:#1c1d22; --muted:#71727d; --accent:#ff5d7d; --accent-d:#e23e60;
-    --ok:#1ca64c; --bad:#e0322c; --amber:#f59e0b;
-    --shadow:0 8px 30px rgba(20,20,40,.10);
-    --radius:16px; --card-radius:22px;
+  /* ===== Design-system tokens — synced from shared/ds.css (keep in sync) =====
+     Inlined because this page is served standalone by `python3 -m http.server`
+     rooted in aso-inapp/, which cannot reach ../shared/. */
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ds-font: Inter, -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --ds-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+
+  /* surfaces */
+  --ds-bg: #fafaf9;
+  --ds-panel: #ffffff;
+  --ds-panel-2: #f6f6f3;
+  --ds-hover: #f1f1ed;
+  --ds-selected: #f1ebff;
+  --ds-input-bg: #ffffff;
+  --ds-tip-bg: #ffffff;
+  --ds-row-total: #faf9fc;
+
+  /* lines */
+  --ds-border: #e5e5df;
+  --ds-hairline: #ececE7;
+  --ds-grid: #efefea;
+  --ds-axis: #d6d6cf;
+  --ds-ctl-border: #b8b8b8;
+
+  /* ink */
+  --ds-text: #363630;
+  --ds-strong: #111111;
+  --ds-muted: #696969;
+  --ds-subtle: #9a9a93;
+
+  /* accent — one purple action color */
+  --ds-accent: #6720ff;
+  --ds-accent-hover: #5516e0;
+  --ds-accent-soft: #f1ebff;
+  --ds-on-accent: #ffffff;
+
+  /* semantic */
+  --ds-good: #2f8f14;
+  --ds-bad: #e0401f;
+  --ds-warn: #b7791f;
+  --ds-good-soft: #e8f6e1;
+  --ds-bad-soft: #fde9e4;
+  --ds-warn-soft: #fbf1dc;
+  --ds-s-good: #4cbb17;
+  --ds-s-serious: #f5a078;
+  --ds-s-critical: #f13a13;
+  --ds-s-neutral: #c9c9c2;
+
+  /* categorical series */
+  --ds-c1: #7b5cff;
+  --ds-c2: #eb6834;
+  --ds-c3: #18a0a0;
+  --ds-c4: #e0a100;
+  --ds-dim: #e3e3dd;
+
+  /* shape — one radius family, nothing square and nothing round except badges */
+  --ds-radius-card: 8px;      /* cards, tables, popovers, controls */
+  --ds-radius-control: 8px;
+  --ds-radius-inner: 6px;     /* segment buttons, menu rows, rate chips */
+  --ds-radius-pill: 999px;    /* small status badges only */
+  --ds-control-h: 40px;
+  --ds-control-h-sm: 32px;
+  --ds-control-border: .75px solid var(--ds-ctl-border);
+  --ds-shadow: 0 1px 8px rgba(1, 0, 48, .10);
+  --ds-shadow-pop: 0 8px 28px rgba(1, 0, 48, .16);
+  --ds-scrollbar: rgba(54, 54, 48, .22);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ds-bg: #121216;
+  --ds-panel: #1b1b21;
+  --ds-panel-2: #212129;
+  --ds-hover: #26262d;
+  --ds-selected: #2a2342;
+  --ds-input-bg: #1b1b21;
+  --ds-tip-bg: #23232a;
+  --ds-row-total: #212129;
+
+  --ds-border: #2c2c34;
+  --ds-hairline: #2a2a31;
+  --ds-grid: #26262d;
+  --ds-axis: #3a3a43;
+  --ds-ctl-border: #44444e;
+
+  --ds-text: #ececf1;
+  --ds-strong: #ffffff;
+  --ds-muted: #9a9aa5;
+  --ds-subtle: #6b6b75;
+
+  --ds-accent: #8f76ff;
+  --ds-accent-hover: #a28dff;
+  --ds-accent-soft: #2a2342;
+  --ds-on-accent: #ffffff;
+
+  --ds-good: #5fd33a;
+  --ds-bad: #ff6a4d;
+  --ds-warn: #e0a100;
+  --ds-good-soft: #1b2e16;
+  --ds-bad-soft: #3a1f1a;
+  --ds-warn-soft: #362b14;
+  --ds-s-good: #4cbb17;
+  --ds-s-serious: #c9764f;
+  --ds-s-critical: #e0401f;
+  --ds-s-neutral: #4a4a53;
+
+  --ds-c1: #8f76ff;
+  --ds-c2: #d95926;
+  --ds-c3: #199e70;
+  --ds-c4: #c98500;
+  --ds-dim: #34343d;
+
+  --ds-shadow: 0 1px 8px rgba(0, 0, 0, .45);
+  --ds-shadow-pop: 0 8px 28px rgba(0, 0, 0, .5);
+  --ds-scrollbar: rgba(255, 255, 255, .16);
+}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme]){color-scheme: dark; --ds-bg: #121216; --ds-panel: #1b1b21; --ds-panel-2: #212129; --ds-hover: #26262d; --ds-selected: #2a2342; --ds-input-bg: #1b1b21; --ds-tip-bg: #23232a; --ds-row-total: #212129; --ds-border: #2c2c34; --ds-hairline: #2a2a31; --ds-grid: #26262d; --ds-axis: #3a3a43; --ds-ctl-border: #44444e; --ds-text: #ececf1; --ds-strong: #ffffff; --ds-muted: #9a9aa5; --ds-subtle: #6b6b75; --ds-accent: #8f76ff; --ds-accent-hover: #a28dff; --ds-accent-soft: #2a2342; --ds-on-accent: #ffffff; --ds-good: #5fd33a; --ds-bad: #ff6a4d; --ds-warn: #e0a100; --ds-good-soft: #1b2e16; --ds-bad-soft: #3a1f1a; --ds-warn-soft: #362b14; --ds-s-good: #4cbb17; --ds-s-serious: #c9764f; --ds-s-critical: #e0401f; --ds-s-neutral: #4a4a53; --ds-c1: #8f76ff; --ds-c2: #d95926; --ds-c3: #199e70; --ds-c4: #c98500; --ds-dim: #34343d; --ds-shadow: 0 1px 8px rgba(0, 0, 0, .45); --ds-shadow-pop: 0 8px 28px rgba(0, 0, 0, .5); --ds-scrollbar: rgba(255, 255, 255, .16);}
   }
+  /* ===== end synced tokens ===== */
+
+  /* ===== synced from shared/ds-components.css (tables + sidebar nav omitted — unused here) ===== */
+/* ---------- type ---------- */
+.ds-page-title { font-size: 24px; line-height: 28px; font-weight: 600; color: var(--ds-strong); margin: 0 0 4px; }
+.ds-page-sub { font-size: 14px; line-height: 20px; color: var(--ds-muted); margin: 0; }
+.ds-h2 { font-size: 20px; line-height: 24px; font-weight: 600; color: var(--ds-text); margin: 32px 0 4px; }
+.ds-h2-sub { font-size: 14px; color: var(--ds-muted); margin: 0 0 14px; }
+.ds-card-title { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--ds-text); }
+.ds-card-sub { font-size: 14px; line-height: 20px; color: var(--ds-muted); margin: 0 0 12px; }
+.ds-note { font-size: 13px; line-height: 19px; color: var(--ds-muted); }
+
+/* ---------- surfaces ---------- */
+.ds-card { background: var(--ds-panel); border: 0; border-radius: var(--ds-radius-card); box-shadow: var(--ds-shadow); padding: 16px; min-width: 0; }
+.ds-pop { background: var(--ds-tip-bg); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-card); box-shadow: var(--ds-shadow-pop); padding: 6px; }
+.ds-pop-row { display: flex; align-items: center; gap: 8px; width: 100%; background: none; border: 0; color: var(--ds-text); font: inherit; font-size: 14px; font-weight: 500; text-align: left; padding: 8px 10px; border-radius: var(--ds-radius-inner); cursor: pointer; }
+.ds-pop-row:hover { background: var(--ds-accent-soft); }
+.ds-pop-row.on, .ds-pop-row[aria-selected="true"] { color: var(--ds-accent); font-weight: 600; }
+
+/* ---------- controls ---------- */
+.ds-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: var(--ds-control-h); padding: 0 14px; background: var(--ds-input-bg); border: var(--ds-control-border); border-radius: var(--ds-radius-control); color: var(--ds-text); font: inherit; font-size: 14px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.ds-btn:hover { border-color: var(--ds-muted); }
+.ds-btn:disabled { opacity: .5; cursor: default; }
+.ds-btn-sm { height: var(--ds-control-h-sm); padding: 0 10px; font-size: 13px; }
+.ds-btn-primary { background: var(--ds-accent); border-color: transparent; color: var(--ds-on-accent); font-weight: 600; }
+.ds-btn-primary:hover { background: var(--ds-accent-hover); border-color: transparent; }
+.ds-btn-ghost { background: transparent; border-color: transparent; }
+.ds-btn-ghost:hover { background: var(--ds-accent-soft); border-color: transparent; }
+.ds-btn-danger { color: var(--ds-bad); }
+.ds-icon-btn { width: var(--ds-control-h-sm); height: var(--ds-control-h-sm); padding: 0; background: transparent; border: 0; border-radius: var(--ds-radius-inner); color: var(--ds-muted); cursor: pointer; display: inline-grid; place-items: center; }
+.ds-icon-btn:hover { background: var(--ds-accent-soft); color: var(--ds-accent); }
+.ds-input, .ds-select { height: var(--ds-control-h); padding: 0 12px; background: var(--ds-input-bg); border: var(--ds-control-border); border-radius: var(--ds-radius-control); color: var(--ds-text); font: inherit; font-size: 14px; font-weight: 500; }
+.ds-textarea { padding: 10px 12px; background: var(--ds-input-bg); border: var(--ds-control-border); border-radius: var(--ds-radius-control); color: var(--ds-text); font: inherit; font-size: 14px; resize: vertical; }
+.ds-input:hover, .ds-select:hover, .ds-textarea:hover { border-color: var(--ds-muted); }
+.ds-input:focus, .ds-select:focus, .ds-textarea:focus { outline: 2px solid var(--ds-accent-soft); border-color: var(--ds-accent); }
+.ds-seg { display: inline-flex; align-items: center; height: var(--ds-control-h); padding: 3px; background: var(--ds-input-bg); border: var(--ds-control-border); border-radius: var(--ds-radius-control); gap: 2px; }
+.ds-seg > button { height: 32px; padding: 0 10px; background: none; border: 0; border-radius: var(--ds-radius-inner); color: var(--ds-text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; }
+.ds-seg > button:hover { background: var(--ds-accent-soft); }
+.ds-seg > button.on, .ds-seg > button.selected, .ds-seg > button[aria-selected="true"] { background: var(--ds-accent-soft); color: var(--ds-accent); font-weight: 600; box-shadow: none; }
+
+/* ---------- badges ---------- */
+.ds-badge { display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 8px; border-radius: var(--ds-radius-pill); background: var(--ds-accent-soft); color: var(--ds-accent); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.ds-badge-good { background: var(--ds-good-soft); color: var(--ds-good); }
+.ds-badge-bad { background: var(--ds-bad-soft); color: var(--ds-bad); }
+.ds-badge-warn { background: var(--ds-warn-soft); color: var(--ds-warn); }
+.ds-badge-muted { background: var(--ds-panel-2); color: var(--ds-muted); }
+.ds-chip { display: inline-block; min-width: 54px; padding: 1px 6px; border-radius: var(--ds-radius-inner); font-variant-numeric: tabular-nums; }
+.ds-chip-good { color: var(--ds-good); font-weight: 600; background: color-mix(in srgb, var(--ds-good) 14%, transparent); }
+.ds-chip-bad { color: var(--ds-bad); font-weight: 600; background: color-mix(in srgb, var(--ds-bad) 14%, transparent); }
+
+/* ---------- scrollbars ---------- */
+* { scrollbar-width: thin; scrollbar-color: var(--ds-scrollbar) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; background: transparent; }
+*::-webkit-scrollbar-thumb { background: var(--ds-scrollbar); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+  /* ===== end synced components ===== */
+
+  /* ===== page styles — follow DESIGN.md; App Store mock parts are marked ===== */
+  :root{--card-radius:22px} /* 22px = App Store card corner (mock), not a DS radius */
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);
-    font-family:"Plus Jakarta Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
-    font-size:16.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  body{margin:0;background:var(--ds-bg);color:var(--ds-text);font-family:var(--ds-font);
+    font-size:14px;line-height:20px;-webkit-font-smoothing:antialiased}
 
-  /* ---- top bar ---- */
-  header{padding:12px 22px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:center;flex-wrap:wrap;
-    position:sticky;top:0;background:rgba(244,245,248,.9);backdrop-filter:blur(14px);z-index:20}
-  .switcher{position:relative}
-  .switcher>button{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);
-    border-radius:11px;padding:6px 10px;cursor:pointer;box-shadow:var(--shadow)}
-  .chip{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;flex:none}
-  .switcher .lbl{display:flex;flex-direction:column;line-height:1.15;text-align:left}
-  .switcher .lbl small{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
-  .switcher .lbl b{font-size:14.5px;font-weight:700;color:var(--accent-d)}
-  .menu{position:absolute;top:calc(100% + 6px);left:0;width:248px;background:var(--panel);border:1px solid var(--line);
-    border-radius:13px;box-shadow:0 18px 44px rgba(20,20,40,.18);padding:5px;z-index:50;display:none}
-  .menu.open{display:block}
-  .menu a{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:9px;text-decoration:none;color:var(--text);border-left:2px solid transparent}
-  .menu a:hover{background:var(--panel2)}
-  .menu a.active{background:var(--panel2);border-left-color:var(--accent)}
-  .menu a .t{display:flex;flex-direction:column;line-height:1.25;flex:1}
-  .menu a .t small{color:var(--muted);font-size:10.5px}
-  .menu a .tick{color:var(--accent);font-weight:700}
-  header h1{font-size:17px;margin:0;font-weight:700}
-  header .sub{color:var(--muted);font-size:13px}
+  /* ---- toolbar ---- */
+  header{height:64px;padding:0 24px;display:flex;gap:12px;align-items:center;
+    position:sticky;top:0;background:var(--ds-panel);box-shadow:var(--ds-shadow);z-index:20}
+  /* ---- studio switcher — synced from shared/shell/StudioSwitcher (.tsx + .css); keep identical ---- */
+  .studio-sw{position:relative;display:flex;flex:none;min-width:0}
+  .studio-sw .studio-sw-btn{display:inline-flex;align-items:center;gap:10px;height:40px;min-width:0;max-width:100%;margin:0;
+    padding:0 8px 0 6px;border:0;border-radius:var(--ds-radius-control);background:transparent;box-shadow:none;
+    color:var(--ds-text);font-family:var(--ds-font);font-variant-numeric:normal;text-align:left;cursor:pointer}
+  .studio-sw .studio-sw-btn:hover,.studio-sw .studio-sw-btn.is-open{background:var(--ds-hover)}
+  .studio-sw .studio-sw-btn:focus-visible{outline:2px solid var(--ds-accent);outline-offset:1px}
+  .studio-sw-icon{width:28px;height:28px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:8px;color:#fff;margin:0}
+  .studio-sw-icon--keywords{background:var(--ds-accent)}
+  .studio-sw-icon--ads{background:var(--ds-c4)}
+  .studio-sw-icon--screenshots{background:var(--ds-c2)}
+  .studio-sw-icon--video{background:var(--ds-c3)}
+  .studio-sw-icon--inapp{background:var(--ds-good)}
+  .studio-sw-text{display:flex;flex-direction:column;min-width:0;margin:0}
+  .studio-sw-btn .studio-sw-name{font-size:14px;line-height:18px;font-weight:600;color:var(--ds-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .studio-sw-btn .studio-sw-cap{font-size:12px;line-height:16px;font-weight:400;color:var(--ds-muted);white-space:nowrap}
+  .studio-sw-chev{flex:none;color:var(--ds-muted);margin-left:2px}
+  .ds-pop.studio-sw-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:10000;width:300px;box-sizing:border-box;
+    display:none;flex-direction:column;gap:2px;font-family:var(--ds-font);font-variant-numeric:normal}
+  .ds-pop.studio-sw-pop.open{display:flex}
+  .studio-sw-pop .studio-sw-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:var(--ds-radius-inner);
+    color:var(--ds-text);text-decoration:none;background:none}
+  .studio-sw-pop .studio-sw-row:hover{background:var(--ds-accent-soft)}
+  .studio-sw-pop .studio-sw-row:focus-visible{outline:2px solid var(--ds-accent);outline-offset:-2px}
+  .studio-sw-pop .studio-sw-row.on{background:var(--ds-accent-soft)}
+  .studio-sw-pop .studio-sw-row .studio-sw-name{font-size:14px;line-height:18px;font-weight:500;color:var(--ds-strong)}
+  .studio-sw-pop .studio-sw-row.on .studio-sw-name{color:var(--ds-accent);font-weight:600}
+  .studio-sw-pop .studio-sw-row .studio-sw-cap{font-size:12px;line-height:16px;font-weight:400;color:var(--ds-muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .spacer{flex:1}
-  .ctrl{display:flex;gap:7px;align-items:center;color:var(--muted);font-size:13.5px}
-  select,input[type=text]{background:var(--panel);color:var(--text);border:1px solid var(--line2);border-radius:9px;padding:8px 11px;font:inherit;font-size:14.5px}
-  input#appId{width:140px}
-  .seg{display:flex;gap:6px;flex-wrap:wrap}
-  .seg button{background:var(--panel);border:1px solid var(--line2);color:var(--muted);border-radius:10px;padding:8px 13px;font:inherit;font-size:14px;cursor:pointer;display:flex;align-items:center;gap:7px}
-  .seg button.active{color:var(--text);border-color:var(--accent);background:#fff;box-shadow:0 2px 10px rgba(255,93,125,.15)}
-  .state{font-size:9.5px;font-weight:700;letter-spacing:.5px;padding:2px 6px;border-radius:5px;text-transform:uppercase}
-  .state.DRAFT{background:rgba(245,158,11,.16);color:#a96a06}
-  .state.READY{background:rgba(28,166,76,.16);color:#157a39}
+  .ctrl{display:flex;gap:8px;white-space:nowrap;align-items:center;color:var(--ds-muted);font-size:14px;font-weight:500}
+  input#appId{width:132px}
+  #locale{min-width:96px}
+  .theme-btn{width:var(--ds-control-h);padding:0;font-size:16px;color:var(--ds-muted)}
+  .theme-btn:hover{color:var(--ds-text)}
 
-  main{display:grid;grid-template-columns:1fr 340px 360px;gap:26px;padding:26px;align-items:start}
+  /* ---- page head + event tabs ---- */
+  .page-head{padding:24px 24px 0;display:flex;flex-direction:column;gap:16px;align-items:flex-start}
+  .ds-seg > button{display:inline-flex;align-items:center;gap:8px}
+  .ds-seg > button.active{background:var(--ds-accent-soft);color:var(--ds-accent);font-weight:600}
+  .tabs-err{color:var(--ds-bad);font-size:13px}
+
+  main{display:grid;grid-template-columns:1fr 340px 360px;gap:24px;padding:24px;align-items:start}
   @media(max-width:1240px){main{grid-template-columns:1fr}}
-  .stage{display:flex;flex-direction:column;gap:11px}
-  .stage h2{font-size:12.5px;text-transform:uppercase;letter-spacing:1.3px;color:var(--muted);font-weight:700;margin:0}
+  .stage{display:flex;flex-direction:column;gap:12px}
+  .stage h2{margin:0}
 
-  /* ---- event card 16:9 ---- */
+  /* ---- App Store mock: event card 16:9 (not DS — mirrors the store) ---- */
   .card{width:100%;max-width:560px;aspect-ratio:16/9;border-radius:var(--card-radius);overflow:hidden;position:relative;
-    background:#e9eaf0;box-shadow:var(--shadow)}
+    background:var(--ds-panel-2);box-shadow:var(--ds-shadow)}
   .media{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-  .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9aa;
-    background:repeating-linear-gradient(45deg,#e9eaf0,#e9eaf0 12px,#e3e4ea 12px,#e3e4ea 24px);font-size:12.5px}
+  .placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--ds-subtle);
+    background:repeating-linear-gradient(45deg,var(--ds-panel-2),var(--ds-panel-2) 12px,var(--ds-hover) 12px,var(--ds-hover) 24px);font-size:12.5px}
   .scrim{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,.74) 0%,rgba(0,0,0,.26) 40%,rgba(0,0,0,0) 66%)}
   .badge{position:absolute;top:13px;left:15px;font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;
     color:#fff;background:rgba(0,0,0,.4);backdrop-filter:blur(6px);padding:5px 10px;border-radius:7px}
@@ -71,68 +262,76 @@
   .ev-name{font-size:22px;font-weight:800;line-height:1.12;margin:0 0 2px;color:#fff;text-shadow:0 1px 5px rgba(0,0,0,.5)}
   .ev-short{font-size:14px;color:rgba(255,255,255,.94);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,.5)}
   .app{font-size:12.5px;color:rgba(255,255,255,.82);margin:0 0 3px;font-weight:500}
-  .cardnote{font-size:12.5px;color:var(--muted)}
 
-  /* ---- detail 9:16 ---- */
-  .detail{width:300px;aspect-ratio:9/16;border-radius:30px;overflow:hidden;position:relative;background:var(--panel);box-shadow:var(--shadow);border:1px solid var(--line)}
-  .detail .hero{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:#e9eaf0}
-  .detail .hero .scrim{background:linear-gradient(to top,var(--panel) 1%,rgba(255,255,255,0) 42%)}
+  /* ---- App Store mock: detail 9:16 ---- */
+  .detail{width:300px;aspect-ratio:9/16;border-radius:30px;overflow:hidden;position:relative;background:var(--ds-panel);box-shadow:var(--ds-shadow);border:1px solid var(--ds-border)}
+  .detail .hero{position:relative;width:100%;aspect-ratio:1/1;overflow:hidden;background:var(--ds-panel-2)}
+  .detail .hero .scrim{background:linear-gradient(to top,var(--ds-panel) 1%,transparent 42%)}
   .detail .body{padding:0 16px 16px;margin-top:-30px;position:relative}
-  .detail .ev-name{color:var(--text);font-size:21px;text-shadow:none;margin:0 0 10px}
+  .detail .ev-name{color:var(--ds-strong);font-size:21px;text-shadow:none;margin:0 0 10px}
   .approw{display:flex;align-items:center;gap:10px;margin:12px 0 14px}
   .approw .icon{width:44px;height:44px}
   .approw .nm{font-size:14px;font-weight:700;flex:1;min-width:0;line-height:1.2}
-  .approw .nm small{display:block;color:var(--muted);font-weight:500;font-size:12px}
-  .approw .get{background:var(--accent);color:#fff;border:none;border-radius:16px;padding:6px 18px;font-weight:800;font-size:14px;font-family:inherit;cursor:default}
-  .ev-long{font-size:14px;color:#3a3b42;margin:0;white-space:pre-wrap}
-  .dates{font-size:12px;color:var(--muted);margin:12px 0 0}
+  .approw .nm small{display:block;color:var(--ds-muted);font-weight:500;font-size:12px}
+  /* the real GET button is Apple system blue, not the studio accent */
+  .approw .get{background:#0a84ff;color:#fff;border:none;border-radius:999px;padding:6px 18px;font-weight:700;font-size:14px;font-family:inherit;cursor:default}
+  .ev-long{font-size:14px;line-height:1.5;color:var(--ds-text);margin:0;white-space:pre-wrap}
+  .dates{font-size:12px;color:var(--ds-muted);margin:12px 0 0}
 
-  /* ---- editor ---- */
-  .editor{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);position:sticky;top:80px}
-  .editor h3{margin:0 0 2px;font-size:15.5px;display:flex;align-items:center;gap:8px}
-  .editor .ref{color:var(--muted);font-size:13px;margin:0 0 14px}
-  .field{margin-bottom:14px}
-  .field label{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin-bottom:6px;font-weight:700}
-  .count{font-variant-numeric:tabular-nums}
-  .count.over{color:var(--bad)} .count.ok{color:var(--ok)}
-  .field textarea{width:100%;background:#fff;color:var(--text);border:1px solid var(--line2);border-radius:9px;padding:10px 11px;font:inherit;font-size:14.5px;resize:vertical}
-  .field .hint{font-size:11.5px;color:var(--muted);margin-top:3px}
-  .indexed{font-size:9px;background:rgba(28,166,76,.14);color:var(--ok);border-radius:5px;padding:1px 6px;letter-spacing:.3px;text-transform:none;font-weight:700}
-  .drop{border:1.5px dashed var(--line2);border-radius:11px;padding:16px;text-align:center;color:var(--muted);font-size:13.5px;cursor:pointer}
-  .drop.hot{border-color:var(--accent);color:var(--text);background:#fff5f7}
-  .note{font-size:12px;color:var(--muted);line-height:1.55;border-top:1px solid var(--line);padding-top:11px;margin-top:6px}
+  /* ---- editor (DS card) ---- */
+  .editor{position:sticky;top:88px;display:flex;flex-direction:column;gap:16px}
+  .editor .head{display:flex;flex-direction:column;gap:2px}
+  .editor h3{margin:0;display:flex;align-items:center;gap:8px}
+  .editor .ref{margin:0}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{display:flex;align-items:center;gap:8px;font-size:12px;line-height:16px;font-weight:600;color:var(--ds-muted)}
+  .field label .count{margin-left:auto}
+  .field .ds-textarea{width:100%;display:block}
+  .field textarea[rows="1"]{height:var(--ds-control-h);resize:none;padding-top:9px;padding-bottom:9px;overflow:hidden}
+  .count{font-variant-numeric:tabular-nums;font-weight:500}
+  .count.over{color:var(--ds-bad)} .count.ok{color:var(--ds-good)}
+  .drop{border:1px dashed var(--ds-ctl-border);border-radius:var(--ds-radius-control);padding:16px;text-align:center;
+    color:var(--ds-muted);font-size:14px;font-weight:500;cursor:pointer;background:var(--ds-input-bg)}
+  .drop small{display:block;font-size:13px;font-weight:400}
+  .drop:hover{border-color:var(--ds-accent);color:var(--ds-accent);background:var(--ds-accent-soft)}
+  .drop.hot{border-color:var(--ds-accent);border-style:solid;color:var(--ds-accent);background:var(--ds-accent-soft)}
+  .editor .foot{border-top:1px solid var(--ds-hairline);padding-top:12px;margin:0}
 </style>
 </head>
 <body>
 <header>
-  <div class="switcher" id="switcher">
-    <button id="swBtn">
-      <span class="chip" style="background:linear-gradient(135deg,#ff8aa0,#ff5d7d)">✦</span>
-      <span class="lbl"><small>ASO Studio</small><b>In-App Events</b></span>
-      <span style="color:var(--muted);font-size:10px">▾</span>
+  <!-- synced from shared/shell/StudioSwitcher -->
+  <div class="studio-sw">
+    <button type="button" id="swBtn" class="studio-sw-btn" aria-haspopup="menu" aria-expanded="false" aria-label="In-App Studio — переключить продукт">
+      <span class="studio-sw-icon studio-sw-icon--inapp"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5l1.6 3.4 3.7.4-2.8 2.5.8 3.7L8 10.6l-3.3 1.9.8-3.7-2.8-2.5 3.7-.4z"/></svg></span>
+      <span class="studio-sw-text"><span class="studio-sw-name">In-App</span><span class="studio-sw-cap">Studio</span></span>
+      <svg class="studio-sw-chev" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg>
     </button>
-    <div class="menu" id="swMenu">
-      <a href="http://localhost:5173/"><span class="chip" style="background:linear-gradient(135deg,#FF8C42,#F25C1F)">◇</span><span class="t">ASO<small>Keywords &amp; rankings</small></span></a>
-      <a href="http://localhost:5173/studio/"><span class="chip" style="background:linear-gradient(135deg,#7C3AED,#A78BFA)">▤</span><span class="t">Screenshots<small>App Store visuals</small></span></a>
-      <a href="http://localhost:5173/video/"><span class="chip" style="background:linear-gradient(135deg,#14B8A6,#5EEAD4)">▶</span><span class="t">Video<small>Ad video pipeline</small></span></a>
-      <a href="http://localhost:5173/asa/"><span class="chip" style="background:linear-gradient(135deg,#FFB000,#B87D00)">$</span><span class="t">ASA Ads<small>Search Ads ROI</small></span></a>
-      <a href="http://localhost:5196/" class="active"><span class="chip" style="background:linear-gradient(135deg,#ff8aa0,#ff5d7d)">✦</span><span class="t">In-App Events<small>Event cards &amp; detail</small></span><span class="tick">✓</span></a>
+    <div class="ds-pop studio-sw-pop" id="swMenu" role="menu">
+      <a href="/" role="menuitem" class="studio-sw-row"><span class="studio-sw-icon studio-sw-icon--keywords"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.25"/><path d="M10.2 10.2 13.5 13.5"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">Keywords</span><span class="studio-sw-cap">Ключи и позиции в App Store</span></span></a>
+      <a href="/asa/" role="menuitem" class="studio-sw-row"><span class="studio-sw-icon studio-sw-icon--ads"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13V9M8 13V3M13 13V6"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">Ads</span><span class="studio-sw-cap">Экономика Apple Search Ads</span></span></a>
+      <a href="/studio/" role="menuitem" class="studio-sw-row"><span class="studio-sw-icon studio-sw-icon--screenshots"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="2" width="7" height="12" rx="1.6"/><path d="M7 11.5h2"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">Screenshots</span><span class="studio-sw-cap">Скриншоты для страницы App Store</span></span></a>
+      <a href="/video/" role="menuitem" class="studio-sw-row"><span class="studio-sw-icon studio-sw-icon--video"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.2v9.6L12.5 8z"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">Video</span><span class="studio-sw-cap">Производство рекламных видео</span></span></a>
+      <a href="/inapp/" role="menuitem" class="studio-sw-row on" aria-current="page"><span class="studio-sw-icon studio-sw-icon--inapp"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5l1.6 3.4 3.7.4-2.8 2.5.8 3.7L8 10.6l-3.3 1.9.8-3.7-2.8-2.5 3.7-.4z"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">In-App</span><span class="studio-sw-cap">Карточки In-App Events</span></span></a>
     </div>
   </div>
-  <div>
-    <h1>In-App Events</h1>
-    <div class="sub">card 16:9 + detail 9:16 · indexed: name 30 · short 50 · (long 120, not indexed)</div>
-  </div>
   <div class="spacer"></div>
-  <div class="ctrl">App ID <input type="text" id="appId" value="6771391236" /></div>
-  <div class="ctrl">Locale <select id="locale"></select></div>
+  <div class="ctrl">App ID <input type="text" class="ds-input" id="appId" value="6771391236" /></div>
+  <div class="ctrl">Locale <select class="ds-select" id="locale"></select></div>
+  <button class="ds-btn theme-btn" id="themeBtn" title="Toggle dark theme">◐</button>
 </header>
 
-<div style="padding:16px 26px 0"><div class="seg" id="eventTabs"></div></div>
+<div class="page-head">
+  <div>
+    <h1 class="ds-page-title">In-App Events</h1>
+    <p class="ds-page-sub">Card 16:9 + detail 9:16 · indexed: name 30 · short 50 · long 120 (not indexed)</p>
+  </div>
+  <div class="ds-seg" id="eventTabs" role="tablist"></div>
+</div>
 
 <main>
   <div class="stage">
-    <h2>Event card · 16:9</h2>
+    <h2 class="ds-card-title">Event card · 16:9</h2>
     <div class="card" id="card">
       <div class="media-wrap" id="cardMedia"><div class="placeholder">drop a 16:9 image / .mp4 loop in the editor →</div></div>
       <div class="scrim"></div>
@@ -146,11 +345,11 @@
         </div>
       </div>
     </div>
-    <div class="cardnote">Apple auto-applies the bottom gradient + overlays this text — keep the lower third of the art clean, no baked-in text/logos/borders.</div>
+    <div class="ds-note">Apple auto-applies the bottom gradient + overlays this text — keep the lower third of the art clean, no baked-in text/logos/borders.</div>
   </div>
 
   <div class="stage">
-    <h2>Detail page · 9:16</h2>
+    <h2 class="ds-card-title">Detail page · 9:16</h2>
     <div class="detail">
       <div class="hero">
         <div class="media-wrap" id="detailMedia"><div class="placeholder">media</div></div>
@@ -170,31 +369,33 @@
     </div>
   </div>
 
-  <div class="editor">
-    <h3 id="edRef"></h3>
-    <p class="ref" id="edRefName"></p>
-    <div class="field">
-      <label>Name <span class="indexed">indexed</span> <span class="count" id="cName"></span></label>
-      <textarea id="fName" rows="1"></textarea>
-      <div class="hint">Title Case, reads as a real event. Keyword slot #1.</div>
+  <div class="editor ds-card">
+    <div class="head">
+      <h3 class="ds-card-title" id="edRef"></h3>
+      <p class="ref ds-note" id="edRefName"></p>
     </div>
     <div class="field">
-      <label>Short description <span class="indexed">indexed</span> <span class="count" id="cShort"></span></label>
-      <textarea id="fShort" rows="2"></textarea>
-      <div class="hint">Shown on the card (1 line). Keyword slot #2 — different terms than the name.</div>
+      <label>Name <span class="ds-badge ds-badge-good">indexed</span> <span class="count" id="cName"></span></label>
+      <textarea class="ds-textarea" id="fName" rows="1"></textarea>
+      <div class="ds-note">Title Case, reads as a real event. Keyword slot #1.</div>
+    </div>
+    <div class="field">
+      <label>Short description <span class="ds-badge ds-badge-good">indexed</span> <span class="count" id="cShort"></span></label>
+      <textarea class="ds-textarea" id="fShort" rows="2"></textarea>
+      <div class="ds-note">Shown on the card (1 line). Keyword slot #2 — different terms than the name.</div>
     </div>
     <div class="field">
       <label>Long description <span class="count" id="cLong"></span></label>
-      <textarea id="fLong" rows="4"></textarea>
-      <div class="hint">Detail page only · NOT indexed → pure hook/sell.</div>
+      <textarea class="ds-textarea" id="fLong" rows="4"></textarea>
+      <div class="ds-note">Detail page only · NOT indexed → pure hook/sell.</div>
     </div>
     <div class="field">
       <label>Card media (image / mp4)</label>
-      <div class="drop" id="drop">Drop a 16:9 image or .mp4 loop<br><span style="font-size:11px">(or click to choose)</span>
+      <div class="drop" id="drop">Drop a 16:9 image or .mp4 loop<small>or click to choose</small>
         <input type="file" id="file" accept="image/*,video/mp4" hidden>
       </div>
     </div>
-    <p class="note">Live preview only (not saved to ASC). Lock copy + composition here, then localize natively to 49 and upload media in ASC. Media spec: 16:9, 1920×1080+, video ≤30s seamless loop, no text/logo/border/gradient.</p>
+    <p class="foot ds-note">Live preview only (not saved to ASC). Lock copy + composition here, then localize natively to 49 and upload media in ASC. Media spec: 16:9, 1920×1080+, video ≤30s seamless loop, no text/logo/border/gradient.</p>
   </div>
 </main>
 
@@ -206,8 +407,21 @@ let cur=0,locale="en-US",appMeta=null,cardOverride=null;
 const $=id=>document.getElementById(id);
 
 // ---- studio switcher dropdown ----
-$("swBtn").onclick=e=>{e.stopPropagation();$("swMenu").classList.toggle("open");};
-document.addEventListener("click",()=>$("swMenu").classList.remove("open"));
+// ---- theme toggle (same localStorage key as the other studio products) ----
+$("themeBtn").onclick=()=>{const t=document.documentElement.dataset.theme==="dark"?"light":"dark";
+  document.documentElement.dataset.theme=t;try{localStorage.setItem("theme",t);}catch(e){}};
+
+// synced from shared/shell/StudioSwitcher: toggle, outside click / Esc close, arrow keys walk rows
+function swSet(open){$("swMenu").classList.toggle("open",open);$("swBtn").classList.toggle("is-open",open);
+  $("swBtn").setAttribute("aria-expanded",String(open));}
+$("swBtn").onclick=e=>{e.stopPropagation();swSet(!$("swMenu").classList.contains("open"));};
+$("swBtn").addEventListener("keydown",e=>{if(e.key!=="ArrowDown")return;e.preventDefault();swSet(true);
+  $("swMenu").querySelector("a[aria-current]").focus();});
+$("swMenu").addEventListener("keydown",e=>{if(e.key!=="ArrowDown"&&e.key!=="ArrowUp")return;e.preventDefault();
+  const rows=[...$("swMenu").querySelectorAll("a")],i=rows.indexOf(document.activeElement);
+  rows[e.key==="ArrowDown"?(i+1)%rows.length:(i-1+rows.length)%rows.length].focus();});
+document.addEventListener("mousedown",e=>{if(!e.target.closest(".studio-sw"))swSet(false);});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("swMenu").classList.contains("open")){swSet(false);$("swBtn").focus();}});
 
 // ---- iTunes lookup (JSONP → real icon + name, avoids CORS) ----
 function loadApp(id){
@@ -230,10 +444,11 @@ function applyAppMeta(){
 $("appId").addEventListener("change",e=>loadApp(e.target.value.trim()));
 
 function locales(){return Object.keys(EVENTS[cur].loc);}
+const stateCls=s=>"ds-badge "+(s==="READY"?"ds-badge-good":s==="DRAFT"?"ds-badge-warn":"ds-badge-muted");
 function tabs(){
   $("eventTabs").innerHTML="";
-  EVENTS.forEach((e,i)=>{const b=document.createElement("button");b.className=i===cur?"active":"";
-    b.innerHTML=`#${i+1} ${e.badge.replace("_"," ").toLowerCase()} <span class="state ${e.state}">${e.state}</span>`;
+  EVENTS.forEach((e,i)=>{const b=document.createElement("button");b.className=i===cur?"active":"";b.setAttribute("role","tab");b.setAttribute("aria-selected",i===cur);
+    b.innerHTML=`#${i+1} ${e.badge.replace("_"," ").toLowerCase()} <span class="${stateCls(e.state)}">${e.state}</span>`;
     b.onclick=()=>{cur=i;syncLocale();render();};$("eventTabs").appendChild(b);});
 }
 function syncLocale(){const ls=locales();if(!ls.includes(locale))locale=ls[0];
@@ -257,7 +472,7 @@ function render(){
   $("detailDates").textContent="Jun 19 – Jun 23, 2026";
   $("fName").value=d.name;$("fShort").value=d.short;$("fLong").value=d.long;
   count($("cName"),d.name,LIMITS.name);count($("cShort"),d.short,LIMITS.short);count($("cLong"),d.long,LIMITS.long);
-  $("edRef").innerHTML=`#${cur+1} · ${locale} <span class="state ${e.state}">${e.state}</span>`;$("edRefName").textContent=e.ref;
+  $("edRef").innerHTML=`#${cur+1} · ${locale} <span class="${stateCls(e.state)}">${e.state}</span>`;$("edRefName").textContent=e.ref;
   const m=e.media||{};
   if(cardOverride) showMedia($("cardMedia"),cardOverride.url,cardOverride.isVideo);
   else showMedia($("cardMedia"),m.card,isVid(m.card));
@@ -280,7 +495,7 @@ drop.addEventListener("drop",e=>{const f=e.dataTransfer.files[0];if(f)loadMedia(
 function loadMedia(f){if(cardOverride)URL.revokeObjectURL(cardOverride.url);cardOverride={url:URL.createObjectURL(f),isVideo:f.type.startsWith("video")};render();}
 
 fetch("events.json").then(r=>r.json()).then(j=>{EVENTS=j.events||[];syncLocale();render();})
-  .catch(e=>{$("eventTabs").innerHTML='<span style="color:var(--bad);font-size:12px">events.json не загрузился: '+e+'</span>';});
+  .catch(e=>{$("eventTabs").innerHTML='<span class="tabs-err">events.json не загрузился: '+e+'</span>';});
 loadApp("6771391236");
 </script>
 </body>

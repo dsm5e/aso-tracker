@@ -1,5 +1,6 @@
-/** Profitability visuals — cost-per-trial bars + spend×trials efficiency scatter.
- *  Inline SVG, matches HeroChart aesthetic (phosphor terminal). Pure presentation. */
+/** Profitability visuals — cost-per-trial bars, ROAS bars and the spend×trials
+ *  efficiency scatter, drawn with the shared chart kit. Pure presentation. */
+import { HBars, tipProps, useWidth, nice, type TipRow } from "../../../shared/charts/Charts.tsx";
 
 export interface GeoRow {
   country: string;
@@ -14,13 +15,14 @@ export interface GeoRow {
 
 function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
 
+
 /** Efficiency zone of a geo, relative to the blended cost-per-trial (data-driven,
- *  no LTV assumption): green ≤ blended, amber ≤ 2× blended, red > 2× or no trials. */
+ *  no LTV assumption): good ≤ blended, warn ≤ 2× blended, bad > 2× or no trials. */
 export function zoneColor(costPerTrial: number | null, blended: number): string {
-  if (costPerTrial === null) return "var(--red)";
-  if (costPerTrial <= blended) return "var(--green)";
-  if (costPerTrial <= blended * 2) return "var(--amber)";
-  return "var(--red)";
+  if (costPerTrial === null) return "var(--ds-bad)";
+  if (costPerTrial <= blended) return "var(--ds-good)";
+  if (costPerTrial <= blended * 2) return "var(--ds-warn)";
+  return "var(--ds-bad)";
 }
 
 export function CostPerTrialBars({ rows, blended }: { rows: GeoRow[]; blended: number }) {
@@ -36,101 +38,88 @@ export function CostPerTrialBars({ rows, blended }: { rows: GeoRow[]; blended: n
     });
   if (data.length === 0) return null;
 
-  const rowH = 22;
-  const padL = 56, padR = 60, padT = 8, padB = 22;
-  const W = 1000;
-  const H = padT + padB + data.length * rowH;
-  const innerW = W - padL - padR;
   // axis max: cap so a single huge "0-trial spend" bar doesn't crush the rest
   const maxCpt = Math.max(blended * 3, ...data.map((d) => d.cpt ?? 0));
   const barVal = (d: typeof data[number]) => (d.cpt === null ? maxCpt : Math.min(d.cpt, maxCpt));
-  const x = (v: number) => padL + (v / maxCpt) * innerW;
 
   return (
-    <div className="card" style={{ padding: "12px 16px" }}>
-      <div className="muted" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6 }}>
-        Cost per trial · green ≤ blended ({fmtUsd(blended)}) · amber ≤ 2× · red &gt; 2× / no trials
+    <div className="card">
+      <div className="note chart-caption">
+        Цена триала по странам · зелёный ≤ средней ({fmtUsd(blended)}) · жёлтый ≤ 2× · красный &gt; 2× или нет триалов
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "auto" }}>
-        {/* blended reference line */}
-        <line x1={x(blended)} y1={padT} x2={x(blended)} y2={H - padB} stroke="var(--cyan)" strokeWidth="0.75" strokeDasharray="3 3" opacity="0.7" />
-        <text x={x(blended)} y={H - 8} textAnchor="middle" fill="var(--cyan)" fontSize="10" fontFamily="var(--mono)">{fmtUsd(blended)}</text>
-        {data.map((d, i) => {
-          const y = padT + i * rowH;
+      <HBars
+        max={maxCpt}
+        labelWidth={84}
+        valueWidth={130}
+        marker={{ value: blended, label: `средняя ${fmtUsd(blended)}` }}
+        rows={data.map((d) => {
           const c = zoneColor(d.cpt, blended);
-          const w = x(barVal(d)) - padL;
-          return (
-            <g key={d.country}>
-              <text x={padL - 8} y={y + rowH / 2 + 3} textAnchor="end" fill="var(--bone)" fontSize="11" fontFamily="var(--mono)">{d.country}</text>
-              <rect x={padL} y={y + 3} width={Math.max(1, w)} height={rowH - 8} fill={c} opacity={d.cpt === null ? 0.32 : 0.62} rx="1" />
-              <text x={x(barVal(d)) + 6} y={y + rowH / 2 + 3} fill="var(--bone-dim)" fontSize="10" fontFamily="var(--mono)">
-                {d.cpt === null ? `0 trials · ${fmtUsd(d.spend)}` : fmtUsd(d.cpt)}
-              </text>
-            </g>
-          );
+          const tip: TipRow[] = [
+            [c, "Цена триала", d.cpt === null ? "нет триалов" : fmtUsd(d.cpt)],
+            [null, "Расход", fmtUsd(d.spend)],
+            [null, "Старты триала", String(d.trials)],
+            [null, "Средняя", fmtUsd(blended)],
+          ];
+          return { label: d.country, value: barVal(d), color: c, tip, text: d.cpt === null ? `0 триалов · ${fmtUsd(d.spend)}` : fmtUsd(d.cpt) };
         })}
-      </svg>
+      />
     </div>
   );
 }
 
 export interface RoasRow { country: string; spend: number; revenue: number; roas: number }
 
-/** Real ROAS per geo — bar ∝ ROAS%, break-even at 100%. green ≥100% · amber ≥50% · red below / no revenue. */
+/** Real ROAS per geo — bar ∝ ROAS%, break-even at 100%. good ≥100% · warn ≥50% · bad below / no revenue. */
 export function RoasByGeoBars({ rows }: { rows: RoasRow[] }) {
   const data = rows.filter((r) => r.spend > 0).sort((a, b) => b.roas - a.roas);
   if (data.length === 0) return null;
 
-  const rowH = 22;
-  const padL = 56, padR = 96, padT = 8, padB = 22;
-  const W = 1000;
-  const H = padT + padB + data.length * rowH;
-  const innerW = W - padL - padR;
   const maxRoas = Math.max(2, ...data.map((d) => d.roas)); // cap axis at ≥200%
-  const x = (v: number) => padL + (Math.min(v, maxRoas) / maxRoas) * innerW;
-  const color = (roas: number, rev: number) => rev <= 0 ? "var(--red)" : roas >= 1 ? "var(--green)" : roas >= 0.5 ? "var(--amber)" : "var(--red)";
+  const color = (roas: number, rev: number) => rev <= 0 ? "var(--ds-bad)" : roas >= 1 ? "var(--ds-good)" : roas >= 0.5 ? "var(--ds-warn)" : "var(--ds-bad)";
 
   return (
-    <div className="card" style={{ padding: "12px 16px" }}>
-      <div className="muted" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6 }}>
-        Real ROAS · break-even = 100% (revenue = spend) · green ≥100% · amber ≥50%
+    <div className="card">
+      <div className="note chart-caption">
+        Реальный ROAS по странам · окупаемость = 100% (выручка = расход) · зелёный ≥100% · жёлтый ≥50%
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "auto" }}>
-        {/* break-even 100% line (only if within axis) */}
-        {maxRoas >= 1 && (
-          <>
-            <line x1={x(1)} y1={padT} x2={x(1)} y2={H - padB} stroke="var(--cyan)" strokeWidth="0.75" strokeDasharray="3 3" opacity="0.7" />
-            <text x={x(1)} y={H - 8} textAnchor="middle" fill="var(--cyan)" fontSize="10" fontFamily="var(--mono)">100%</text>
-          </>
-        )}
-        {data.map((d, i) => {
-          const y = padT + i * rowH;
+      <HBars
+        max={maxRoas}
+        labelWidth={84}
+        valueWidth={170}
+        marker={maxRoas >= 1 ? { value: 1, label: "100%" } : undefined}
+        rows={data.map((d) => {
           const c = color(d.roas, d.revenue);
-          const w = x(d.roas) - padL;
-          return (
-            <g key={d.country}>
-              <text x={padL - 8} y={y + rowH / 2 + 3} textAnchor="end" fill="var(--bone)" fontSize="11" fontFamily="var(--mono)">{d.country}</text>
-              <rect x={padL} y={y + 3} width={Math.max(1, w)} height={rowH - 8} fill={c} opacity={d.revenue <= 0 ? 0.28 : 0.62} rx="1" />
-              <text x={Math.max(x(d.roas) + 6, padL + 6)} y={y + rowH / 2 + 3} fill="var(--bone-dim)" fontSize="10" fontFamily="var(--mono)">
-                {d.revenue <= 0 ? `$0 / ${fmtUsd(d.spend)}` : `${(d.roas * 100).toFixed(0)}% · ${fmtUsd(d.revenue)}/${fmtUsd(d.spend)}`}
-              </text>
-            </g>
-          );
+          const tip: TipRow[] = [
+            [c, "ROAS", `${(d.roas * 100).toFixed(0)}%`],
+            [null, "Выручка", fmtUsd(d.revenue)],
+            [null, "Расход", fmtUsd(d.spend)],
+          ];
+          return {
+            label: d.country, value: Math.min(d.roas, maxRoas), color: c, tip,
+            text: d.revenue <= 0 ? `$0 / ${fmtUsd(d.spend)}` : `${(d.roas * 100).toFixed(0)}% · ${fmtUsd(d.revenue)}/${fmtUsd(d.spend)}`,
+          };
         })}
-      </svg>
+      />
     </div>
   );
 }
 
+/** No kit equivalent: a bubble scatter drawn by the kit rules (grid/axis tokens,
+ *  11px muted axis text, 2px strokes) with kit tooltips on every bubble. */
 export function EfficiencyScatter({ rows, blended }: { rows: GeoRow[]; blended: number }) {
   const data = rows.filter((r) => r.spend > 0);
   if (data.length === 0) return null;
+  return <Scatter data={data} blended={blended} />;
+}
 
-  const W = 1000, H = 360;
+function Scatter({ data, blended }: { data: GeoRow[]; blended: number }) {
+  const [ref, W] = useWidth<HTMLDivElement>(1000);
+
+  const H = 340;
   const padL = 48, padR = 20, padT = 16, padB = 34;
-  const innerW = W - padL - padR, innerH = H - padT - padB;
-  const maxSpend = Math.max(...data.map((d) => d.spend), 1) * 1.08;
-  const maxTrials = Math.max(...data.map((d) => d.trials), 3) * 1.15;
+  const innerW = Math.max(1, W - padL - padR), innerH = H - padT - padB;
+  const [maxSpend, xticks] = nice(Math.max(...data.map((d) => d.spend), 1) * 1.08);
+  const [maxTrials, yticks] = nice(Math.max(...data.map((d) => d.trials), 3) * 1.15);
   const x = (v: number) => padL + (v / maxSpend) * innerW;
   const y = (v: number) => padT + innerH - (v / maxTrials) * innerH;
   const r = (installs: number) => Math.max(4, Math.min(26, Math.sqrt(installs) * 2.4));
@@ -140,37 +129,42 @@ export function EfficiencyScatter({ rows, blended }: { rows: GeoRow[]; blended: 
   const beClampX = beY2 > maxTrials ? maxTrials * blended : beX2;
   const beClampY = beY2 > maxTrials ? maxTrials : beY2;
 
-  const xticks = [0, maxSpend * 0.25, maxSpend * 0.5, maxSpend * 0.75, maxSpend];
-  const yticks = [0, maxTrials * 0.25, maxTrials * 0.5, maxTrials * 0.75, maxTrials];
-
   return (
-    <div className="card" style={{ padding: "12px 16px" }}>
-      <div className="muted" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", marginBottom: 6 }}>
-        Efficiency · X spend · Y trials · bubble = installs · below dashed line = above-blended cost/trial
+    <div className="card">
+      <div className="note chart-caption">
+        Эффективность · по горизонтали расход · по вертикали триалы · размер — установки · ниже пунктира цена триала выше средней
       </div>
-      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ display: "block", width: "100%", height: "auto" }}>
-        {yticks.map((t, i) => (
-          <g key={`y${i}`}>
-            <line x1={padL} y1={y(t)} x2={W - padR} y2={y(t)} stroke="var(--line)" strokeWidth="0.5" />
-            <text x={padL - 6} y={y(t) + 3} textAnchor="end" fill="var(--bone-mute)" fontSize="9" fontFamily="var(--mono)">{Math.round(t)}</text>
-          </g>
-        ))}
-        {xticks.map((t, i) => (
-          <text key={`x${i}`} x={x(t)} y={H - 10} textAnchor="middle" fill="var(--bone-mute)" fontSize="9" fontFamily="var(--mono)">{fmtUsd(t)}</text>
-        ))}
-        {/* break-even line */}
-        <line x1={x(0)} y1={y(0)} x2={x(beClampX)} y2={y(beClampY)} stroke="var(--cyan)" strokeWidth="1" strokeDasharray="5 4" opacity="0.7" />
-        {data.map((d) => {
-          const cpt = d.trials > 0 ? d.spend / d.trials : null;
-          const c = zoneColor(cpt, blended);
-          return (
-            <g key={d.country}>
-              <circle cx={x(d.spend)} cy={y(d.trials)} r={r(d.installs)} fill={c} opacity="0.45" stroke={c} strokeWidth="1" />
-              <text x={x(d.spend)} y={y(d.trials) - r(d.installs) - 3} textAnchor="middle" fill="var(--bone-dim)" fontSize="9" fontFamily="var(--mono)">{d.country}</text>
+      <div className="dsc" ref={ref}>
+        <svg viewBox={`0 0 ${W} ${H}`} height={H}>
+          {yticks.map((t) => (
+            <g key={`y${t}`}>
+              <line x1={padL} y1={y(t)} x2={W - padR} y2={y(t)} stroke={t ? "var(--ds-grid)" : "var(--ds-axis)"} />
+              <text x={padL - 6} y={y(t) + 4} textAnchor="end">{Math.round(t)}</text>
             </g>
-          );
-        })}
-      </svg>
+          ))}
+          {xticks.map((t) => (
+            <text key={`x${t}`} x={x(t)} y={H - 12} textAnchor="middle">{`$${Math.round(t)}`}</text>
+          ))}
+          {/* break-even line */}
+          <line x1={x(0)} y1={y(0)} x2={x(beClampX)} y2={y(beClampY)} stroke="var(--ds-muted)" strokeDasharray="3 4" opacity={0.6} />
+          {data.map((d) => {
+            const cpt = d.trials > 0 ? d.spend / d.trials : null;
+            const c = zoneColor(cpt, blended);
+            const tip: TipRow[] = [
+              [c, "Цена триала", cpt === null ? "нет триалов" : fmtUsd(cpt)],
+              [null, "Расход", fmtUsd(d.spend)],
+              [null, "Старты триала", String(d.trials)],
+              [null, "Установки", String(d.installs)],
+            ];
+            return (
+              <g key={d.country} {...tipProps(d.country, tip)}>
+                <circle cx={x(d.spend)} cy={y(d.trials)} r={r(d.installs)} fill={c} fillOpacity={0.55} stroke={c} strokeWidth={2} />
+                <text className="lab" x={x(d.spend)} y={y(d.trials) - r(d.installs) - 4} textAnchor="middle">{d.country}</text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
     </div>
   );
 }

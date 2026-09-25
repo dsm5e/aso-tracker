@@ -1,0 +1,63 @@
+{
+  "id": "pdfsign-real-signnow",
+  "name": "05 · SignNow — Blue Motion · Real iPhone",
+  "kind": "real",
+  "description": "Яркий синий фон, наклонный телефон, геометрия и увеличенные карточки.",
+  "recommendedFor": "PDFSign / PDF signing",
+  "background": {
+    "type": "solid",
+    "css": "#087ac7"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 850,
+    "color": "#fff",
+    "align": "center",
+    "uppercase": false
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": false,
+  "decorationsHint": "Reference-derived layout. Keep headline zones empty in artwork; all marketing copy is a live localized layer.",
+  "samples": [
+    {
+      "verb": "Your signature.\nReady anywhere.",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-polish/artwork/signnow-1.png",
+      "text": {
+        "yFraction": 0.065,
+        "titlePx": 153,
+        "subPx": 70,
+        "color": "#fff",
+        "safeBottomFraction": 0.265
+      }
+    },
+    {
+      "verb": "Open your\ndocuments",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-polish/artwork/signnow-2.png",
+      "text": {
+        "yFraction": 0.065,
+        "titlePx": 153,
+        "subPx": 70,
+        "color": "#fff",
+        "safeBottomFraction": 0.265
+      }
+    },
+    {
+      "verb": "Sign, save\nand send PDFs",
+      "descriptor": "",
+      "sourceLayout": "full-bleed",
+      "screenSrc": "/studio/pdfsign-polish/artwork/signnow-3.png",
+      "text": {
+        "yFraction": 0.825,
+        "titlePx": 153,
+        "subPx": 70,
+        "color": "#fff",
+        "safeBottomFraction": 0.98
+      }
+    }
+  ]
+}

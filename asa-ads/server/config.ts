@@ -1,5 +1,10 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+// Relative paths (DATA_DIR, *_PRIVATE_KEY_PATH) resolve against the package root,
+// not the process cwd — the studio gateway runs from the monorepo root.
+const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 
 export interface AsaConfig {
   clientId: string;
@@ -22,29 +27,15 @@ export interface AscConfig {
 export interface AppConfig {
   asa: AsaConfig;
   asc: AscConfig;
+  host: string;
   port: number;
   dataDir: string;
-  /** Per-keyword revenue Cloud Function URL — real per-keyword revenue
-   * (deterministic AdServices attribution × subscription revenue). Optional:
-   * when unset the ROI engine stays on the country-average estimate. */
-  keywordRevenueFnUrl?: string;
-  /** Optional shared secret if the keyword-revenue function is locked. */
-  keywordRevenuePullToken?: string;
-  /** App slug the keyword-revenue function expects in its `app` query param. */
-  keywordRevenueAppSlug?: string;
-  /** Geo-level revenue Cloud Function — real revenue aggregated by store
-   * country (e.g. a subscription event log). Feeds the geo-level ROAS view. */
-  geoRevenueFnUrl?: string;
-  /** ?key= shared secret for the geo-revenue function. */
-  geoRevenueKey?: string;
+  /** Explicit break-glass switch. Dashboards start in audit/read-only mode. */
+  allowAppleAdsMutations: boolean;
 }
 
-/** Apple adamId of the app whose revenue is reported at geo (country) grain.
- *  Set via env; 0 disables the geo-revenue cross-match. */
-export const GEO_REVENUE_APP_ID = Number(process.env.GEO_REVENUE_APP_ID ?? 0);
-/** Apple adamId of the app with real per-keyword revenue (AdServices attribution),
- *  aggregated to country grain for the geo ROAS view. 0 disables it. */
-export const KEYWORD_REVENUE_APP_ID = Number(process.env.KEYWORD_REVENUE_APP_ID ?? 0);
+/** Apple adamId backed by the MedScan Adapty Analytics Export API key. */
+export const ADAPTY_ANALYTICS_APP_ID = Number(process.env.ADAPTY_ANALYTICS_APP_ID ?? 0);
 
 function need(name: string): string {
   const v = process.env[name];
@@ -53,7 +44,7 @@ function need(name: string): string {
 }
 
 function readPem(path: string): string {
-  return readFileSync(resolve(path), "utf-8");
+  return readFileSync(resolve(PACKAGE_ROOT, path), "utf-8");
 }
 
 export function loadConfig(): AppConfig {
@@ -74,12 +65,9 @@ export function loadConfig(): AppConfig {
       privateKeyPem: readPem(need("ASC_PRIVATE_KEY_PATH")),
       vendorNumber: need("ASC_VENDOR_NUMBER"),
     },
+    host: process.env.HOST ?? "127.0.0.1",
     port: Number(process.env.PORT ?? 5181),
-    dataDir: process.env.DATA_DIR ?? "./data",
-    keywordRevenueFnUrl: process.env.KEYWORD_REVENUE_FN_URL,
-    keywordRevenuePullToken: process.env.KEYWORD_REVENUE_KEY,
-    keywordRevenueAppSlug: process.env.KEYWORD_REVENUE_APP_SLUG,
-    geoRevenueFnUrl: process.env.GEO_REVENUE_FN_URL,
-    geoRevenueKey: process.env.GEO_REVENUE_KEY,
+    dataDir: resolve(PACKAGE_ROOT, process.env.DATA_DIR ?? "./data"),
+    allowAppleAdsMutations: process.env.ASA_MUTATIONS_ENABLED === "true",
   };
 }

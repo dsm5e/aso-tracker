@@ -1,53 +1,208 @@
-import { request } from "undici";
+import { execFileSync } from "node:child_process";
 
 /**
- * Real per-keyword ASA revenue, pulled from the `asaRevenueByKeyword` Cloud
- * Function. That function joins deterministic AdServices attribution
- * (asa_attribution/{customerUserId}) with Adapty subscription revenue events
- * (same customerUserId) in Firestore — no SKAN, no Adapty paid integration, so
- * it works at any volume. campaignId / keywordId are Apple's global ids and map
- * 1:1 onto asa_campaigns.id / asa_keywords.id.
+ * Deterministic Apple Ads acquisition economics from Adapty Analytics Export
+ * API. Adapty resolves AdServices attribution in its iOS SDK; for Apple Ads the
+ * `attribution_creative` segment is the numeric Apple keyword id.
+ *
+ * Revenue is requested with `date_type=profile_install_date`, so the selected
+ * date range is an acquisition cohort rather than a transaction-date window.
  */
 export interface KeywordRevenueRow {
   campaignId: number;
   keywordId: number;
   adGroupId: number | null;
   country: string | null;
+  attributedInstalls: number;
   trials: number;
   paid: number;
   revenueUsd: number;
+  windows: Array<{
+    day: number;
+    attributedInstalls: number;
+    trials: number;
+    paid: number;
+    revenueUsd: number;
+    fullyMature: boolean;
+  }>;
 }
 
-/**
- * GET the aggregate. Returns [] on any failure (missing URL handled by caller)
- * so a flaky function never breaks the rest of the sync — the ROI engine just
- * falls back to the country-average estimate.
- */
-export async function fetchKeywordRevenue(
-  fnUrl: string,
-  app: string,
-  pullToken?: string,
-): Promise<KeywordRevenueRow[]> {
-  const url = new URL(fnUrl);
-  url.searchParams.set("app", app);
-  if (pullToken) url.searchParams.set("key", pullToken);
+export interface KeywordRevenuePayload {
+  rows: KeywordRevenueRow[];
+  bounded: true;
+  window: { start: string; end: string };
+  observedThrough: string;
+}
 
-  const res = await request(url.toString(), { method: "GET" });
-  const buf = Buffer.from(await res.body.arrayBuffer());
-  if (res.statusCode < 200 || res.statusCode >= 300) {
-    throw new Error(`asaRevenueByKeyword ${res.statusCode}: ${buf.toString("utf-8").slice(0, 200)}`);
+interface AdaptyMetricRow {
+  title?: string;
+  type?: string;
+  value?: number;
+  values?: Array<{ x?: string; y?: number }>;
+}
+
+interface AdaptyMetric {
+  data?: AdaptyMetricRow[];
+}
+
+type FetchLike = typeof fetch;
+
+const ENDPOINT = "https://api-admin.adapty.io/api/v1/client-api/metrics/analytics/";
+
+function analyticsKey(): string {
+  if (process.env.ADAPTY_ANALYTICS_KEY) return process.env.ADAPTY_ANALYTICS_KEY;
+  try {
+    return execFileSync("gcloud", [
+      "secrets", "versions", "access", "latest",
+      `--secret=${process.env.ADAPTY_SECRET_NAME ?? "ADAPTY_SECRET_MEDSCAN"}`,
+      `--project=${process.env.ADAPTY_GCP_PROJECT ?? "dream-journal-by-nomle"}`,
+    ], { encoding: "utf8", timeout: 10_000, stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    throw new Error("Ключ аналитики Adapty недоступен в окружении и GCP Secret Manager.");
   }
-  const json = JSON.parse(buf.toString("utf-8")) as { rows?: unknown[] };
-  return (json.rows ?? []).map((raw) => {
-    const r = raw as Record<string, unknown>;
-    return {
-      campaignId: Number(r.campaignId),
-      keywordId: Number(r.keywordId),
-      adGroupId: r.adGroupId != null ? Number(r.adGroupId) : null,
-      country: (r.country as string) ?? null,
-      trials: Number(r.trials) || 0,
-      paid: Number(r.paid) || 0,
-      revenueUsd: Number(r.revenueUsd) || 0,
-    };
+}
+
+function metricByNumericId(metric?: AdaptyMetric): Map<number, number> {
+  const values = new Map<number, number>();
+  for (const row of metric?.data ?? []) {
+    const id = Number(row.type || row.title);
+    if (!Number.isSafeInteger(id) || id <= 0) continue;
+    values.set(id, Number(row.value) || 0);
+  }
+  return values;
+}
+
+async function requestMetric(
+  key: string,
+  chartId: "installs" | "trials_new" | "subscriptions_new" | "revenue",
+  cohortWindow: { start: string; end: string },
+  segmentation: "attribution_creative" | "country",
+  fetchImpl: FetchLike,
+  country?: string,
+): Promise<Record<string, AdaptyMetric>> {
+  const response = await fetchImpl(ENDPOINT, {
+    method: "POST",
+    headers: { authorization: `Api-Key ${key}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      chart_id: chartId,
+      filters: {
+        date: [cohortWindow.start, cohortWindow.end],
+        store: ["app_store"],
+        attribution_source: ["apple_search_ads"],
+        attribution_status: ["non_organic"],
+        // Adapty's analytics filter is case-sensitive here: country segment
+        // rows use lowercase codes, while the filter requires ISO uppercase.
+        ...(country ? { country: [country.toUpperCase()] } : {}),
+      },
+      period_unit: "day",
+      date_type: "profile_install_date",
+      segmentation,
+      format: "json",
+    }),
   });
+  const json = await response.json().catch(() => null) as { data?: Record<string, AdaptyMetric>; detail?: string } | null;
+  if (!response.ok) {
+    throw new Error(`Adapty ${segmentation} analytics ${response.status}${json?.detail ? `: ${json.detail}` : ""}`);
+  }
+  return json?.data ?? {};
+}
+
+const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+export async function fetchKeywordRevenue(
+  cohortWindow: { start: string; end: string },
+  options: { key?: string; fetchImpl?: FetchLike; throttleMs?: number; country?: string } = {},
+): Promise<KeywordRevenuePayload> {
+  const key = options.key ?? analyticsKey();
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const throttleMs = options.throttleMs ?? 550; // documented limit: 2 req/s
+
+  const installsBody = await requestMetric(key, "installs", cohortWindow, "attribution_creative", fetchImpl, options.country);
+  if (throttleMs) await pause(throttleMs);
+  const trialsBody = await requestMetric(key, "trials_new", cohortWindow, "attribution_creative", fetchImpl, options.country);
+  if (throttleMs) await pause(throttleMs);
+  const paidBody = await requestMetric(key, "subscriptions_new", cohortWindow, "attribution_creative", fetchImpl, options.country);
+  if (throttleMs) await pause(throttleMs);
+  const revenueBody = await requestMetric(key, "revenue", cohortWindow, "attribution_creative", fetchImpl, options.country);
+
+  const installs = metricByNumericId(installsBody.common);
+  const trials = metricByNumericId(trialsBody.common);
+  const paid = metricByNumericId(paidBody.common);
+  const revenue = metricByNumericId(revenueBody.net_revenue);
+  const keywordIds = new Set([...installs.keys(), ...trials.keys(), ...paid.keys(), ...revenue.keys()]);
+
+  return {
+    rows: [...keywordIds].sort((a, b) => a - b).map((keywordId) => ({
+      campaignId: 0, // resolved against the local Apple Ads keyword catalogue
+      keywordId,
+      adGroupId: null,
+      country: options.country?.toUpperCase() ?? null,
+      attributedInstalls: installs.get(keywordId) ?? 0,
+      trials: trials.get(keywordId) ?? 0,
+      paid: paid.get(keywordId) ?? 0,
+      revenueUsd: revenue.get(keywordId) ?? 0,
+      // Adapty exposes D0-D60 for the whole cohort, but not with keyword
+      // segmentation. Keep this empty instead of manufacturing false windows.
+      windows: [],
+    })),
+    bounded: true,
+    window: cohortWindow,
+    observedThrough: new Date().toISOString(),
+  };
+}
+
+export interface AdaptyGeoEconomics {
+  rows: Array<{ country: string; trials: number; paid: number; revenueUsd: number }>;
+  /** Net revenue per install-cohort day (YYYY-MM-DD), summed over countries. */
+  dailyRevenue: Array<{ date: string; revenueUsd: number }>;
+}
+
+export async function fetchAdaptyGeoEconomics(
+  cohortWindow: { start: string; end: string },
+  options: { key?: string; fetchImpl?: FetchLike; throttleMs?: number } = {},
+): Promise<AdaptyGeoEconomics> {
+  const key = options.key ?? analyticsKey();
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const throttleMs = options.throttleMs ?? 550;
+  const countryRows = (metric?: AdaptyMetric) => (metric?.data ?? [])
+    .filter((row) => /^[A-Za-z]{2}$/.test(row.type ?? ""));
+  const asCountryMap = (metric?: AdaptyMetric) => new Map(
+    countryRows(metric).map((row) => [(row.type ?? "").toUpperCase(), Number(row.value) || 0]),
+  );
+
+  const trials = asCountryMap((await requestMetric(key, "trials_new", cohortWindow, "country", fetchImpl)).common);
+  if (throttleMs) await pause(throttleMs);
+  const paid = asCountryMap((await requestMetric(key, "subscriptions_new", cohortWindow, "country", fetchImpl)).common);
+  if (throttleMs) await pause(throttleMs);
+  const revenueMetric = (await requestMetric(key, "revenue", cohortWindow, "country", fetchImpl)).net_revenue;
+  const revenue = asCountryMap(revenueMetric);
+  const countries = new Set([...trials.keys(), ...paid.keys(), ...revenue.keys()]);
+
+  // Each country row carries its per-day series (period_unit=day).
+  const byDay = new Map<string, number>();
+  for (const row of countryRows(revenueMetric)) {
+    for (const point of row.values ?? []) {
+      const date = String(point.x ?? "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      byDay.set(date, (byDay.get(date) ?? 0) + (Number(point.y) || 0));
+    }
+  }
+
+  return {
+    rows: [...countries].map((country) => ({
+      country,
+      trials: trials.get(country) ?? 0,
+      paid: paid.get(country) ?? 0,
+      revenueUsd: revenue.get(country) ?? 0,
+    })).sort((a, b) => b.revenueUsd - a.revenueUsd),
+    dailyRevenue: [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, v]) => ({ date, revenueUsd: Math.round(v * 100) / 100 })),
+  };
+}
+
+export async function fetchAdaptyGeoRevenue(
+  cohortWindow: { start: string; end: string },
+  options: { key?: string; fetchImpl?: FetchLike; throttleMs?: number } = {},
+): Promise<AdaptyGeoEconomics["rows"]> {
+  return (await fetchAdaptyGeoEconomics(cohortWindow, options)).rows;
 }

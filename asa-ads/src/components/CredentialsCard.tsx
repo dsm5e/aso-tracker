@@ -10,18 +10,18 @@ interface FieldDef {
 }
 
 const ASA_FIELDS: FieldDef[] = [
-  { key: "client_id", label: "Client ID", hint: "SEARCHADS.xxxx… from ads.apple.com → Settings → API", placeholder: "SEARCHADS.00000000-0000-…" },
-  { key: "team_id", label: "Team ID", hint: "Often same as Client ID", placeholder: "SEARCHADS.00000000-0000-…" },
-  { key: "key_id", label: "Key ID", hint: "UUID from API certificate" },
-  { key: "org_id", label: "Org ID", hint: "Numeric org identifier (org_acls tool)" },
-  { key: "private_key", label: "Private key (.p8)", hint: "Paste full PEM content including -----BEGIN…", multiline: true, placeholder: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----" },
+  { key: "client_id", label: "Client ID", hint: "SEARCHADS.xxxx… из ads.apple.com → Settings → API", placeholder: "SEARCHADS.00000000-0000-…" },
+  { key: "team_id", label: "Team ID", hint: "Часто совпадает с Client ID", placeholder: "SEARCHADS.00000000-0000-…" },
+  { key: "key_id", label: "Key ID", hint: "UUID из сертификата API" },
+  { key: "org_id", label: "Org ID", hint: "Числовой идентификатор организации (org_acls)" },
+  { key: "private_key", label: "Закрытый ключ (.p8)", hint: "Вставьте весь PEM, включая -----BEGIN…", multiline: true, placeholder: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----" },
 ];
 
 const ASC_FIELDS: FieldDef[] = [
-  { key: "key_id", label: "Key ID", hint: "10-char from appstoreconnect.apple.com → Users → Keys" },
-  { key: "issuer_id", label: "Issuer ID", hint: "UUID from the same page (Issuer ID at top)" },
-  { key: "vendor_number", label: "Vendor Number", hint: "From Sales and Trends → Reports" },
-  { key: "private_key", label: "Private key (.p8)", hint: "AuthKey_XXXXXXXXXX.p8 content", multiline: true, placeholder: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----" },
+  { key: "key_id", label: "Key ID", hint: "10 символов из appstoreconnect.apple.com → Users → Keys" },
+  { key: "issuer_id", label: "Issuer ID", hint: "UUID с той же страницы (Issuer ID вверху)" },
+  { key: "vendor_number", label: "Номер поставщика", hint: "Раздел Sales and Trends → Reports" },
+  { key: "private_key", label: "Закрытый ключ (.p8)", hint: "Содержимое AuthKey_XXXXXXXXXX.p8", multiline: true, placeholder: "-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----" },
 ];
 
 interface Props {
@@ -74,35 +74,35 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
   }
 
   return (
-    <div className="card" style={{ padding: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
+    <div className="card">
+      <div className="card-head">
         <div>
-          <h3 style={{ margin: 0 }}>
-            {title} {allConfigured ? <span className="badge ok">configured</span> : <span className="badge warn">not set</span>}
+          <h3 className="card-head-title">
+            {title} {allConfigured ? <span className="badge ok">настроено</span> : <span className="badge warn">не настроено</span>}
           </h3>
-          <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{description} · <a href={helpUrl} target="_blank" rel="noreferrer">docs ↗</a></div>
+          <div className="note">{description} · <a href={helpUrl} target="_blank" rel="noreferrer">документация ↗</a></div>
         </div>
-        <button onClick={() => setOpen((v) => !v)}>{open ? "− collapse" : "+ edit"}</button>
+        <button onClick={() => setOpen((v) => !v)}>{open ? "− Свернуть" : "+ Редактировать"}</button>
       </div>
 
       {!open && (
-        <table style={{ marginTop: 8 }}>
+        <table className="cred-table">
           <tbody>
             {fields.map((f) => {
               const c = current[f.key];
               return (
                 <tr key={f.key}>
-                  <td style={{ width: "28%" }}><span className="muted">{f.label}</span></td>
-                  <td style={{ width: 60 }}>
+                  <td className="cred-label"><span className="muted">{f.label}</span></td>
+                  <td className="cred-source">
                     {c?.source === "db" && <span className="badge ok">db</span>}
                     {c?.source === "env" && <span className="badge cyan">.env</span>}
-                    {c?.source === "none" && <span className="badge bad">none</span>}
+                    {c?.source === "none" && <span className="badge bad">нет</span>}
                   </td>
                   <td>
                     {c?.present ? (
-                      <span style={{ color: "var(--bone)", fontSize: 11 }}>{c.preview}</span>
+                      <code className="cred-preview">{c.preview}</code>
                     ) : (
-                      <span className="bad">— not set —</span>
+                      <span className="bad">— не задано —</span>
                     )}
                   </td>
                 </tr>
@@ -114,33 +114,23 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
 
       {open && (
         <>
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+          <div className="cred-form">
             {fields.map((f) => (
               <div key={f.key}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                  <label style={{ fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--bone-dim)" }}>
+                <div className="cred-field-head">
+                  <label className="field-label">
                     {f.label}
                   </label>
                   {current[f.key]?.present && (
-                    <span className="muted" style={{ fontSize: 10 }}>current: {current[f.key]!.preview}</span>
+                    <span className="note">текущее: {current[f.key]!.preview}</span>
                   )}
                 </div>
                 {f.multiline ? (
                   <textarea
-                    placeholder={f.placeholder ?? "paste here…"}
+                    placeholder={f.placeholder ?? "вставьте значение…"}
                     value={edits[f.key] ?? ""}
                     onChange={(e) => setEdits((p) => ({ ...p, [f.key]: e.target.value }))}
-                    style={{
-                      width: "100%",
-                      minHeight: 100,
-                      background: "var(--void)",
-                      border: "1px solid var(--line)",
-                      color: "var(--bone)",
-                      fontFamily: "var(--mono)",
-                      fontSize: 11,
-                      padding: "8px 10px",
-                      resize: "vertical",
-                    }}
+                    className="ds-textarea cred-textarea"
                   />
                 ) : (
                   <input
@@ -148,25 +138,25 @@ export default function CredentialsCard({ provider, title, helpUrl, description 
                     placeholder={f.placeholder ?? ""}
                     value={edits[f.key] ?? ""}
                     onChange={(e) => setEdits((p) => ({ ...p, [f.key]: e.target.value }))}
-                    style={{ width: "100%" }}
+                    className="ds-input cred-input"
                   />
                 )}
-                <div className="muted" style={{ fontSize: 10, marginTop: 3 }}>{f.hint}</div>
+                <div className="note cred-hint">{f.hint}</div>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <div className="hint" style={{ fontSize: 11 }}>
+          <div className="cred-foot">
+            <div className="hint">
               {dirty
-                ? <><strong className="warn">{Object.keys(edits).length} pending</strong> · после save нужно перезапустить API чтобы клиенты подхватили</>
+                ? <><strong className="warn">изменений: {Object.keys(edits).length}</strong> · после сохранения перезапустите API, чтобы клиенты подхватили значения</>
                 : savedAt
-                  ? <><span className="good">saved at {savedAt}</span> · restart API to apply</>
-                  : <>Filled-in fields are stored encrypted-at-rest in <code style={{ color: "var(--cyan)" }}>data/asa-ads.db</code>. Empty fields are ignored (existing values stay).</>
+                  ? <><span className="good">сохранено · {savedAt}</span> · перезапустите API для применения</>
+                  : <>Заполненные поля хранятся в зашифрованном виде в <code>data/asa-ads.db</code>. Пустые поля игнорируются, существующие значения сохраняются.</>
               }
             </div>
             <div className="btn-group">
-              <button onClick={() => { setEdits({}); setOpen(false); }}>cancel</button>
-              <button className="primary" disabled={!dirty || saving} onClick={save}>{saving ? "saving…" : "save"}</button>
+              <button onClick={() => { setEdits({}); setOpen(false); }}>Отменить</button>
+              <button disabled={!dirty || saving} onClick={save}>{saving ? "Сохраняем…" : "Сохранить"}</button>
             </div>
           </div>
         </>

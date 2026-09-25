@@ -1,0 +1,188 @@
+{
+  "appName": "PDFSign",
+  "appColor": "#6258eb",
+  "appIconUrl": null,
+  "devices": "iphone",
+  "iphoneModel": "iphone-17-pro-max",
+  "outputFolder": "/Users/qwar49/Developer/screenshots/PDFSign/polish-v2/variants/acrobat/polished",
+  "agentNav": null,
+  "agentPolishCommand": null,
+  "selectedPresetId": "pdfsign-real-acrobat",
+  "catalogFilter": "all",
+  "screenshots": [
+    {
+      "id": "pdfsign-real-acrobat-1",
+      "filename": "acrobat-1.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/polished/acrobat-1.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-acrobat",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "All your PDFs.\nReady to sign.",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 151,
+      "subPx": 70,
+      "textYFraction": 0.055,
+      "headlineSafeBottomFraction": 0.25,
+      "textColorOverride": "#fff",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 0
+    },
+    {
+      "id": "pdfsign-real-acrobat-2",
+      "filename": "acrobat-2.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/polished/acrobat-2.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-acrobat",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Your documents.\nOne place.",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 151,
+      "subPx": 70,
+      "textYFraction": 0.055,
+      "headlineSafeBottomFraction": 0.25,
+      "textColorOverride": "#fff",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 1
+    },
+    {
+      "id": "pdfsign-real-acrobat-3",
+      "filename": "acrobat-3.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/polished/acrobat-3.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-acrobat",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Add your\nsignature.",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 151,
+      "subPx": 70,
+      "textYFraction": 0.055,
+      "headlineSafeBottomFraction": 0.25,
+      "textColorOverride": "#171717",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 2
+    }
+  ],
+  "activeScreenshotId": "pdfsign-real-acrobat-1",
+  "viewMode": "scaffold",
+  "previewDevice": "iphone",
+  "locales": [
+    {
+      "id": "ru",
+      "code": "ru",
+      "flag": "🇷🇺",
+      "name": "Русский",
+      "translations": {
+        "pdfsign-real-acrobat-1": {
+          "verb": "Все PDF.\nГотовы к подписи.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-acrobat-2": {
+          "verb": "Документы\nв одном месте.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-acrobat-3": {
+          "verb": "Добавьте\nсвою подпись.",
+          "descriptor": "",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    },
+    {
+      "id": "de-DE",
+      "code": "de-DE",
+      "flag": "🇩🇪",
+      "name": "Deutsch",
+      "translations": {
+        "pdfsign-real-acrobat-1": {
+          "verb": "Alle Ihre PDFs.\nBereit zum Signieren.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-acrobat-2": {
+          "verb": "Ihre Dokumente.\nAn einem Ort.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-acrobat-3": {
+          "verb": "Fügen Sie Ihre\nUnterschrift hinzu.",
+          "descriptor": "",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    }
+  ],
+  "activeLocaleId": "ru"
+}

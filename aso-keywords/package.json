@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "start": "tsx server/index.ts",
     "snapshot": "tsx cli/snapshot.ts",
+    "validate-metadata-serps": "tsx cli/validate-metadata-serps.ts",
+    "build-medscan-deploy": "tsx cli/build-medscan-deploy.ts",
     "migrate-jsonl": "tsx cli/migrate-jsonl.ts",
     "lint": "eslint ."
   },

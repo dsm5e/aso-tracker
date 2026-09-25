@@ -1,7 +1,8 @@
 /**
  * Phase 7 — render PNG per (slot × locale) at exact App Store dimensions.
  * iPhone: fixed current Pro Max dimensions (preview model does not affect export).
- * iPad:   2048×2732 (iPad Pro 12.9" 3rd gen — APP_IPAD_PRO_3GEN_129).
+ * iPad:   2048×2732 (12.9") by default, or 2064×2752 (13") when the project
+ *         sets ipadModel = 'ipad-pro-13'.
  * Uses ReactDOM.createRoot to render an off-screen MockupCanvas at native
  * resolution, captures via html-to-image, posts the PNG bytes to the server
  * for disk write.
@@ -17,7 +18,7 @@ import { clog } from './clog';
 import {
   APP_STORE_IPHONE_CANVAS,
   APP_STORE_IPHONE_MODEL,
-  IPAD_CANVAS,
+  getIPadCanvas,
   formatDimensions,
 } from './deviceProfiles';
 
@@ -138,10 +139,10 @@ async function renderOne(
   // the largest current Pro Max canvas so files land in the required 6.9" well.
   const dev = slot.device ?? opts.device ?? 'iphone';
   const dimensions = dev === 'ipad'
-    ? IPAD_CANVAS
+    ? getIPadCanvas(st.ipadModel)
     : APP_STORE_IPHONE_CANVAS;
   const { w: CANVAS_W, h: CANVAS_H } = dimensions;
-  const localeCode = locale?.code ?? 'en';
+  const localeCode = locale?.code ?? st.sourceLocale ?? 'en';
   const localised = applyLocaleToSlot(slot, locale);
 
   // Off-screen mount point for the React tree.
@@ -161,7 +162,7 @@ async function renderOne(
         fitHeight: CANVAS_H,
         showDropZone: false,
         viewModeOverride: slot.action?.aiImageUrl ? 'enhanced' : 'scaffold',
-        localeMeta: locale ? { rtl: locale.rtl, fontOverride: locale.fontOverride } : undefined,
+        localeMeta: locale ? { rtl: locale.rtl, fontOverride: locale.fontOverride, lang: locale.code } : undefined,
       }),
     );
 

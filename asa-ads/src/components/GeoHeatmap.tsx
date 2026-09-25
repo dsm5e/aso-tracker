@@ -1,25 +1,29 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
+import { tipProps, type TipRow } from "../../../shared/charts/Charts.tsx";
 
 interface GeoRow {
   country: string;
   impressions: number;
   taps: number;
   installs: number;
-  spend: number;
-  cpi: number;
+  spend: number | null;
+  cpi: number | null;
   campaigns: number;
   trials: number;
 }
 
-function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
+// The API reports unavailable money as null (partial data stays visible), not 0.
+function fmtUsd(n: number | null | undefined): string { return n == null ? "—" : `$${n.toFixed(2)}`; }
 
 const FLAGS: Record<string, string> = {
   US: "🇺🇸", GB: "🇬🇧", CA: "🇨🇦", AU: "🇦🇺", DE: "🇩🇪", FR: "🇫🇷", IT: "🇮🇹", ES: "🇪🇸",
   NL: "🇳🇱", CH: "🇨🇭", IL: "🇮🇱", SE: "🇸🇪", NO: "🇳🇴", DK: "🇩🇰", FI: "🇫🇮", JP: "🇯🇵",
   TR: "🇹🇷", BR: "🇧🇷", MX: "🇲🇽", SA: "🇸🇦", KR: "🇰🇷", ID: "🇮🇩", TW: "🇹🇼", IE: "🇮🇪",
 };
+
+const METRIC_LABEL = { spend: "Расход", installs: "Установки", cpi: "CPI", trials: "Триалы" } as const;
 
 interface Props {
   days: number;
@@ -43,45 +47,48 @@ export default function GeoHeatmap({ days }: Props) {
     return Math.min(1, v / max);
   }
 
+  // Heat = share of the max; CPI is a cost, so it heats in the "bad" color.
   function color(v: number): string {
-    const c = metric === "cpi" ? "var(--red)" : "var(--amber)";
+    const c = metric === "cpi" ? "var(--ds-bad)" : "var(--ds-c1)";
     const i = intensity(v);
-    return `color-mix(in srgb, ${c} ${(i * 100).toFixed(0)}%, transparent)`;
+    return `color-mix(in srgb, ${c} ${(i * 55).toFixed(0)}%, var(--ds-panel))`;
   }
+  const keyColor = metric === "cpi" ? "var(--ds-bad)" : "var(--ds-c1)";
+  const tipRows = (r: GeoRow): TipRow[] => [
+    [metric === "spend" ? keyColor : null, "Расход", fmtUsd(r.spend)],
+    [metric === "installs" ? keyColor : null, "Установки", String(r.installs)],
+    [metric === "cpi" ? keyColor : null, "CPI", r.cpi != null && r.cpi > 0 ? fmtUsd(r.cpi) : "—"],
+    [metric === "trials" ? keyColor : null, "Старты триала", String(r.trials)],
+    [null, "Кампаний", String(r.campaigns)],
+  ];
 
   return (
-    <div className="card" style={{ padding: 14 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-        <div className="muted" style={{ fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase" }}>Geo · {rows.length} countries</div>
-        <div className="btn-group">
+    <div className="card">
+      <div className="card-toolbar">
+        <div className="ds-card-title">География · <span className="muted">{rows.length} стран</span></div>
+        <div className="ds-seg">
           {(["spend", "installs", "cpi", "trials"] as const).map((m) => (
-            <button key={m} className={`compact ${m === metric ? "primary" : ""}`} onClick={() => setMetric(m)}>{m}</button>
+            <button key={m} className={m === metric ? "on" : ""} onClick={() => setMetric(m)}>{METRIC_LABEL[m]}</button>
           ))}
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))", gap: 6 }}>
+      <div className="geo-grid">
         {rows.map((r) => {
           const v = Number(r[metric] ?? 0);
           return (
             <div
               key={r.country}
-              title={`${r.country} · spend ${fmtUsd(r.spend)} · installs ${r.installs} · CPI ${fmtUsd(r.cpi)} · ${r.campaigns} campaigns`}
-              style={{
-                padding: "8px 10px",
-                background: color(v),
-                border: "1px solid var(--line)",
-                display: "flex",
-                flexDirection: "column",
-                gap: 2,
-              }}
+              {...tipProps(`${FLAGS[r.country] ?? "🏳"} ${r.country}`, tipRows(r))}
+              className="geo-cell"
+              style={{ background: color(v) }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 16 }}>{FLAGS[r.country] ?? "🏳"}</span>
-                <span style={{ fontSize: 11, letterSpacing: "0.05em", color: "var(--bone)" }}>{r.country}</span>
-                <span className="muted" style={{ fontSize: 9, marginLeft: "auto" }}>×{r.campaigns}</span>
+              <div className="geo-cell-head">
+                <span className="geo-flag">{FLAGS[r.country] ?? "🏳"}</span>
+                <span className="geo-code">{r.country}</span>
+                <span className="geo-count">×{r.campaigns}</span>
               </div>
-              <div style={{ fontSize: 13, color: "var(--bone)", fontVariantNumeric: "tabular-nums" }}>
-                {metric === "spend" ? fmtUsd(r.spend) : metric === "cpi" ? (r.cpi > 0 ? fmtUsd(r.cpi) : "—") : metric === "installs" ? r.installs : r.trials}
+              <div className="geo-value">
+                {metric === "spend" ? fmtUsd(r.spend) : metric === "cpi" ? (r.cpi != null && r.cpi > 0 ? fmtUsd(r.cpi) : "—") : metric === "installs" ? r.installs : r.trials}
               </div>
             </div>
           );

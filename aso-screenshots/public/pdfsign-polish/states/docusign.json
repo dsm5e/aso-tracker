@@ -1,0 +1,188 @@
+{
+  "appName": "PDFSign",
+  "appColor": "#6258eb",
+  "appIconUrl": null,
+  "devices": "iphone",
+  "iphoneModel": "iphone-17-pro-max",
+  "outputFolder": "/Users/qwar49/Developer/screenshots/PDFSign/polish-v2/variants/docusign",
+  "agentNav": null,
+  "agentPolishCommand": null,
+  "selectedPresetId": "pdfsign-real-docusign",
+  "catalogFilter": "all",
+  "screenshots": [
+    {
+      "id": "pdfsign-real-docusign-1",
+      "filename": "docusign-1.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/docusign-1.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-docusign",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Open, sign,\nsend & done.",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 143,
+      "subPx": 70,
+      "textYFraction": 0.09,
+      "headlineSafeBottomFraction": 0.29,
+      "textColorOverride": "#3e3549",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 0
+    },
+    {
+      "id": "pdfsign-real-docusign-2",
+      "filename": "docusign-2.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/docusign-2.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-docusign",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "One signature.\nReady to reuse.",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 143,
+      "subPx": 70,
+      "textYFraction": 0.48,
+      "headlineSafeBottomFraction": 0.66,
+      "textColorOverride": "#3e3549",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 1
+    },
+    {
+      "id": "pdfsign-real-docusign-3",
+      "filename": "docusign-3.png",
+      "device": "iphone",
+      "sourceUrl": "/studio/pdfsign-polish/artwork/docusign-3.png",
+      "sourcePixelWidth": 1320,
+      "sourcePixelHeight": 2868,
+      "sourceLayout": "full-bleed",
+      "sourceScale": 1,
+      "sourceOffsetX": 0,
+      "sourceOffsetY": 0,
+      "enhancedUrl": null,
+      "presetId": "pdfsign-real-docusign",
+      "backgroundOverride": null,
+      "headline": {
+        "verb": "Keep your signed\ndocuments close.",
+        "descriptor": "",
+        "subhead": ""
+      },
+      "font": "Inter",
+      "fontSize": 48,
+      "titlePx": 143,
+      "subPx": 70,
+      "textYFraction": 0.09,
+      "headlineSafeBottomFraction": 0.29,
+      "textColorOverride": "#3e3549",
+      "tiltDeg": 0,
+      "tiltX": 0,
+      "tiltY": 0,
+      "deviceX": 0,
+      "deviceY": 0,
+      "deviceScale": 1,
+      "textX": 0,
+      "textY": 0,
+      "breakout": false,
+      "pulseScreen": 0,
+      "enhanceState": "idle",
+      "kind": "regular",
+      "sampleIndex": 2
+    }
+  ],
+  "activeScreenshotId": "pdfsign-real-docusign-1",
+  "viewMode": "scaffold",
+  "previewDevice": "iphone",
+  "locales": [
+    {
+      "id": "ru",
+      "code": "ru",
+      "flag": "🇷🇺",
+      "name": "Русский",
+      "translations": {
+        "pdfsign-real-docusign-1": {
+          "verb": "Откройте, подпишите\nи отправьте.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-docusign-2": {
+          "verb": "Одна подпись.\nСнова и снова.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-docusign-3": {
+          "verb": "Подписанные\nдокументы рядом.",
+          "descriptor": "",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    },
+    {
+      "id": "de-DE",
+      "code": "de-DE",
+      "flag": "🇩🇪",
+      "name": "Deutsch",
+      "translations": {
+        "pdfsign-real-docusign-1": {
+          "verb": "Öffnen, unterschreiben\nund versenden.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-docusign-2": {
+          "verb": "Eine Unterschrift.\nImmer wieder bereit.",
+          "descriptor": "",
+          "subhead": ""
+        },
+        "pdfsign-real-docusign-3": {
+          "verb": "Unterschriebene\nDokumente griffbereit.",
+          "descriptor": "",
+          "subhead": ""
+        }
+      },
+      "aiTranslated": true
+    }
+  ],
+  "activeLocaleId": "ru"
+}

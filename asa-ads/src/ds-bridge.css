@@ -1,0 +1,46 @@
+@import '../../shared/ds-components.css';
+/* Maps the ASA app's terminal-era variables onto the shared design system
+   (../../shared/ds.css). Imported after styles.css so it wins over both the
+   :root block and the prefers-color-scheme layer: the theme now follows
+   <html data-theme>, like every other studio product. */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  color-scheme: inherit;
+  --void: var(--ds-bg);
+  --bg-1: var(--ds-panel);
+  --bg-2: var(--ds-panel-2);
+  --bg-3: var(--ds-hover);
+  --line: var(--ds-border);
+  --line-soft: var(--ds-hairline);
+
+  --bone: var(--ds-text);
+  --bone-dim: var(--ds-muted);
+  --bone-mute: var(--ds-muted);
+  --bone-ghost: var(--ds-subtle);
+
+  --amber: var(--ds-accent);
+  --amber-dim: var(--ds-accent-hover);
+  --amber-glow: var(--ds-accent-soft);
+  --accent: var(--ds-accent);
+  --accent-soft: var(--ds-accent-soft);
+
+  --red: var(--ds-bad);
+  --red-dim: var(--ds-s-critical);
+  --red-glow: var(--ds-bad-soft);
+  --cyan: var(--ds-c3);
+  --cyan-dim: var(--ds-c3);
+  --cyan-glow: color-mix(in srgb, var(--ds-c3) 14%, transparent);
+  --green: var(--ds-good);
+  --yellow: var(--ds-warn);
+
+  --surface: var(--ds-panel);
+  --surface-subtle: var(--ds-panel-2);
+  --radius-control: var(--ds-radius-control);
+  --radius-card: var(--ds-radius-card);
+  --sans: var(--ds-font);
+  --mono: var(--ds-font);
+}
+body { background: var(--ds-bg); color: var(--ds-text); font-family: var(--ds-font); }
+/* numbers stay aligned without a monospace face */
+body { font-variant-numeric: tabular-nums; }

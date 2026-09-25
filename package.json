@@ -10,13 +10,15 @@
     "aso-inapp"
   ],
   "scripts": {
-    "dev": "concurrently -n keywords,screenshots,video,asa,inapp -c magenta,cyan,green,yellow,blue \"npm:dev:keywords\" \"npm:dev:screenshots\" \"npm:dev:video\" \"npm:dev:asa\" \"npm:dev:inapp\"",
+    "dev": "tsx watch --clear-screen=false studio/server.ts",
+    "start": "tsx studio/server.ts",
+    "dev:legacy": "concurrently -n keywords,screenshots,video,asa,inapp -c magenta,cyan,green,yellow,blue \"npm:dev:keywords\" \"npm:dev:screenshots\" \"npm:dev:video\" \"npm:dev:asa\" \"npm:dev:inapp\"",
     "dev:keywords": "npm --workspace aso-keywords run dev",
     "dev:screenshots": "npm --workspace aso-screenshots run dev",
     "dev:video": "npm --workspace aso-video run dev",
     "dev:asa": "npm --workspace asa-ads run dev",
     "dev:inapp": "npm --workspace aso-inapp run dev",
-    "open": "open http://localhost:5173 http://localhost:5180 http://localhost:5190 http://localhost:5193 http://localhost:5196"
+    "open": "open http://localhost:5173"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

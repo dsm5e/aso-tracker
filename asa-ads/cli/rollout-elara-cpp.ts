@@ -120,6 +120,10 @@ const intents: Intent[] = [
 
 type RecordLike = Record<string, any>;
 const unwrap = <T = RecordLike>(value: any): T => (value?.data ?? value) as T;
+const requireRecord = (value: RecordLike | undefined, message: string): RecordLike => {
+  if (value === undefined) throw new Error(message);
+  return value;
+};
 
 async function main() {
   throw new Error(
@@ -145,7 +149,7 @@ async function main() {
       (candidate) => candidate.productPageId === intent.ppid && candidate.state === "VALID",
     );
     if (!creative) {
-      creative = unwrap(
+      const createdCreative = unwrap<RecordLike>(
         await asa.req("POST", "/creatives", {
           body: {
             adamId: APP_ID,
@@ -155,17 +159,19 @@ async function main() {
           },
         }),
       );
-      existingCreatives.push(creative);
+      creative = createdCreative;
+      existingCreatives.push(createdCreative);
     }
-    if (!creative?.id || creative.state !== "VALID") {
-      throw new Error(`${intent.key}: creative is not VALID: ${JSON.stringify(creative)}`);
+    const resolvedCreative = requireRecord(creative, `${intent.key}: creative is missing`);
+    if (resolvedCreative.id == null || resolvedCreative.state !== "VALID") {
+      throw new Error(`${intent.key}: creative is not VALID: ${JSON.stringify(resolvedCreative)}`);
     }
 
     let campaign = existingCampaigns.find(
       (candidate) => candidate.adamId === APP_ID && candidate.name === intent.campaignName,
     ) as RecordLike | undefined;
     if (!campaign) {
-      campaign = unwrap(
+      campaign = unwrap<RecordLike>(
         await asa.req("POST", "/campaigns", {
           body: {
             name: intent.campaignName,
@@ -181,15 +187,16 @@ async function main() {
         }),
       );
     }
-    if (!campaign?.id) throw new Error(`${intent.key}: campaign creation returned no id`);
+    const resolvedCampaign = requireRecord(campaign, `${intent.key}: campaign creation returned no record`);
+    if (resolvedCampaign.id == null) throw new Error(`${intent.key}: campaign creation returned no id`);
 
-    const campaignId = Number(campaign.id);
+    const campaignId = Number(resolvedCampaign.id);
     const groups = unwrap<RecordLike[]>(
       await asa.req("GET", `/campaigns/${campaignId}/adgroups`, { query: { limit: 1000 } }),
     );
     let group = groups.find((candidate) => candidate.name === GROUP_NAME);
     if (!group) {
-      group = unwrap(
+      group = unwrap<RecordLike>(
         await asa.req("POST", `/campaigns/${campaignId}/adgroups`, {
           body: {
             name: GROUP_NAME,
@@ -203,11 +210,12 @@ async function main() {
         }),
       );
     }
-    if (!group?.id || group.automatedKeywordsOptIn !== false) {
-      throw new Error(`${intent.key}: invalid ad group: ${JSON.stringify(group)}`);
+    const resolvedGroup = requireRecord(group, `${intent.key}: ad group creation returned no record`);
+    if (resolvedGroup.id == null || resolvedGroup.automatedKeywordsOptIn !== false) {
+      throw new Error(`${intent.key}: invalid ad group: ${JSON.stringify(resolvedGroup)}`);
     }
 
-    const adGroupId = Number(group.id);
+    const adGroupId = Number(resolvedGroup.id);
     const currentKeywords = unwrap<RecordLike[]>(
       await asa.req(
         "GET",
@@ -255,21 +263,22 @@ async function main() {
       ),
     );
     let ad = ads.find(
-      (candidate) => candidate.creativeId === creative.id && !candidate.deleted,
+      (candidate) => candidate.creativeId === resolvedCreative.id && !candidate.deleted,
     );
     if (!ad) {
-      ad = unwrap(
+      ad = unwrap<RecordLike>(
         await asa.req("POST", `/campaigns/${campaignId}/adgroups/${adGroupId}/ads`, {
           body: {
-            creativeId: creative.id,
+            creativeId: resolvedCreative.id,
             name: intent.creativeName,
             status: "ENABLED",
           },
         }),
       );
     }
-    if (!ad?.id || ad.status !== "ENABLED") {
-      throw new Error(`${intent.key}: custom ad not enabled: ${JSON.stringify(ad)}`);
+    const resolvedAd = requireRecord(ad, `${intent.key}: ad creation returned no record`);
+    if (resolvedAd.id == null || resolvedAd.status !== "ENABLED") {
+      throw new Error(`${intent.key}: custom ad not enabled: ${JSON.stringify(resolvedAd)}`);
     }
 
     await asa.addCampaignNegative(campaignId, "meu rookery", "EXACT");
@@ -277,8 +286,8 @@ async function main() {
       intent: intent.key,
       campaignId,
       adGroupId,
-      creativeId: creative.id,
-      adId: ad.id,
+      creativeId: resolvedCreative.id,
+      adId: resolvedAd.id,
       exact: intent.exact.length,
       broad: intent.broad.length,
     });
@@ -300,7 +309,8 @@ async function main() {
   const afterEnable = await asa.listCampaigns();
   for (const item of created) {
     const campaign = afterEnable.find((candidate) => candidate.id === item.campaignId);
-    if (!campaign || campaign.status !== "ENABLED") {
+    const resolvedCampaign = requireRecord(campaign, `${item.intent}: campaign missing after enable`);
+    if (resolvedCampaign.status !== "ENABLED") {
       throw new Error(`${item.intent}: campaign failed to enable`);
     }
   }

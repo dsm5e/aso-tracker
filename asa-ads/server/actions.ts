@@ -19,7 +19,10 @@ export function enqueue(a: Action): number {
   return Number(r.lastInsertRowid);
 }
 
-export async function apply(asa: AsaClient, id: number): Promise<{ ok: boolean; error?: string }> {
+export async function apply(asa: AsaClient, id: number, approved = false): Promise<{ ok: boolean; error?: string }> {
+  if (!approved) {
+    return { ok: false, error: "Apple Ads mutations are disabled: enable ASA_MUTATIONS_ENABLED only for an explicitly approved apply run" };
+  }
   const db = getDb();
   const row = db.prepare(`SELECT * FROM actions WHERE id = ?`).get(id) as { id: number; type: string; payload: string; status: string } | undefined;
   if (!row) return { ok: false, error: "not found" };

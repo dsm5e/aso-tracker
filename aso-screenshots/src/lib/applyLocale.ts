@@ -8,6 +8,7 @@
  * added after the translate run.
  */
 import { useStudio, type LocaleEntry, type Screenshot } from '../state/studio';
+import { localizedSlotSources, resolveLocalizedUrl } from './localizedSources';
 
 export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Screenshot {
   if (!loc) return ss;
@@ -19,6 +20,7 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
   let stickerTr = loc.stickerTranslations?.[ss.id];
   let badgeTr = loc.badgeTranslations?.[ss.id];
   let bandTr = loc.archBandTranslations?.[ss.id];
+  let decorTr = loc.decorTranslations?.[ss.id];
 
   // Fallback: look for another slot with the same verb that has a translation.
   if (!tr && loc.translations && ss.headline.verb) {
@@ -37,13 +39,14 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
       if (!stickerTr) stickerTr = loc.stickerTranslations?.[match.id];
       if (!badgeTr) badgeTr = loc.badgeTranslations?.[match.id];
       if (!bandTr) bandTr = loc.archBandTranslations?.[match.id];
+      if (!decorTr) decorTr = loc.decorTranslations?.[match.id];
     }
   }
 
   return {
     ...ss,
-    sourceUrl: loc.sourceOverrides?.[ss.id] ?? ss.sourceUrl,
-    secondaryUrl: loc.secondaryOverrides?.[ss.id] ?? ss.secondaryUrl,
+    // Localized app UI: per-locale override, else <lang> → fallback → root.
+    ...localizedSlotSources(ss, loc, useStudio.getState().localizedSources),
     headline: tr
       ? { verb: tr.verb || ss.headline.verb, descriptor: tr.descriptor || ss.headline.descriptor, subhead: ss.headline.subhead }
       : ss.headline,
@@ -67,6 +70,14 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
           };
         })
       : ss.stickers,
+    // Decor copy (speech bubbles, laurels) is translated by index; null keeps the
+    // source. Decor images that are root captures (e.g. a card cut from an app
+    // screen) follow the same per-language chain as the slot's own sources.
+    decor: ss.decor?.map((d, i) => {
+      const text = decorTr?.[i];
+      const src = d.src ? resolveLocalizedUrl(d.src, loc.code, useStudio.getState().localizedSources) ?? d.src : d.src;
+      return text || src !== d.src ? { ...d, ...(text ? { text: text as string } : {}), src } : d;
+    }),
     // Localized footer capsule + V captions (fall back to source when absent).
     footer: extra?.footer ?? ss.footer,
     frontLabel: extra?.frontLabel ?? ss.frontLabel,

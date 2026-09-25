@@ -1,19 +1,39 @@
+import { refreshOwnAppMeta, refreshStaleOwnAppMeta } from './own-app-meta.js';
 import express from 'express';
-import { existsSync, unlinkSync } from 'node:fs';
+import { existsSync, realpathSync, unlinkSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join, resolve } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import { KEYWORDS_FILES_DIR } from './paths.js';
 import { getAppsWithStats, getLocaleStatsByApp, getRankings } from './queries.js';
-import { loadApps, saveApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
+import { assertSafeAppId, loadApps, saveApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
 import { db } from './db.js';
 import { runSnapshot, refreshKeyword, getLiveRuntime, setLiveSpeed } from './snapshot.js';
 import { getMovers } from './analytics.js';
-import { lookupItunes } from './itunes.js';
+import { appleJson, lookupBatch, lookupItunes, searchItunes } from './itunes.js';
+import { gateStatus, type GatePriority } from './host-gate.js';
+import { NightlyScheduler, buildDeltaPlan, loadScheduleState, planToOnly, saveScheduleState, type DeltaRunResult } from './scheduler.js';
+import { registerScheduleRoutes } from './routes-schedule.js';
+import { compareRankSources, isRankSource, loadSnapshotSettings, recordProbeSet, saveSnapshotSettings, type RankSource } from './rank-source.js';
 import { competitorInfo, competitorKeywords, topCompetitors } from './competitors.js';
 import { getCompetitorPricing } from './pricing.js';
 import { getCompetitorReviews } from './reviews.js';
 import { keywordRelevance, buildClaudePrompt } from './relevance.js';
 import { keywordSuggestions } from './suggestions.js';
+import { registerCompetitorSpyRoutes } from './competitor-spy.js';
+import { getAdRepositoryAds, type AdRepositoryDatePreset } from './ad-repository.js';
+import {
+  appendMetadataSnapshot,
+  archiveAsoExperiment,
+  capturePublicMetadata,
+  createAsoExperiment,
+  getMetadataHistory,
+  listAsoExperiments,
+  updateAsoExperiment,
+} from './metadata-history.js';
+import { createPaidObservation, getPaidObservations } from './paid-observations.js';
+import { registerCountryRoutes } from './routes-countries.js';
+import { registerKeywordTableRoutes } from './routes-keyword-table.js';
 
 const app = express();
 app.use(express.json());
@@ -49,13 +69,40 @@ app.use((req, res, next) => {
   res.status(401).send('Authentication required');
 });
 
+// All `/api/apps/:id` routes use the id as a database scope and some routes
+// use it in a filename. Reject traversal/ambiguous ids before any handler.
+app.param('id', (req, res, next, id) => {
+  try {
+    assertSafeAppId(id);
+    next();
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
 const appSearchCache = new Map<string, { expiresAt: number; results: any[] }>();
 const appSearchInFlight = new Map<string, Promise<any[]>>();
 
 async function searchAppStore(term: string, country: string): Promise<any[]> {
-  const key = `${country.toLowerCase()}:${term.toLocaleLowerCase()}`;
+  const normalizedCountry = country.toLowerCase();
+  const normalizedTerm = term.trim().toLocaleLowerCase();
+  const key = `${normalizedCountry}:${normalizedTerm}`;
   const cached = appSearchCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.results;
+  const persisted = db.prepare(`
+    SELECT payload, expires_at AS expiresAt
+      FROM store_search_cache
+     WHERE country = ? AND term = ?
+  `).get(normalizedCountry, normalizedTerm) as { payload: string; expiresAt: number } | undefined;
+  if (persisted && persisted.expiresAt > Date.now()) {
+    try {
+      const results = JSON.parse(persisted.payload) as any[];
+      appSearchCache.set(key, { expiresAt: persisted.expiresAt, results });
+      return results;
+    } catch {
+      db.prepare('DELETE FROM store_search_cache WHERE country = ? AND term = ?').run(normalizedCountry, normalizedTerm);
+    }
+  }
   const existing = appSearchInFlight.get(key);
   if (existing) return existing;
 
@@ -64,26 +111,42 @@ async function searchAppStore(term: string, country: string): Promise<any[]> {
     if (/^\d+$/.test(term)) {
       url = `https://itunes.apple.com/lookup?id=${term}&country=${country}`;
     } else if (/^[a-zA-Z0-9.\-_]+$/.test(term) && term.includes('.')) {
-      const lookup = await fetch(`https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(term)}&country=${country}`, { signal: AbortSignal.timeout(15_000) });
-      if (!lookup.ok) throw new Error(`App Store lookup failed (${lookup.status})`);
-      const data = (await lookup.json()) as { results?: any[] };
+      const data = await appleJson<{ results?: any[] }>(`https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(term)}&country=${country}`);
       if (data.results?.length) return data.results;
       const params = new URLSearchParams({ term, country, media: 'software', entity: 'software', limit: '15' });
       url = `https://itunes.apple.com/search?${params}`;
     } else {
-      const params = new URLSearchParams({ term, country, media: 'software', entity: 'software', limit: '15' });
-      url = `https://itunes.apple.com/search?${params}`;
+      // Keyword-result checks share the conservative global iTunes gate used by
+      // snapshots. The UI loads only visible rows and this durable cache keeps
+      // page reloads from spending the rate limit again.
+      return (await searchItunes(country, term, { priority: 'interactive' })).slice(0, 15).map((item) => ({
+        trackId: item.trackId,
+        trackName: item.trackName,
+        bundleId: item.bundleId,
+        artistName: item.artistName,
+        primaryGenreName: item.primaryGenreName,
+        artworkUrl100: item.artworkUrl100,
+        averageUserRating: item.averageUserRating,
+        userRatingCount: item.userRatingCount,
+        trackViewUrl: item.trackViewUrl,
+      }));
     }
-    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-    if (!response.ok) throw new Error(`App Store search failed (${response.status})`);
-    const data = (await response.json()) as { results?: any[] };
+    const data = await appleJson<{ results?: any[] }>(url);
     return data.results || [];
   })();
 
   appSearchInFlight.set(key, request);
   try {
     const results = await request;
-    appSearchCache.set(key, { expiresAt: Date.now() + 10 * 60_000, results });
+    const fetchedAt = Date.now();
+    const expiresAt = fetchedAt + 24 * 60 * 60_000;
+    appSearchCache.set(key, { expiresAt, results });
+    db.prepare(`
+      INSERT INTO store_search_cache (country, term, payload, fetched_at, expires_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(country, term) DO UPDATE SET
+        payload = excluded.payload, fetched_at = excluded.fetched_at, expires_at = excluded.expires_at
+    `).run(normalizedCountry, normalizedTerm, JSON.stringify(results), fetchedAt, expiresAt);
     return results;
   } finally {
     appSearchInFlight.delete(key);
@@ -101,6 +164,8 @@ app.post('/api/apps', async (req, res) => {
     res.status(400).json({ error: 'id, name, bundle, iTunesId required' });
     return;
   }
+  try { assertSafeAppId(body.id); }
+  catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : String(error) }); return; }
   const apps = loadApps();
   if (apps.some((a) => a.id === body.id)) {
     res.status(409).json({ error: 'app id already exists' });
@@ -109,8 +174,7 @@ app.post('/api/apps', async (req, res) => {
   // Auto-fetch the real App Store artwork so the icon shows immediately.
   if (!body.iconUrl) {
     try {
-      const r = await fetch(`https://itunes.apple.com/lookup?id=${encodeURIComponent(body.iTunesId)}`);
-      const j = (await r.json()) as { results?: Array<{ artworkUrl512?: string; artworkUrl100?: string }> };
+      const j = await appleJson<{ results?: Array<{ artworkUrl512?: string; artworkUrl100?: string }> }>(`https://itunes.apple.com/lookup?id=${encodeURIComponent(body.iTunesId)}`);
       const art = j.results?.[0];
       if (art) body.iconUrl = art.artworkUrl512 || art.artworkUrl100?.replace('100x100bb', '512x512bb');
     } catch {/* ignore — falls back to emoji/gradient */}
@@ -122,7 +186,12 @@ app.post('/api/apps', async (req, res) => {
 
 app.delete('/api/apps/:id', (req, res) => {
   const id = req.params.id;
-  const apps = loadApps().filter((a) => a.id !== id);
+  const currentApps = loadApps();
+  if (!currentApps.some((candidate) => candidate.id === id)) {
+    res.status(404).json({ error: 'app not found' });
+    return;
+  }
+  const apps = currentApps.filter((a) => a.id !== id);
   saveApps(apps);
 
   // Delete keywords file
@@ -131,8 +200,17 @@ app.delete('/api/apps/:id', (req, res) => {
     if (existsSync(kwPath)) unlinkSync(kwPath);
   } catch {/* ignore */}
 
-  // Delete snapshot history
-  try { db.prepare('DELETE FROM snapshots WHERE app = ?').run(id); } catch {/* ignore */}
+  // Delete the complete app scope. Leaving observations or metadata behind
+  // leaks a prior app's facts if a slug is ever reused.
+  try {
+    db.transaction(() => {
+      db.prepare('DELETE FROM snapshots WHERE app = ?').run(id);
+      db.prepare('DELETE FROM paid_search_observations WHERE app_id = ?').run(id);
+      db.prepare('DELETE FROM public_metadata_snapshots WHERE app_id = ?').run(id);
+      db.prepare('DELETE FROM aso_experiment_events WHERE app_id = ?').run(id);
+      db.prepare('DELETE FROM aso_experiments WHERE app_id = ?').run(id);
+    })();
+  } catch {/* preserve app removal if an older local database lacks a new table */}
 
   res.json({ ok: true });
 });
@@ -154,7 +232,9 @@ app.get('/api/apps/:id/suggestions', async (req, res) => {
     return;
   }
   try {
-    res.json(await keywordSuggestions(req.params.id, locale));
+    const refresh = ['1', 'true'].includes(String(req.query.refresh || ''));
+    res.set('Cache-Control', 'no-store');
+    res.json(await keywordSuggestions(req.params.id, locale, { refresh }));
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -163,8 +243,12 @@ app.get('/api/apps/:id/suggestions', async (req, res) => {
 // --- Rankings table ---
 app.get('/api/apps/:id/rankings', (req, res) => {
   const locale = req.query.locale as string | undefined;
+  res.set('Cache-Control', 'no-store');
   res.json(getRankings(req.params.id, locale));
 });
+
+registerCountryRoutes(app); // storefronts, keyword × storefront matrix, country sets
+registerKeywordTableRoutes(app); // positions table metrics, tags/notes, bulk keyword × storefront edits
 
 // --- Locale stats (for the locale strip) ---
 app.get('/api/apps/:id/locales', (req, res) => {
@@ -172,9 +256,122 @@ app.get('/api/apps/:id/locales', (req, res) => {
 });
 
 // --- Competitors ---
+registerCompetitorSpyRoutes(app);
 app.get('/api/apps/:id/competitors', (req, res) => {
   const limit = Number(req.query.limit) || 20;
   res.json(topCompetitors(req.params.id, limit));
+});
+
+// --- Competitor paid-search observations ---
+// Apple does not expose another advertiser's paid SERP, keyword, bid or SOV.
+// This endpoint is intentionally an append-only store for directly observed
+// result slots / authorized exports and labels its derived rate accordingly.
+app.get('/api/apps/:id/paid-observations', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json(getPaidObservations(req.params.id, {
+      locale: typeof req.query.locale === 'string' ? req.query.locale : undefined,
+      keyword: typeof req.query.keyword === 'string' ? req.query.keyword : undefined,
+      competitorId: typeof req.query.competitorId === 'string' ? req.query.competitorId : undefined,
+      limit: typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+    }));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post('/api/apps/:id/paid-observations', (req, res) => {
+  if (!loadApps().some((candidate) => candidate.id === req.params.id)) {
+    res.status(404).json({ error: 'app not found' });
+    return;
+  }
+  try {
+    const result = createPaidObservation(req.params.id, req.body);
+    res.status(result.created ? 201 : 200).json(result);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+// --- Public metadata timeline and ASO experiment journal ---
+app.get('/api/apps/:id/metadata-history', (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json(getMetadataHistory(
+      req.params.id,
+      typeof req.query.locale === 'string' ? req.query.locale : undefined,
+      typeof req.query.limit === 'string' ? Number(req.query.limit) : undefined,
+    ));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post('/api/apps/:id/metadata-snapshots/capture', async (req, res) => {
+  const appConfig = loadApps().find((candidate) => candidate.id === req.params.id);
+  const locale = typeof req.body?.locale === 'string' ? req.body.locale : '';
+  if (!appConfig) { res.status(404).json({ error: 'app not found' }); return; }
+  if (!locale) { res.status(400).json({ error: 'locale required' }); return; }
+  try {
+    const result = await capturePublicMetadata(appConfig, locale, { force: req.body?.refresh === true });
+    if (!result.snapshot && result.error) {
+      res.status(502).json(result);
+      return;
+    }
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.post('/api/apps/:id/metadata-snapshots', (req, res) => {
+  if (!loadApps().some((candidate) => candidate.id === req.params.id)) {
+    res.status(404).json({ error: 'app not found' });
+    return;
+  }
+  try {
+    const result = appendMetadataSnapshot(req.params.id, req.body);
+    res.status(result.created ? 201 : 200).json(result);
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.get('/api/apps/:id/aso-experiments', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ experiments: listAsoExperiments(req.params.id, req.query.includeArchived === '1') });
+});
+
+app.post('/api/apps/:id/aso-experiments', (req, res) => {
+  if (!loadApps().some((candidate) => candidate.id === req.params.id)) {
+    res.status(404).json({ error: 'app not found' });
+    return;
+  }
+  try {
+    res.status(201).json({ experiment: createAsoExperiment(req.params.id, req.body) });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.patch('/api/apps/:id/aso-experiments/:experimentId', (req, res) => {
+  const experimentId = Number(req.params.experimentId);
+  if (!Number.isInteger(experimentId) || experimentId < 1) { res.status(400).json({ error: 'numeric experimentId required' }); return; }
+  try {
+    const experiment = updateAsoExperiment(req.params.id, experimentId, req.body);
+    if (!experiment) { res.status(404).json({ error: 'experiment not found' }); return; }
+    res.json({ experiment });
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.delete('/api/apps/:id/aso-experiments/:experimentId', (req, res) => {
+  const experimentId = Number(req.params.experimentId);
+  if (!Number.isInteger(experimentId) || experimentId < 1) { res.status(400).json({ error: 'numeric experimentId required' }); return; }
+  const experiment = archiveAsoExperiment(req.params.id, experimentId);
+  if (!experiment) { res.status(404).json({ error: 'experiment not found' }); return; }
+  res.json({ experiment, archived: true });
 });
 
 app.get('/api/competitors/keywords', (req, res) => {
@@ -189,15 +386,36 @@ app.get('/api/competitors/keywords', (req, res) => {
 
 app.get('/api/competitors/info', async (req, res) => {
   const bundleId = req.query.bundleId as string;
+  const country = req.query.country as string | undefined;
   if (!bundleId) {
     res.status(400).json({ error: 'bundleId required' });
     return;
   }
   try {
-    const info = await competitorInfo(bundleId);
+    const info = await competitorInfo(bundleId, country);
     res.json(info);
   } catch (e) {
     res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.get('/api/competitors/ads', async (req, res) => {
+  const appId = String(req.query.id || '').trim();
+  const requestedPreset = String(req.query.datePreset || 'LAST_YEAR');
+  const allowedPresets = new Set<AdRepositoryDatePreset>(['LAST_90_DAYS', 'LAST_180_DAYS', 'LAST_YEAR']);
+  if (!/^\d+$/.test(appId)) {
+    res.status(400).json({ error: 'numeric id required' });
+    return;
+  }
+  if (!allowedPresets.has(requestedPreset as AdRepositoryDatePreset)) {
+    res.status(400).json({ error: 'invalid datePreset' });
+    return;
+  }
+  try {
+    res.set('Cache-Control', 'no-store');
+    res.json(await getAdRepositoryAds(appId, requestedPreset as AdRepositoryDatePreset, { force: req.query.refresh === '1' }));
+  } catch (error) {
+    res.status(502).json({ error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -323,31 +541,16 @@ app.post('/api/itunes/artworks', async (req, res) => {
 
   if (missing.length) {
     try {
-      const params = new URLSearchParams({ id: missing.join(','), country });
-      const response = await fetch(`https://itunes.apple.com/lookup?${params}`, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (response.ok) {
-        const payload = await response.json() as {
-          results?: Array<{
-            trackId?: number;
-            artworkUrl60?: string;
-            artworkUrl100?: string;
-            artworkUrl512?: string;
-          }>;
-        };
-        for (const app of payload.results ?? []) {
-          if (!app.trackId) continue;
-          const url = app.artworkUrl100 || app.artworkUrl60 || app.artworkUrl512;
-          if (!url) continue;
-          const id = String(app.trackId);
-          result[id] = url;
-          artworkCache.set(`${country}:${id}`, {
-            url,
-            expiresAt: now + 24 * 60 * 60 * 1000,
-          });
-        }
+      // Shared 24 h lookup cache, ≤150 ids per request through the itunes.apple.com gate.
+      const meta = await lookupBatch(missing, country, { priority: 'interactive' });
+      for (const [id, app] of meta) {
+        const url = app.artworkUrl100 || app.artworkUrl60 || app.artworkUrl512;
+        if (!url) continue;
+        result[id] = url;
+        artworkCache.set(`${country}:${id}`, {
+          url,
+          expiresAt: now + 24 * 60 * 60 * 1000,
+        });
       }
     } catch {
       // Artwork is progressive enhancement; ranking data remains usable.
@@ -369,19 +572,14 @@ app.post('/api/itunes/artworks', async (req, res) => {
       const bundle = missingBundles[bundlePointer++];
       try {
         const params = new URLSearchParams({ bundleId: bundle, country });
-        const response = await fetch(`https://itunes.apple.com/lookup?${params}`, {
-          headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(15_000),
-        });
-        if (!response.ok) continue;
-        const payload = await response.json() as {
+        const payload = await appleJson<{
           results?: Array<{
             trackId?: number;
             artworkUrl60?: string;
             artworkUrl100?: string;
             artworkUrl512?: string;
           }>;
-        };
+        }>(`https://itunes.apple.com/lookup?${params}`);
         const app = payload.results?.[0];
         const url = app?.artworkUrl100 || app?.artworkUrl60 || app?.artworkUrl512;
         if (!url) continue;
@@ -409,6 +607,16 @@ app.post('/api/itunes/artworks', async (req, res) => {
 });
 
 // --- Refresh a single keyword (on-demand from UI) ---
+// Re-read our app's icon, name and subtitle from the App Store (US, else first tracked storefront).
+app.post('/api/apps/:id/refresh-meta', async (req, res) => {
+  try {
+    const changed = await refreshOwnAppMeta([assertSafeAppId(req.params.id)]);
+    res.json({ ok: true, changed: changed[req.params.id] ?? [], app: loadApps().find((a) => a.id === req.params.id) });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 app.post('/api/apps/:id/refresh-keyword', async (req, res) => {
   const appId = req.params.id;
   const { locale, keyword } = req.body || {};
@@ -448,6 +656,56 @@ app.post('/api/snapshot/speed', (req, res) => {
   res.json({ ok: true, runtime: getLiveRuntime() });
 });
 
+// --- Snapshot settings: rank source + per-host gate status ---
+app.get('/api/snapshot/settings', (_req, res) => {
+  res.json({ ...loadSnapshotSettings(), gates: gateStatus() });
+});
+
+app.post('/api/snapshot/settings', (req, res) => {
+  const { rankSource } = req.body || {};
+  if (!isRankSource(rankSource)) {
+    res.status(400).json({ error: "rankSource must be 'appstore' or 'itunes'" });
+    return;
+  }
+  res.json({ ...saveSnapshotSettings({ rankSource }), gates: gateStatus() });
+});
+
+app.get('/api/gate/status', (_req, res) => {
+  res.json({ gates: gateStatus() });
+});
+
+// --- Rank source dual measurement (App Store vs iTunes on the probe set) ---
+app.get('/api/rank-source/compare', (_req, res) => {
+  try {
+    res.json(compareRankSources());
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+let probeRun: Promise<unknown> | null = null;
+/** Record the probe set once with both sources (pairs already done today are
+ * skipped). `?wait=1` responds when finished; otherwise runs in the background. */
+app.post('/api/rank-source/probe', async (req, res) => {
+  if (probeRun) {
+    res.status(409).json({ error: 'probe run already in progress' });
+    return;
+  }
+  const started = Date.now();
+  const run = recordProbeSet().finally(() => { probeRun = null; });
+  probeRun = run;
+  if (req.query.wait !== '1') {
+    res.status(202).json({ ok: true });
+    return;
+  }
+  try {
+    const result = await run;
+    res.json({ ok: true, measured: result.measured, ms: Date.now() - started, rows: result.rows });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
 // --- Analytics: movers across apps & periods ---
 app.get('/api/analytics/movers', (req, res) => {
   const appId = req.query.app as string | undefined;
@@ -485,7 +743,7 @@ interface SnapshotRunState {
   /** Active SSE subscribers. Disconnect → remove; does NOT abort the run. */
   subscribers: Set<express.Response>;
   /** Snapshot of options the run started with — useful for the UI capsule. */
-  options: { appIds?: string[]; locales?: string[]; total: number } | null;
+  options: { appIds?: string[]; locales?: string[]; total: number; kind?: 'full' | 'delta' | 'nightly' } | null;
 }
 
 const snapshotState: SnapshotRunState = {
@@ -518,7 +776,20 @@ function snapshotBroadcast(event: SnapshotEvent) {
   }
 }
 
-function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: number; sleepMs?: number; skipExisting?: boolean }) {
+type StartSnapshotOptions = {
+  appIds?: string[];
+  locales?: string[];
+  workers?: number;
+  sleepMs?: number;
+  skipExisting?: boolean;
+  rankSource?: RankSource;
+  /** Delta mode: only these combos (scheduler.ts). */
+  only?: Map<string, GatePriority>;
+  kind?: 'full' | 'delta' | 'nightly';
+};
+
+/** Starts the singleton run; resolves with its outcome, or false if one is already running. */
+function startSnapshot(opts: StartSnapshotOptions): false | Promise<DeltaRunResult> {
   if (snapshotState.running) return false;
   snapshotState.running = true;
   snapshotState.startedAt = Date.now();
@@ -531,15 +802,18 @@ function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: 
     appIds: opts.appIds,
     locales: opts.locales,
     total: 0, // populated by first 'init' event from runSnapshot
+    kind: opts.kind ?? 'full',
   };
   snapshotBroadcast({ type: 'started', startedAt: snapshotState.startedAt });
 
-  runSnapshot({
+  return runSnapshot({
     appIds: opts.appIds,
     locales: opts.locales,
     workers: typeof opts.workers === 'number' ? opts.workers : undefined,
     sleepMs: typeof opts.sleepMs === 'number' ? opts.sleepMs : undefined,
     skipExisting: opts.skipExisting === true,
+    rankSource: opts.rankSource,
+    only: opts.only,
     onProgress: (ev) => {
       // Track total once we receive the start event so reconnecting clients
       // can render accurate progress without replaying the full buffer.
@@ -551,17 +825,23 @@ function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: 
     },
     isCancelled: () => snapshotState.cancelled,
   })
-    .then(() => {
+    .then((r) => {
       snapshotState.running = false;
       snapshotState.endedAt = Date.now();
       snapshotBroadcast({ type: 'done', at: snapshotState.endedAt });
+      return {
+        completed: r.records.length,
+        errors: r.records.filter((x) => x.error).length,
+        aborted: r.aborted,
+        abortReason: 'abortReason' in r ? r.abortReason : undefined,
+      };
     })
     .catch((e) => {
       snapshotState.running = false;
       snapshotState.endedAt = Date.now();
       snapshotBroadcast({ type: 'abort', reason: (e as Error).message });
+      return { completed: 0, errors: 0, aborted: true, abortReason: (e as Error).message };
     });
-  return true;
 }
 
 app.post('/api/snapshot', (req, res) => {
@@ -569,8 +849,15 @@ app.post('/api/snapshot', (req, res) => {
     res.status(409).json({ error: 'snapshot already running', state: snapshotPublicState() });
     return;
   }
-  const { appIds, locales, workers, sleepMs, skipExisting } = req.body || {};
-  startSnapshot({ appIds, locales, workers, sleepMs, skipExisting });
+  const { appIds, locales, workers, sleepMs, skipExisting, rankSource, delta } = req.body || {};
+  // «Только изменяемые (дельта)»: today's delta plan within the chosen scope.
+  const only = delta === true ? planToOnly(buildDeltaPlan({ appIds, locales })) : undefined;
+  startSnapshot({
+    appIds, locales, workers, sleepMs, skipExisting,
+    rankSource: isRankSource(rankSource) ? rankSource : undefined,
+    only,
+    kind: only ? 'delta' : 'full',
+  });
   res.status(202).json({ ok: true, state: snapshotPublicState() });
 });
 
@@ -594,6 +881,22 @@ function snapshotPublicState() {
     finalEvent: snapshotState.finalEvent,
   };
 }
+
+// --- Nightly delta schedule (scheduler.ts) ---
+const scheduler = new NightlyScheduler({
+  now: () => Date.now(),
+  isSnapshotRunning: () => snapshotState.running,
+  runDelta: (plan, trigger) => startSnapshot({
+    only: planToOnly(plan),
+    appIds: Array.from(new Set(plan.tasks.map((t) => t.app))),
+    skipExisting: true,
+    kind: trigger === 'nightly' ? 'nightly' : 'delta',
+  }) || null,
+  plan: (atMs) => buildDeltaPlan({}, atMs),
+  load: () => loadScheduleState(),
+  save: (s) => saveScheduleState(s),
+});
+registerScheduleRoutes(app, scheduler);
 
 app.get('/api/snapshot/state', (_req, res) => {
   res.json(snapshotPublicState());
@@ -626,16 +929,39 @@ app.get('/api/snapshot/stream', (req, res) => {
   });
 });
 
-// Production serves the built React application from the same origin as the API.
-// Keeping one origin avoids CORS and ensures Basic Auth also protects the UI.
-const staticDir = resolve(process.cwd(), 'dist');
-if (existsSync(staticDir)) {
-  app.use(express.static(staticDir, { index: false, maxAge: '1h' }));
-  app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));
-  app.use((_req, res) => res.sendFile(join(staticDir, 'index.html')));
+export function serverHost(password = process.env.APP_PASSWORD): string | undefined {
+  // Node binds to every interface when host is omitted. Passwordless mode is
+  // explicitly local development, therefore make that boundary real.
+  return password ? undefined : '127.0.0.1';
 }
 
-const PORT = Number(process.env.PORT) || 5174;
-app.listen(PORT, () => {
-  console.log(`ASO Keywords listening on http://localhost:${PORT}`);
-});
+/** The API app — mounted by the studio gateway (studio/server.ts) or served standalone below. */
+export { app };
+
+/** Listen-time side effects. Keywords has no background jobs; kept for a uniform product contract. */
+// Listen-time side effects: refresh our apps' App Store icon/name/subtitle if
+// older than a day; start the nightly delta scheduler.
+export function start(): void {
+  refreshStaleOwnAppMeta();
+  scheduler.start();
+}
+
+// Standalone entry (`tsx server/index.ts`, `npm start` in production): serve the
+// built React app from the same origin and listen. Skipped when imported by the gateway.
+const entry = process.argv[1] ? realpathSync(resolve(process.argv[1])) : '';
+if (entry === realpathSync(fileURLToPath(import.meta.url))) {
+  // Production serves the built React application from the same origin as the API.
+  // Keeping one origin avoids CORS and ensures Basic Auth also protects the UI.
+  const staticDir = resolve(fileURLToPath(new URL('..', import.meta.url)), 'dist');
+  if (existsSync(staticDir)) {
+    app.use(express.static(staticDir, { index: false, maxAge: '1h' }));
+    app.use('/api', (_req, res) => res.status(404).json({ error: 'not found' }));
+    app.use((_req, res) => res.sendFile(join(staticDir, 'index.html')));
+  }
+
+  const PORT = Number(process.env.PORT) || 5174;
+  app.listen(PORT, serverHost(), () => {
+    console.log(`ASO Keywords listening on http://localhost:${PORT}`);
+    start();
+  });
+}

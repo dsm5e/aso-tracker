@@ -1,7 +1,7 @@
 // End Card — Remotion-rendered branded outro that gets concatenated to the
 // end of the input video. Designed to live AFTER Captions in the pipeline so
 // the talking-head portion gets subtitles and the branded segment stays clean.
-import { NodeShell, inputStyle, labelStyle, patchData, triggerRun } from './common';
+import { NodeShell, patchData, triggerRun } from './common';
 import { openLightbox } from '../components/Lightbox';
 
 interface Data {
@@ -36,33 +36,33 @@ export function EndCardNode({ id, data }: { id: string; data: Data }) {
       onRun={() => triggerRun(id)}
       runLabel={`Render & Concat (${duration.toFixed(1)}s, free)`}
     >
-      <div className="nodrag" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+      <div className="nodrag vid-grid2">
         <div>
-          <span style={labelStyle}>Brand</span>
-          <input type="text" value={brand} onChange={(e) => patchData(id, { brand: e.target.value })} style={inputStyle} />
+          <span className="vid-label">Brand</span>
+          <input className="ds-input" type="text" value={brand} onChange={(e) => patchData(id, { brand: e.target.value })} />
         </div>
         <div>
-          <span style={labelStyle}>Duration (sec)</span>
-          <input type="number" min={1} max={10} step={0.5} value={duration} onChange={(e) => patchData(id, { duration: Number(e.target.value) })} style={inputStyle} />
+          <span className="vid-label">Duration (sec)</span>
+          <input className="ds-input" type="number" min={1} max={10} step={0.5} value={duration} onChange={(e) => patchData(id, { duration: Number(e.target.value) })} />
         </div>
       </div>
       <div className="nodrag">
-        <span style={labelStyle}>Subtitle</span>
-        <input type="text" value={subtitle} onChange={(e) => patchData(id, { subtitle: e.target.value })} style={inputStyle} />
+        <span className="vid-label">Subtitle</span>
+        <input className="ds-input" type="text" value={subtitle} onChange={(e) => patchData(id, { subtitle: e.target.value })} />
       </div>
       <div className="nodrag">
-        <span style={labelStyle}>CTA</span>
-        <input type="text" value={cta} onChange={(e) => patchData(id, { cta: e.target.value })} style={inputStyle} />
+        <span className="vid-label">CTA</span>
+        <input className="ds-input" type="text" value={cta} onChange={(e) => patchData(id, { cta: e.target.value })} />
       </div>
-      {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div className="vid-err">{data.error}</div>}
       {data.status === 'done' && data.outputUrl && (
         <>
-          <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 6, background: '#000' }} />
+          <video key={data.outputUrl} src={data.outputUrl} controls style={{ width: '100%', borderRadius: 'var(--ds-radius-control)', background: '#000' }} />
           <button
-            className="nodrag"
+            className="nodrag ds-btn ds-btn-sm"
             onClick={() => openLightbox({ kind: 'video', src: data.outputUrl! })}
             title="open fullscreen"
-            style={{ background: '#171717', color: '#e5e5e5', border: '1px solid #2a2a2a', borderRadius: 4, padding: '2px 8px', cursor: 'zoom-in', fontSize: 11, alignSelf: 'flex-start' }}
+            style={{ alignSelf: 'flex-start' }}
           >⛶ fullscreen</button>
         </>
       )}

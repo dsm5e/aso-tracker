@@ -1,10 +1,12 @@
 import { Fragment, useRef, useState, useLayoutEffect, type DragEvent, type CSSProperties, type ReactNode } from 'react';
 import { ImagePlus } from 'lucide-react';
-import { getPreset } from '../../lib/presets';
+import { expandU, getPreset } from '../../lib/presets';
 import { useStudio, type Screenshot } from '../../state/studio';
 import { DeviceFrame, getDeviceFrameGeometry } from './DeviceFrame';
 import { MountainBackground } from './MountainBackground';
 import { DotsBackground } from './DotsBackground';
+import { LagoonBackground, seedFrom } from './LagoonBackground';
+import { DecorLayer } from './DecorLayer';
 import { paletteFromAccent, deriveDotsBg } from '../../lib/palette';
 import { saveScreenshotBlob } from '../../lib/screenshotStore';
 import { getCanvasDimensions, type IPhoneModel } from '../../lib/deviceProfiles';
@@ -12,7 +14,7 @@ import { getCanvasDimensions, type IPhoneModel } from '../../lib/deviceProfiles'
 /** Render a headline string, coloring any *asterisk-wrapped* run with the
  *  accent color (amma / HiMommy formula: one emotional word recolored).
  *  `==run==` draws a highlighter plate behind the run — the marker-pen device
- *  the Roomvi arch hero uses on the word "AI". Parsed before the others so a
+ *  the arch hero uses on the word "AI". Parsed before the others so a
  *  highlighted run can still be bold. */
 /** Letter-spacing is a Latin typography tool. Chromium applies tracking by
  *  splitting the shaping run per cluster, which breaks scripts whose glyphs
@@ -218,7 +220,7 @@ interface Props {
    *  text direction; fontOverride swaps the font family for the headline +
    *  pill. Used by Locales screen to preview localised text without
    *  duplicating the canvas component. */
-  localeMeta?: { rtl?: boolean; fontOverride?: string };
+  localeMeta?: { rtl?: boolean; fontOverride?: string; lang?: string };
   /** When set, the headline overlay shows a dashed border + grab cursor and
    *  reports drag deltas in CANVAS pixels (factoring in fitWidth scale).
    *  onResize fires when the user drags the bottom-left corner handle —
@@ -243,9 +245,9 @@ interface Props {
  * screenshot fill + headline. Scales down via outer transform to fit the viewport.
  */
 export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: iphoneModelOverride, fitWidth, fitHeight, showDropZone = true, viewModeOverride, localeMeta, editable, deviceBaseTitlePx, deviceBaseSubPx, showTextBoundary }: Props) {
-  const { updateScreenshot, appColor, appIconUrl, iphoneModel: projectIphoneModel, viewMode: globalViewMode } = useStudio();
+  const { updateScreenshot, appColor, appIconUrl, iphoneModel: projectIphoneModel, ipadModel, sourceLocale, viewMode: globalViewMode } = useStudio();
   const iphoneModel = iphoneModelOverride ?? projectIphoneModel;
-  const { w: CANVAS_W, h: CANVAS_H } = getCanvasDimensions(device, iphoneModel);
+  const { w: CANVAS_W, h: CANVAS_H } = getCanvasDimensions(device, iphoneModel, ipadModel);
   const viewMode = viewModeOverride ?? globalViewMode;
   const isFullBleedSource = ss.sourceLayout === 'full-bleed';
   const isArch = ss.sourceLayout === 'arch';
@@ -294,11 +296,21 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const dt = preset?.device ?? { asset: 'iphone' as const };
   // iPad canvas always uses the iPad frame, regardless of preset default.
   const asset: 'iphone' | 'ipad' = device === 'ipad' ? 'ipad' : (dt.asset ?? 'iphone');
-  const D = getDeviceFrameGeometry(asset, iphoneModel);
+  // Frame style: slot override > preset default > clay. Resolved here so the
+  // layout maths (anchoring, safe zones) use the same box the frame draws.
+  const frameStyle = ss.deviceFrameStyle ?? dt.frameStyle;
+  const bezelColor = ss.deviceBezelColor ?? dt.bezelColor?.[asset];
+  const D = getDeviceFrameGeometry(asset, iphoneModel, ipadModel, frameStyle, bezelColor);
   const presetOffX = dt.offsetX ?? 0;
-  const presetOffY = dt.offsetY ?? 0;
+  const presetOffY = (device === 'ipad' ? dt.ipad?.offsetY : undefined) ?? dt.offsetY ?? 0;
   const presetRotZ = dt.rotateZ ?? 0;
-  const presetScale = dt.scale ?? 1;
+  const presetScale = (device === 'ipad' ? dt.ipad?.scale : undefined) ?? dt.scale ?? 1;
+  const u = CANVAS_W / 100;
+  const pt = preset?.text;
+  // `below-headline`: the device hangs under the MEASURED headline block.
+  const deviceAnchor = ss.deviceAnchor === 'free' ? undefined : (ss.deviceAnchor ?? preset?.layout?.deviceAnchor);
+  const isAnchored = deviceAnchor === 'below-headline';
+  const [measuredHeadlineH, setMeasuredHeadlineH] = useState<number | null>(null);
 
   // Headline layout copied from the sample at preset-pick time, falling back to defaults.
   const yFrac = ss.textYFraction ?? 0.07;
@@ -323,8 +335,15 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const headlineHeight = titleBlockHeight + headlineGap + subBlockHeight;
   const textZoneBottom = headlineTop + headlineHeight; // boundary: text must stay above this
   const deviceX = (CANVAS_W - D.width) / 2 + presetOffX;
-  const deviceY =
-    (yFrac < 0.5
+  const anchorScale = presetScale * (ss.deviceScale ?? 1);
+  const deviceY = isAnchored
+    // Top edge of the (scaled) frame sits `deviceGapU` below the headline.
+    // Scaling happens around the centre, hence the (1 - scale) correction.
+    ? headlineTop + (ss.textY || 0) + (measuredHeadlineH ?? headlineHeight)
+      + (preset?.layout?.deviceGapU ?? 4.5) * u
+      - (D.height / 2) * (1 - anchorScale)
+      + presetOffY
+    : (yFrac < 0.5
       ? textZoneBottom + TEXT_GAP
       : headlineTop - TEXT_GAP - D.height)
     + presetOffY;
@@ -334,7 +353,10 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const textDir = localeMeta?.rtl ? 'rtl' : undefined;
   const textColor = ss.textColorOverride || preset?.text.color || '#FFFFFF';
   const titleColor = ss.titleColorOverride || textColor;
-  const subtitleColor = ss.subtitleColorOverride || textColor;
+  const subtitleColor = ss.subtitleColorOverride || (ss.textColorOverride ? textColor : pt?.subtitleColor ?? textColor);
+  const titleShadow = expandU(pt?.titleShadow, CANVAS_W);
+  const subtitleShadow = expandU(pt?.subtitleShadow, CANVAS_W);
+  const fitLines = pt?.fitLines ?? false;
   const isElaraHeroText = ss.heroTextLayout === 'elara';
   const isElaraSoftPhoneOverlay = ss.heroPhoneOverlayLayout === 'elara-soft-v4';
   const isFatherEditorialText = ss.heroTextLayout === 'father-editorial';
@@ -369,8 +391,13 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const _effScale = presetScale * dscale;
   const _centerY = deviceY + dy + D.height / 2;
   const visualDeviceTop = _centerY - _effScale * (D.width / 2 * Math.abs(Math.sin(_rotRad)) + D.height / 2 * Math.abs(Math.cos(_rotRad)));
-  const verbDisplay = isUpper ? (ss.headline.verb || '').toUpperCase() : ss.headline.verb;
-  const descDisplay = isUpper ? (ss.headline.descriptor || '').toUpperCase() : ss.headline.descriptor;
+  // Locale-aware casing: Turkish/Azeri dotted İ, Lithuanian accents, etc.
+  const textLang = localeMeta?.lang ?? sourceLocale;
+  const upper = (t: string) => {
+    try { return t.toLocaleUpperCase(textLang || undefined); } catch { return t.toUpperCase(); }
+  };
+  const verbDisplay = isUpper ? upper(ss.headline.verb || '') : ss.headline.verb;
+  const descDisplay = (pt?.subtitleUppercase ?? isUpper) ? upper(ss.headline.descriptor || '') : ss.headline.descriptor;
 
   // Localized headline copy must fit as ONE block. Previously the title was
   // shrunk independently while the descriptor kept its original size. Long
@@ -395,7 +422,9 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   // headlineSafeBottomFraction draws the line exactly where the user put it.
   const headlineSafeBottom = ss.headlineSafeBottomFraction != null
     ? Math.round(CANVAS_H * ss.headlineSafeBottomFraction)
-    : isFullBleedSource
+    : isAnchored
+      ? Math.round(CANVAS_H * (preset?.layout?.headlineMaxFraction ?? 0.34))
+      : isFullBleedSource
       ? fullBleedSafeBottom
       : isArch
         ? archStripTop - 30
@@ -420,7 +449,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
         ? 34
         : isFatherProductText
           ? 32
-          : Math.round(titlePx * 0.22);
+          : Math.round(titlePx * (pt?.pill?.sizeFrac ?? 0.22));
     const minTitlePx = Math.max(46, Math.round(titlePx * 0.46));
     const minSubPx = Math.max(25, Math.round(subPx * 0.5));
     const minPillPx = Math.max(22, Math.round(initialPillPx * 0.64));
@@ -433,7 +462,11 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
 
     const overflows = () => (
       content.scrollHeight > box.clientHeight + 1
-      || content.scrollWidth > box.clientWidth + 1
+      // The headline box includes horizontal padding; the content width is
+      // the actual text budget. Long unbreakable translated words must shrink.
+      || content.scrollWidth > content.clientWidth + 1
+      || title.scrollWidth > title.clientWidth + 1
+      || (descriptor != null && descriptor.scrollWidth > descriptor.clientWidth + 1)
     );
 
     const fit = () => {
@@ -456,6 +489,22 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
           applySizes(nextTitle, nextSub, nextPill);
         }
       };
+      if (fitLines) {
+        // Each line is nowrap: shrink title and subtitle independently until
+        // their widest line fits the column, before the joint height pass.
+        const floorT = Math.max(24, Math.round(titlePx * 0.3));
+        while (title.scrollWidth > title.clientWidth + 1 && nextTitle > floorT) {
+          nextTitle = Math.max(floorT, nextTitle - 2);
+          title.style.fontSize = `${nextTitle}px`;
+        }
+        if (descriptor) {
+          const floorS = Math.max(18, Math.round(subPx * 0.3));
+          while (descriptor.scrollWidth > descriptor.clientWidth + 1 && nextSub > floorS) {
+            nextSub = Math.max(floorS, nextSub - 1);
+            descriptor.style.fontSize = `${nextSub}px`;
+          }
+        }
+      }
       shrinkTo(minTitlePx, minSubPx, minPillPx);
       // Reserve floor. A handful of locales (Arabic slot 2) still wrap one line
       // too many at the designed minimum, and the export rejects an overflowing
@@ -467,6 +516,10 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
           Math.max(20, Math.round(subPx * 0.38)),
           Math.max(18, Math.round(initialPillPx * 0.5)),
         );
+      }
+      if (isAnchored) {
+        const h = Math.ceil(content.offsetHeight);
+        setMeasuredHeadlineH((prev) => (prev === h ? prev : h));
       }
     };
 
@@ -497,6 +550,9 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
     isElaraHeroText,
     isFatherEditorialText,
     isFatherProductText,
+    fitLines,
+    isAnchored,
+    textFont,
   ]);
 
   // compute scale to fit
@@ -581,7 +637,12 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
         <DeviceFrame
           asset={asset}
           iphoneModel={iphoneModel}
-          frameStyle={ss.deviceFrameStyle}
+          ipadModel={ipadModel}
+          bodyColor={dt.bodyColor}
+          rimColor={dt.rimColor}
+          shadow={expandU(dt.shadow, CANVAS_W)}
+          frameStyle={frameStyle}
+          bezelColor={bezelColor}
           cropBottomFrac={ss.screenCropBottom}
           showIsland={!opts.url}
           emptyScreenColor={opts.interactive && dragOver ? 'var(--accent-soft)' : '#000'}
@@ -703,7 +764,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
           position: 'relative',
         }}
       >
-        {/* --- Roomvi `arch`: фото + белая арка с акцентной каёмкой + диагональные
+        {/* --- `arch`: фото + белая арка с акцентной каёмкой + диагональные
             полосы. Заголовок сюда НЕ входит: его рисует штатный оверлей ниже,
             чтобы шрифт и выравнивание слушались инспектора. --- */}
         {isArch && (() => {
@@ -1010,6 +1071,10 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
         {!isFullBleedSource && !isArch && !isBeforeAfter && parametricKind === 'dots' && (
           <DotsBackground bgColor={dotsBgColor} dotColor={dotsColor} width={CANVAS_W} height={CANVAS_H} />
         )}
+        {!isFullBleedSource && !isArch && !isBeforeAfter && parametricKind === 'lagoon' && (
+          <LagoonBackground part="back" width={CANVAS_W} seed={seedFrom(ss.filename || ss.id)} opts={preset?.background.lagoon} />
+        )}
+        <DecorLayer items={ss.decor} layer="back" width={CANVAS_W} height={CANVAS_H} fontFamily={textFont} rtl={localeMeta?.rtl} lang={textLang} />
         {/* AI-polished hero — background layer.
             Drawn UNDER text overlays so headline / social proof remain editable / translatable.
             fal.ai gpt-image-2 returns 1280×2784 (~99.2% match for 1290×2796) so cover with
@@ -1069,12 +1134,13 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
           ref={headlineBoxRef}
           data-capture-omit="text-overlay"
           data-headline-box
+          lang={textLang || undefined}
           style={{
             position: 'absolute',
             left: 0,
             right: 0,
             top: headlineTop,
-            padding: isElaraHeroText ? '0 190px' : isFatherEditorialText ? '0 108px' : isFatherProductText ? '0 88px' : isCppCenteredText || isCppEditorialText ? '0 96px' : '0 60px',
+            padding: isElaraHeroText ? '0 190px' : isFatherEditorialText ? '0 108px' : isFatherProductText ? '0 88px' : isCppCenteredText || isCppEditorialText ? '0 96px' : `0 ${pt?.sidePaddingU != null ? pt.sidePaddingU * u : 60}px`,
             textAlign,
             fontFamily: `"${textFont}", Inter, sans-serif`,
             color: textColor,
@@ -1125,19 +1191,19 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
                 // Pill bg is template-driven (sample.pillBg seeded into ss).
                 // For Pastel Dots the accent re-tints the dotted background,
                 // not the pill — pill stays the template's branded pop colour.
-                background: isElaraHeroText || isFatherProductText ? 'transparent' : (ss.pillBg || '#E04A6F'),
-                color: ss.pillFg || '#FFFFFF',
+                background: isElaraHeroText || isFatherProductText ? 'transparent' : (ss.pillBg || pt?.pill?.bg || '#E04A6F'),
+                color: ss.pillFg || pt?.pill?.fg || '#FFFFFF',
                 fontFamily: `"${textFont}", Inter, sans-serif`,
-                fontWeight: 800,
-                fontSize: isElaraHeroText ? 34 : isFatherEditorialText ? 34 : isFatherProductText ? 32 : Math.round(titlePx * 0.22),
-                letterSpacing: tracking(ss.pill, '0.08em'),
+                fontWeight: pt?.pill?.weight ?? 800,
+                fontSize: isElaraHeroText ? 34 : isFatherEditorialText ? 34 : isFatherProductText ? 32 : Math.round(titlePx * (pt?.pill?.sizeFrac ?? 0.22)),
+                letterSpacing: tracking(ss.pill, pt?.pill?.letterSpacing ?? '0.08em'),
                 textTransform: 'uppercase',
                 whiteSpace: 'nowrap',
                 padding: isElaraHeroText || isFatherProductText ? 0 : isFatherEditorialText ? '16px 38px' : '18px 48px',
                 borderRadius: isElaraHeroText || isFatherProductText ? 0 : 999,
                 marginBottom: isElaraHeroText ? 38 : isFatherEditorialText ? 30 : isFatherProductText ? 18 : 32,
                 border: isFatherEditorialText ? '1px solid rgba(255,255,255,0.52)' : undefined,
-                boxShadow: isFatherEditorialText ? '0 12px 36px rgba(61,36,50,0.10)' : undefined,
+                boxShadow: isFatherEditorialText ? '0 12px 36px rgba(61,36,50,0.10)' : expandU(pt?.pill?.shadow, CANVAS_W),
                 // Keep the Father CPP pill translucent but do not use a CSS
                 // backdrop blur: Chromium expands that filter into a visible
                 // rectangular capture layer during the 1320×2868 export.
@@ -1153,9 +1219,11 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               color: titleColor,
               fontSize: titlePx,
               fontWeight: textWeight,
-              lineHeight: lineHeight(verbDisplay, 1.02),
-              letterSpacing: tracking(verbDisplay, '-0.02em'),
-              whiteSpace: 'pre-wrap',
+              lineHeight: lineHeight(verbDisplay, pt?.titleLineHeight ?? 1.02),
+              letterSpacing: tracking(verbDisplay, pt?.titleLetterSpacing ?? '-0.02em'),
+              textShadow: titleShadow,
+              whiteSpace: fitLines ? 'pre' : 'pre-wrap',
+              textWrapStyle: pt?.textWrap,
               overflowWrap: 'normal',
               wordBreak: 'normal',
               hyphens: 'none',
@@ -1169,13 +1237,16 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               data-headline-descriptor
               style={{
                 color: subtitleColor,
+                fontFamily: pt?.subtitleFont ? `"${pt.subtitleFont}", "${textFont}", Inter, sans-serif` : undefined,
                 fontSize: subPx,
-                fontWeight: 500,
+                fontWeight: pt?.subtitleWeight ?? 500,
                 lineHeight: lineHeight(descDisplay, 1.15),
-                marginTop: 24,
-                opacity: 0.95,
+                marginTop: pt?.subtitleGapU != null ? pt.subtitleGapU * u : 24,
+                opacity: pt?.subtitleColor ? 1 : 0.95,
                 letterSpacing: tracking(descDisplay, '-0.005em'),
-                whiteSpace: 'pre-wrap',
+                textShadow: subtitleShadow,
+                whiteSpace: fitLines ? 'pre' : 'pre-wrap',
+                textWrapStyle: pt?.textWrap,
                 overflowWrap: 'break-word',
                 wordBreak: 'normal',
               }}
@@ -1316,6 +1387,11 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
             </>
           );
         })()}
+        {!isFullBleedSource && !isArch && !isBeforeAfter && parametricKind === 'lagoon' && (
+          <LagoonBackground part="front" width={CANVAS_W} seed={seedFrom(ss.filename || ss.id)} opts={preset?.background.lagoon} />
+        )}
+        <DecorLayer items={ss.decor} layer="front" width={CANVAS_W} height={CANVAS_H} fontFamily={textFont} rtl={localeMeta?.rtl} lang={textLang} />
+        <DecorLayer items={ss.decor} layer="top" width={CANVAS_W} height={CANVAS_H} fontFamily={textFont} rtl={localeMeta?.rtl} lang={textLang} />
 
         {/* Reserved live-copy regions inside the generated Elara hero phone.
             The artwork contains only blank surfaces; every word below is

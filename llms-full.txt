@@ -4,18 +4,15 @@
 
 ## Overview
 
-ASO Studio is a self-hosted indie-developer toolkit for Apple App Store work. Three sub-tools share one shell, one settings page, one local key vault:
+ASO Studio is a self-hosted indie-developer toolkit for Apple App Store work. Five products share one gateway process and one port (`studio/server.ts`, http://localhost:5173):
 
-- **Keywords** (`/`, `/app/:id`, `/keywords`, `/analytics`) — rank tracking via iTunes Search API, snapshot engine, competitor intelligence.
-- **Studio** (`/studio`, `/studio/setup`, `/studio/editor`, `/studio/ppo`, `/studio/locales`, `/studio/export`) — App Store screenshot generator + PPO experiment builder, AI hero enhancement via fal.ai gpt-image-2.
-- **Video** (`/video`) — UGC video pipeline (script → voiceover → b-roll → captions). Beta.
+- **Keywords** (`/`, API `/api/*`) — `aso-keywords/`. Rank tracking in 175 storefronts. Default rank source is the native App Store search (MZStore, ~250 ordered ids); the iTunes Search API remains as fallback and for comparison. Every Apple call goes through `server/host-gate.ts` (per-host AIMD: 24→40/min, halve + 5 min pause on 403/429, request coalescing, priorities). `server/scheduler.ts` runs a nightly delta refresh (daily top-50/new/probe, weekly tail). UI: country matrix, positions table, ideas, dynamics, competitors (spy/gap), funnel, experiments.
+- **Ads** (`/asa/`, API `/asa-api/*`) — `asa-ads/`. Apple Ads analytics, traffic intelligence, single-term keyword popularity cached by term (Apple ignores the storefront for popularity). Credentials in its local SQLite (`asa-ads/data/`, gitignored) or env; `/asa-api/integrations` reports what is connected. Mutations fail-closed.
+- **Screenshots** (`/studio/`, API `/studio-api/*`) — `aso-screenshots/`. Screenshot generator + PPO builder + icon generator; AI polish via fal.ai gpt-image-2.
+- **Video** (`/video/`) — `aso-video/`. Node-based UGC video pipeline.
+- **In-App** (`/inapp/`) — `aso-inapp/`. In-App Event designer.
 
-The repo is a npm workspace monorepo:
-- `aso-keywords/` — main shell (this README is here, port 5174 server / 5173 vite)
-- `aso-screenshots/` — Studio sub-app (port 5181 server / 5180 vite)
-- `aso-video/` — Video sub-app
-
-Vite proxy in `aso-keywords/vite.config.ts` forwards `/studio/*` and `/studio-api/*` to `aso-screenshots`.
+The gateway imports each product's `server/index.ts` in-process on first request and runs its Vite in middleware mode; idle UIs unload after `STUDIO_IDLE_MIN` minutes. Status: `/__studio/status`. Shared design system: `shared/` (`ds.css`, `ds-components.css`, `charts/`, `shell/StudioSwitcher`), rules in `DESIGN.md`.
 
 ## Local data layout
 
@@ -26,18 +23,15 @@ All user data lives outside the repo:
 ├── keys.json            ← API keys (mode 0600), settings UI writes here
 ├── keys/                ← raw key files (e.g. ASA private .p8)
 ├── state.json           ← Studio editor state (canonical, mirrored to all open tabs via SSE)
-├── keywords/            ← keyword editor drafts
+├── keywords/            ← rankings.db (snapshot history), apps.json, schedule.json, caches
 └── video/               ← video pipeline outputs
 ```
 
 Inside the repo:
 
 ```
-aso-keywords/
-├── config/apps.json                    ← tracked apps (gitignored)
-├── config/keywords/<app>.json          ← per-app keyword lists (gitignored)
-├── data/rankings.db                    ← SQLite snapshot history (gitignored)
-└── public/llms-full.txt                ← this file
+asa-ads/data/asa-ads.db                 ← Ads SQLite incl. credentials (gitignored)
+aso-keywords/data/                      ← legacy location, migrated to ~/.aso-studio/keywords/ (gitignored)
 ```
 
 ## Settings (API keys)
@@ -233,15 +227,13 @@ mcp__apple-ads__reports_campaigns({...})
 ```bash
 cd ~/Developer/MYPROJECT/aso-studio
 npm install
-npm run dev   # starts all 3 sub-tools concurrently
-# open http://localhost:5173
+npm run dev          # one gateway, every product: http://localhost:5173
+npm run dev:legacy   # old one-process-per-product setup
 ```
 
-Or per sub-tool:
+Headless rank snapshots:
 ```bash
-cd aso-keywords    && npm run dev   # main shell, vite :5173, server :5174
-cd aso-screenshots && npm run dev   # vite :5180, server :5181
-cd aso-video       && npm run dev
+npm --workspace aso-keywords run snapshot -- --app=<id> [--locales=us,de]
 ```
 
 ## License

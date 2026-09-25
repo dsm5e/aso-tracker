@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
 import { exportRows } from "../lib/csv.ts";
+import { campaignDisplayName } from "../lib/campaignNames.ts";
 
 interface NegRow {
   id: number;
@@ -42,32 +43,33 @@ export default function Negatives() {
   return (
     <>
       <div className="topbar">
-        <h2>Negative Keywords</h2>
+        <div><h1 className="ds-page-title">Минус-слова</h1><p className="ds-page-sub">Все страны выбранного приложения · защита от нерелевантных запросов и пересечения кампаний</p></div>
         <div className="controls">
-          <input type="text" placeholder="Filter" value={filter} onChange={(e) => setFilter(e.target.value)} />
-          <button onClick={doExport} disabled={filtered.length === 0}>Export CSV</button>
+          <input type="text" aria-label="Поиск минус-слов" placeholder="Найти слово или кампанию" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <button onClick={doExport} disabled={filtered.length === 0}>Экспорт CSV</button>
         </div>
       </div>
 
       <div className="card">
         <div className="hint">
-          Negatives blocked from matching on ASA. Added via Search Terms cleanup or manually.
-          Total: <strong>{rows.length}</strong>. Filtered: <strong>{filtered.length}</strong>.
+          Минус-слова блокируют нерелевантные показы и пересечение владельцев ключей. Добавляются из поиска запросов или через подтверждённую очередь.
+          Всего: <strong>{rows.length}</strong>. По фильтру: <strong>{filtered.length}</strong>.
         </div>
       </div>
 
-      {loading ? <div className="loading">loading</div> : filtered.length === 0 ? (
-        <div className="empty">no negatives yet · use Search Terms screen to add some</div>
+      {loading ? <div className="data-state loading">Загружаем минус-слова…</div> : filtered.length === 0 ? (
+        <div className="data-state">Нет минус-слов по этому фильтру.</div>
       ) : (
+        <div className="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Term</th>
-              <th>Match</th>
-              <th>Campaign</th>
-              <th>Country</th>
-              <th>Added</th>
-              <th className="num">Remote ID</th>
+              <th>Слово</th>
+              <th>Тип соответствия</th>
+              <th>Кампания</th>
+              <th>Страна</th>
+              <th>Добавлено</th>
+              <th className="num">ID Apple</th>
             </tr>
           </thead>
           <tbody>
@@ -75,14 +77,15 @@ export default function Negatives() {
               <tr key={r.id}>
                 <td><strong>{r.text}</strong></td>
                 <td><span className="badge">{r.match_type}</span></td>
-                <td className="muted" style={{ fontSize: 11 }}>{r.campaign_name ?? "—"}</td>
-                <td>{r.country ?? "—"}</td>
-                <td className="muted" style={{ fontSize: 11 }}>{new Date(r.added_at).toLocaleString()}</td>
+                <td className="muted">{r.campaign_name ? campaignDisplayName(r.campaign_name) : "—"}</td>
+                <td>{r.country === "WW" ? "Мультигео" : r.country ?? "—"}</td>
+                <td className="muted nowrap">{new Date(r.added_at).toLocaleString()}</td>
                 <td className="num muted">{r.remote_id ?? "—"}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </>
   );

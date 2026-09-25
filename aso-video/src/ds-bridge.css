@@ -1,0 +1,145 @@
+/* aso-video on the shared design system (../../shared/ds.css).
+   Components use var(--ds-*) in their inline styles; this file adds the
+   node-category palette and themes React Flow through its --xy-* variables.
+   Theme follows <html data-theme="light|dark">; light is the default. */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  /* Node categories — role, not per-type hue. Derived from the DS series. */
+  --vid-cat-source: var(--ds-c1);   /* uploads: reference image / video */
+  --vid-cat-gen: var(--ds-c2);      /* AI generation: image, edit, video, tts */
+  --vid-cat-asset: var(--ds-c4);    /* image-gen in "asset" usage */
+  --vid-cat-compose: var(--ds-c3);  /* compositors: captions, overlays, stitch… */
+  --vid-cat-output: var(--ds-muted);
+
+  /* Canvas — same surface as the rest of the studio. */
+  --vid-canvas: var(--ds-bg);
+  --vid-canvas-dots: var(--ds-axis);
+
+  /* React Flow */
+  --xy-background-color: var(--vid-canvas);
+  --xy-background-pattern-color: var(--vid-canvas-dots);
+  --xy-edge-stroke: var(--ds-axis);
+  --xy-edge-stroke-selected: var(--ds-accent);
+  --xy-connectionline-stroke: var(--ds-accent);
+  --xy-handle-background-color: var(--ds-muted);
+  --xy-handle-border-color: var(--ds-panel);
+  --xy-node-color: var(--ds-text);
+  --xy-node-background-color: var(--ds-panel);
+  --xy-node-border: 1px solid var(--ds-border);
+  --xy-node-boxshadow-selected: 0 0 0 2px var(--ds-accent);
+  --xy-minimap-background-color: var(--ds-panel);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--ds-bg) 70%, transparent);
+  --xy-minimap-mask-stroke-color: var(--ds-border);
+  --xy-minimap-node-background-color: var(--ds-dim);
+  --xy-controls-button-background-color: var(--ds-panel);
+  --xy-controls-button-background-color-hover: var(--ds-hover);
+  --xy-controls-button-color: var(--ds-text);
+  --xy-controls-button-color-hover: var(--ds-strong);
+  --xy-controls-button-border-color: var(--ds-border);
+  --xy-controls-box-shadow: var(--ds-shadow);
+  --xy-edge-label-background-color: var(--ds-panel);
+  --xy-edge-label-color: var(--ds-text);
+  --xy-resize-background-color: var(--ds-accent);
+  --xy-selection-background-color: color-mix(in srgb, var(--ds-accent) 8%, transparent);
+  --xy-selection-border: 1px dotted var(--ds-accent);
+}
+
+/* In dark theme the canvas sits a notch below the panels so cards float. */
+:root[data-theme="dark"] {
+  --vid-canvas: #0e0e12;
+  --vid-canvas-dots: var(--ds-axis);
+}
+
+html, body {
+  margin: 0;
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+}
+button, input, select, textarea { font-family: inherit; }
+select, input, textarea { color-scheme: inherit; }
+
+.react-flow__controls { border: 1px solid var(--ds-border); border-radius: var(--ds-radius-control); overflow: hidden; }
+.react-flow__minimap { border: 1px solid var(--ds-border); border-radius: var(--ds-radius-control); overflow: hidden; }
+.react-flow__edge.selected .react-flow__edge-path { stroke: var(--ds-accent) !important; }
+
+/* ---------- product chrome on top of shared/ds-components.css ----------
+   Shape rules come from DESIGN.md: radius 8 on rectangles, 6 inside controls,
+   pills only for tiny badges; 40px controls in the toolbar/modals, 32px compact
+   controls inside node cards. */
+.ds-input, .ds-select, .ds-textarea { box-sizing: border-box; min-width: 0; }
+.ds-btn.on { background: var(--ds-accent-soft); color: var(--ds-accent); font-weight: 600; border-color: transparent; }
+
+/* Top toolbar — a borderless card. */
+.vid-toolbar {
+  position: absolute; top: 12px; left: 12px; right: 12px; z-index: 10;
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  background: var(--ds-panel); padding: 8px 12px;
+  border-radius: var(--ds-radius-card); box-shadow: var(--ds-shadow);
+}
+.vid-toolbar-sep { width: 1px; height: 24px; background: var(--ds-border); flex: none; }
+.vid-caret { font-size: 10px; color: var(--ds-muted); margin-left: -2px; }
+
+/* Anchored popover (toolbar menus, history picker). */
+.vid-pop { position: absolute; top: calc(100% + 6px); left: 0; z-index: 1000; min-width: 220px; }
+.vid-pop-right { left: auto; right: 0; }
+.vid-pop .ds-pop-row { min-height: 36px; }
+.vid-pop-hint { display: block; font-size: 12px; font-weight: 400; color: var(--ds-muted); line-height: 16px; }
+.vid-pop-empty { padding: 8px 10px; font-size: 13px; color: var(--ds-muted); }
+.vid-pop-sep { height: 1px; background: var(--ds-hairline); margin: 6px 0; }
+
+/* Node cards: hairline border kept for canvas legibility + DS shadow. */
+.vid-node {
+  position: relative; width: 100%; height: 100%; min-width: 200px;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--ds-panel); color: var(--ds-text);
+  border: 1px solid var(--ds-border); border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow); font-family: var(--ds-font); font-size: 13px;
+}
+.vid-node-head {
+  display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 6px 0 4px;
+  border-bottom: 1px solid var(--ds-hairline); color: var(--ds-strong);
+  font-size: 14px; font-weight: 600; flex: none;
+}
+.vid-node-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow: auto; }
+.vid-node .ds-icon-btn { width: 28px; height: 28px; font-size: 12px; flex: none; }
+.vid-node .ds-input, .vid-node .ds-select {
+  width: 100%; height: var(--ds-control-h-sm); padding: 0 10px; font-size: 13px;
+}
+.vid-node input[type="file"].ds-input { padding: 0 4px; line-height: 30px; }
+.vid-node .ds-textarea { width: 100%; padding: 8px 10px; font-size: 13px; line-height: 18px; }
+.vid-node .ds-btn-sm { font-size: 13px; }
+.vid-node-title-input { flex: 1; height: 28px; padding: 0 8px; font-size: 14px; font-weight: 600; }
+.vid-label { display: block; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ds-muted); margin: 0 0 4px; }
+.vid-note { font-size: 12px; line-height: 17px; color: var(--ds-muted); }
+.vid-err { font-size: 12px; line-height: 17px; color: var(--ds-bad); }
+.vid-meta { font-size: 12px; color: var(--ds-muted); font-variant-numeric: tabular-nums; }
+.vid-row { display: flex; gap: 8px; align-items: center; }
+.vid-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.vid-check { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: var(--ds-text); cursor: pointer; }
+.vid-check input { margin: 0; width: 16px; height: 16px; accent-color: var(--ds-accent); }
+.vid-subcard { display: flex; flex-direction: column; gap: 8px; padding: 10px; background: var(--ds-panel-2); border-radius: var(--ds-radius-card); }
+
+/* Node Run buttons are secondary-weight so "Run All" stays the one solid primary. */
+.vid-run { width: 100%; background: var(--ds-accent-soft); color: var(--ds-accent); border-color: transparent; font-weight: 600; }
+.vid-run:hover { background: color-mix(in srgb, var(--ds-accent) 18%, var(--ds-panel)); border-color: transparent; }
+.vid-run.blocked { background: var(--ds-panel-2); color: var(--ds-muted); cursor: not-allowed; opacity: 1; }
+
+/* Status dot in node headers (a marker, not a control). */
+.vid-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+/* Library sidebar */
+.vid-lib-tabs { display: flex; margin: 8px 10px; }
+.vid-lib-tabs.ds-seg > button { flex: 1; padding: 0 6px; }
+
+/* Keep the React Flow controls clear of the library rail/panel on the left. */
+.react-flow__panel.left.bottom { margin-left: calc(var(--aso-library-width, 40px) + 15px); }
+.react-flow__controls { box-shadow: var(--ds-shadow); border: 0; }
+.react-flow__controls-button { width: 32px; height: 32px; border-bottom: 1px solid var(--ds-hairline); }
+.vid-node input[type="file"]::file-selector-button {
+  height: 24px; margin: 0 8px 0 0; padding: 0 8px;
+  background: var(--ds-panel-2); color: var(--ds-text);
+  border: var(--ds-control-border); border-radius: var(--ds-radius-inner);
+  font: inherit; font-size: 12px; font-weight: 500; cursor: pointer;
+}

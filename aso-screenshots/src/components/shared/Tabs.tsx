@@ -13,36 +13,19 @@ export interface TabsProps<T extends string = string> {
 }
 
 export function Tabs<T extends string = string>({ items, value, onChange, className = '' }: TabsProps<T>) {
+  // Tabs share the segmented-control look (DESIGN.md: active = accent-soft + accent 600).
   return (
-    <div
-      className={className}
-      style={{
-        display: 'flex',
-        gap: 0,
-        borderBottom: '1px solid var(--line-1)',
-      }}
-    >
+    <div className={['seg', className].filter(Boolean).join(' ')} role="tablist">
       {items.map((item) => {
         const active = item.value === value;
         return (
           <button
             key={item.value}
             type="button"
+            role="tab"
+            aria-selected={active}
+            className={active ? 'active' : ''}
             onClick={() => onChange(item.value)}
-            style={{
-              appearance: 'none',
-              border: 0,
-              background: 'transparent',
-              height: 32,
-              padding: '0 12px',
-              fontSize: 12,
-              fontWeight: 500,
-              color: active ? 'var(--fg-0)' : 'var(--fg-2)',
-              cursor: 'pointer',
-              borderBottom: active ? '2px solid var(--accent)' : '2px solid transparent',
-              marginBottom: -1,
-              transition: 'color .12s, border-color .12s',
-            }}
           >
             {item.label}
           </button>

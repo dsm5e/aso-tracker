@@ -1,0 +1,351 @@
+/* Maps the screenshots studio's own chrome (tokens.css + app.css) onto the shared
+   design system (../../../shared/ds.css + ds-components.css). Imported LAST in main.tsx.
+
+   Rules (aso-studio/DESIGN.md): radius 8 everywhere, 6 inside controls, pills only for
+   tiny badges; controls 40px (32px compact) with a .75px --ds-ctl-border; cards have no
+   border and a soft shadow; active = --ds-accent-soft bg + --ds-accent text 600.
+
+   Selector list beats tokens.css's [data-flavor] / [data-accent] blocks
+   (same or higher specificity, later in the cascade), so both themes follow
+   <html data-theme>. Only app chrome is mapped: screenshot artwork, device
+   frames and the /render export page use their own hard-coded colours. */
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  /* surfaces */
+  --bg-0: var(--ds-bg);
+  --bg-1: var(--ds-panel);
+  --bg-2: var(--ds-panel-2);
+  --bg-3: var(--ds-hover);
+  --bg-4: var(--ds-accent-soft);    /* active chip = accent-soft */
+  --bg-canvas: var(--ds-bg);        /* backdrop around the artwork, not the artwork */
+
+  /* lines */
+  --line-1: var(--ds-hairline);
+  --line-2: var(--ds-border);
+  --line-3: var(--ds-muted);
+  --line-strong: var(--ds-ctl-border);
+  --line: var(--ds-ctl-border);      /* used by Inspector but never defined */
+
+  /* ink */
+  --fg-0: var(--ds-strong);
+  --fg-1: var(--ds-text);
+  --fg-2: var(--ds-muted);
+  --fg-3: var(--ds-subtle);
+  --fg-4: var(--ds-subtle);
+
+  /* accent — one purple action colour */
+  --accent: var(--ds-accent);
+  --accent-hover: var(--ds-accent-hover);
+  --accent-active: var(--ds-accent-hover);
+  --accent-soft: var(--ds-accent-soft);
+  --accent-ring: var(--ds-accent-soft);
+  --accent-fg: var(--ds-on-accent);
+
+  /* status */
+  --success: var(--ds-good);
+  --ok: var(--ds-good);
+  --warn: var(--ds-warn);
+  --danger: var(--ds-bad);
+  --ai: var(--ds-accent);
+  --ai-soft: var(--ds-accent-soft);
+  --pos: var(--ds-good);
+  --neg: var(--ds-bad);
+  --neg-soft: var(--ds-bad-soft);
+  --accent-2: var(--ds-good);
+
+  /* shape — one radius family */
+  --r-1: var(--ds-radius-inner);     /* 6: things inside a control */
+  --r-2: var(--ds-radius-control);   /* 8 */
+  --r-3: var(--ds-radius-control);   /* 8 */
+  --r-4: var(--ds-radius-card);      /* 8 */
+  --r-5: var(--ds-radius-card);      /* 8 */
+  --r-pill: var(--ds-radius-pill);   /* badges / switches only */
+  --row-h: var(--ds-control-h);
+
+  /* type */
+  --font-sans: var(--ds-font);
+  --font-display: var(--ds-font);
+  --font-mono: var(--ds-font-mono);
+
+  --shadow-1: none;
+  --shadow-2: var(--ds-shadow);
+  --shadow-3: var(--ds-shadow-pop);
+  --shadow-pop: var(--ds-shadow-pop);
+}
+
+html, body {
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+}
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: var(--ds-accent); }
+
+/* ─── Topbar ─────────────────────────────────────────── */
+.topbar { background: var(--ds-panel); border-bottom: 1px solid var(--ds-hairline); }
+.topbar-brand .logo { background: var(--ds-accent); box-shadow: none; border-radius: var(--ds-radius-inner); }
+
+/* Step switcher = segmented control (40px box, 32px inner buttons, radius 8/6). */
+.topbar-steps {
+  height: var(--ds-control-h);
+  padding: 3px;
+  gap: 2px;
+  background: var(--ds-input-bg);
+  border: var(--ds-control-border);
+  border-radius: var(--ds-radius-control);
+}
+.step {
+  height: 32px;
+  padding: 0 10px;
+  gap: 8px;
+  border-radius: var(--ds-radius-inner);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ds-text);
+  box-shadow: none;
+}
+.step:hover { background: var(--ds-accent-soft); color: var(--ds-text); }
+.step.active { background: var(--ds-accent-soft); color: var(--ds-accent); font-weight: 600; box-shadow: none; }
+.step.disabled:hover { background: none; }
+.step .num {
+  width: 20px; height: 20px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-panel-2);
+  color: var(--ds-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.step.active .num { background: var(--ds-accent); color: var(--ds-on-accent); }
+.step.done .num { background: var(--ds-good-soft); color: var(--ds-good); }
+@media (max-width: 1100px) {
+  .topbar-steps .step:not(.active) span,
+  .topbar-steps .step:not(.active) { font-size: 13px; }
+}
+
+/* ─── Buttons (= .ds-btn) ────────────────────────────── */
+.btn {
+  height: var(--ds-control-h);
+  padding: 0 14px;
+  gap: 8px;
+  justify-content: center;
+  background: var(--ds-input-bg);
+  border: var(--ds-control-border);
+  border-radius: var(--ds-radius-control);
+  color: var(--ds-text);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.btn:hover { background: var(--ds-input-bg); border-color: var(--ds-muted); color: var(--ds-text); }
+.btn:active { background: var(--ds-accent-soft); }
+.btn:disabled { opacity: .5; }
+.btn:focus-visible { outline: 2px solid var(--ds-accent-soft); outline-offset: 0; border-color: var(--ds-accent); }
+.btn--sm { height: var(--ds-control-h-sm); padding: 0 10px; font-size: 13px; }
+.btn--lg { height: var(--ds-control-h); padding: 0 16px; font-size: 14px; border-radius: var(--ds-radius-control); }
+.btn--primary, .btn--ai {
+  background: var(--ds-accent);
+  border-color: transparent;
+  color: var(--ds-on-accent);
+  font-weight: 600;
+  box-shadow: none;
+  filter: none;
+}
+.btn--primary:hover, .btn--ai:hover { background: var(--ds-accent-hover); border-color: transparent; color: var(--ds-on-accent); filter: none; }
+.btn--primary:active, .btn--ai:active { background: var(--ds-accent-hover); }
+.btn--ghost, .btn.btn-ghost { background: transparent; border-color: transparent; }
+.btn--ghost:hover, .btn.btn-ghost:hover { background: var(--ds-accent-soft); border-color: transparent; }
+.btn--danger { color: var(--ds-bad); }
+.btn--danger:hover { background: var(--ds-bad-soft); color: var(--ds-bad); border-color: transparent; }
+/* Icon buttons (= .ds-icon-btn): 32px square, radius 6, no border. */
+.btn--icon {
+  width: var(--ds-control-h-sm);
+  height: var(--ds-control-h-sm);
+  padding: 0;
+  background: transparent;
+  border-color: transparent;
+  border-radius: var(--ds-radius-inner);
+  color: var(--ds-muted);
+}
+.btn--icon:hover { background: var(--ds-accent-soft); border-color: transparent; color: var(--ds-accent); }
+
+.kbd { border-radius: 4px; background: var(--ds-panel-2); border-color: var(--ds-border); color: var(--ds-muted); }
+
+/* ─── Inputs (= .ds-input / .ds-select / .ds-textarea) ─ */
+.input, .select, .textarea {
+  background: var(--ds-input-bg);
+  border: var(--ds-control-border);
+  border-radius: var(--ds-radius-control);
+  color: var(--ds-text);
+  font-size: 14px;
+  font-weight: 500;
+}
+.input, .select { height: var(--ds-control-h); padding: 0 12px; }
+.select { padding-right: 32px; }
+.textarea { padding: 10px 12px; line-height: 20px; font-weight: 400; }
+.input::placeholder, .textarea::placeholder { color: var(--ds-subtle); font-weight: 400; }
+.input:hover, .select:hover, .textarea:hover { border-color: var(--ds-muted); }
+.input:focus, .select:focus, .textarea:focus {
+  border-color: var(--ds-accent);
+  outline: 2px solid var(--ds-accent-soft);
+  box-shadow: none;
+}
+input[type="color"] {
+  border: var(--ds-control-border) !important;
+  border-radius: var(--ds-radius-control) !important;
+  background: var(--ds-input-bg) !important;
+  padding: 3px !important;
+  cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+input[type="color"]::-webkit-color-swatch { border: 0; border-radius: var(--ds-radius-inner); }
+
+.field { gap: 6px; }
+.field-label { font-size: 13px; line-height: 18px; font-weight: 500; color: var(--ds-text); letter-spacing: 0; }
+.field-label .muted { color: var(--ds-muted); font-weight: 500; }
+.field-hint { font-size: 13px; line-height: 19px; color: var(--ds-muted); }
+
+/* ─── Slider / toggle ───────────────────────────────── */
+.slider { height: 4px; background: var(--ds-dim); border-radius: var(--ds-radius-pill); }
+.slider::-webkit-slider-thumb { width: 16px; height: 16px; background: var(--ds-panel); border: var(--ds-control-border); box-shadow: var(--ds-shadow); }
+.slider::-webkit-slider-thumb:hover { background: var(--ds-panel); border-color: var(--ds-accent); }
+.slider::-moz-range-thumb { width: 16px; height: 16px; background: var(--ds-panel); border: var(--ds-control-border); }
+.slider-track { background: var(--ds-dim); }
+.slider-fill { background: var(--ds-accent); }
+/* A switch is not a button: the rounded track stays (like iOS/Adapty). */
+.toggle { width: 32px; height: 18px; background: var(--ds-dim); border: 0; border-radius: var(--ds-radius-pill); }
+.toggle i { top: 2px; left: 2px; width: 14px; height: 14px; background: var(--ds-panel); box-shadow: 0 1px 2px rgba(0, 0, 0, .2); }
+.toggle[data-on="true"] { background: var(--ds-accent); border-color: transparent; }
+.toggle[data-on="true"] i { transform: translateX(14px); background: #fff; }
+
+/* ─── Segmented control (= .ds-seg) ─────────────────── */
+.seg {
+  display: inline-flex;
+  align-items: center;
+  height: var(--ds-control-h);
+  padding: 3px;
+  gap: 2px;
+  background: var(--ds-input-bg);
+  border: var(--ds-control-border);
+  border-radius: var(--ds-radius-control);
+}
+.seg button {
+  height: 32px;
+  padding: 0 10px;
+  gap: 6px;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--ds-radius-inner);
+  background: none;
+  color: var(--ds-text);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: none;
+}
+.seg button:hover { background: var(--ds-accent-soft); color: var(--ds-text); }
+.seg button.active { background: var(--ds-accent-soft); color: var(--ds-accent); font-weight: 600; box-shadow: none; }
+.seg button:disabled:hover { background: none; }
+.seg--block { display: flex; width: 100%; }
+.seg--block > button { flex: 1 1 0; min-width: 0; padding: 0 6px; }
+
+/* ─── Dense areas (editor toolbar, sidebars, inspector): 32px controls ─ */
+.ds-dense .btn:not(.btn--icon), .ds-dense .input, .ds-dense .select {
+  height: var(--ds-control-h-sm);
+  font-size: 13px;
+}
+.ds-dense .btn:not(.btn--icon) { padding: 0 10px; }
+.ds-dense .input { padding: 0 10px; }
+.ds-dense .select { padding: 0 28px 0 10px; }
+.ds-dense .textarea { font-size: 13px; padding: 8px 10px; }
+.ds-dense .seg, .seg.seg--sm { height: var(--ds-control-h-sm); padding: 2px; }
+.ds-dense .seg button, .seg.seg--sm button { height: 26px; font-size: 13px; padding: 0 8px; }
+.ds-dense input[type="color"] { height: var(--ds-control-h-sm) !important; }
+
+/* ─── Cards (= .ds-card) ────────────────────────────── */
+.panel {
+  background: var(--ds-panel);
+  border: 0;
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow);
+}
+.panel-section { padding: 16px; border-bottom: 1px solid var(--ds-hairline); }
+.panel-section:last-child { border-bottom: 0; }
+/* Section labels: tiny 12px/600 muted group labels, not uppercase. */
+.panel-section-title {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 600;
+  color: var(--ds-muted);
+  text-transform: none;
+  letter-spacing: 0;
+  margin: 0 0 10px;
+}
+/* A card that fills a sidebar is the sidebar itself — no floating shadow. */
+.ds-flat > .panel, .panel.ds-flat { box-shadow: none; border-radius: 0; background: transparent; }
+
+/* Tiny group label used in sidebars / grids. */
+.ds-group-label { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ds-muted); letter-spacing: 0; text-transform: none; }
+
+/* ─── Sidebar list rows (= .ds-nav-item look) ───────── */
+.list-row { border-radius: var(--ds-radius-control); color: var(--ds-text); }
+.list-row:hover { background: var(--ds-accent-soft); }
+.list-row.active { background: var(--ds-accent-soft); color: var(--ds-accent); }
+.list-row.active > div > span:first-child { font-weight: 600; }
+.list-row.active::before { content: none; }
+
+/* ─── Badges (= .ds-badge) — the only pills ─────────── */
+.pill {
+  height: 20px;
+  padding: 0 8px;
+  gap: 4px;
+  border-radius: var(--ds-radius-pill);
+  background: var(--ds-panel-2);
+  color: var(--ds-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.pill--ai { background: var(--ds-accent-soft); color: var(--ds-accent); }
+.pill--success { background: var(--ds-good-soft); color: var(--ds-good); }
+.pill--warn { background: var(--ds-warn-soft); color: var(--ds-warn); }
+
+/* ─── Misc chrome ───────────────────────────────────── */
+.divider, .vdivider { background: var(--ds-hairline); }
+.muted { color: var(--ds-muted); }
+::selection { background: var(--ds-accent-soft); color: var(--ds-strong); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb:hover { background: var(--ds-scrollbar); border: 2px solid transparent; background-clip: padding-box; border-radius: 999px; }
+
+.kbd-hint-btn {
+  border-radius: var(--ds-radius-control);
+  background: var(--ds-panel);
+  border: var(--ds-control-border);
+  color: var(--ds-muted);
+  box-shadow: var(--ds-shadow);
+}
+.kbd-hint-btn:hover { transform: none; border-color: var(--ds-muted); color: var(--ds-accent); }
+.kbd-hint-popover { background: rgba(1, 0, 48, .12); }
+.kbd-hint-card { background: var(--ds-tip-bg); border: 1px solid var(--ds-border); border-radius: var(--ds-radius-card); box-shadow: var(--ds-shadow-pop); }
+.kbd-hint-head { background: var(--ds-tip-bg); border-bottom: 1px solid var(--ds-hairline); }
+.kbd-hint-row { font-size: 13px; color: var(--ds-text); }
+.kbd-hint-row kbd { background: var(--ds-panel-2); border: 1px solid var(--ds-border); border-radius: 4px; color: var(--ds-muted); }
+
+/* Selectable tile (Setup device cards, catalog rows, polish cards): radius 8,
+   borderless card, selected = accent ring + accent-soft. */
+.ds-tile {
+  background: var(--ds-panel);
+  border: 0;
+  border-radius: var(--ds-radius-card);
+  box-shadow: var(--ds-shadow);
+  color: var(--ds-text);
+}
+.ds-tile.on { box-shadow: inset 0 0 0 1.5px var(--ds-accent), var(--ds-shadow); background: var(--ds-accent-soft); }
+button.ds-tile { cursor: pointer; font: inherit; text-align: left; }
+button.ds-tile:hover:not(.on) { box-shadow: inset 0 0 0 .75px var(--ds-muted), var(--ds-shadow); }
+
+/* Inspector: segmented controls fill the 280px column instead of overflowing it. */
+.ds-flat .seg { display: flex; width: 100%; }
+.ds-flat .seg > button { flex: 1 1 0; min-width: 0; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; }

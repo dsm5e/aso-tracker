@@ -10,7 +10,7 @@
  * has to be base64-inlined.
  *
  * Reads the project from the running API, so it needs no argument:
- *   node cli/render-export.mjs [--out <folder>] [--locales ru,ja] [--slots 4,7]
+ *   node cli/render-export.mjs [--out <folder>] [--locales ru,ja] [--slots 4,7] [--devices iphone]
  *                              [--concurrency 3]
  *
  * `--slots` takes 1-based slot numbers, so reworking one frame and pushing it to
@@ -19,20 +19,36 @@
  *
  * Output: <outputFolder>/<App-slug>/images[-ipad]/<locale>/<pattern>
  * Exits non-zero if any job failed, listing them.
+ *
+ * Layout variants (state.layoutVariants — named slot orderings such as PPO
+ * treatments):
+ *   node cli/render-export.mjs --variants A,B --out ~/export
+ *   node cli/render-export.mjs --variants all --tree '{variant}/{device}' --pattern '{n}.{ext}'
+ * Inside a variant `{n}` is the position among that device family's slots, so
+ * iPhone and iPad both start at 01.
+ *
+ * `--tree` sets the folder template under --out. Placeholders: {app} {variant}
+ * {device} (iphone|ipad) {images} (images|images-ipad) {locale}. Default:
+ * `{app}/{images}/{locale}`, or `{app}/{variant}/{images}/{locale}` with variants.
+ * `--pattern` overrides the project's filename pattern. The untranslated source
+ * renders into state.sourceLocale (default 'en').
  */
 import { chromium } from 'playwright';
 import { mkdir, writeFile } from 'node:fs/promises';
 import pathMod from 'node:path';
 
-const API = 'http://localhost:5181';
-const BASE = 'http://localhost:5180/studio';
+// The monorepo gateway serves everything on :5173 (`/studio`, `/studio-api`);
+// the standalone dev servers use :5180 / :5181. Override via env for the gateway:
+//   ASO_API=http://localhost:5173/studio-api ASO_ORIGIN=http://localhost:5173
+const API = process.env.ASO_API ?? 'http://localhost:5181/api';
+const ORIGIN = process.env.ASO_ORIGIN ?? 'http://localhost:5180';
 
 function arg(name, fallback = null) {
   const i = process.argv.indexOf(`--${name}`);
   return i > -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
 }
 
-const state = await fetch(`${API}/api/studio-state`).then((r) => {
+const state = await fetch(`${API}/studio-state`).then((r) => {
   if (!r.ok) throw new Error(`state GET ${r.status}`);
   return r.json();
 });
@@ -44,18 +60,50 @@ const wanted = only ? new Set(only.split(',').map((s) => s.trim())) : null;
 const slotArg = arg('slots');
 const wantedSlots = slotArg ? new Set(slotArg.split(',').map((s) => Number(s.trim()))) : null;
 const concurrency = Math.max(1, Number(arg('concurrency', '3')));
-const pattern = state.filenamePattern || '{n}-{app}.{ext}';
+// `--devices iphone` renders only that family (numbering stays per device).
+const devArg = arg('devices');
+const wantedDevices = devArg ? new Set(devArg.split(',').map((s) => s.trim())) : null;
+const pattern = arg('pattern', state.filenamePattern || '{n}-{app}.{ext}');
+const sourceLocale = state.sourceLocale || 'en';
+const ipadSize = state.ipadModel === 'ipad-pro-13' ? '2064x2752' : '2048x2732';
+const variantArg = arg('variants');
+const allVariants = state.layoutVariants ?? [];
+const variants = variantArg
+  ? (variantArg === 'all' ? allVariants : variantArg.split(',').map((id) => {
+      const v = allVariants.find((x) => x.id === id.trim());
+      if (!v) throw new Error(`unknown variant ${id} (have: ${allVariants.map((x) => x.id).join(', ') || 'none'})`);
+      return v;
+    }))
+  : null;
+const tree = arg('tree', variants ? '{app}/{variant}/{images}/{locale}' : '{app}/{images}/{locale}');
 const appSlug = (state.appName || 'app').replace(/\s+/g, '-').replace(/[^a-zA-Z0-9._-]/g, '');
 
 const locales = (state.locales ?? []).filter((l) => !wanted || wanted.has(l.code));
 const localeList = locales.length ? locales : [null];
 
 const jobs = [];
+const byId = new Map(state.screenshots.map((s) => [s.id, s]));
 for (const loc of localeList) {
+  if (variants) {
+    for (const v of variants) {
+      const counters = { iphone: 0, ipad: 0 };
+      for (const id of v.slotIds) {
+        const slot = byId.get(id);
+        if (!slot) throw new Error(`variant ${v.id}: unknown slot ${id}`);
+        const dev = slot.device ?? 'iphone';
+        counters[dev] += 1;
+        if (wantedSlots && !wantedSlots.has(counters[dev])) continue;
+        if (wantedDevices && !wantedDevices.has(dev)) continue;
+        jobs.push({ slot, locale: loc, n: counters[dev], variant: v.id });
+      }
+    }
+    continue;
+  }
   state.screenshots.forEach((slot, i) => {
     // Slot numbers stay tied to the project index, so a re-render of slot 4
     // overwrites exactly 04-*.png in every locale folder.
     if (wantedSlots && !wantedSlots.has(i + 1)) return;
+    if (wantedDevices && !wantedDevices.has(slot.device ?? 'iphone')) return;
     jobs.push({ slot, locale: loc, n: i + 1 });
   });
 }
@@ -63,13 +111,26 @@ if (jobs.length === 0) throw new Error('nothing to render');
 
 function filenameFor(job) {
   const dev = job.slot.device ?? 'iphone';
-  const size = dev === 'ipad' ? '2048x2732' : '1320x2868';
+  const size = dev === 'ipad' ? ipadSize : '1320x2868';
   return pattern.replace(/\{(\w+)\}/g, (full, key) => {
     if (key === 'app') return appSlug;
-    if (key === 'locale') return job.locale?.code ?? 'en';
+    if (key === 'locale') return job.locale?.code ?? sourceLocale;
+    if (key === 'variant') return job.variant ?? '';
     if (key === 'n') return String(job.n).padStart(2, '0');
     if (key === 'size') return size;
     if (key === 'ext') return 'png';
+    return full;
+  });
+}
+
+function dirFor(job) {
+  const dev = job.slot.device ?? 'iphone';
+  return tree.replace(/\{(\w+)\}/g, (full, key) => {
+    if (key === 'app') return appSlug;
+    if (key === 'variant') return job.variant ?? '';
+    if (key === 'device') return dev;
+    if (key === 'images') return dev === 'ipad' ? 'images-ipad' : 'images';
+    if (key === 'locale') return job.locale?.code ?? sourceLocale;
     return full;
   });
 }
@@ -97,7 +158,7 @@ async function worker(queue) {
     const key = `${job.slot.id}|${code}`;
     try {
       if (!loaded) {
-        await page.goto(`http://localhost:5180${path}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+        await page.goto(`${ORIGIN}${path}`, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         await page.evaluate(() => document.fonts.ready);
         loaded = true;
       } else {
@@ -115,7 +176,22 @@ async function worker(queue) {
       // Locale fonts and any artwork not yet cached still load asynchronously,
       // and the headline fit pass re-runs when they land.
       await page.evaluate(async () => {
+        // Web fonts are injected asynchronously (fontLoader fetches the Google CSS),
+        // so fonts.ready can resolve before the headline face even exists. Wait for
+        // the injected CSS, then load the exact faces the headline uses.
+        const t0 = Date.now();
+        while (!document.querySelector('style[data-preset-fonts]')?.textContent
+          && !document.querySelector('link[data-preset-fonts]') && Date.now() - t0 < 10_000) {
+          await new Promise((r) => setTimeout(r, 50));
+        }
+        const els = document.querySelectorAll('[data-headline-title], [data-headline-descriptor]');
+        await Promise.all([...els].map((el) => {
+          const cs = getComputedStyle(el);
+          return document.fonts.load(`${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`, el.textContent || 'A').catch(() => null);
+        }));
         await document.fonts.ready;
+        // Let the headline fit pass re-run on the final metrics.
+        await new Promise((r) => setTimeout(r, 120));
         const imgs = [...document.images].filter((i) => !i.complete);
         await Promise.all(imgs.map((i) => new Promise((r) => {
           i.addEventListener('load', r, { once: true });
@@ -139,15 +215,21 @@ async function worker(queue) {
       if (overflow) throw new Error(overflow);
 
       const buf = await el.screenshot({ type: 'png' });
-      const dir = pathMod.join(outputFolder, appSlug,
-        (job.slot.device ?? 'iphone') === 'ipad' ? 'images-ipad' : 'images',
-        job.locale?.code ?? 'en');
+      const dir = pathMod.join(outputFolder, dirFor(job));
       await mkdir(dir, { recursive: true });
       await writeFile(pathMod.join(dir, filenameFor(job)), buf);
       done += 1;
       if (done % 25 === 0 || done === jobs.length) console.log(`  ${done}/${jobs.length}`);
     } catch (e) {
-      failures.push({ locale: code || 'en', slot: job.n, error: e.message.split('\n')[0] });
+      // A dev-server reload (Vite dep re-optimisation, HMR) can tear down the page
+      // mid-job; retry such a job once on a fresh load before reporting it.
+      if (!job.retried && /context was destroyed|navigation|Target closed/i.test(e.message)) {
+        job.retried = true;
+        queue.push(job);
+        loaded = false;
+        continue;
+      }
+      failures.push({ locale: code || sourceLocale, slot: `${job.variant ? job.variant + '/' : ''}${job.slot.device ?? 'iphone'} ${job.n}`, error: e.message.split('\n')[0] });
       // A failed job can leave the SPA on the wrong route; force a clean load.
       loaded = false;
     }
@@ -155,8 +237,7 @@ async function worker(queue) {
   await page.close();
 }
 
-const slotCount = wantedSlots ? wantedSlots.size : state.screenshots.length;
-console.log(`rendering ${jobs.length} PNG (${slotCount} slots × ${localeList.length} locales) → ${outputFolder}`);
+console.log(`rendering ${jobs.length} PNG (${variants ? `variants ${variants.map((v) => v.id).join(',')}` : `${wantedSlots ? wantedSlots.size : state.screenshots.length} slots`} × ${localeList.length} locales) → ${outputFolder}`);
 const queue = jobs.slice();
 await Promise.all(Array.from({ length: concurrency }, () => worker(queue)));
 await browser.close();

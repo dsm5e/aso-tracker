@@ -170,9 +170,9 @@ export function ExportScreen() {
   if (archived) {
     return (
       <div style={{ padding: 'var(--s-9)', maxWidth: 600, margin: '0 auto', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-        <CheckCircle2 size={56} style={{ color: 'var(--ok, #10B981)' }} />
-        <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700 }}>Archived ✓</h1>
-        <p style={{ color: 'var(--fg-2)', fontSize: 13, margin: 0 }}>
+        <CheckCircle2 size={56} style={{ color: 'var(--ok)' }} />
+        <h1 className="ds-page-title" style={{ margin: 0 }}>Archived ✓</h1>
+        <p className="ds-page-sub">
           {appName || 'Untitled'} saved to Recent. Returning to Setup…
         </p>
       </div>
@@ -182,8 +182,8 @@ export function ExportScreen() {
   return (
     <div style={{ padding: 'var(--s-7)', maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
       <header>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>Export</h1>
-        <p style={{ margin: '6px 0 0', color: 'var(--fg-2)', fontSize: 13 }}>
+        <h1 className="ds-page-title" style={{ margin: 0 }}>Export</h1>
+        <p className="ds-page-sub" style={{ margin: '4px 0 0' }}>
           PNG render via Playwright + ASC upload land in a future build. For now, finish the project here to archive it into Setup → Recent.
         </p>
       </header>
@@ -200,11 +200,10 @@ export function ExportScreen() {
               />
             </div>
             <Button
-              variant="ghost"
               onClick={onPickFolder}
               leftIcon={<FolderSearch size={13} />}
               title="Pick a folder via the macOS native dialog"
-              style={{ flex: 'none', marginTop: 4 }}
+              style={{ flex: 'none' }}
             >
               Browse…
             </Button>
@@ -212,14 +211,14 @@ export function ExportScreen() {
         </Card.Section>
 
         <Card.Section title="Project summary">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--fg-1)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, color: 'var(--fg-1)' }}>
             <div>App: <strong>{appName || '(untitled)'}</strong></div>
             <div>Slots: {slotCount} ({regulars.length} regular + {heroPresent ? '1 hero' : '0 hero'})</div>
             <div>Hero rendered: {heroDone === 1 ? '✓ yes' : '— no'}</div>
             <div>Polished regulars: {polishedRegulars} / {regulars.length}</div>
             <div>Locales: {locales.length} ({locales.filter((l) => l.aiTranslated).length} translated)</div>
             {loadedFromProjectId && (
-              <div style={{ color: 'var(--fg-3)', marginTop: 4 }}>
+              <div className="ds-note" style={{ marginTop: 4 }}>
                 Editing existing archived project — Finish will update the same entry.
               </div>
             )}
@@ -228,10 +227,10 @@ export function ExportScreen() {
 
         {issues.length > 0 && (
           <Card.Section title="Pre-flight checks">
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: 'var(--fg-1)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: 'var(--fg-1)', display: 'flex', flexDirection: 'column', gap: 4 }}>
               {issues.map((issue) => (
                 <li key={issue} style={{ color: blockingIssues.includes(issue) ? 'var(--neg)' : 'var(--fg-2)', display: 'flex', alignItems: 'flex-start', gap: 6, listStyle: 'none', marginLeft: -14 }}>
-                  <AlertCircle size={12} style={{ flex: 'none', marginTop: 2 }} />
+                  <AlertCircle size={14} style={{ flex: 'none', marginTop: 3 }} />
                   {issue}{blockingIssues.includes(issue) ? '' : ' (warning, won\'t block archive)'}
                 </li>
               ))}
@@ -250,14 +249,14 @@ export function ExportScreen() {
 
         {renderState && (
           <Card.Section title="Rendering PNGs…">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 12, color: 'var(--fg-1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 14, color: 'var(--fg-1)' }}>
               <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', color: 'var(--ai)' }} />
               <span>{renderState.done} / {renderState.total} done</span>
-              <div style={{ flex: 1, height: 4, background: 'var(--bg-2)', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ flex: 1, height: 4, background: 'var(--ds-dim)', borderRadius: 999, overflow: 'hidden' }}>
                 <div style={{ width: `${(renderState.done / Math.max(1, renderState.total)) * 100}%`, height: '100%', background: 'var(--ai)', transition: 'width .2s' }} />
               </div>
             </div>
-            <div style={{ marginTop: 6, fontSize: 11, color: 'var(--fg-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div className="ds-note" style={{ marginTop: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {renderState.current}
             </div>
           </Card.Section>
@@ -269,38 +268,38 @@ export function ExportScreen() {
             rightSlot={
               <div style={{ display: 'flex', gap: 6 }}>
                 {renderResult.failures.length > 0 && (
-                  <Button variant="ai" onClick={onRetryFailed} leftIcon={<RefreshCw size={12} />}>
+                  <Button size="sm" onClick={onRetryFailed} leftIcon={<RefreshCw size={14} />}>
                     Retry {renderResult.failures.length} failed
                   </Button>
                 )}
                 {renderResult.rendered > 0 && (
-                  <Button variant="primary" onClick={onFinishNow} title="Archive project to Recent">
+                  <Button variant="primary" size="sm" onClick={onFinishNow} title="Archive project to Recent">
                     Finish & archive
                   </Button>
                 )}
               </div>
             }
           >
-            <div style={{ fontSize: 12, color: 'var(--fg-1)' }}>
-              <CheckCircle2 size={14} style={{ verticalAlign: 'middle', color: 'var(--ok, #10B981)', marginRight: 6 }} />
+            <div style={{ fontSize: 14, color: 'var(--fg-1)' }}>
+              <CheckCircle2 size={14} style={{ verticalAlign: 'middle', color: 'var(--ok)', marginRight: 6 }} />
               {renderResult.rendered} rendered{renderResult.failed > 0 ? ` · ` : ''}
               {renderResult.failed > 0 && (
                 <span style={{ color: 'var(--neg)' }}>{renderResult.failed} failed</span>
               )}
-              <div style={{ fontSize: 11, color: 'var(--fg-3)', marginTop: 4 }}>
+              <div className="ds-note" style={{ marginTop: 4 }}>
                 Saved to <code>{outputFolder}/{(appName || 'app').replace(/\s+/g, '-')}/images[-ipad]/&lt;locale&gt;/</code>
               </div>
             </div>
             {renderResult.failures.length > 0 && (
-              <div style={{ marginTop: 10, padding: 10, background: 'var(--bg-2)', borderRadius: 6, maxHeight: 220, overflowY: 'auto' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--neg)', marginBottom: 6 }}>Failures (click Retry to re-run):</div>
-                <ul style={{ margin: 0, padding: 0, fontSize: 11, color: 'var(--fg-2)', display: 'flex', flexDirection: 'column', gap: 6, listStyle: 'none' }}>
+              <div style={{ marginTop: 10, padding: 10, background: 'var(--bg-2)', borderRadius: 8, maxHeight: 220, overflowY: 'auto' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--neg)', marginBottom: 6 }}>Failures (click Retry to re-run):</div>
+                <ul style={{ margin: 0, padding: 0, fontSize: 13, color: 'var(--fg-2)', display: 'flex', flexDirection: 'column', gap: 6, listStyle: 'none' }}>
                   {renderResult.failures.map((f, i) => (
-                    <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 6, background: 'var(--bg-1)', borderRadius: 4 }}>
+                    <li key={i} style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 8, background: 'var(--bg-1)', borderRadius: 6 }}>
                       <span style={{ color: 'var(--fg-0)', fontWeight: 500 }}>
                         <span style={{ color: 'var(--accent)' }}>{f.localeCode}</span> · {f.slotVerb}
                       </span>
-                      <span style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)', fontSize: 10.5 }}>{f.error}</span>
+                      <span style={{ color: 'var(--fg-2)', fontFamily: 'var(--font-mono)', fontSize: 12 }}>{f.error}</span>
                     </li>
                   ))}
                 </ul>
@@ -319,9 +318,7 @@ export function ExportScreen() {
         ) : (
           <div style={{ display: 'flex', gap: 8 }}>
             <Button
-              variant="ai"
-              size="lg"
-              leftIcon={<FlaskConical size={14} />}
+              leftIcon={<FlaskConical size={16} />}
               onClick={() => onMakePPO('iphone')}
               disabled={slotCount === 0}
               title="Seed a PPO A/B experiment from this project's iPhone screenshots, then fill variant prompts. (iPad: switch device on the PPO screen and run again.)"
@@ -330,8 +327,7 @@ export function ExportScreen() {
             </Button>
             <Button
               variant="primary"
-              size="lg"
-              leftIcon={<FolderOpen size={14} />}
+              leftIcon={<FolderOpen size={16} />}
               onClick={onExport}
               disabled={blockingIssues.length > 0}
               title={blockingIssues.length ? `Fix: ${blockingIssues.join(' · ')}` : `Render ${totalToRender} PNGs — iPhone slots → images/ (${iphoneDimensions}), iPad slots → images-ipad/ (2048 × 2732)`}

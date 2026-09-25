@@ -1,14 +1,17 @@
 import { getDb } from "./db.ts";
 
-export type Provider = "asa" | "asc";
+export type Provider = "asa" | "asc" | "adapty";
+export const PROVIDERS: Provider[] = ["asa", "asc", "adapty"];
 
 const ASA_FIELDS = ["client_id", "team_id", "key_id", "private_key", "org_id"] as const;
 const ASC_FIELDS = ["key_id", "issuer_id", "private_key", "vendor_number"] as const;
+const ADAPTY_FIELDS = ["secret_key"] as const;
+export const PROVIDER_FIELDS: Record<Provider, readonly string[]> = { asa: ASA_FIELDS, asc: ASC_FIELDS, adapty: ADAPTY_FIELDS };
 
 export type AsaField = (typeof ASA_FIELDS)[number];
 export type AscField = (typeof ASC_FIELDS)[number];
 
-const SECRET_FIELDS = new Set(["private_key"]);
+const SECRET_FIELDS = new Set(["private_key", "secret_key"]);
 
 interface StoredCred {
   field: string;
@@ -24,17 +27,18 @@ export function getCredentials(provider: Provider): Record<string, string> {
 }
 
 function envValueFor(provider: Provider, field: string): string | undefined {
+  if (provider === "adapty") return field === "secret_key" && process.env.ADAPTY_ANALYTICS_KEY ? "[from ADAPTY_ANALYTICS_KEY]" : undefined;
   const map: Record<string, string> = provider === "asa" ? {
     client_id: process.env.ASA_CLIENT_ID ?? "",
     team_id: process.env.ASA_TEAM_ID ?? "",
     key_id: process.env.ASA_KEY_ID ?? "",
     org_id: process.env.ASA_ORG_ID ?? "",
-    private_key: process.env.ASA_PRIVATE_KEY_PATH ? "[loaded from file]" : "",
+    private_key: process.env.ASA_PRIVATE_KEY_PATH ? "[файл ключа загружен]" : "",
   } : {
     key_id: process.env.ASC_KEY_ID ?? "",
     issuer_id: process.env.ASC_ISSUER_ID ?? "",
     vendor_number: process.env.ASC_VENDOR_NUMBER ?? "",
-    private_key: process.env.ASC_PRIVATE_KEY_PATH ? "[loaded from file]" : "",
+    private_key: process.env.ASC_PRIVATE_KEY_PATH ? "[файл ключа загружен]" : "",
   };
   const v = map[field];
   return v ? v : undefined;
@@ -43,7 +47,7 @@ function envValueFor(provider: Provider, field: string): string | undefined {
 export function getCredentialsMasked(provider: Provider): Record<string, { present: boolean; preview: string; source: "db" | "env" | "none"; updated_at?: string }> {
   const rows = getDb().prepare(`SELECT field, value, updated_at FROM credentials WHERE provider = ?`).all(provider) as StoredCred[];
   const map = new Map(rows.map((r) => [r.field, r]));
-  const fields = provider === "asa" ? ASA_FIELDS : ASC_FIELDS;
+  const fields = PROVIDER_FIELDS[provider];
   const out: Record<string, { present: boolean; preview: string; source: "db" | "env" | "none"; updated_at?: string }> = {};
   for (const f of fields) {
     const r = map.get(f);

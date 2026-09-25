@@ -54,7 +54,7 @@ export interface Projection {
   projected_cpa_paid: number;
   verdict: { kind: "scale" | "hold" | "cut" | "unknown"; label: string; reason: string };
   next_step?: string;
-  /** "real" = driven by deterministic AdServices attribution; "estimated" = country-average. */
+  /** "real" = driven by native Adapty Apple Ads attribution; "estimated" = country-average. */
   revenue_source: "real" | "estimated";
   /** Measured so far from ASA-attributed users (not projected). */
   paid_so_far: number;
@@ -92,10 +92,48 @@ export interface DailyTotals {
 export interface AppRow {
   app_id: number;
   app_name: string | null;
+  aliases?: string[];
   campaign_count: number;
   active_count: number;
   spend_14d: number;
   installs_14d: number;
+}
+
+export interface PlatformApiMethod {
+  id: string;
+  group: string;
+  name: string;
+  method: string;
+  path: string;
+  kind: "read" | "mutation";
+  access: "read" | "write";
+  integration: "traffic-intelligence" | "catalog-only";
+  integrated: boolean;
+  status: "live-read" | "not-integrated-read-only" | "catalog-only";
+  docsUrl: string;
+}
+
+export interface PlatformApiMethodsPayload {
+  api: string;
+  version: string;
+  baseUrl: string;
+  generatedFromOfficialDocs: string;
+  mode: "read-only";
+  totals: { methods: number; integrated: number; catalogOnly: number; reads: number; mutations: number; sections: number };
+  integrationLegend: Record<string, string>;
+  methods: PlatformApiMethod[];
+}
+
+export interface PlatformSource {
+  status: "live" | "fresh" | "stale-if-error" | "unavailable" | "error" | string;
+  data?: unknown;
+  meta?: { fetchedAt?: string; cachedAt?: string; source?: string; [key: string]: unknown };
+  error?: string;
+}
+
+export interface PlatformInventoryPayload {
+  sources: Record<string, PlatformSource>;
+  partialErrors?: Array<{ source?: string; error?: string }>;
 }
 
 function appQ(appId?: number | "all"): string {
@@ -129,6 +167,10 @@ export interface AccountHealth {
 
 export const api = {
   apps: () => get<AppRow[]>("/api/apps"),
+  platformMethods: () => get<PlatformApiMethodsPayload>("/api/platform/methods"),
+  platformInventory: (appId: number) => get<PlatformInventoryPayload>(`/api/platform/inventory?app_id=${appId}`),
+  platformReports: (appId: number, days = 30) => get<{ sources?: Record<string, PlatformSource>; partialErrors?: Array<{ source?: string; error?: string }> }>(`/api/platform/reports?app_id=${appId}&days=${days}`),
+  platformSuggestions: (appId: number, country = "US") => get<{ sources?: Record<string, PlatformSource>; partialErrors?: Array<{ source?: string; error?: string }> }>(`/api/platform/suggestions?app_id=${appId}&country=${encodeURIComponent(country)}`),
   commandCenter: (appId: number, days = 30) => get<CommandCenterData>(`/api/command-center?app_id=${appId}&days=${days}`),
   accountHealth: () => get<AccountHealth>("/api/account-health"),
   negatives: (appId?: number | "all") => get<Array<{ id: number; campaign_id: number; campaign_name: string; country: string; text: string; match_type: string; remote_id: number | null; added_at: string }>>(`/api/negatives${appId && appId !== "all" ? `?app_id=${appId}` : ""}`),
@@ -145,7 +187,7 @@ export const api = {
   alerts: () => get<Array<{ id: number; campaign_id: number | null; alert_type: string; message: string; sent_at: string; delivered: number }>>("/api/alerts"),
   checkAlerts: () => post<{ checked: number; sent: number; skipped: number }>("/api/alerts/check"),
   revenue: (days = 30, appId?: number | "all") =>
-    get<{ rows: Array<{ country: string; trials: number; paid: number; revenueUsd: number }>; error?: string }>(`/api/revenue?days=${days}${appQ(appId)}`),
+    get<{ rows: Array<{ country: string; trials: number; paid: number; revenueUsd: number }>; daily?: Array<{ date: string; revenueUsd: number }>; error?: string }>(`/api/revenue?days=${days}${appQ(appId)}`),
   roiCampaign: (id: number, spend = 1000, days = 14) =>
     get<Projection>(`/api/roi/campaign/${id}?spend=${spend}&days=${days}`),
   roiKeyword: (id: number, spend = 100, days = 14) =>
@@ -157,4 +199,57 @@ export const api = {
   cancelAction: (id: number) => post<{ ok: boolean }>(`/api/actions/${id}/cancel`),
   sync: (days = 14) => post<{ ok: boolean; started: boolean }>(`/api/sync`, { days }),
   syncStatus: () => get<{ active: boolean; phase: string; label: string; progress: number; started_at: string | null; finished_at: string | null; ok: number | null; error: string | null }>(`/api/sync/status`),
+  /** Source freshness for the keyword matrix (Apple Ads server). */
+  dataQuality: (iTunesId: string, country?: string) => {
+    const params = new URLSearchParams({ app_id: iTunesId });
+    if (country) params.set("country", country);
+    return get<DataQualityPayload>(`/api/data-quality?${params}`);
+  },
+  /** Cached organic top-5 per keyword (Apple Ads server keeps the ASO snapshots). */
+  cachedTopFiveBatch: (input: { appId: number; locales: string[]; terms: string[]; limit?: number }) =>
+    post<CachedTopFiveBatchPayload>("/api/aso/rankings/top5-batch", input),
 };
+
+/** Resolves an Apple Ads API path (/api/...) for raw fetch calls with custom signals. */
+export const asaApiUrl = url;
+
+export interface DataQualitySource {
+  id: string;
+  name: string;
+  status: "ok" | "stale" | "missing" | "error";
+  updatedAt?: string | null;
+  window?: string;
+  coverage?: number | null;
+  kind: "fact" | "model";
+  message: string;
+}
+
+export interface DataQualityPayload {
+  generatedAt: string;
+  sources: DataQualitySource[];
+}
+
+export interface CachedTopFiveApp {
+  name: string;
+  bundleId?: string | null;
+  iTunesId?: string | null;
+  developer?: string | null;
+  rank: number;
+  iconUrl?: string | null;
+  isOwn?: boolean;
+}
+
+export interface CachedTopFiveItem {
+  locale: string;
+  term: string;
+  observedAt: string | null;
+  yourRank: number | null;
+  total: number | null;
+  apps: CachedTopFiveApp[];
+}
+
+export interface CachedTopFiveBatchPayload {
+  appId: number;
+  items: CachedTopFiveItem[];
+  missing: Array<{ locale: string; term: string; reason: string }>;
+}

@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, renameSync, readdirSync, statSync, copyFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Where private user data lives. Defaults to ~/.aso-studio (shared with the
@@ -43,7 +44,8 @@ export function migrateLegacyData(): void {
 
   ensureKeywordsHome();
 
-  const cwd = process.cwd();
+  // Package root (aso-keywords/), independent of the process cwd (the studio gateway runs from the repo root).
+  const cwd = fileURLToPath(new URL('..', import.meta.url));
   const legacyConfigDir = join(cwd, 'config');
   const legacyKeywordsDir = join(legacyConfigDir, 'keywords');
   const legacyAppsPath = join(legacyConfigDir, 'apps.json');

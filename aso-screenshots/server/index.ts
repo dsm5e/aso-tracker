@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Response } from 'express';
-import { writeFileSync, appendFileSync, mkdirSync, readFileSync, existsSync, watch } from 'node:fs';
+import { writeFileSync, appendFileSync, mkdirSync, readFileSync, existsSync, watch, realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
@@ -224,10 +225,25 @@ app.get('/llms-full.txt', (_req, res) => {
   res.type('text/plain').send(readFileSync(claudeMd, 'utf8'));
 });
 
-const PORT = 5181;
-app.listen(PORT, () => {
-  console.log(`[aso-studio] api on :${PORT}`);
+/** The API app — mounted by the studio gateway (studio/server.ts) or served standalone below. */
+export { app };
+
+let started = false;
+/** Listen-time side effects. Idempotent. */
+export function start(): void {
+  if (started) return;
+  started = true;
   // Resume any PPO generations that were in flight when the process last died.
   // No-op if state.json has no `generating` tiles or no fal key configured.
   void ppoResumeAll();
-});
+}
+
+// Standalone entry (`tsx server/index.ts`); skipped when imported by the gateway.
+const entry = process.argv[1] ? realpathSync(resolve(process.argv[1])) : '';
+if (entry === realpathSync(fileURLToPath(import.meta.url))) {
+  const PORT = 5181;
+  app.listen(PORT, () => {
+    console.log(`[aso-studio] api on :${PORT}`);
+    start();
+  });
+}

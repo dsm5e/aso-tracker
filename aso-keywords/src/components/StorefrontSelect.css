@@ -1,0 +1,19 @@
+/* Storefront multi-select (bulk add, copy / remove across storefronts). */
+.sfs { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sfs-presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.sfs-chip { display: inline-flex; align-items: center; gap: 4px; height: var(--ds-control-h-sm); padding: 0 10px; background: var(--ds-input-bg); border: var(--ds-control-border); border-radius: var(--ds-radius-control); color: var(--ds-text); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.sfs-chip:hover { border-color: var(--ds-muted); }
+.sfs-chip:disabled { opacity: .5; cursor: default; }
+.sfs-chip small { color: var(--ds-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.sfs-chip.on { background: var(--ds-accent-soft); border-color: var(--ds-accent); color: var(--ds-accent); font-weight: 600; }
+.sfs-chip.on small { color: var(--ds-accent); }
+.sfs-search { height: var(--ds-control-h-sm); }
+.sfs-bulk { display: flex; gap: 4px; }
+.sfs-list { display: flex; flex-direction: column; gap: 1px; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--ds-hairline); border-radius: var(--ds-radius-card); padding: 4px; }
+.sfs-row { cursor: pointer; min-height: 36px; padding: 4px 8px; }
+.sfs-row.on { background: color-mix(in srgb, var(--ds-accent-soft) 60%, transparent); }
+.sfs-row input { flex: none; width: 16px; height: 16px; margin: 0; accent-color: var(--ds-accent); }
+.sfs-name { flex: 0 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sfs-name em { color: var(--ds-accent); font-style: normal; font-size: 12px; }
+.sfs-row .cp-locales { flex: 1; }
+.sfs-code { flex: none; min-width: 24px; margin-left: 0 !important; text-align: right; color: var(--ds-muted); font-size: 12px; }

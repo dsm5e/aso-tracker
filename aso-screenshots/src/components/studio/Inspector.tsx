@@ -2,8 +2,10 @@ import React from 'react';
 import { Star, RotateCcw } from 'lucide-react';
 import { Card, Input, Slider, Toggle, SegmentedControl } from '../shared';
 import { getPreset } from '../../lib/presets';
+import { bezelsFor, getBezel } from '../../lib/deviceBezels';
 import { CURATED_FONTS } from '../../lib/fonts';
 import { HERO_INGREDIENTS } from '../../lib/heroIngredients';
+import { DecorInspector } from './DecorInspector';
 import { useStudio, type Screenshot, type ActionData, type HeroIngredients } from '../../state/studio';
 
 // Full list lives in lib/fonts.ts — kept there so fontLoader.ts can preload them all.
@@ -26,7 +28,7 @@ function AppIconUploader() {
         type="button"
         onClick={() => inputRef.current?.click()}
         style={{
-          width: 56, height: 56, borderRadius: 12,
+          width: 56, height: 56, borderRadius: 8,
           border: appIconUrl ? '0' : '1px dashed var(--line-2)',
           background: appIconUrl ? 'transparent' : 'var(--bg-2)',
           padding: 0, cursor: 'pointer',
@@ -37,11 +39,11 @@ function AppIconUploader() {
         {appIconUrl ? (
           <img src={appIconUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         ) : (
-          <span style={{ color: 'var(--fg-3)', fontSize: 11 }}>+ icon</span>
+          <span style={{ color: 'var(--fg-2)', fontSize: 12 }}>+ icon</span>
         )}
       </button>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-        <span style={{ fontSize: 11, color: 'var(--fg-2)' }}>
+        <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>
           {appIconUrl ? 'Иконка загружена — AI получит её через image_urls.' : 'Загрузи PNG/JPG, чтобы AI использовал точную иконку.'}
         </span>
         {appIconUrl && (
@@ -50,7 +52,7 @@ function AppIconUploader() {
             onClick={() => setProject({ appIconUrl: null })}
             style={{
               alignSelf: 'flex-start', padding: 0, border: 0, background: 'transparent',
-              color: 'var(--neg)', fontSize: 11, cursor: 'pointer',
+              color: 'var(--neg)', fontSize: 12, cursor: 'pointer',
             }}
           >
             Удалить
@@ -117,6 +119,7 @@ export function Inspector({ screenshot: ss }: Props) {
 
   return (
     <aside
+      className="ds-dense ds-flat"
       style={{
         width: 'var(--inspector-w)',
         borderLeft: '1px solid var(--line-1)',
@@ -135,7 +138,7 @@ export function Inspector({ screenshot: ss }: Props) {
               <Star size={12} style={{ color: 'var(--ai)', flex: 'none' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ai)' }}>Hero / Заглавный кадр</span>
-                <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>
+                <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>
                   Декорации + соц-доказательство — только один hero в шаблоне.
                 </span>
               </div>
@@ -175,7 +178,7 @@ export function Inspector({ screenshot: ss }: Props) {
                           title="Reset to the template's default prompt"
                           style={{
                             appearance: 'none', border: 0, background: 'transparent',
-                            color: 'var(--fg-3)', cursor: 'pointer', fontSize: 11,
+                            color: 'var(--fg-2)', cursor: 'pointer', fontSize: 12,
                             display: 'inline-flex', alignItems: 'center', gap: 4,
                           }}
                         >
@@ -189,7 +192,7 @@ export function Inspector({ screenshot: ss }: Props) {
                         <span style={{ fontSize: 12 }}>
                           {templateAvailable ? 'Стиль-промпт шаблона' : 'У шаблона нет своего промпта'}
                         </span>
-                        <span style={{ fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.3 }}>
+                        <span style={{ fontSize: 12, color: 'var(--fg-2)', lineHeight: 1.3 }}>
                           {templateAvailable
                             ? 'Когда включён — AI получит этот текст вместо дефолтного. Поддерживает {appName}, {verb}, {themeHint}, {appColor}, {effectiveBackground}, {decorationsHint}, {headlineZone}, {extraPromptBlock}.'
                             : 'AI будет использовать дефолтный hero-builder.'}
@@ -220,13 +223,8 @@ export function Inspector({ screenshot: ss }: Props) {
                           style={{
                             width: '100%',
                             fontFamily: 'var(--font-mono)',
-                            fontSize: 11,
+                            fontSize: 12,
                             lineHeight: 1.45,
-                            padding: 8,
-                            borderRadius: 'var(--r-2)',
-                            border: '1px solid var(--line-2)',
-                            background: 'var(--bg-2)',
-                            color: 'var(--fg-0)',
                             resize: 'vertical',
                             minHeight: 120,
                           }}
@@ -242,13 +240,13 @@ export function Inspector({ screenshot: ss }: Props) {
                   <span style={{ fontSize: 12 }}>Скрыть устройство</span>
                   <Toggle checked={action.hideDevice} onChange={(on) => setAction({ hideDevice: on })} />
                 </div>
-                <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--fg-3)' }}>
+                <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--fg-2)' }}>
                   Когда скрыто — на hero рисуется только заголовок + ингредиенты, без iPhone.
                 </p>
               </Card.Section>
 
               <Card.Section title="Ингредиенты hero (AI)">
-                <p style={{ margin: '0 0 10px', fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.4 }}>
+                <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--fg-2)', lineHeight: 1.4 }}>
                   Включи нужные элементы — они не рисуются на scaffold, а добавляются в AI-промпт. gpt-image-2 запекает их в финальный рендер.
                 </p>
                 {HERO_INGREDIENTS.map((ing) => {
@@ -275,7 +273,7 @@ export function Inspector({ screenshot: ss }: Props) {
                       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-0)' }}>{ing.label}</span>
-                          <span style={{ fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.3 }}>{ing.hint}</span>
+                          <span style={{ fontSize: 12, color: 'var(--fg-2)', lineHeight: 1.3 }}>{ing.hint}</span>
                         </div>
                         <Toggle
                           checked={checked}
@@ -297,7 +295,7 @@ export function Inspector({ screenshot: ss }: Props) {
                           {ing.fields.map((f) =>
                             f.key === 'position' ? (
                               <div key={f.key}>
-                                <div style={{ fontSize: 11, color: 'var(--fg-3)', marginBottom: 4 }}>{f.label}</div>
+                                <div style={{ fontSize: 12, color: 'var(--fg-2)', marginBottom: 4 }}>{f.label}</div>
                                 <SegmentedControl
                                   items={[
                                     { value: 'top', label: 'Сверху' },
@@ -334,8 +332,8 @@ export function Inspector({ screenshot: ss }: Props) {
                       title="Reset transform"
                       style={{
                         appearance: 'none', border: 0, background: 'transparent',
-                        color: 'var(--fg-3)', cursor: 'pointer',
-                        display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11,
+                        color: 'var(--fg-2)', cursor: 'pointer',
+                        display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12,
                       }}
                     >
                       <RotateCcw size={11} />
@@ -378,7 +376,7 @@ export function Inspector({ screenshot: ss }: Props) {
                       onChange={(v) => setAction({ aiScale: v / 100 })}
                     />
                   </div>
-                  <p style={{ margin: '8px 0 0', fontSize: 10.5, color: 'var(--fg-3)' }}>
+                  <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--fg-2)' }}>
                     Adjusts only the existing AI render — no regeneration cost.
                   </p>
                 </Card.Section>
@@ -403,7 +401,7 @@ export function Inspector({ screenshot: ss }: Props) {
                   style={{
                     width: '100%',
                     aspectRatio: '1',
-                    borderRadius: 'var(--r-2)',
+                    borderRadius: 6,
                     background: c.hex,
                     border: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
                     cursor: 'pointer',
@@ -422,11 +420,7 @@ export function Inspector({ screenshot: ss }: Props) {
                 value={/^#[0-9a-f]{6}$/i.test(appColor) ? appColor : '#3B82F6'}
                 onInput={(e) => setProject({ appColor: (e.target as HTMLInputElement).value })}
                 onChange={(e) => setProject({ appColor: e.target.value })}
-                style={{
-                  width: 40, height: 32, padding: 0,
-                  border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)',
-                  background: 'transparent', cursor: 'pointer',
-                }}
+                style={{ width: 40, flex: 'none' }}
                 title="Open color picker"
               />
               <Input
@@ -454,11 +448,7 @@ export function Inspector({ screenshot: ss }: Props) {
                   value={/^#[0-9a-f]{6}$/i.test(ss.backgroundOverride) ? ss.backgroundOverride : '#3B82F6'}
                   onInput={(e) => set({ backgroundOverride: (e.target as HTMLInputElement).value })}
                   onChange={(e) => set({ backgroundOverride: e.target.value })}
-                  style={{
-                    width: 40, height: 32, padding: 0,
-                    border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)',
-                    background: 'transparent', cursor: 'pointer',
-                  }}
+                  style={{ width: 40, flex: 'none' }}
                 />
                 <Input
                   placeholder={getPreset(ss.presetId)?.background.css ?? '#EEE9FB'}
@@ -467,7 +457,7 @@ export function Inspector({ screenshot: ss }: Props) {
                   style={{ flex: 1, fontFamily: 'var(--font-mono)' }}
                 />
               </div>
-              <p style={{ margin: '6px 0 0', fontSize: 11, color: 'var(--fg-3)' }}>
+              <p style={{ margin: '6px 0 0', fontSize: 12, color: 'var(--fg-2)' }}>
                 Только для этого слота. Для dotted-фонов точки тонируются автоматически.
               </p>
             </>
@@ -490,7 +480,7 @@ export function Inspector({ screenshot: ss }: Props) {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-0)' }}>Свой промпт</span>
-                  <span style={{ fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.3 }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-2)', lineHeight: 1.3 }}>
                     Выполняется только на шаге AI Polish. Базовый scaffold остаётся обычной вёрсткой.
                   </span>
                 </div>
@@ -512,13 +502,8 @@ export function Inspector({ screenshot: ss }: Props) {
                     style={{
                       width: '100%',
                       fontFamily: 'var(--font-mono)',
-                      fontSize: 11,
+                      fontSize: 12,
                       lineHeight: 1.45,
-                      padding: 8,
-                      borderRadius: 'var(--r-2)',
-                      border: '1px solid var(--line-2)',
-                      background: 'var(--bg-2)',
-                      color: 'var(--fg-0)',
                       resize: 'vertical',
                       minHeight: 120,
                     }}
@@ -529,7 +514,7 @@ export function Inspector({ screenshot: ss }: Props) {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg-0)' }}>Designer callout</span>
-                  <span style={{ fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.3 }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-2)', lineHeight: 1.3 }}>
                     Магнифай ключевого UI-элемента в bubble со стрелкой. Включается только при polish.
                   </span>
                 </div>
@@ -552,7 +537,7 @@ export function Inspector({ screenshot: ss }: Props) {
               value={ss.headline.verb}
               onChange={(e) => setHeadline({ verb: e.target.value })}
             />
-            <div style={{ marginTop: 5, fontSize: 10.5, color: 'var(--fg-3)' }}>Enter — перенос строки. *Слово* — акцентный цвет.</div>
+            <div style={{ marginTop: 5, fontSize: 12, color: 'var(--fg-2)' }}>Enter — перенос строки. *Слово* — акцентный цвет.</div>
           </div>
           <div style={{ height: 10 }} />
           <div className="field">
@@ -564,7 +549,7 @@ export function Inspector({ screenshot: ss }: Props) {
               value={ss.headline.descriptor}
               onChange={(e) => setHeadline({ descriptor: e.target.value })}
             />
-            <div style={{ marginTop: 5, fontSize: 10.5, color: 'var(--fg-3)' }}>Enter — перенос строки. *Слово* — акцентный цвет.</div>
+            <div style={{ marginTop: 5, fontSize: 12, color: 'var(--fg-2)' }}>Enter — перенос строки. *Слово* — акцентный цвет.</div>
           </div>
           <div style={{ height: 10 }} />
           <div className="field">
@@ -609,7 +594,7 @@ export function Inspector({ screenshot: ss }: Props) {
                 value={/^#[0-9a-f]{6}$/i.test(ss.titleColorOverride ?? '') ? ss.titleColorOverride! : (ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF')}
                 onInput={(e) => set({ titleColorOverride: (e.target as HTMLInputElement).value })}
                 onChange={(e) => set({ titleColorOverride: e.target.value })}
-                style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)', background: 'transparent', cursor: 'pointer' }}
+                style={{ width: 40, flex: 'none' }}
               />
               <Input
                 value={ss.titleColorOverride ?? ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF'}
@@ -623,7 +608,7 @@ export function Inspector({ screenshot: ss }: Props) {
           <div className="field">
             <label className="field-label">Цвет подзаголовка</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="color" value={/^#[0-9a-f]{6}$/i.test(ss.subtitleColorOverride ?? '') ? ss.subtitleColorOverride! : (ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF')} onInput={(e) => set({ subtitleColorOverride: (e.target as HTMLInputElement).value })} onChange={(e) => set({ subtitleColorOverride: e.target.value })} style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)', background: 'transparent', cursor: 'pointer' }} />
+              <input type="color" value={/^#[0-9a-f]{6}$/i.test(ss.subtitleColorOverride ?? '') ? ss.subtitleColorOverride! : (ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF')} onInput={(e) => set({ subtitleColorOverride: (e.target as HTMLInputElement).value })} onChange={(e) => set({ subtitleColorOverride: e.target.value })} style={{ width: 40, flex: 'none' }} />
               <Input value={ss.subtitleColorOverride ?? ss.textColorOverride ?? getPreset(ss.presetId)?.text.color ?? '#FFFFFF'} onChange={(e) => set({ subtitleColorOverride: e.target.value })} style={{ flex: 1, fontFamily: 'var(--font-mono)' }} />
               <ResetDot active={!!ss.subtitleColorOverride} onClick={() => set({ subtitleColorOverride: undefined })} />
             </div>
@@ -632,7 +617,7 @@ export function Inspector({ screenshot: ss }: Props) {
           <div className="field">
             <label className="field-label">Акцентный цвет (*слова*)</label>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input type="color" value={/^#[0-9a-f]{6}$/i.test(ss.headlineAccent ?? '') ? ss.headlineAccent! : (getPreset(ss.presetId)?.suggestedAccent ?? '#3B82F6')} onInput={(e) => set({ headlineAccent: (e.target as HTMLInputElement).value })} onChange={(e) => set({ headlineAccent: e.target.value })} style={{ width: 40, height: 32, padding: 0, border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)', background: 'transparent', cursor: 'pointer' }} />
+              <input type="color" value={/^#[0-9a-f]{6}$/i.test(ss.headlineAccent ?? '') ? ss.headlineAccent! : (getPreset(ss.presetId)?.suggestedAccent ?? '#3B82F6')} onInput={(e) => set({ headlineAccent: (e.target as HTMLInputElement).value })} onChange={(e) => set({ headlineAccent: e.target.value })} style={{ width: 40, flex: 'none' }} />
               <Input value={ss.headlineAccent ?? getPreset(ss.presetId)?.suggestedAccent ?? '#3B82F6'} onChange={(e) => set({ headlineAccent: e.target.value })} style={{ flex: 1, fontFamily: 'var(--font-mono)' }} />
               <ResetDot active={!!ss.headlineAccent} onClick={() => set({ headlineAccent: undefined })} />
             </div>
@@ -662,13 +647,13 @@ export function Inspector({ screenshot: ss }: Props) {
             <Slider value={Math.round((ss.textYFraction ?? 0.07) * 100)} min={0} max={92} step={1} onChange={(v) => set({ textYFraction: v / 100 })} />
           </div>
           <div style={{ height: 10 }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--fg-2)', marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--fg-2)', marginBottom: 4 }}>
             Сдвиг X <span className="tabular muted">{ss.textX}</span>
             <ResetDot active={ss.textX !== 0} onClick={() => set({ textX: 0 })} />
           </div>
           <Slider value={ss.textX} min={-600} max={600} step={5} onChange={(v) => set({ textX: v })} />
           <div style={{ height: 8 }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 11, color: 'var(--fg-2)', marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12, color: 'var(--fg-2)', marginBottom: 4 }}>
             Сдвиг Y <span className="tabular muted">{ss.textY}</span>
             <ResetDot active={ss.textY !== 0} onClick={() => set({ textY: 0 })} />
           </div>
@@ -706,8 +691,7 @@ export function Inspector({ screenshot: ss }: Props) {
                     onChange={(e) => set({ pillBg: e.target.value })}
                     title="Pill background"
                     style={{
-                      width: 40, height: 32, padding: 0,
-                      border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)',
+                      width: 40, flex: 'none',
                       background: 'transparent', cursor: 'pointer',
                     }}
                   />
@@ -718,12 +702,11 @@ export function Inspector({ screenshot: ss }: Props) {
                     onChange={(e) => set({ pillFg: e.target.value })}
                     title="Pill text color"
                     style={{
-                      width: 40, height: 32, padding: 0,
-                      border: '1px solid var(--line-2)', borderRadius: 'var(--r-2)',
+                      width: 40, flex: 'none',
                       background: 'transparent', cursor: 'pointer',
                     }}
                   />
-                  <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>фон / текст</span>
+                  <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>фон / текст</span>
                 </div>
               </div>
             </>
@@ -758,7 +741,7 @@ export function Inspector({ screenshot: ss }: Props) {
             value={ss.trustStrip ?? ''}
             onChange={(e) => set({ trustStrip: e.target.value || undefined })}
           />
-          <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.4 }}>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--fg-2)', lineHeight: 1.4 }}>
             Все строки остаются живым текстом, переводятся отдельно и не запекаются в AI-art.
           </p>
         </Card.Section>
@@ -795,7 +778,7 @@ export function Inspector({ screenshot: ss }: Props) {
                 onChange={(e) => set({ phoneToggleRight: e.target.value || undefined })}
               />
             </div>
-            <p style={{ margin: '8px 0 0', fontSize: 11, color: 'var(--fg-3)', lineHeight: 1.4 }}>
+            <p style={{ margin: '8px 0 0', fontSize: 12, color: 'var(--fg-2)', lineHeight: 1.4 }}>
               Текст внутри hero-телефона остаётся живым и переводится вместе с остальными строками.
             </p>
           </Card.Section>
@@ -813,7 +796,7 @@ export function Inspector({ screenshot: ss }: Props) {
             ]}
             onChange={(sourceLayout) => set({ sourceLayout })}
           />
-          <div style={{ marginTop: 8, fontSize: 11, lineHeight: 1.4, color: 'var(--fg-3)' }}>
+          <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.4, color: 'var(--fg-2)' }}>
             «Готовое превью» сохраняет исходную композицию и накладывает поверх только заголовок и подзаголовок.
           </div>
         </Card.Section>
@@ -847,21 +830,16 @@ export function Inspector({ screenshot: ss }: Props) {
         )}
 
         <Card.Section title="Выравнивание текста">
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="seg seg--block">
             {(['left', 'center', 'right'] as const).map((a) => (
-              <button key={a} onClick={() => set({ textAlignOverride: a })}
-                style={{ flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
-                  border: '1px solid var(--line)', fontSize: 12,
-                  background: (ss.textAlignOverride ?? '') === a ? 'var(--ai)' : 'transparent',
-                  color: (ss.textAlignOverride ?? '') === a ? '#fff' : 'var(--fg-2)' }}>
+              <button key={a} type="button" onClick={() => set({ textAlignOverride: a })}
+                className={(ss.textAlignOverride ?? '') === a ? 'active' : ''}>
                 {a === 'left' ? 'Слева' : a === 'center' ? 'По центру' : 'Справа'}
               </button>
             ))}
-            <button onClick={() => set({ textAlignOverride: undefined })}
+            <button type="button" onClick={() => set({ textAlignOverride: undefined })}
               title="Взять из пресета"
-              style={{ padding: '7px 10px', borderRadius: 7, cursor: 'pointer',
-                border: '1px solid var(--line)', background: 'transparent',
-                color: 'var(--fg-3)', fontSize: 12 }}>Авто</button>
+              className={ss.textAlignOverride ? '' : 'active'}>Авто</button>
           </div>
         </Card.Section>
 
@@ -874,7 +852,7 @@ export function Inspector({ screenshot: ss }: Props) {
               ['Каёмка',        'archRim',           0, 60,  1, 28,    false],
               ['Наклон реза',   'archSkew',          0, 20,  1, 7,     false],
             ] as const).map(([label, key, min, max, step, def, frac]) => {
-              const raw = (ss as Record<string, unknown>)[key] as number | undefined;
+              const raw = ss[key];
               const val = raw ?? def;
               const shown = frac ? Math.round(val * 100) : Math.round(val);
               return (
@@ -901,8 +879,7 @@ export function Inspector({ screenshot: ss }: Props) {
               <label className="field-label">Цвет каёмки</label>
               <input type="color" value={ss.archAccent ?? '#2F6FA8'}
                 onChange={(e) => set({ archAccent: e.target.value })}
-                style={{ width: '100%', height: 32, border: '1px solid var(--line)',
-                  borderRadius: 7, background: 'transparent', cursor: 'pointer' }} />
+                style={{ width: '100%' }} />
             </div>
           </Card.Section>
         )}
@@ -956,17 +933,40 @@ export function Inspector({ screenshot: ss }: Props) {
 
         {(ss.sourceLayout ?? 'device') === 'device' && (<>
         <Card.Section title="Стиль устройства">
-          <div style={{ display: 'flex', gap: 6 }}>
-            {([['clay', 'Clay'], ['titanium', 'Титан'], ['frameless', 'Без рамки']] as const).map(([v, label]) => (
-              <button key={v} onClick={() => set({ deviceFrameStyle: v })}
-                style={{ flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
-                  border: '1px solid var(--line)', fontSize: 12,
-                  background: (ss.deviceFrameStyle ?? 'clay') === v ? 'var(--ai)' : 'transparent',
-                  color: (ss.deviceFrameStyle ?? 'clay') === v ? '#fff' : 'var(--fg-2)' }}>
-                {label}
-              </button>
-            ))}
-          </div>
+          {(() => {
+            // Unset slot style = the preset's default, so the active button
+            // shows what the canvas actually draws.
+            const presetDevice = getPreset(ss.presetId)?.device;
+            const family = ss.device === 'ipad' ? 'ipad' : 'iphone';
+            const style = ss.deviceFrameStyle ?? presetDevice?.frameStyle ?? 'clay';
+            const color = getBezel(family, ss.deviceBezelColor ?? presetDevice?.bezelColor?.[family]).color;
+            return (<>
+              <div className="seg seg--block">
+                {([['apple', 'Apple'], ['clay', 'Clay'], ['titanium', 'Титан'], ['frameless', 'Без рамки']] as const).map(([v, label]) => (
+                  <button key={v} type="button" onClick={() => set({ deviceFrameStyle: v })}
+                    className={style === v ? 'active' : ''}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {style === 'apple' && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center' }}>
+                  {/* Official Apple product bezels — colours of the real device. */}
+                  {bezelsFor(family).map((b) => (
+                    <button key={b.color} title={`${b.model} — ${b.colorLabel}`}
+                      onClick={() => set({ deviceBezelColor: b.color })}
+                      style={{ width: 24, height: 24, borderRadius: 6, cursor: 'pointer', padding: 0,
+                        background: b.swatch,
+                        border: color === b.color ? '2px solid var(--ai)' : '1px solid var(--line-2)',
+                        boxShadow: color === b.color ? '0 0 0 2px var(--bg-1, #fff) inset' : undefined }} />
+                  ))}
+                  <span className="muted" style={{ fontSize: 12 }}>
+                    {getBezel(family, color).colorLabel}
+                  </span>
+                </div>
+              )}
+            </>);
+          })()}
           {ss.deviceFrameStyle === 'frameless' && (
             <div className="field" style={{ marginTop: 10 }}>
               <label className="field-label">
@@ -1017,9 +1017,11 @@ export function Inspector({ screenshot: ss }: Props) {
           </div>
         </Card.Section>
 
+        <DecorInspector ss={ss} set={set} />
+
         <Card.Section title="Второе устройство (V-мокап)">
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '4px 0 0' }}>
-            <label style={{ padding: '8px 14px', borderRadius: 10, border: '1px dashed var(--line-2)', background: 'var(--bg-2)', cursor: 'pointer', fontSize: 12, color: 'var(--fg-2)' }}>
+            <label className="btn" style={{ borderStyle: 'dashed', cursor: 'pointer' }}>
               {ss.secondaryUrl ? 'Заменить задний экран' : '+ Добавить второй экран'}
               <input
                 type="file"
@@ -1032,7 +1034,7 @@ export function Inspector({ screenshot: ss }: Props) {
               <button
                 type="button"
                 onClick={() => set({ secondaryUrl: null })}
-                style={{ padding: 0, border: 0, background: 'transparent', color: 'var(--neg)', fontSize: 11, cursor: 'pointer' }}
+                style={{ padding: 0, border: 0, background: 'transparent', color: 'var(--neg)', fontSize: 12, cursor: 'pointer' }}
               >
                 Убрать
               </button>
@@ -1045,14 +1047,14 @@ export function Inspector({ screenshot: ss }: Props) {
                 placeholder="Подпись переднего (напр. for mom)"
                 value={ss.frontLabel ?? ''}
                 onChange={(e) => set({ frontLabel: e.target.value })}
-                style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line-2)', background: 'var(--bg-2)', color: 'var(--fg-1)', fontSize: 12 }}
+                className="input" style={{ flex: 1, minWidth: 0 }}
               />
               <input
                 type="text"
                 placeholder="Подпись заднего (напр. for dad)"
                 value={ss.backLabel ?? ''}
                 onChange={(e) => set({ backLabel: e.target.value })}
-                style={{ flex: 1, minWidth: 0, padding: '8px 10px', borderRadius: 8, border: '1px solid var(--line-2)', background: 'var(--bg-2)', color: 'var(--fg-1)', fontSize: 12 }}
+                className="input" style={{ flex: 1, minWidth: 0 }}
               />
             </div>
           )}

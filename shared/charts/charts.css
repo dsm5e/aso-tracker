@@ -1,0 +1,21 @@
+/* Chart kit styles — mirror an Adapty-style admin analytics dashboard. Needs shared/ds.css. */
+.dsc { width: 100%; }
+.dsc svg { display: block; width: 100%; overflow: visible; }
+.dsc svg text { fill: var(--ds-muted); font-size: 11px; font-family: var(--ds-font); font-variant-numeric: tabular-nums; }
+.dsc svg .lab { fill: var(--ds-text); font-size: 11.5px; paint-order: stroke; stroke: var(--ds-panel); stroke-width: 3px; }
+.dsc svg .lab-strong { fill: var(--ds-text); font-size: 12px; font-weight: 600; }
+.dsc .dsc-hit { cursor: default; }
+.dsc .dsc-hit:hover { fill: color-mix(in srgb, var(--ds-text) 5%, transparent); }
+.dsc-spark { height: auto; cursor: crosshair; }
+.dsc-spark-empty { color: var(--ds-subtle); font-size: 12px; }
+.dsc-hbars { display: flex; }
+.dsc-hbar-labels { flex: none; font-size: 12.5px; color: var(--ds-text); }
+.dsc-hbar-labels > div { display: flex; align-items: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dsc-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--ds-muted); margin: 2px 0 8px; }
+.dsc-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.dsc-legend i.ln { height: 2px; width: 14px; border-radius: 1px; vertical-align: 3px; }
+.dsc-tip { position: fixed; pointer-events: none; background: var(--ds-tip-bg); border: 1px solid var(--ds-border); border-radius: 8px; padding: 8px 10px; font-size: 13px; font-family: var(--ds-font); color: var(--ds-text); box-shadow: 0 8px 28px rgba(1, 0, 48, .16); z-index: 1000; min-width: 150px; }
+.dsc-tip .th { color: var(--ds-muted); margin-bottom: 4px; }
+.dsc-tip .tr { display: flex; align-items: center; gap: 8px; line-height: 1.6; }
+.dsc-tip .tr b { font-variant-numeric: tabular-nums; margin-left: auto; padding-left: 12px; }
+.dsc-tip .k { width: 10px; height: 10px; border-radius: 3px; flex: none; }

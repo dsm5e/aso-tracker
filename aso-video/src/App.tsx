@@ -56,7 +56,7 @@ import { OutputNode } from './nodes/OutputNode';
 import { installBridge } from './lib/claudeBridge';
 import { LightboxRoot } from './components/Lightbox';
 import { LibrarySidebar } from './components/LibrarySidebar';
-import { BrandSwitcher } from './components/BrandSwitcher';
+import { StudioSwitcher } from '../../shared/shell/StudioSwitcher';
 // MockupProvider/useMockupToggle now live inside OutputNode itself.
 import SettingsModal from './components/SettingsModal';
 import { TimelineEditor } from './components/TimelineEditor';
@@ -696,8 +696,8 @@ function GraphEditor() {
           type: 'default',
           animated: !!isRunning || flashingEdgeIds.has(e.id),
           style: flashingEdgeIds.has(e.id)
-            ? { stroke: '#D97757', strokeWidth: 3 }
-            : { stroke: '#6B7280', strokeWidth: 2 },
+            ? { stroke: 'var(--ds-c2)', strokeWidth: 3 }
+            : { stroke: 'var(--ds-axis)', strokeWidth: 2 },
         };
       }).concat(
         // Ghost edges — recently removed, fading out red so deletions are visible.
@@ -711,7 +711,7 @@ function GraphEditor() {
           interactionWidth: 0,
           className: 'edge-ghost',
           animated: false,
-          style: { stroke: '#ff5050', strokeWidth: 3 },
+          style: { stroke: 'var(--ds-bad)', strokeWidth: 3 },
           selectable: false,
         })),
       ),
@@ -894,143 +894,125 @@ function GraphEditor() {
   }
 
   return (
-    <div style={{ height: '100vh', width: '100vw', background: '#0a0a0a', color: '#e5e5e5', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ height: '100vh', width: '100vw', background: 'var(--ds-bg)', color: 'var(--ds-text)', fontFamily: 'var(--ds-font)' }}>
       {/* toolbar — wraps to multiple lines when the viewport gets narrow so
           buttons stay reachable instead of overflowing off-screen. */}
-      <div style={{
-        position: 'absolute', top: 12, left: 12, right: 12, zIndex: 10,
-        display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-        background: 'rgba(23,23,23,0.92)', padding: '8px 12px', borderRadius: 10, border: '1px solid #2a2a2a',
-      }}>
-        <BrandSwitcher current="vid" />
-        <div style={{ width: 1, height: 22, background: '#2a2a2a' }} />
-        <strong style={{ fontSize: 13, opacity: 0.7 }}>graph</strong>
-        <div style={{ display: 'flex', border: '1px solid #30343b', borderRadius: 7, overflow: 'hidden' }}>
-          <button onClick={() => setEditorMode('nodes')} style={{ ...tbBtn, border: 0, borderRadius: 0, background: editorMode === 'nodes' ? '#334155' : '#171717' }}>Nodes</button>
-          <button onClick={() => setEditorMode('timeline')} style={{ ...tbBtn, border: 0, borderRadius: 0, background: editorMode === 'timeline' ? '#0F766E' : '#171717' }}>Timeline</button>
+      <div className="vid-toolbar">
+        <StudioSwitcher current="video" />
+        <div className="vid-toolbar-sep" />
+        <div className="ds-seg" role="tablist" aria-label="Editor mode">
+          <button role="tab" aria-selected={editorMode === 'nodes'} onClick={() => setEditorMode('nodes')}>Nodes</button>
+          <button role="tab" aria-selected={editorMode === 'timeline'} onClick={() => setEditorMode('timeline')}>Timeline</button>
         </div>
         <div style={{ position: 'relative' }}>
-          <button onClick={() => setShowLoad((v) => !v)} style={tbBtn}>Load Workflow ▼</button>
+          <button className={`ds-btn${showLoad ? ' on' : ''}`} onClick={() => setShowLoad((v) => !v)}>
+            Workflows <span className="vid-caret">▾</span>
+          </button>
           {showLoad && (
-            <div style={dropdown}>
-              {workflows.length === 0 && <div style={{ padding: 8, fontSize: 11, opacity: 0.6 }}>(none)</div>}
+            <div className="ds-pop vid-pop" style={{ minWidth: 260, maxHeight: '70vh', overflowY: 'auto' }}>
+              <button className="ds-pop-row" onClick={() => { setShowLoad(false); void handleSaveWorkflow(); }}>
+                Save current as…
+              </button>
+              <div className="vid-pop-sep" />
+              <div className="ds-nav-label" style={{ padding: '4px 10px' }}>Load</div>
+              {workflows.length === 0 && <div className="vid-pop-empty">No saved workflows</div>}
               {workflows.map((n) => (
-                <div
-                  key={n}
-                  onClick={() => handleLoadWorkflow(n)}
-                  style={{ ...dropdownItem, display: 'flex', alignItems: 'center', gap: 8 }}
-                >
-                  <span style={{ flex: 1 }}>{n}</span>
-                  <span
+                <div key={n} className="ds-pop-row" role="button" onClick={() => handleLoadWorkflow(n)}>
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</span>
+                  <button
+                    className="ds-icon-btn"
+                    style={{ width: 24, height: 24, fontSize: 15 }}
+                    title="Delete workflow"
                     onClick={async (e) => {
                       e.stopPropagation();
                       if (!confirm(`Delete workflow "${n}"? This cannot be undone.`)) return;
                       await deleteWorkflow(n);
                       setWorkflows(await listWorkflows());
                     }}
-                    title="Delete workflow"
-                    style={{ opacity: 0.5, fontSize: 12, cursor: 'pointer', padding: '0 4px' }}
-                  >×</span>
+                  >×</button>
                 </div>
               ))}
             </div>
           )}
         </div>
-        <button onClick={handleSaveWorkflow} style={tbBtn}>Save Workflow</button>
         <div style={{ position: 'relative' }}>
           <button
+            className={`ds-btn${showInf ? ' on' : ''}`}
             onClick={async () => {
               setInfluencers(await listInfluencers());
               setShowInf((v) => !v);
             }}
-            style={tbBtn}
-          >Influencers ▼</button>
+          >Influencers <span className="vid-caret">▾</span></button>
           {showInf && (
-            <div style={dropdown}>
-              {influencers.length === 0 && <div style={{ padding: 8, fontSize: 11, opacity: 0.6 }}>(none — generate an image and click 💾 Save Influencer)</div>}
+            <div className="ds-pop vid-pop" style={{ minWidth: 260, maxHeight: '70vh', overflowY: 'auto' }}>
+              {influencers.length === 0 && <div className="vid-pop-empty">None yet — generate an image and click Save Influencer</div>}
               {influencers.map((inf) => (
-                <div
-                  key={inf.name}
-                  onClick={() => handleLoadInfluencer(inf)}
-                  style={{ ...dropdownItem, display: 'flex', alignItems: 'center', gap: 8 }}
-                >
-                  <img src={inf.imageUrl} alt="" style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover', background: '#000' }} />
-                  <span style={{ flex: 1 }}>{inf.name}</span>
-                  <span
+                <div key={inf.name} className="ds-pop-row" role="button" onClick={() => handleLoadInfluencer(inf)}>
+                  <img src={inf.imageUrl} alt="" style={{ width: 28, height: 28, borderRadius: 'var(--ds-radius-inner)', objectFit: 'cover', background: 'var(--ds-panel-2)', flex: 'none' }} />
+                  <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.name}</span>
+                  <button
+                    className="ds-icon-btn"
+                    style={{ width: 24, height: 24, fontSize: 15 }}
+                    title="Delete influencer"
                     onClick={(e) => handleDeleteInfluencer(inf.name, e)}
-                    title="delete"
-                    style={{ fontSize: 11, opacity: 0.6, cursor: 'pointer', padding: '0 4px' }}
-                  >×</span>
+                  >×</button>
                 </div>
               ))}
             </div>
           )}
         </div>
         <div style={{ position: 'relative' }}>
-          <button onClick={() => setShowAdd((v) => !v)} style={tbBtn}>+ Add Node ▼</button>
+          <button className={`ds-btn${showAdd ? ' on' : ''}`} onClick={() => setShowAdd((v) => !v)}>
+            + Add Node <span className="vid-caret">▾</span>
+          </button>
           {showAdd && (
-            <div style={{ ...dropdown, minWidth: 320, maxHeight: '70vh', overflowY: 'auto' }}>
+            <div className="ds-pop vid-pop" style={{ minWidth: 340, maxHeight: '70vh', overflowY: 'auto' }}>
               {NODE_MENU_SECTIONS.map((section, si) => (
                 <div key={section.title}>
-                  <div style={{
-                    padding: '6px 12px 4px', fontSize: 9, color: '#6B7280',
-                    textTransform: 'uppercase', letterSpacing: 1,
-                    background: '#0a0a0a', borderTop: si === 0 ? 'none' : '1px solid #222',
-                  }}>{section.title}</div>
+                  {si > 0 && <div className="vid-pop-sep" />}
+                  <div className="ds-nav-label" style={{ padding: '4px 10px' }}>{section.title}</div>
                   {section.items.map((it) => (
-                    <div
+                    <button
                       key={it.type}
+                      className="ds-pop-row"
                       onClick={() => handleAdd(it.type)}
-                      style={{ ...dropdownItem, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
+                      style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}
                     >
                       <span>{it.label}</span>
-                      {it.hint && <span style={{ fontSize: 10, color: '#6B7280', fontWeight: 400 }}>{it.hint}</span>}
-                    </div>
+                      {it.hint && <span className="vid-pop-hint">{it.hint}</span>}
+                    </button>
                   ))}
                 </div>
               ))}
             </div>
           )}
         </div>
-        <button onClick={() => runAll()} style={{ ...tbBtn, background: '#3B82F6', color: '#fff' }}>▶ Run All</button>
-        <button onClick={handleAutoLayout} title="Auto-arrange nodes by topology — uses each card's actual rendered size so wide/tall cards don't overlap" style={tbBtn}>⫯ Auto-arrange</button>
+        <button className="ds-btn ds-btn-primary" onClick={() => runAll()}>▶ Run All</button>
+        <button className="ds-btn" onClick={handleAutoLayout} title="Auto-arrange nodes by topology — uses each card's actual rendered size so wide/tall cards don't overlap">Arrange</button>
         <button
+          className="ds-btn ds-btn-danger"
           onClick={handleReset}
           title="Reset graph for a new video. Keeps App Screenshot and (optionally) your character Image Gen."
-          style={{ ...tbBtn, color: '#FCA5A5' }}
-        >🗑 Reset</button>
+        >Reset</button>
         {/* TikTok mockup toggle relocated into the Output node itself. */}
         <div style={{ flex: 1 }} />
         {/* Activity dropdown — collapsed by default, right-pinned next to total/price.
-            Houses Undo/Redo + force-refresh as a compact header inside the panel
-            so they don't eat toolbar space. */}
+            Houses Undo/Redo as a compact header inside the panel so they don't
+            eat toolbar space. */}
         <div style={{ position: 'relative' }}>
           <button
+            className={`ds-btn${showActivity ? ' on' : ''}`}
             onClick={() => setShowActivity((v) => !v)}
             title="Canvas history — Undo/Redo + recent actions"
-            style={tbBtn}
-          >📜 Activity {activityLog.length > 0 ? `(${activityLog.length})` : ''}</button>
+          >
+            Activity
+            {activityLog.length > 0 && <span className="ds-badge ds-badge-muted">{activityLog.length}</span>}
+          </button>
           {showActivity && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 6px)',
-              right: 0,
-              width: 380,
-              maxHeight: 520,
-              display: 'flex',
-              flexDirection: 'column',
-              background: '#171717',
-              border: '1px solid #2a2a2a',
-              borderRadius: 10,
-              zIndex: 1000,
-              boxShadow: '0 12px 32px rgba(0,0,0,0.7)',
-            }}>
-              {/* Header — Undo / Redo / Refresh as pill row */}
-              <div style={{
-                display: 'flex', gap: 6, padding: 8,
-                borderBottom: '1px solid #232323', alignItems: 'center',
-              }}>
+            <div className="ds-pop vid-pop vid-pop-right" style={{ width: 380, maxHeight: 520, display: 'flex', flexDirection: 'column', padding: 0 }}>
+              <div style={{ display: 'flex', gap: 8, padding: 10, borderBottom: '1px solid var(--ds-hairline)' }}>
                 <button
+                  className="ds-btn ds-btn-sm"
                   onClick={async () => {
                     const prev = historyRef.current.pop();
                     if (!prev) return;
@@ -1040,9 +1022,10 @@ function GraphEditor() {
                   }}
                   disabled={historyDepth === 0}
                   title="Undo (Cmd/Ctrl+Z)"
-                  style={{ ...tbBtn, flex: 1, opacity: historyDepth === 0 ? 0.4 : 1 }}
+                  style={{ flex: 1 }}
                 >↶ Undo{historyDepth > 0 ? ` (${historyDepth})` : ''}</button>
                 <button
+                  className="ds-btn ds-btn-sm"
                   onClick={async () => {
                     const next = redoRef.current.pop();
                     if (!next) return;
@@ -1052,29 +1035,23 @@ function GraphEditor() {
                   }}
                   disabled={redoDepth === 0}
                   title="Redo (Cmd/Ctrl+Shift+Z)"
-                  style={{ ...tbBtn, flex: 1, opacity: redoDepth === 0 ? 0.4 : 1 }}
+                  style={{ flex: 1 }}
                 >↷ Redo{redoDepth > 0 ? ` (${redoDepth})` : ''}</button>
               </div>
-              {/* Log */}
-              <div style={{ overflowY: 'auto', padding: 4, flex: 1 }}>
+              <div style={{ overflowY: 'auto', padding: 6, flex: 1 }}>
                 {activityLog.length === 0 ? (
-                  <div style={{ padding: 12, color: '#6b7280', fontSize: 12 }}>No actions yet. Move a node, edit a value, or have Claude touch the graph.</div>
+                  <div className="vid-pop-empty">No actions yet. Move a node, edit a value, or have Claude touch the graph.</div>
                 ) : (
                   activityLog.map((a) => (
-                    <div key={a.id} style={{
-                      padding: '8px 10px',
-                      borderBottom: '1px solid #232323',
-                      fontSize: 12,
-                      color: '#e5e5e5',
-                    }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: a.type === 'agent' ? '#D97757' : '#9ca3af', fontWeight: 600 }}>{a.summary}</span>
-                        <span style={{ color: '#6b7280', fontSize: 10 }}>{new Date(a.ts).toLocaleTimeString()}</span>
+                    <div key={a.id} style={{ padding: '8px 10px', borderRadius: 'var(--ds-radius-inner)', fontSize: 13, color: 'var(--ds-text)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                        <span style={{ color: a.type === 'agent' ? 'var(--ds-accent)' : 'var(--ds-text)', fontWeight: 600 }}>{a.summary}</span>
+                        <span className="vid-meta">{new Date(a.ts).toLocaleTimeString()}</span>
                       </div>
                       {a.details.length > 0 && (
-                        <ul style={{ margin: '4px 0 0 0', padding: '0 0 0 16px', color: '#a3a3a3' }}>
-                          {a.details.slice(0, 6).map((d, i) => (<li key={i} style={{ fontSize: 11 }}>{d}</li>))}
-                          {a.details.length > 6 && <li style={{ fontSize: 11, color: '#6b7280' }}>+{a.details.length - 6} more</li>}
+                        <ul style={{ margin: '4px 0 0 0', padding: '0 0 0 16px', color: 'var(--ds-muted)', fontSize: 12, lineHeight: '17px' }}>
+                          {a.details.slice(0, 6).map((d, i) => (<li key={i}>{d}</li>))}
+                          {a.details.length > 6 && <li style={{ color: 'var(--ds-subtle)' }}>+{a.details.length - 6} more</li>}
                         </ul>
                       )}
                     </div>
@@ -1095,11 +1072,13 @@ function GraphEditor() {
             } catch {}
           }}
         />
-        <span style={{ fontSize: 12, opacity: 0.85 }}>Total: ${(graph?.meta.totalCost ?? 0).toFixed(3)}</span>
+        <span className="vid-meta" style={{ fontSize: 13 }}>Total ${(graph?.meta.totalCost ?? 0).toFixed(3)}</span>
         <button
+          className="ds-btn"
           onClick={() => setSettingsOpen(true)}
           title="API keys & settings"
-          style={tbBtn}
+          aria-label="Settings"
+          style={{ width: 40, padding: 0 }}
         >⚙</button>
       </div>
 
@@ -1114,7 +1093,7 @@ function GraphEditor() {
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
           type: 'default',
-          style: { stroke: '#6B7280', strokeWidth: 2 },
+          style: { stroke: 'var(--ds-axis)', strokeWidth: 2 },
           interactionWidth: 20,
         }}
         edgesReconnectable
@@ -1123,34 +1102,34 @@ function GraphEditor() {
         deleteKeyCode={['Backspace', 'Delete']}
         minZoom={0.05}
         maxZoom={2.5}
-        style={{ background: '#111418' }}
+        style={{ background: 'var(--vid-canvas)' }}
       >
-        <Background variant={'dots' as never} color="#3b3f47" gap={24} size={1.4} />
-        <Controls style={{ background: '#171717', border: '1px solid #2a2a2a' }} />
+        <Background variant={'dots' as never} color="var(--vid-canvas-dots)" gap={24} size={1.4} />
+        <Controls />
         <MiniMap
           nodeColor={(n) => {
             const colors: Record<string, string> = {
-              'reference-image': '#7C3AED',
-              'reference-video': '#7C3AED',
-              'flux-image': '#F97316',
-              'image-gen': '#F97316',
-              'image-edit': '#14B8A6',
-              'video-gen': '#3B82F6',
-              'tts-voice': '#10B981',
-              captions: '#EC4899',
-              'split-screen': '#06B6D4',
-              'image-overlay': '#A855F7',
-              'end-card': '#B4A0E5',
-              stitch: '#14B8A6',
-              'video-overlay': '#0EA5E9',
-              transcribe: '#38BDF8',
-              group: '#A855F7',
-              output: '#6B7280',
+              'reference-image': 'var(--vid-cat-source)',
+              'reference-video': 'var(--vid-cat-source)',
+              'flux-image': 'var(--vid-cat-gen)',
+              'image-gen': 'var(--vid-cat-gen)',
+              'image-edit': 'var(--vid-cat-gen)',
+              'video-gen': 'var(--vid-cat-gen)',
+              'tts-voice': 'var(--vid-cat-gen)',
+              captions: 'var(--vid-cat-compose)',
+              'split-screen': 'var(--vid-cat-compose)',
+              'image-overlay': 'var(--vid-cat-compose)',
+              'end-card': 'var(--vid-cat-compose)',
+              stitch: 'var(--vid-cat-compose)',
+              'video-overlay': 'var(--vid-cat-compose)',
+              transcribe: 'var(--vid-cat-compose)',
+              group: 'var(--ds-dim)',
+              output: 'var(--vid-cat-output)',
             };
-            return colors[n.type ?? 'output'] ?? '#444';
+            return colors[n.type ?? 'output'] ?? 'var(--ds-dim)';
           }}
-          maskColor="rgba(0,0,0,0.6)"
-          style={{ background: '#171717', border: '1px solid #2a2a2a' }}
+          maskColor="color-mix(in srgb, var(--ds-bg) 70%, transparent)"
+          bgColor="var(--ds-panel)"
         />
       </ReactFlow> : graph ? (
         <TimelineEditor graph={graph} changedIds={lastChangedIds} onPatch={(id, data) => patchNode(id, { data })} />
@@ -1168,58 +1147,23 @@ function LiveIndicator({ lastSseAt, onForceSync }: { lastSseAt: number; onForceS
   const [, force] = useState(0);
   useEffect(() => { const t = setInterval(() => force((x) => x + 1), 2000); return () => clearInterval(t); }, []);
   const ageMs = Date.now() - lastSseAt;
-  const color = ageMs < 18_000 ? '#22C55E' : ageMs < 45_000 ? '#FACC15' : '#EF4444';
+  const color = ageMs < 18_000 ? 'var(--ds-good)' : ageMs < 45_000 ? 'var(--ds-warn)' : 'var(--ds-bad)';
   const label = ageMs < 18_000 ? 'live' : ageMs < 45_000 ? `stale ${Math.round(ageMs/1000)}s` : `offline ${Math.round(ageMs/1000)}s`;
   // Click-to-resync: when SSE goes stale the dot turns yellow/red — tapping
   // it pulls a fresh graph via REST. Always clickable so the user can also
   // manually re-sync even when the indicator says "live".
   return (
     <button
+      className="ds-btn ds-btn-ghost"
       onClick={onForceSync}
       title={`Last SSE event ${Math.round(ageMs/1000)}s ago — click to force-sync`}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, opacity: 0.85,
-        background: 'transparent', border: 'none', color: '#e5e5e5', cursor: 'pointer', padding: '4px 6px', borderRadius: 4,
-      }}
-      onMouseOver={(e) => (e.currentTarget.style.background = '#1f1f1f')}
-      onMouseOut={(e) => (e.currentTarget.style.background = 'transparent')}
+      style={{ padding: '0 10px', color: 'var(--ds-muted)' }}
     >
-      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: color, boxShadow: ageMs < 18_000 ? `0 0 4px ${color}` : 'none' }} />
+      <span className="vid-dot" style={{ background: color }} />
       {label}
     </button>
   );
 }
-
-const tbBtn: React.CSSProperties = {
-  background: '#171717',
-  color: '#e5e5e5',
-  border: '1px solid #2a2a2a',
-  borderRadius: 6,
-  padding: '6px 10px',
-  cursor: 'pointer',
-  fontSize: 12,
-  fontWeight: 500,
-};
-
-const dropdown: React.CSSProperties = {
-  position: 'absolute',
-  top: '110%',
-  left: 0,
-  background: '#171717',
-  border: '1px solid #2a2a2a',
-  borderRadius: 6,
-  minWidth: 180,
-  zIndex: 20,
-  boxShadow: '0 6px 18px rgba(0,0,0,0.5)',
-  overflow: 'hidden',
-};
-
-const dropdownItem: React.CSSProperties = {
-  padding: '8px 12px',
-  fontSize: 12,
-  cursor: 'pointer',
-  borderBottom: '1px solid #222',
-};
 
 export function App() {
   return (
@@ -1238,7 +1182,7 @@ export function App() {
           border: none !important;
           box-shadow: none !important;
           padding: 0 !important;
-          border-radius: 12px !important;
+          border-radius: var(--ds-radius-card) !important;
           /* Smoothly tween position when an external file edit moves a node. */
           transition: transform 380ms cubic-bezier(.2,.8,.2,1);
         }
@@ -1250,36 +1194,36 @@ export function App() {
         /* External-edit highlight: pulsing outline that wraps the whole card. */
         @keyframes asov-flash {
           0%   {
-            outline: 4px solid rgba(217, 119, 87, 0.95);
+            outline: 4px solid color-mix(in srgb, var(--ds-c2) 95%, transparent);
             outline-offset: 6px;
-            filter: drop-shadow(0 0 12px rgba(217, 119, 87, 0.85));
+            filter: drop-shadow(0 0 12px color-mix(in srgb, var(--ds-c2) 85%, transparent));
           }
           50%  {
-            outline: 4px solid rgba(217, 119, 87, 0.6);
+            outline: 4px solid color-mix(in srgb, var(--ds-c2) 60%, transparent);
             outline-offset: 14px;
-            filter: drop-shadow(0 0 24px rgba(217, 119, 87, 0.4));
+            filter: drop-shadow(0 0 24px color-mix(in srgb, var(--ds-c2) 40%, transparent));
           }
           100% {
-            outline: 4px solid rgba(217, 119, 87, 0);
+            outline: 4px solid transparent;
             outline-offset: 6px;
-            filter: drop-shadow(0 0 0 rgba(217, 119, 87, 0));
+            filter: drop-shadow(0 0 0 transparent);
           }
         }
         .react-flow__node.node-flash {
           animation: asov-flash 1.6s ease-out 1;
-          border-radius: 14px !important;
+          border-radius: var(--ds-radius-card) !important;
           /* Lift flashing nodes above their neighbours so the outline-offset
              glow doesn't get clipped by adjacent cards. */
           z-index: 100 !important;
         }
         /* Ghost node = recently deleted, fading out red. */
         @keyframes asov-ghost {
-          0%   { opacity: 0.95; outline: 4px solid rgba(255, 80, 80, 0.95); outline-offset: 6px; transform: scale(1); filter: drop-shadow(0 0 16px rgba(255, 80, 80, 0.8)); }
-          100% { opacity: 0;    outline: 4px solid rgba(255, 80, 80, 0);    outline-offset: 6px; transform: scale(0.92); filter: drop-shadow(0 0 0 rgba(255, 80, 80, 0)); }
+          0%   { opacity: 0.95; outline: 4px solid color-mix(in srgb, var(--ds-bad) 95%, transparent); outline-offset: 6px; transform: scale(1); filter: drop-shadow(0 0 16px color-mix(in srgb, var(--ds-bad) 80%, transparent)); }
+          100% { opacity: 0;    outline: 4px solid transparent;    outline-offset: 6px; transform: scale(0.92); filter: drop-shadow(0 0 0 transparent); }
         }
         .react-flow__node.node-ghost {
           animation: asov-ghost 1.4s ease-out forwards;
-          border-radius: 14px !important;
+          border-radius: var(--ds-radius-card) !important;
           z-index: 99 !important;
           pointer-events: none !important;
         }
@@ -1306,7 +1250,7 @@ export function App() {
           max-width: calc(100% - 8px);
         }
         .timeline-inspector {
-          border-left: 1px solid #252a31;
+          border-left: 1px solid var(--ds-border);
         }
         @media (max-height: 720px) {
           .timeline-editor {

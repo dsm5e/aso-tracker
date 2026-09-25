@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { sseUrl } from "./apiBase.ts";
 
 export type SseHandler = (event: string, data: unknown) => void;
 
@@ -8,7 +9,7 @@ export function useSse(handler: SseHandler): { connected: boolean } {
   handlerRef.current = handler;
 
   useEffect(() => {
-    const es = new EventSource(import.meta.env.BASE_URL === "/" ? "/sse" : "/asa-sse");
+    const es = new EventSource(sseUrl());
     es.addEventListener("hello", () => setConnected(true));
     es.addEventListener("error", () => setConnected(false));
     const types = [

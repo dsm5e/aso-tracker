@@ -1,0 +1,57 @@
+[
+  {
+    "id": "acrobat",
+    "name": "01 · Acrobat — Red Cards",
+    "description": "Красный фон, крупные карточки и увеличенные фрагменты интерфейса.",
+    "ratings": 653302,
+    "rating": 4.64722,
+    "source": "https://apps.apple.com/us/app/acrobat-reader-pdf-editor/id469337564?uo=4",
+    "captured": "2026-09-19",
+    "screenshots": 3,
+    "preset": "pdfsign-acrobat"
+  },
+  {
+    "id": "docusign",
+    "name": "02 · Docusign — Quiet Outline",
+    "description": "Тёплый белый фон, тонкий цветной контур и спокойная типографика.",
+    "ratings": 827196,
+    "rating": 4.87392,
+    "source": "https://apps.apple.com/us/app/docusign-upload-sign-docs/id474990205?uo=4",
+    "captured": "2026-09-19",
+    "screenshots": 3,
+    "preset": "pdfsign-docusign"
+  },
+  {
+    "id": "pdf-expert",
+    "name": "03 · PDF Expert — Diagonal",
+    "description": "Редакционный заголовок, контрастная диагональная лента и крупный телефон.",
+    "ratings": 215935,
+    "rating": 4.67371,
+    "source": "https://apps.apple.com/us/app/pdf-expert-editor-reader/id743974925?uo=4",
+    "captured": "2026-09-19",
+    "screenshots": 3,
+    "preset": "pdfsign-pdf-expert"
+  },
+  {
+    "id": "signeasy",
+    "name": "04 · Signeasy — Pastel",
+    "description": "Голубой, мятный и сиреневый градиенты, крупный ровный телефон.",
+    "ratings": 34078,
+    "rating": 4.8524,
+    "source": "https://apps.apple.com/us/app/signeasy-sign-pdf-documents/id381786507?uo=4",
+    "captured": "2026-09-19",
+    "screenshots": 3,
+    "preset": "pdfsign-signeasy"
+  },
+  {
+    "id": "signnow",
+    "name": "05 · SignNow — Blue Motion",
+    "description": "Яркий синий фон, наклонный телефон, геометрия и увеличенные карточки.",
+    "ratings": 17996,
+    "rating": 4.46494,
+    "source": "https://apps.apple.com/us/app/signnow-e-signature-app/id489262811?uo=4",
+    "captured": "2026-09-19",
+    "screenshots": 3,
+    "preset": "pdfsign-signnow"
+  }
+]

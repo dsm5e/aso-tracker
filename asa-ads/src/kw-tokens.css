@@ -1,0 +1,75 @@
+/* Token names used by the keyword screens that came from the Keywords product
+   (matrix, traffic, top-5 drawer, data quality). Scoped to .kw-scope so they never
+   leak into the Ads screens; every value maps onto the shared design system. */
+.kw-scope {
+  --canvas: var(--ds-bg);
+  --surface: var(--ds-panel);
+  --surface-subtle: var(--ds-panel-2);
+  --surface-hover: var(--ds-hover);
+  --surface-selected: var(--ds-selected);
+
+  --line: var(--ds-border);
+  --border-control: var(--ds-border);
+  --border-strong: var(--ds-axis);
+  --overlay-border: var(--ds-border);
+  --chart-grid: var(--ds-grid);
+
+  --ink: var(--ds-text);
+  --ink-secondary: var(--ds-text);
+  --ink-muted: var(--ds-muted);
+  --ink-subtle: var(--ds-subtle);
+
+  --accent: var(--ds-accent);
+  --accent-hover: var(--ds-accent-hover);
+  --accent-soft: var(--ds-accent-soft);
+
+  --positive: var(--ds-good);
+  --positive-soft: var(--ds-good-soft);
+  --negative: var(--ds-bad);
+  --negative-soft: var(--ds-bad-soft);
+  --warning: var(--ds-warn);
+  --warning-soft: var(--ds-warn-soft);
+  --info: var(--ds-c4);
+  --info-soft: color-mix(in srgb, var(--ds-c4) 12%, transparent);
+  --ok-soft: var(--ds-good-soft);
+  --danger-soft: var(--ds-bad-soft);
+  --warn-soft: var(--ds-warn-soft);
+  --warning-border: color-mix(in srgb, var(--ds-warn) 35%, transparent);
+  --danger-border: color-mix(in srgb, var(--ds-bad) 35%, transparent);
+
+  --chart-violet: var(--ds-c1);
+  --chart-blue: var(--ds-c4);
+
+  --overlay: color-mix(in srgb, var(--ds-text) 22%, transparent);
+  --overlay-strong: color-mix(in srgb, var(--ds-text) 28%, transparent);
+
+  --card-shadow: var(--ds-shadow);
+  --radius-card: var(--ds-radius-card);
+  --radius-control: var(--ds-radius-control);
+  --radius-overlay: var(--ds-radius-card);
+
+  color: var(--ds-text);
+  font-family: var(--ds-font);
+}
+
+/* The keyword screens were built on browser-default buttons; Ads styles every
+   <button> globally (min-height, padding, weight). Revert that inside .kw-scope.
+   Specificity 0,1,0 beats Ads' bare `button` rules; this file is imported first
+   (main.tsx), so the screens' own class rules still win ties. */
+.kw-scope :where(button) { all: revert; box-sizing: border-box; font: inherit; color: inherit; cursor: pointer; }
+.kw-scope :where(select) { min-height: 0; }
+
+.kw-screen { margin: -24px -32px -64px; min-height: 100vh; display: flex; flex-direction: column; }
+.kw-screen > .content,
+.kw-screen > .decision-workspace,
+.kw-screen > .traffic-workspace { flex: 1; min-height: 0; }
+.kw-screen-context {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 10px 20px; border-bottom: 1px solid var(--ds-border); background: var(--ds-panel);
+}
+.kw-screen-context label { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; color: var(--ds-muted); }
+/* selects are .ds-select (40px) */
+.kw-screen-context select { cursor: pointer; }
+.kw-screen-hint { margin-left: auto; font-size: 13px; color: var(--ds-muted); }
+.kw-screen-note { margin: 28px 32px; padding: 18px 20px; border: 1px solid var(--ds-border); border-radius: var(--ds-radius-card); background: var(--ds-panel); color: var(--ds-muted); font-size: 13px; }
+.kw-screen-error { color: var(--ds-bad); }

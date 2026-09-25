@@ -100,7 +100,7 @@ export function LocalesScreen() {
   if (!screenshots.length) {
     return (
       <div style={{ padding: 'var(--s-9)', maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-        <h2>No screenshots yet</h2>
+        <h2 className="ds-h2">No screenshots yet</h2>
         <p style={{ color: 'var(--fg-2)', fontSize: 13 }}>
           Fill the editor first — Locales translates the existing slot strings.
         </p>
@@ -113,14 +113,14 @@ export function LocalesScreen() {
     <div style={{ padding: 'var(--s-7)', maxWidth: 1280, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 18 }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, letterSpacing: '-0.02em' }}>Locales</h1>
-          <p style={{ margin: '6px 0 0', color: 'var(--fg-2)', fontSize: 13, maxWidth: 720 }}>
+          <h1 className="ds-page-title" style={{ margin: 0 }}>Locales</h1>
+          <p className="ds-page-sub" style={{ margin: '4px 0 0', maxWidth: 720 }}>
             AI-translate slot headlines + pills via gpt-4o-mini. Same AI background reused for every locale — only the HTML overlay changes.
           </p>
         </div>
         {locales.length > 0 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span className="tabular" style={{ fontSize: 12, color: 'var(--fg-3)' }}>
+            <span className="tabular ds-note">
               ~${totalCost} · {locales.length} locale{locales.length === 1 ? '' : 's'}
             </span>
             <Button variant="ghost" onClick={() => refitAllLocales()} disabled={isAnyBusy} leftIcon={<RefreshCcw size={14} />}>
@@ -138,7 +138,7 @@ export function LocalesScreen() {
           major secondary, Tier 3 = long-tail. */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--fg-1)' }}>Add locales</h3>
+          <h3 className="ds-card-title" style={{ margin: 0 }}>Add locales</h3>
           {available.length > 0 && (
             <Button
               variant="ghost"
@@ -166,9 +166,9 @@ export function LocalesScreen() {
           return (
             <div key={tier}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 }}>
-                <h3 style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--fg-1)', letterSpacing: '0.02em', textTransform: 'uppercase' }}>{labels[tier]}</h3>
-                <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>{subs[tier]}</span>
-                <span style={{ fontSize: 11, color: 'var(--fg-3)', marginLeft: 'auto' }}>{tierLocales.length} available</span>
+                <h3 className="ds-group-label" style={{ margin: 0, color: 'var(--fg-1)' }}>{labels[tier]}</h3>
+                <span style={{ fontSize: 12, color: 'var(--fg-2)' }}>{subs[tier]}</span>
+                <span style={{ fontSize: 12, color: 'var(--fg-2)', marginLeft: 'auto' }}>{tierLocales.length} available</span>
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {tierLocales.map((spec) => {
@@ -181,22 +181,18 @@ export function LocalesScreen() {
                         if (active) removeLocale(spec.code);
                         else onAdd(spec.code);
                       }}
+                      className="btn btn--sm"
                       style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        padding: '6px 10px', borderRadius: 999,
-                        // Active = added → accent border + soft-tinted bg.
-                        border: `1px solid ${active ? 'var(--accent)' : 'var(--line-1)'}`,
-                        background: active ? 'var(--accent-soft)' : 'var(--bg-1)',
-                        color: active ? 'var(--accent)' : 'var(--fg-1)',
-                        fontSize: 12, cursor: 'pointer',
-                        fontWeight: active ? 600 : 400,
+                        gap: 6,
+                        // Active = added → accent-soft bg + accent text (DESIGN.md active state).
+                        ...(active ? { background: 'var(--ds-accent-soft)', borderColor: 'transparent', color: 'var(--ds-accent)', fontWeight: 600 } : null),
                       }}
                       title={active ? `Click to remove ${spec.name}` : `Add ${spec.name} (${spec.code})`}
                     >
                       <span>{spec.flag}</span>
                       <span>{spec.name}</span>
-                      {spec.rtl && <span style={{ fontSize: 10, color: active ? 'var(--accent)' : 'var(--fg-3)' }}>RTL</span>}
-                      {active ? <Check size={11} /> : <Plus size={11} style={{ color: 'var(--fg-3)' }} />}
+                      {spec.rtl && <span style={{ fontSize: 11, color: active ? 'var(--accent)' : 'var(--fg-2)' }}>RTL</span>}
+                      {active ? <Check size={14} /> : <Plus size={14} style={{ color: 'var(--fg-2)' }} />}
                     </button>
                   );
                 })}
@@ -205,14 +201,14 @@ export function LocalesScreen() {
           );
         })}
         {available.length === 0 && (
-          <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>All App Store locales already added.</span>
+          <span className="ds-note">All App Store locales already added.</span>
         )}
       </section>
 
       {/* Selected locales */}
       <section style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {locales.length === 0 ? (
-          <div style={{ padding: 24, textAlign: 'center', color: 'var(--fg-3)', fontSize: 12, border: '1px dashed var(--line-1)', borderRadius: 12 }}>
+          <div className="ds-card ds-note" style={{ padding: 24, textAlign: 'center' }}>
             <Globe size={28} style={{ marginBottom: 8, color: 'var(--fg-3)' }} />
             <div>No locales yet — pick from above to start.</div>
           </div>
@@ -251,7 +247,6 @@ export function LocalesScreen() {
           return (
             <Button
               variant="primary"
-              size="lg"
               onClick={() => nav('/export')}
               disabled={blocked}
               title={tip}
@@ -287,21 +282,21 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
   return (
     <div
       style={{
-        padding: 14,
-        borderRadius: 12,
-        border: '1px solid var(--line-1)',
-        background: 'var(--bg-1)',
+        padding: 16,
+        borderRadius: 8,
+        background: 'var(--ds-panel)',
+        boxShadow: 'var(--ds-shadow)',
         display: 'flex', flexDirection: 'column', gap: 12,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ fontSize: 24 }}>{loc.flag}</span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 1, flex: 1, minWidth: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 600 }}>
-            {loc.name} <span style={{ color: 'var(--fg-3)', fontSize: 12, fontWeight: 400 }}>· {loc.code}</span>
-            {loc.rtl && <span style={{ marginLeft: 8, fontSize: 10, color: 'var(--accent)', fontWeight: 700 }}>RTL</span>}
+          <span className="ds-card-title">
+            {loc.name} <span style={{ color: 'var(--fg-2)', fontSize: 14, fontWeight: 400 }}>· {loc.code}</span>
+            {loc.rtl && <span className="ds-badge" style={{ marginLeft: 8 }}>RTL</span>}
           </span>
-          <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>
+          <span className="ds-note">
             {loc.fontOverride ? `Font: ${loc.fontOverride}` : 'Default font'}
             {' · '}
             {Object.keys(loc.translations ?? {}).length} translated
@@ -324,7 +319,7 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
           </>
         ) : (
           <Button
-            variant={status === 'done' ? 'ghost' : 'ai'}
+            variant={status === 'done' ? 'ghost' : 'default'}
             onClick={onTranslate}
             leftIcon={<Languages size={12} />}
           >
@@ -332,7 +327,7 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
           </Button>
         )}
         <Button variant="ghost" size="icon" onClick={onRemove} aria-label="Remove" title="Remove locale">
-          <Trash2 size={13} />
+          <Trash2 size={16} />
         </Button>
       </div>
 
@@ -347,7 +342,7 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {ipadSlots.length > 0 && (
-                <span style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--fg-3)' }}>
+                <span className="ds-group-label">
                   {device === 'ipad' ? 'iPad' : 'iPhone'}
                 </span>
               )}
@@ -374,7 +369,7 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
                         fitWidth={fw}
                         showDropZone={false}
                         viewModeOverride={ss.action?.aiImageUrl ? 'enhanced' : 'scaffold'}
-                        localeMeta={{ rtl: loc.rtl, fontOverride: loc.fontOverride }}
+                        localeMeta={{ rtl: loc.rtl, fontOverride: loc.fontOverride, lang: loc.code }}
                         deviceBaseTitlePx={ss.titlePx}
                         deviceBaseSubPx={ss.subPx}
                         showTextBoundary
@@ -403,9 +398,8 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
                 style={{
                   display: 'flex', gap: 14,
                   padding: 12,
-                  background: 'var(--bg-2)',
-                  borderRadius: 10,
-                  border: '1px dashed var(--line-2)',
+                  background: 'var(--ds-panel-2)',
+                  borderRadius: 8,
                 }}
               >
                 <div style={{ flex: 'none' }}>
@@ -415,7 +409,7 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
                     fitWidth={editorFw}
                     showDropZone={false}
                     viewModeOverride={ss.action?.aiImageUrl ? 'enhanced' : 'scaffold'}
-                    localeMeta={{ rtl: loc.rtl, fontOverride: loc.fontOverride }}
+                    localeMeta={{ rtl: loc.rtl, fontOverride: loc.fontOverride, lang: loc.code }}
                     deviceBaseTitlePx={ss.titlePx}
                     deviceBaseSubPx={ss.subPx}
                     showTextBoundary
@@ -430,9 +424,9 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
                     }}
                   />
                 </div>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-                  <div style={{ fontWeight: 600 }}>Adjust for {loc.name}</div>
-                  <div style={{ color: 'var(--fg-3)' }}>Drag the headline on the canvas to reposition (per-locale).</div>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, fontSize: 14 }}>
+                  <div className="ds-card-title">Adjust for {loc.name}</div>
+                  <div className="ds-note">Drag the headline on the canvas to reposition (per-locale).</div>
                   <SizeSliders
                     titlePx={localised.titlePx}
                     subPx={localised.subPx}
@@ -443,7 +437,8 @@ function LocaleCard({ loc, busy, onTranslate, onCancel, onRefit, onRemove }: { l
                   <button
                     type="button"
                     onClick={() => updateLocaleSlotAdjustment(loc.id, ss.id, { textX: 0, textY: 0, titlePx: undefined, subPx: undefined })}
-                    style={{ alignSelf: 'flex-start', padding: '4px 10px', background: 'var(--bg-1)', border: '1px solid var(--line-1)', borderRadius: 6, fontSize: 11, color: 'var(--fg-1)', cursor: 'pointer' }}
+                    className="btn btn--sm"
+                    style={{ alignSelf: 'flex-start' }}
                   >
                     Reset locale adjustments
                   </button>
@@ -467,21 +462,21 @@ function SizeSliders({ titlePx, subPx, baseTitlePx, baseSubPx, onChange }: {
   const s = subPx ?? baseSubPx ?? 80;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 11, color: 'var(--fg-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <label style={{ fontSize: 13, color: 'var(--fg-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ width: 70 }}>Title px</span>
         <input
           type="range" min={60} max={400} step={2} value={t}
           onChange={(e) => onChange({ titlePx: Number(e.target.value) })}
-          style={{ flex: 1 }}
+          className="slider" style={{ flex: 1 }}
         />
         <span className="tabular muted" style={{ width: 36, textAlign: 'right' }}>{t}</span>
       </label>
-      <label style={{ fontSize: 11, color: 'var(--fg-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
+      <label style={{ fontSize: 13, color: 'var(--fg-2)', display: 'flex', alignItems: 'center', gap: 8 }}>
         <span style={{ width: 70 }}>Sub px</span>
         <input
           type="range" min={30} max={180} step={2} value={s}
           onChange={(e) => onChange({ subPx: Number(e.target.value) })}
-          style={{ flex: 1 }}
+          className="slider" style={{ flex: 1 }}
         />
         <span className="tabular muted" style={{ width: 36, textAlign: 'right' }}>{s}</span>
       </label>
@@ -493,7 +488,7 @@ function SizeSliders({ titlePx, subPx, baseTitlePx, baseSubPx, onChange }: {
 function StatusBadge({ status }: { status: 'pending' | 'translating' | 'done' }) {
   if (status === 'translating') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--ai)' }}>
+      <span className="ds-badge">
         <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
         Translating
       </span>
@@ -501,11 +496,11 @@ function StatusBadge({ status }: { status: 'pending' | 'translating' | 'done' })
   }
   if (status === 'done') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--ok)' }}>
+      <span className="ds-badge ds-badge-good">
         <Check size={11} />
         Done
       </span>
     );
   }
-  return <span style={{ fontSize: 11, color: 'var(--fg-3)' }}>Pending</span>;
+  return <span className="ds-badge ds-badge-muted">Pending</span>;
 }

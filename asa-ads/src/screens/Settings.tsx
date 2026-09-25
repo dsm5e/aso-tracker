@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import InfoTooltip from "../components/InfoTooltip.tsx";
 import CredentialsCard from "../components/CredentialsCard.tsx";
+import PlatformApiExplorer from "../components/PlatformApiExplorer.tsx";
 import { useApp } from "../lib/AppContext.tsx";
 import { apiUrl, sseUrl } from "../lib/apiBase.ts";
 
@@ -32,120 +33,120 @@ interface LabelDef {
 const LABELS: LabelDef[] = [
   {
     key: "ltv_per_paid",
-    label: "LTV per paying user ($)",
+    label: "LTV на платящего пользователя ($)",
     hint: "Сколько денег приносит один платный подписчик",
-    group: "ROI Engine",
+    group: "Экономика и прогноз",
     autoSuggestable: true,
     details: (
       <>
-        <p style={{ margin: "0 0 8px" }}><strong>LTV = Lifetime Value.</strong> Сколько денег принесёт один платящий юзер за всё время, пока не отпишется.</p>
-        <p style={{ margin: "0 0 8px" }}>Используется в формуле: <code style={{ color: "var(--cyan)" }}>projected_paid × LTV = projected_revenue</code></p>
-        <p style={{ margin: "0 0 0", color: "var(--bone-dim)", fontSize: 11 }}>Реальная выручка per-keyword тянется из AdServices-атрибуции × Adapty revenue (поле «ROAS so far»). LTV здесь — множитель forward-проекции будущих renewals; realized ROAS детерминистичен, без Adapty paid integration.</p>
+        <p><strong>LTV = Lifetime Value.</strong> Сколько денег принесёт один платящий юзер за всё время, пока не отпишется.</p>
+        <p>Используется в формуле: <code>projected_paid × LTV = projected_revenue</code></p>
+        <p className="note">Реальная выручка per-keyword тянется из AdServices-атрибуции × Adapty revenue (поле «ROAS so far»). LTV здесь — множитель forward-проекции будущих renewals; realized ROAS детерминистичен, без Adapty paid integration.</p>
       </>
     ),
   },
   {
     key: "trial_to_paid_rate",
-    label: "Trial → paid CR (0–1)",
+    label: "Конверсия триал → оплата (0–1)",
     hint: "Доля триалов которая стала платными",
-    group: "ROI Engine",
+    group: "Экономика и прогноз",
     autoSuggestable: true,
     details: (
       <>
-        <p style={{ margin: "0 0 8px" }}><strong>Trial → Paid Conversion Rate.</strong> Какой процент людей оплачивает после бесплатного триала.</p>
-        <p style={{ margin: "0 0 0" }}>✅ <strong>Автосчитается</strong> из ASC events: <code style={{ color: "var(--cyan)" }}>Subscribe ÷ Start Introductory Offer</code> за последние 90 дней (минус ~50% Cancel как refunds).</p>
+        <p><strong>Trial → Paid Conversion Rate.</strong> Какой процент людей оплачивает после бесплатного триала.</p>
+        <p>✅ <strong>Автосчитается</strong> из ASC events: <code>Subscribe ÷ Start Introductory Offer</code> за последние 90 дней (минус ~50% Cancel как refunds).</p>
       </>
     ),
   },
   {
     key: "target_cpi_tier1",
-    label: "Target CPI tier-1 ($)",
+    label: "Целевой CPI, Tier-1 ($)",
     hint: "Бюджет на установку в богатых странах",
-    group: "ROI Engine",
+    group: "Экономика и прогноз",
     autoSuggestable: true,
     details: (
       <>
-        <p style={{ margin: "0 0 8px" }}>🇺🇸 🇬🇧 🇩🇪 🇫🇷 🇨🇦 🇦🇺 🇯🇵 🇨🇭 🇳🇱 🇸🇪 🇳🇴 🇩🇰 🇫🇮 🇮🇪</p>
-        <p style={{ margin: "0 0 8px" }}>Используется в bid recommendations: CPI ниже target × 0.7 → <span className="roi scale" style={{ display: "inline" }}>SCALE</span>; выше × 1.5 → <span className="roi cut" style={{ display: "inline" }}>CUT</span>.</p>
-        <p style={{ margin: "0 0 0" }}>✅ <strong>Автосчитается</strong> как <code style={{ color: "var(--cyan)" }}>LTV × trial→paid × 0.25</code> (safe ROI 200%+, с поправкой на install→trial rate).</p>
+        <p>🇺🇸 🇬🇧 🇩🇪 🇫🇷 🇨🇦 🇦🇺 🇯🇵 🇨🇭 🇳🇱 🇸🇪 🇳🇴 🇩🇰 🇫🇮 🇮🇪</p>
+        <p>Используется в bid recommendations: CPI ниже target × 0.7 → <span className="roi scale">SCALE</span>; выше × 1.5 → <span className="roi cut">CUT</span>.</p>
+        <p>✅ <strong>Автосчитается</strong> как <code>LTV × trial→paid × 0.25</code> (safe ROI 200%+, с поправкой на install→trial rate).</p>
       </>
     ),
   },
   {
     key: "target_cpi_tier2",
-    label: "Target CPI tier-2/3 ($)",
+    label: "Целевой CPI, Tier-2/3 ($)",
     hint: "То же для развивающихся рынков",
-    group: "ROI Engine",
+    group: "Экономика и прогноз",
     autoSuggestable: true,
     details: (
       <>
-        <p style={{ margin: "0 0 8px" }}>🇧🇷 🇹🇷 🇲🇽 🇸🇦 🇰🇷 🇮🇩 🇮🇳 🇹🇼 🇮🇱 и др.</p>
-        <p style={{ margin: "0 0 0" }}>✅ <strong>Автосчитается</strong> как <code style={{ color: "var(--cyan)" }}>tier-1 × 0.6</code> (ниже LTV из-за меньшей покупательной способности).</p>
+        <p>🇧🇷 🇹🇷 🇲🇽 🇸🇦 🇰🇷 🇮🇩 🇮🇳 🇹🇼 🇮🇱 и др.</p>
+        <p>✅ <strong>Автосчитается</strong> как <code>tier-1 × 0.6</code> (ниже LTV из-за меньшей покупательной способности).</p>
       </>
     ),
   },
   {
     key: "min_spend_for_signal",
-    label: "Min spend for signal ($)",
+    label: "Минимальные траты для сигнала ($)",
     hint: "Меньше — данные ненадёжны",
-    group: "Confidence gates",
+    group: "Достоверность данных",
     autoSuggestable: false,
     details: (
       <>
-        <p style={{ margin: "0 0 8px" }}>Если spend меньше этого числа → ROI engine ставит <span className="badge warn" style={{ display: "inline" }}>insufficient</span>.</p>
-        <p style={{ margin: "0 0 0", color: "var(--bone-mute)", fontSize: 11 }}>Это твой <strong>осознанный выбор</strong> уровня риска. Низкий = решаем быстро (рискованно), высокий = ждём (безопасно).</p>
+        <p>Если spend меньше этого числа → ROI engine ставит <span className="badge warn">insufficient</span>.</p>
+        <p className="note">Это твой <strong>осознанный выбор</strong> уровня риска. Низкий = решаем быстро (рискованно), высокий = ждём (безопасно).</p>
       </>
     ),
   },
   {
     key: "min_installs_for_signal",
-    label: "Min installs for signal",
+    label: "Минимум установок для сигнала",
     hint: "Минимум installs",
-    group: "Confidence gates",
+    group: "Достоверность данных",
     autoSuggestable: false,
-    details: <p style={{ margin: 0 }}>1 install = случайность. 5 = тренд. 15+ = надёжная статистика. Default 5 → medium confidence.</p>,
+    details: <p>1 install = случайность. 5 = тренд. 15+ = надёжная статистика. Default 5 → medium confidence.</p>,
   },
   {
     key: "min_days_for_signal",
-    label: "Min days for signal",
+    label: "Минимум дней для сигнала",
     hint: "Минимум дней работы",
-    group: "Confidence gates",
+    group: "Достоверность данных",
     autoSuggestable: false,
-    details: <p style={{ margin: 0 }}>Apple ASA имеет learning period 24-72ч. Меньше — данные нестабильные.</p>,
+    details: <p>Apple ASA имеет learning period 24-72ч. Меньше — данные нестабильные.</p>,
   },
   {
     key: "alert_cpi_threshold",
-    label: "Alert: CPI threshold ($)",
+    label: "Порог оповещения по CPI ($)",
     hint: "Выше — Telegram alert",
-    group: "Alerts",
+    group: "Оповещения",
     autoSuggestable: true,
     details: (
       <>
-        <p style={{ margin: "0 0 8px" }}>7-дневный CPI выше → <span className="badge bad" style={{ display: "inline" }}>💸 High CPI</span> alert в TG.</p>
-        <p style={{ margin: "0 0 0" }}>✅ <strong>Автосчитается</strong> как <code style={{ color: "var(--cyan)" }}>target CPI tier-1 × 2</code>.</p>
+        <p>7-дневный CPI выше → <span className="badge bad">💸 High CPI</span> alert в TG.</p>
+        <p>✅ <strong>Автосчитается</strong> как <code>target CPI tier-1 × 2</code>.</p>
       </>
     ),
   },
   {
     key: "alert_spend_no_install",
-    label: "Alert: burn threshold ($)",
+    label: "Порог слива бюджета ($)",
     hint: "Spend без installs",
-    group: "Alerts",
+    group: "Оповещения",
     autoSuggestable: true,
     details: (
       <>
-        <p style={{ margin: "0 0 8px" }}>Spend за день больше этого + 0 installs → <span className="badge bad" style={{ display: "inline" }}>🔥 Burn</span> alert.</p>
-        <p style={{ margin: "0 0 0" }}>✅ <strong>Автосчитается</strong> как <code style={{ color: "var(--cyan)" }}>target CPI tier-1 × 5</code>.</p>
+        <p>Spend за день больше этого + 0 installs → <span className="badge bad">🔥 Burn</span> alert.</p>
+        <p>✅ <strong>Автосчитается</strong> как <code>target CPI tier-1 × 5</code>.</p>
       </>
     ),
   },
   {
     key: "alert_interval_min",
-    label: "Alert check interval (min)",
+    label: "Интервал проверки оповещений (мин)",
     hint: "Как часто проверять",
-    group: "Alerts",
+    group: "Оповещения",
     autoSuggestable: false,
-    details: <p style={{ margin: 0 }}>Default 30 мин — баланс между скоростью реакции и нагрузкой.</p>,
+    details: <p>Default 30 мин — баланс между скоростью реакции и нагрузкой.</p>,
   },
 ];
 
@@ -166,7 +167,7 @@ export default function SettingsPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   const appQuery = selected === "all" ? "" : `?app_id=${selected}`;
-  const currentAppName = selected === "all" ? "Global defaults" : apps.find((a) => a.app_id === selected)?.app_name?.split(":")[0] || `App ${selected}`;
+  const currentAppName = selected === "all" ? "Все приложения" : apps.find((a) => a.app_id === selected)?.app_name?.split(":")[0] || `Приложение ${selected}`;
 
   async function loadAll(): Promise<void> {
     const [a, b] = await Promise.all([
@@ -202,7 +203,7 @@ export default function SettingsPage() {
     };
   }, []);
 
-  if (!s) return <div className="loading">loading settings</div>;
+  if (!s) return <div className="data-state loading">Загружаем настройки…</div>;
 
   const groups = [...new Set(LABELS.map((l) => l.group))];
 
@@ -247,49 +248,49 @@ export default function SettingsPage() {
     <>
       <div className="topbar">
         <div>
-          <h2>Settings · <span style={{ color: "var(--amber)" }}>{currentAppName}</span></h2>
-          <div className="muted" style={{ fontSize: 11, marginTop: 4, letterSpacing: "0.05em" }}>
+          <h1 className="ds-page-title">Настройки · <span className="accent-text">{currentAppName}</span></h1>
+          <p className="ds-page-sub">
             {selected === "all"
-              ? "Global defaults — applied when no app-specific override exists. Confidence gates always global."
-              : `Per-app override. Falls back to global if not set. Switch app in sidebar to edit different config.`}
-          </div>
+              ? "Общие значения применяются, когда для конкретного приложения нет переопределения. Пороги достоверности общие."
+              : "Переопределение для приложения. Если значение не задано, используется общее; переключите приложение слева для редактирования другого профиля."}
+          </p>
         </div>
         <div className="controls">
           <button onClick={recomputeSuggestions} disabled={refreshing} title="Recompute suggestions from latest data">
-            {refreshing ? "computing…" : "↺ recompute"}
+            {refreshing ? "Считаем…" : "↺ Пересчитать"}
           </button>
           {autoCount > 0 ? (
-            <button onClick={applyAllSuggestions} className="primary" title="Apply all auto-suggested values">
-              apply {autoCount} suggestion{autoCount > 1 ? "s" : ""}
+            <button onClick={applyAllSuggestions} title="Apply all auto-suggested values">
+              Принять {autoCount} рекомендац{autoCount === 1 ? "ию" : "ии"}
             </button>
           ) : (
-            <span className="meta good">✓ all in sync with auto</span>
+            <span className="meta good">✓ значения синхронизированы</span>
           )}
-          {savedAt && !dirty && <span className="meta">saved · {savedAt}</span>}
-          {dirty && <span className="meta warn">{Object.keys(pending).length} pending</span>}
+          {savedAt && !dirty && <span className="meta">сохранено · {savedAt}</span>}
+          {dirty && <span className="meta warn">изменений: {Object.keys(pending).length}</span>}
           <button className="primary" onClick={save} disabled={!dirty || saving}>
-            {saving ? "saving…" : "save changes"}
+            {saving ? "Сохраняем…" : "Сохранить изменения"}
           </button>
         </div>
       </div>
 
       <div className="card">
-        <div className="hint" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+        <div className="hint settings-legend">
           <div>
-            ✅ <strong>автосчитается</strong> из реальных данных · ⚙ <strong>твой бизнес-выбор</strong> · <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", border: "1px solid var(--bone-ghost)", color: "var(--bone-mute)", fontSize: 9 }}>?</span> детали
+            ✅ <strong>автосчитается</strong> из реальных данных · ⚙ <strong>твой бизнес-выбор</strong> · <span className="info-tooltip-glyph">?</span> детали
           </div>
-          <div className="muted" style={{ fontSize: 11 }}>
-            suggestions: {suggestedAt.toLocaleTimeString()} · auto-refresh on sync
+          <div className="note">
+            рекомендации: {suggestedAt.toLocaleTimeString()} · обновляются после синхронизации
           </div>
         </div>
       </div>
 
       {autoCount === 0 && (
-        <div className="card" style={{ borderLeft: "2px solid var(--amber)" }}>
-          <div className="hint">
-            <strong style={{ color: "var(--amber)" }}>Кнопка apply скрыта потому что все auto-параметры совпадают с твоими.</strong> Появится когда:
-            <ul style={{ margin: "6px 0 0", paddingLeft: 20 }}>
-              <li>придут новые данные после <code style={{ color: "var(--cyan)" }}>npm run sync</code> или Sync now (хук на SSE — обновится автоматом)</li>
+        <div className="callout callout-block">
+          <div>
+            <strong>Кнопка apply скрыта потому что все auto-параметры совпадают с твоими.</strong> Появится когда:
+            <ul className="callout-list">
+              <li>придут новые данные после <code>npm run sync</code> или Sync now (хук на SSE — обновится автоматом)</li>
               <li>изменится trial→paid CR (новые ASC события)</li>
               <li>сменишь LTV вручную → пересчитаются target CPI / alert thresholds</li>
               <li>нажмёшь ↺ recompute сверху</li>
@@ -298,30 +299,31 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <div className="divider">API Credentials</div>
+      <h2 className="ds-h2">Учётные данные API</h2>
       <CredentialsCard
         provider="asa"
-        title="Apple Search Ads"
-        description="OAuth client credentials + ES256 private key for the ads.apple.com API"
+        title="Apple Ads"
+        description="OAuth-учётные данные и ES256-ключ для Apple Ads API"
         helpUrl="https://developer.apple.com/documentation/apple_search_ads/implementing_oauth_for_the_apple_search_ads_api"
       />
       <CredentialsCard
         provider="asc"
         title="App Store Connect"
-        description="API key for Sales Reports (SUBSCRIPTION_EVENT, SUBSCRIBER, etc) — required for ASC trial cross-match"
+        description="Ключ API для отчётов подписок; нужен для сверки триалов и оплат"
         helpUrl="https://developer.apple.com/documentation/appstoreconnectapi/creating_api_keys_for_app_store_connect_api"
       />
 
       {groups.map((g) => (
         <div key={g}>
-          <div className="divider">{g}</div>
-          <table style={{ marginBottom: 24 }}>
+          <h2 className="ds-h2">{g}</h2>
+          <div className="table-wrap section-block">
+          <table className="settings-table">
             <thead>
               <tr>
-                <th style={{ width: "45%" }}>Parameter</th>
-                <th className="num" style={{ width: 130 }}>Current</th>
-                <th className="num" style={{ width: 130 }}>Auto-suggested</th>
-                <th style={{ width: 60 }}></th>
+                <th>Параметр</th>
+                <th className="num">Текущее</th>
+                <th className="num">Рекомендация</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -331,28 +333,28 @@ export default function SettingsPage() {
                 return (
                   <tr key={l.key}>
                     <td>
-                      <div style={{ display: "flex", alignItems: "center" }}>
-                        <span style={{ color: l.autoSuggestable ? "var(--bone)" : "var(--bone-dim)" }}>
+                      <div className="row settings-param">
+                        <span className={l.autoSuggestable ? "" : "muted"}>
                           {l.autoSuggestable ? "✅ " : "⚙ "}{l.label}
                         </span>
                         <InfoTooltip title={l.label}>{l.details}</InfoTooltip>
                       </div>
-                      <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{l.hint}</div>
+                      <div className="note">{l.hint}</div>
                     </td>
-                    <td className="num" style={{ width: 130 }}>
+                    <td className="num">
                       <input
                         type="number"
                         step={STEP[l.key]}
                         value={val(l.key)}
                         onChange={(e) => setPending((p) => ({ ...p, [l.key]: Number(e.target.value) }))}
-                        style={{ width: 110, textAlign: "right" }}
+                        className="settings-input"
                       />
                     </td>
-                    <td className="num" style={{ width: 130, fontSize: 12 }}>
+                    <td className="num">
                       {su ? (
-                        <div className="col" style={{ alignItems: "flex-end" }}>
+                        <div className="col settings-suggest">
                           <span className={different ? "good" : "muted"}>{su.value}</span>
-                          <span className="muted" style={{ fontSize: 10, textAlign: "right" }} title={su.basis}>
+                          <span className="note" title={su.basis}>
                             {su.basis.length > 38 ? su.basis.slice(0, 38) + "…" : su.basis}
                           </span>
                         </div>
@@ -364,7 +366,7 @@ export default function SettingsPage() {
                           className="compact"
                           onClick={() => setPending((p) => ({ ...p, [l.key]: su.value }))}
                           title={`Apply suggested ${su.value}`}
-                        >↺ use</button>
+                        >↺ Принять</button>
                       )}
                     </td>
                   </tr>
@@ -372,12 +374,16 @@ export default function SettingsPage() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       ))}
 
       <div className="hint">
         <strong>Auto-suggested values</strong> пересчитываются на каждое открытие страницы из <code>asc_events_daily</code> + текущего LTV. Не применяются автоматически — ты решаешь.
       </div>
+
+      <h2 className="ds-h2">Подключённые возможности API</h2>
+      <PlatformApiExplorer />
     </>
   );
 }

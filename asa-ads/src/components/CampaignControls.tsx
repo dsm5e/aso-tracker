@@ -22,7 +22,7 @@ export default function CampaignControls({ campaign, onChange }: Props) {
         campaign_id: campaign.id,
       });
       const r = await api.applyAction(id);
-      if (!r.ok) alert(`Failed: ${r.error}`);
+      if (!r.ok) alert(`Не удалось применить действие: ${r.error}`);
       onChange?.();
     } finally {
       setBusy(false);
@@ -31,7 +31,7 @@ export default function CampaignControls({ campaign, onChange }: Props) {
 
   async function saveBudget(): Promise<void> {
     const n = Number(bud);
-    if (!Number.isFinite(n) || n <= 0) { alert("Invalid amount"); return; }
+    if (!Number.isFinite(n) || n <= 0) { alert("Укажите положительную сумму"); return; }
     if (Math.abs(n - campaign.daily_budget) < 0.005) { setEditing(false); return; }
     setBusy(true);
     try {
@@ -41,7 +41,7 @@ export default function CampaignControls({ campaign, onChange }: Props) {
         amount: n.toFixed(2),
       });
       const r = await api.applyAction(id);
-      if (!r.ok) alert(`Failed: ${r.error}`);
+      if (!r.ok) alert(`Не удалось применить действие: ${r.error}`);
       setEditing(false);
       onChange?.();
     } finally {
@@ -59,23 +59,23 @@ export default function CampaignControls({ campaign, onChange }: Props) {
             min="1"
             value={bud}
             onChange={(e) => setBud(e.target.value)}
-            style={{ width: 60 }}
+            className="budget-input"
             autoFocus
             onKeyDown={(e) => { if (e.key === "Enter") void saveBudget(); if (e.key === "Escape") setEditing(false); }}
           />
-          <button className="compact primary" disabled={busy} onClick={saveBudget}>save</button>
+          <button className="compact primary" disabled={busy} onClick={saveBudget}>Сохранить</button>
           <button className="compact" onClick={() => setEditing(false)}>×</button>
         </>
       ) : (
-        <button className="compact" onClick={() => setEditing(true)} title="Edit daily budget">
-          edit ${campaign.daily_budget.toFixed(0)}
+        <button className="compact" onClick={() => setEditing(true)} title="Изменить дневной лимит">
+          Лимит ${campaign.daily_budget.toFixed(0)}
         </button>
       )}
       <button
         className={`compact ${campaign.status === "ENABLED" ? "down" : "up"}`}
         disabled={busy}
         onClick={togglePause}
-        title={campaign.status === "ENABLED" ? "Pause campaign" : "Resume campaign"}
+        title={campaign.status === "ENABLED" ? "Поставить кампанию на паузу" : "Возобновить кампанию"}
       >
         {campaign.status === "ENABLED" ? "❚❚" : "▶"}
       </button>

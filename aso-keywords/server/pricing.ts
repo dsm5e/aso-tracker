@@ -1,4 +1,5 @@
 import { db } from './db.js';
+import { appleText } from './itunes.js';
 
 export interface PricingProduct {
   name: string;
@@ -121,17 +122,13 @@ export async function getCompetitorPricing(
   const url = `https://apps.apple.com/${cc}/app/id${iTunesId}`;
   let html = '';
   try {
-    const res = await fetch(url, {
+    html = await appleText(url, {
       headers: {
         'User-Agent': UA,
         Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
       },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(15_000),
     });
-    if (!res.ok) return null;
-    html = await res.text();
   } catch {
     return null;
   }

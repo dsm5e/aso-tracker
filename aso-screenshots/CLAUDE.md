@@ -190,3 +190,99 @@ cd ~/Developer/MYPROJECT/aso-studio/aso-screenshots && npm run dev
 # vite → :5180, api → :5181
 # proxied via aso-keywords at localhost:5173/studio/* and /studio-api/*
 ```
+
+## Data-driven kids/creative layouts (added for Live Aquarium)
+
+Preset-level opt-ins (all off by default, `u` = 1% of canvas width in CSS values):
+- `text.titleShadow` / `subtitleShadow` / `subtitleColor` / `subtitleWeight` /
+  `subtitleUppercase` / `titleLineHeight` / `titleLetterSpacing` / `subtitleGapU` /
+  `sidePaddingU` / `pill {bg, fg, shadow, weight, sizeFrac}`
+- `text.fitLines: true` — every `\n` line is nowrap and shrinks to the column width.
+- `layout.deviceAnchor: 'below-headline'` (+ `deviceGapU`, `headlineMaxFraction`) —
+  device hangs under the MEASURED headline. Slot opt-out: `deviceAnchor: 'free'`.
+- `background.parametric: 'lagoon'` + `background.lagoon {rays, bubbles, frontBubbleShare, sand}`.
+- `device.bodyColor / rimColor / shadow / ipad {scale, offsetY}`.
+
+Per-slot `decor[]` (kind `image` | `bubble` | `doodle`, `xFrac/yFrac/widthFrac/rotate/flipX`,
+`layer: back|front|top`). Bubble text is localised via `locale.decorTranslations[slotId][i]`.
+
+Project fields: `ipadModel` ('ipad-pro-12.9' 2048×2732 default | 'ipad-pro-13' 2064×2752),
+`sourceLocale` (language of the source copy, default 'en'), `layoutVariants[]`
+(`{id, title, slotIds}` — PPO treatments / slot orderings).
+
+CLIs:
+- `node cli/setup-liveaquarium.mjs` — rebuilds the Live Aquarium project (slots, decor, variants A–D).
+- `node cli/translate-locales.mjs --locales <list|all|asc> [--asc-locales …]` — transcreates
+  headlines/pills/bubbles via `/api/translate/batch` (OpenAI, falls back to the local Codex CLI).
+- `node cli/render-export.mjs --variants A,B|all --locales ru --tree '{variant}/{device}' --pattern '{n}.{ext}'`
+  — `{n}` is per-device position inside a variant; `--tree` placeholders: {app} {variant} {device} {images} {locale}.
+
+## Device frames (`deviceFrameStyle`)
+
+`clay` (CSS body, historical default) | `titanium` (generated iPhone PNG, Elara) |
+`frameless` (rounded card) | `apple` — official Apple product bezels: iPhone 17 Pro Max
+(`silver`, `deep-blue`, `cosmic-orange`) and iPad Pro 13" M5 (`silver`, `space-black`).
+- Preset default: `device.frameStyle: 'apple'` + `device.bezelColor: { iphone, ipad }`.
+  Slot overrides: `deviceFrameStyle`, `deviceBezelColor` (Inspector → «Стиль устройства»).
+  Live Aquarium (`liveaquarium-lagoon`) uses `apple`, silver/silver.
+- The bezel keeps the clay frame's OUTER width, so tuned layouts keep their footprint;
+  the screen gets a bit smaller. `device.shadow` (box-shadow syntax) is converted to a
+  `drop-shadow` over the whole device, plus a tight contact shadow.
+- The PNG draws the rounded screen corners and the Dynamic Island (no CSS island is added).
+  The screenshot underneath gets a 0.2% bleed and a corner clip between the aperture and
+  the body curve. Assets, source and licence: `public/frames/apple/README.md`.
+  Adding a device: `python3 cli/measure-bezel.py <png>` → entry in `src/lib/deviceBezels.ts`.
+
+## Localized app screenshots per language (`localizedSources`)
+
+Slots keep pointing at the ROOT capture `public/uploads/<dir>/<device>-0N-<name>.png`
+(language = `rootLang`). Per-language copies live next to it:
+`public/uploads/<dir>/<lang>/<device>-0N-<name>.png`. When a store locale renders
+(Locales preview, `/studio/render`, `cli/render-export.mjs`, in-app export), the
+locale maps to an app language and the first hit in `<lang> → fallback (en) → root`
+is used; a language equal to `rootLang` uses the root directly. Explicit
+`locale.sourceOverrides[slotId]` still wins. Logic: `src/lib/localizedSources.ts`
+(called from `applyLocaleToSlot`).
+
+Project field (the browser can't list folders, so `files` is a manifest):
+```json
+"localizedSources": {
+  "dir": "liveaquarium", "rootLang": "ru",
+  "files": { "en": ["iphone-01-aquarium.png", "…"], "de": ["…"] },
+  "localeMap": { "…": "…" },   // optional overrides of the ASC-locale → lang map
+  "fallback": ["en"],          // optional, default ['en']
+  "defaultLang": "en"          // optional, lang for locales absent from the map
+}
+```
+Default map: en-US/GB/AU/CA→en, de-DE→de, fr-FR/CA→fr, es-ES/MX→es, it, pt-BR/pt-PT→pt-BR,
+nl-NL→nl, sv, da, no→nb, fi, ja, ko, zh-Hans, zh-Hant, pl, tr, ru; everything else → en.
+
+Import (copies + rewrites the manifest, pushes live; writes state.json if the API is down):
+```bash
+node cli/import-sources.mjs --app liveaquarium --from ~/Developer/screenshots/LiveAquarium/source-l10n
+#   expects <from>/<lang>/<iphone|ipad>/0N-<name>.png  →  uploads/liveaquarium/<lang>/<device>-0N-<name>.png
+node cli/import-sources.mjs --app liveaquarium --scan    # rescan after manual adds/deletes
+#   --langs en,de   --root-lang ru   --dry
+```
+Missing files for a language just fall back (the import prints what's missing).
+`setup-liveaquarium.mjs` keeps `localizedSources` (it spreads the existing state).
+
+## Gateway ports (monorepo `npm run dev` at the repo root)
+
+The root gateway serves every product on ONE port: UI `localhost:5173/studio/*`,
+API `localhost:5173/studio-api/*` (= `/api/*`). :5180/:5181 exist only with the
+standalone `aso-screenshots` dev server. CLIs that talk to the Studio:
+`ASO_API=http://localhost:5173/studio-api ASO_ORIGIN=http://localhost:5173 node cli/render-export.mjs …`
+(defaults stay :5181/api and :5180). render-export waits for the injected web fonts
+before each shot and retries a job once if a dev-server reload tears the page down.
+
+## Luna Dream (added 2026-09-25)
+
+- `node cli/setup-dream.mjs` — rebuilds the project: 7 frames × iPhone/iPad on preset
+  `dream-night`, 50 locales from `cli/dream-copy.mjs`, variants `A` (default) and `T`
+  (tradition-first: ar-SA tr ur-PK id ms bn-BD). Sources `public/uploads/dream/`
+  (root = en UI; de fr pt tr ar hi ja ko zh ru sub-folders), night-sky backgrounds
+  `uploads/dream/decor/bg-{iphone,ipad}.png` via per-slot `backgroundOverride`.
+- Preset text options added: `text.subtitleFont` (sans subline under a serif title;
+  the locale script font stays in the stack as glyph fallback) and
+  `text.textWrap: 'balance' | 'pretty'`.

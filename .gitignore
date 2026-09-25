@@ -73,3 +73,8 @@ aso-inapp/events.json
 
 # Migrated raw data
 *.jsonl
+
+# Client work (kept locally, never published)
+aso-screenshots/public/roomvi/
+aso-screenshots/src/lib/presets/imported/roomvi-*.json
+aso-screenshots/cli/render-both.sh

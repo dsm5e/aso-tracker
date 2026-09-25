@@ -1,4 +1,4 @@
-import { NodeShell, inputStyle, labelStyle, patchData, triggerRun, stopProp } from './common';
+import { NodeShell, patchData, triggerRun, stopProp } from './common';
 
 interface Data {
   label?: string;
@@ -31,21 +31,21 @@ export function TtsVoiceNode({ id, data }: { id: string; data: Data }) {
       runLabel="Generate"
     >
       <div className="nodrag" style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-        <span style={labelStyle}>Text</span>
-        <textarea
+        <span className="vid-label">Text</span>
+        <textarea className="ds-textarea"
           value={data.text ?? ''}
           onChange={(e) => patchData(id, { text: e.target.value })}
           placeholder="say something…"
-          style={{ ...inputStyle, minHeight: 60, flex: 1, resize: 'none' }}
+          style={{ minHeight: 60, flex: 1, resize: 'none' }}
         />
       </div>
       <div className="nodrag">
-        <span style={labelStyle}>Voice</span>
-        <select className="nodrag" onMouseDown={stopProp} value={data.voice ?? VOICES[0]} onChange={(e) => patchData(id, { voice: e.target.value })} style={inputStyle}>
+        <span className="vid-label">Voice</span>
+        <select className="nodrag ds-select" onMouseDown={stopProp} value={data.voice ?? VOICES[0]} onChange={(e) => patchData(id, { voice: e.target.value })}>
           {VOICES.map((v) => <option key={v} value={v}>{v}</option>)}
         </select>
       </div>
-      {data.error && <div style={{ color: '#EF4444', fontSize: 11 }}>{data.error}</div>}
+      {data.error && <div className="vid-err">{data.error}</div>}
       {data.status === 'done' && data.outputUrl && (
         <audio src={data.outputUrl} controls style={{ width: '100%' }} />
       )}

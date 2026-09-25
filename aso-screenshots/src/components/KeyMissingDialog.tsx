@@ -24,19 +24,18 @@ export function KeyMissingDialog() {
         textAlign: 'center',
       }}>
         <div style={{
-          width: 56, height: 56, borderRadius: 14,
-          background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)',
+          width: 56, height: 56, borderRadius: 8,
+          background: 'var(--ds-accent-soft)',
           display: 'grid', placeItems: 'center',
-          boxShadow: '0 10px 30px -10px rgba(124, 58, 237, 0.5)',
         }}>
-          <Sparkles size={26} color="#fff" />
+          <Sparkles size={26} color="var(--ds-accent)" />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 600, margin: 0 }}>
+          <h2 className="ds-h2" style={{ margin: 0 }}>
             {info.label} API key required
           </h2>
-          <p style={{ fontSize: 13.5, color: 'var(--fg-2)', margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, lineHeight: '20px', color: 'var(--fg-2)', margin: 0 }}>
             Add your <strong style={{ color: 'var(--fg-0)' }}>{missing.keyName}</strong> to use {missing.reason}.
             Keys are stored locally in <code style={{ fontSize: 12 }}>~/.aso-studio/keys.json</code> and
             never leave your machine.
@@ -47,17 +46,14 @@ export function KeyMissingDialog() {
           href={info.getUrl}
           target="_blank"
           rel="noreferrer"
-          style={{
-            fontSize: 12.5, color: 'var(--accent)', textDecoration: 'none',
-            padding: '4px 10px', borderRadius: 'var(--r-pill)',
-            background: 'var(--bg-2)',
-          }}
+          className="btn btn--sm btn--ghost"
+          style={{ color: 'var(--accent)', textDecoration: 'none' }}
         >
           Get your {info.label} key ↗
         </a>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 6, width: '100%' }}>
-          <Button variant="ghost" onClick={close} style={{ flex: 1 }}>Cancel</Button>
+          <Button onClick={close} style={{ flex: 1 }}>Cancel</Button>
           <Button
             variant="primary"
             onClick={openSettings}

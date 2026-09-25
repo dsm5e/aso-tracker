@@ -1,41 +1,40 @@
-import { GEO_REVENUE_APP_ID, KEYWORD_REVENUE_APP_ID, type AppConfig } from "./config.ts";
+import { ADAPTY_ANALYTICS_APP_ID, type AppConfig } from "./config.ts";
+import { fetchAdaptyGeoEconomics, type AdaptyGeoEconomics } from "./revenue-client.ts";
+import { spendWindow } from "./queries.ts";
 
 export interface RevenueRow { country: string; trials: number; paid: number; revenueUsd: number }
+export interface DailyRevenue { date: string; revenueUsd: number }
+
+// Adapty allows ~2 req/s and every read is 3 requests; Economics and the
+// decision matrix load the same window back to back, so share one answer.
+const CACHE_TTL_MS = 10 * 60_000;
+const cache = new Map<string, { at: number; value: Promise<AdaptyGeoEconomics> }>();
+
+function cachedEconomics(window: { start: string; end: string }): Promise<AdaptyGeoEconomics> {
+  const key = `${window.start}:${window.end}`;
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value;
+  const value = fetchAdaptyGeoEconomics(window);
+  cache.set(key, { at: Date.now(), value });
+  value.catch(() => cache.delete(key)); // never cache a failure
+  return value;
+}
 
 /** Geo-level real revenue rows for an app, [] when no feed is configured.
  *  Shared by /api/revenue and the Command Center aggregator. */
-export async function fetchRevenueRows(cfg: AppConfig, appId: number | undefined, days: number): Promise<{ rows: RevenueRow[]; error?: string }> {
+export async function fetchRevenueRows(_cfg: AppConfig, appId: number | undefined, days: number): Promise<{ rows: RevenueRow[]; daily: DailyRevenue[]; error?: string }> {
   try {
-    if (appId && appId === GEO_REVENUE_APP_ID && cfg.geoRevenueFnUrl) {
-      const url = new URL(cfg.geoRevenueFnUrl);
-      url.searchParams.set("days", String(days));
-      if (cfg.geoRevenueKey) url.searchParams.set("key", cfg.geoRevenueKey);
-      const r = await fetch(url.toString());
-      if (!r.ok) return { rows: [], error: `revenue fn ${r.status}` };
-      const j = await r.json() as { rows?: RevenueRow[] };
-      return { rows: (j.rows ?? []).map((x) => ({ ...x, country: x.country.toUpperCase() })) };
+    if (appId && appId === ADAPTY_ANALYTICS_APP_ID) {
+      // Adapty's own Apple Ads attribution, segmented by country and joined to
+      // trials, paid subscriptions, and net revenue at the acquisition cohort.
+      // Same window as the Apple Ads spend it is divided by (ends at the last
+      // synced spend day), otherwise unsynced days add trials without spend.
+      const economics = await cachedEconomics(spendWindow(days));
+      const rows = economics.rows.map((row) => ({ ...row, revenueUsd: Math.round(row.revenueUsd * 100) / 100 }));
+      return { rows, daily: economics.dailyRevenue };
     }
-    if (appId && appId === KEYWORD_REVENUE_APP_ID && cfg.keywordRevenueFnUrl) {
-      // Per-keyword feed (AdServices attribution) folded to country grain.
-      const url = new URL(cfg.keywordRevenueFnUrl);
-      if (cfg.keywordRevenueAppSlug) url.searchParams.set("app", cfg.keywordRevenueAppSlug);
-      if (cfg.keywordRevenuePullToken) url.searchParams.set("key", cfg.keywordRevenuePullToken);
-      const r = await fetch(url.toString());
-      if (!r.ok) return { rows: [], error: `revenue fn ${r.status}` };
-      const j = await r.json() as { rows?: Array<{ country: string | null; trials: number; paid: number; revenueUsd: number }> };
-      const by = new Map<string, RevenueRow>();
-      for (const kw of j.rows ?? []) {
-        const c = (kw.country ?? "?").toUpperCase();
-        const row = by.get(c) ?? { country: c, trials: 0, paid: 0, revenueUsd: 0 };
-        row.trials += kw.trials || 0; row.paid += kw.paid || 0; row.revenueUsd += kw.revenueUsd || 0;
-        by.set(c, row);
-      }
-      const rows = [...by.values()].map((x) => ({ ...x, revenueUsd: Math.round(x.revenueUsd * 100) / 100 }))
-        .sort((a, b) => b.revenueUsd - a.revenueUsd);
-      return { rows };
-    }
-    return { rows: [] };
+    return { rows: [], daily: [] };
   } catch (e) {
-    return { rows: [], error: (e as Error).message };
+    return { rows: [], daily: [], error: (e as Error).message };
   }
 }

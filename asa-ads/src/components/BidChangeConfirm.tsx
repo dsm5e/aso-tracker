@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Keyword, type Projection } from "../api.ts";
+import { campaignDisplayName } from "../lib/campaignNames.ts";
 
 interface Props {
   keyword: Keyword;
@@ -57,115 +58,104 @@ export default function BidChangeConfirm({ keyword, newBid, reason, onConfirm, o
   return (
     <>
       <div className="drawer-overlay" onClick={onCancel} />
-      <div style={{
-        position: "fixed",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: "min(540px, 90vw)",
-        background: "var(--bg-1)",
-        border: `1px solid ${direction === "up" ? "var(--amber-dim)" : "var(--red-dim)"}`,
-        padding: 24,
-        zIndex: 200,
-        boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingBottom: 14, marginBottom: 16, borderBottom: "1px solid var(--line)" }}>
+      <div className="dialog" role="dialog" aria-modal="true">
+        <div className="dialog-head">
           <div>
-            <div style={{ fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: direction === "up" ? "var(--amber)" : "var(--red)" }}>
-              {direction === "up" ? "▲ raise bid" : direction === "down" ? "▼ lower bid" : "≡ set bid"}
+            <div className={`dialog-kicker ${direction === "up" ? "accent-text" : "bad"}`}>
+              {direction === "up" ? "Повысить ставку" : direction === "down" ? "Снизить ставку" : "Изменить ставку"}
             </div>
-            <div style={{ fontSize: 16, marginTop: 4, color: "var(--bone)" }}>{keyword.text}</div>
-            <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>{keyword.campaign_name}</div>
+            <div className="dialog-title">{keyword.text}</div>
+            <div className="dialog-sub">{campaignDisplayName(keyword.campaign_name)}</div>
           </div>
-          <button className="compact" onClick={onCancel}>esc</button>
+          <button className="compact" onClick={onCancel}>Esc</button>
         </div>
 
-        <div className="divider" style={{ margin: "0 0 12px" }}>Change</div>
-        <table style={{ marginBottom: 16 }}>
+        <div className="dialog-section">Изменение</div>
+        <table className="dialog-table">
           <tbody>
             <tr>
-              <td className="muted">Current bid</td>
+              <td className="muted">Текущая ставка</td>
               <td className="num">{fmtUsd(keyword.bid)}</td>
             </tr>
             <tr>
-              <td className="muted">New bid</td>
+              <td className="muted">Новая ставка</td>
               <td className={`num ${direction === "up" ? "good" : direction === "down" ? "bad" : ""}`}>
                 {fmtUsd(newBid)}{" "}
-                <span style={{ fontSize: 10 }}>({deltaPct > 0 ? "+" : ""}{deltaPct.toFixed(0)}%)</span>
+                <span className="small">({deltaPct > 0 ? "+" : ""}{deltaPct.toFixed(0)}%)</span>
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div className="divider" style={{ margin: "0 0 12px" }}>Spend impact (estimated)</div>
-        <table style={{ marginBottom: 16 }}>
+        <div className="dialog-section">Изменение расхода (оценка)</div>
+        <table className="dialog-table">
           <tbody>
             <tr>
-              <td className="muted">Past 14d daily avg</td>
-              <td className="num">{fmtUsd(avgDailySpend)} <span className="muted" style={{ fontSize: 10 }}>({avgDailyTaps.toFixed(1)} taps/day)</span></td>
+              <td className="muted">Среднее за 14 дней</td>
+              <td className="num">{fmtUsd(avgDailySpend)} <span className="small muted">({avgDailyTaps.toFixed(1)} тапов в день)</span></td>
             </tr>
             <tr>
-              <td className="muted">Projected daily after change</td>
+              <td className="muted">Прогноз в день после изменения</td>
               <td className={`num ${dailySpendDelta > 0 ? "warn" : ""}`}>
                 ≈ {fmtUsd(newDailySpend)}
-                <span style={{ fontSize: 10, marginLeft: 4 }}>
+                <span className="small">
                   ({dailySpendDelta >= 0 ? "+" : ""}{fmtUsd(dailySpendDelta)})
                 </span>
               </td>
             </tr>
             <tr>
-              <td className="muted">Projected weekly</td>
+              <td className="muted">Прогноз в неделю</td>
               <td className="num">≈ {fmtUsd(weeklySpend)}</td>
             </tr>
             <tr>
-              <td className="muted">Projected monthly</td>
+              <td className="muted">Прогноз в месяц</td>
               <td className="num">≈ {fmtUsd(monthlySpend)}</td>
             </tr>
           </tbody>
         </table>
 
-        <div className="divider" style={{ margin: "0 0 12px" }}>ROI prediction</div>
-        {loading ? <div className="loading">computing</div> : projAvailable && proj ? (
-          <div style={{ marginBottom: 16 }}>
-            <div className="row" style={{ gap: 12, marginBottom: 8 }}>
-              <span className={`roi ${proj.verdict.kind}`} style={{ fontSize: 13 }}>{proj.verdict.label}</span>
-              <span className="muted" style={{ fontSize: 11 }}>{proj.verdict.reason}</span>
+        <div className="dialog-section">Прогноз ROI</div>
+        {loading ? <div className="loading">Считаем…</div> : projAvailable && proj ? (
+          <div className="dialog-block">
+            <div className="row dialog-verdict">
+              <span className={`roi ${proj.verdict.kind}`}>{proj.verdict.label}</span>
+              <span className="note">{proj.verdict.reason}</span>
             </div>
-            <div className="muted" style={{ fontSize: 11, lineHeight: 1.5 }}>
-              At ${100} additional spend → ≈{proj.projected_installs.toFixed(0)} installs, ≈{proj.projected_paid.toFixed(1)} paid, ≈{fmtUsd(proj.projected_revenue)} revenue (ROI {fmtPct(proj.projected_roi)}).
+            <div className="note">
+              При дополнительных ${100} → примерно {proj.projected_installs.toFixed(0)} установок, {proj.projected_paid.toFixed(1)} оплат и {fmtUsd(proj.projected_revenue)} выручки (ROI {fmtPct(proj.projected_roi)}).
               <br />
               <strong className={direction === "up" ? "good" : "bad"}>
                 {direction === "up"
-                  ? "↑ Higher bid → больше impressions, выше CPI per install, но в SCALE-зоне может оправдаться."
+                  ? "↑ Более высокая ставка даёт больше показов и обычно повышает CPI; это оправдано только при подтверждённой экономике."
                   : direction === "down"
-                  ? "↓ Lower bid → меньше impressions, рискуешь потерять долю аукциона."
+                  ? "↓ Более низкая ставка даёт меньше показов и может снизить долю аукциона."
                   : ""}
               </strong>
             </div>
           </div>
         ) : (
-          <div style={{ padding: "10px 12px", background: "var(--bg-2)", borderLeft: "2px solid var(--yellow)", fontSize: 11, color: "var(--bone-dim)", marginBottom: 16 }}>
-            <strong style={{ color: "var(--yellow)" }}>⚠ Недостаточно данных для ROI.</strong>
+          <div className="callout warn dialog-block">
+            <strong>Недостаточно данных для ROI.</strong>
             {proj?.next_step && <> {proj.next_step}</>}
           </div>
         )}
 
         {reason && (
-          <div style={{ padding: "8px 12px", background: "var(--bg-3)", fontSize: 11, color: "var(--bone-dim)", borderLeft: "2px solid var(--cyan)", marginBottom: 16 }}>
-            <strong style={{ color: "var(--cyan)" }}>Why:</strong> {reason}
+          <div className="callout dialog-block">
+            <strong>Причина:</strong> {reason}
           </div>
         )}
 
-        <div className="hint" style={{ fontSize: 10, marginBottom: 14 }}>
+        <div className="hint dialog-block">
           Прогноз базируется на исторических tap-rate. Apple может реагировать иначе из-за learning period (24–72ч). Реальный CPI обычно ниже max bid.
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span className="muted" style={{ fontSize: 10 }}>⌘ + Enter to confirm · Esc to cancel</span>
+        <div className="dialog-foot">
+          <span className="note">⌘ + Enter — подтвердить · Esc — отменить</span>
           <div className="btn-group">
-            <button onClick={onCancel}>cancel</button>
+            <button onClick={onCancel}>Отменить</button>
             <button className={`primary ${direction === "up" ? "up" : "down"}`} onClick={onConfirm}>
-              {direction === "up" ? "↑" : direction === "down" ? "↓" : "→"} apply {fmtUsd(newBid)}
+              {direction === "up" ? "↑" : direction === "down" ? "↓" : "→"} Применить {fmtUsd(newBid)}
             </button>
           </div>
         </div>

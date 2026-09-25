@@ -28,6 +28,7 @@ function migrate(d: Database.Database): void {
       app_name TEXT,
       name TEXT NOT NULL,
       country TEXT NOT NULL,
+      countries_json TEXT,
       status TEXT NOT NULL,
       serving_status TEXT,
       display_status TEXT,
@@ -82,6 +83,19 @@ function migrate(d: Database.Database): void {
       PRIMARY KEY (campaign_id, date)
     );
 
+    -- Campaign × storefront × day. Multi-country campaigns report one row per
+    -- storefront here; asa_daily only has the campaign total.
+    CREATE TABLE IF NOT EXISTS asa_geo_daily (
+      campaign_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      country TEXT NOT NULL,
+      impressions INTEGER NOT NULL DEFAULT 0,
+      taps INTEGER NOT NULL DEFAULT 0,
+      installs INTEGER NOT NULL DEFAULT 0,
+      spend REAL NOT NULL DEFAULT 0,
+      PRIMARY KEY (campaign_id, date, country)
+    );
+
     CREATE TABLE IF NOT EXISTS asa_kw_daily (
       keyword_id INTEGER NOT NULL,
       date TEXT NOT NULL,
@@ -129,8 +143,7 @@ function migrate(d: Database.Database): void {
       PRIMARY KEY (app_id, date, country, product, event_type)
     );
 
-    -- Real per-keyword ASA revenue from deterministic AdServices attribution
-    -- (asaRevenueByKeyword Cloud Function: AdServices keyword → Adapty revenue).
+    -- Real per-keyword ASA revenue from Adapty's native Apple Ads attribution.
     -- Keys map 1:1 onto asa_keywords.id / asa_campaigns.id. Snapshot table —
     -- the sync replaces it each run. Lets the ROI engine use REAL paid/revenue
     -- per keyword instead of the country-average estimate (no SKAN, no Adapty
@@ -139,9 +152,15 @@ function migrate(d: Database.Database): void {
       campaign_id INTEGER NOT NULL,
       keyword_id INTEGER NOT NULL,
       country TEXT,
+      attributed_installs INTEGER NOT NULL DEFAULT 0,
       trials INTEGER NOT NULL DEFAULT 0,
       paid INTEGER NOT NULL DEFAULT 0,
       revenue_usd REAL NOT NULL DEFAULT 0,
+      cohort_start TEXT,
+      cohort_end TEXT,
+      observed_through TEXT,
+      windows_json TEXT,
+      bounded INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL,
       PRIMARY KEY (campaign_id, keyword_id)
     );
@@ -184,15 +203,6 @@ function migrate(d: Database.Database): void {
       PRIMARY KEY (provider, field)
     );
 
-    CREATE TABLE IF NOT EXISTS alert_rules (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      kind TEXT NOT NULL,
-      enabled INTEGER NOT NULL DEFAULT 1,
-      params TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS sent_alerts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       campaign_id INTEGER,
@@ -204,5 +214,106 @@ function migrate(d: Database.Database): void {
       UNIQUE (alert_type, key)
     );
     CREATE INDEX IF NOT EXISTS idx_alerts_sent ON sent_alerts(sent_at);
+
+    -- Durable composite snapshots for Apple Ads traffic intelligence. Apple
+    -- insight endpoints are relatively expensive and can rate-limit bursts;
+    -- keeping the last good response here lets restarts reuse it and provides
+    -- a stale-if-error fallback when Apple temporarily returns 429/5xx.
+    CREATE TABLE IF NOT EXISTS traffic_intelligence_cache (
+      cache_key TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_traffic_cache_expiry ON traffic_intelligence_cache(expires_at);
+
+    -- Durable work state for the read-only nightly traffic cache warmer. This
+    -- never stores or applies Apple Ads mutations; it only records when each
+    -- app × country cache was last refreshed and when it may be tried again.
+    CREATE TABLE IF NOT EXISTS traffic_sync_targets (
+      app_id INTEGER NOT NULL,
+      country TEXT NOT NULL,
+      priority INTEGER NOT NULL DEFAULT 0,
+      last_attempt_at TEXT,
+      last_success_at TEXT,
+      last_error TEXT,
+      next_run_at INTEGER NOT NULL DEFAULT 0,
+      failure_count INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (app_id, country)
+    );
+    CREATE INDEX IF NOT EXISTS idx_traffic_sync_due ON traffic_sync_targets(next_run_at, priority DESC);
+
+    CREATE TABLE IF NOT EXISTS adapty_funnel_cache (
+      cache_key TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS adapty_cohort_cache (
+      cache_key TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS adapty_keyword_geo_cache (
+      cache_key TEXT PRIMARY KEY,
+      payload TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+
+    -- Append-only Platform API observations. Raw responses are retained for
+    -- auditability; the separate cache points at the latest good snapshot so
+    -- a transient Apple 429/5xx never erases a usable dashboard view.
+    CREATE TABLE IF NOT EXISTS platform_api_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      snapshot_key TEXT NOT NULL,
+      source TEXT NOT NULL,
+      method_id TEXT NOT NULL,
+      app_id INTEGER,
+      raw_payload TEXT NOT NULL,
+      normalized_payload TEXT NOT NULL,
+      request_meta TEXT NOT NULL,
+      fetched_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_platform_snapshot_key ON platform_api_snapshots(snapshot_key, id DESC);
+    CREATE INDEX IF NOT EXISTS idx_platform_snapshot_source ON platform_api_snapshots(source, app_id, id DESC);
+
+    CREATE TABLE IF NOT EXISTS platform_api_cache (
+      cache_key TEXT PRIMARY KEY,
+      snapshot_id INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      payload TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      last_error TEXT,
+      FOREIGN KEY (snapshot_id) REFERENCES platform_api_snapshots(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_platform_cache_expiry ON platform_api_cache(expires_at);
   `);
+
+  // SQLite has no `ADD COLUMN IF NOT EXISTS`; preserve existing local data
+  // while upgrading snapshots created by earlier dashboard versions.
+  const revenueColumns = new Set(
+    (d.prepare("PRAGMA table_info(asa_kw_revenue)").all() as Array<{ name: string }>).map((column) => column.name),
+  );
+  const additions: Array<[string, string]> = [
+    ["attributed_installs", "INTEGER NOT NULL DEFAULT 0"],
+    ["cohort_start", "TEXT"],
+    ["cohort_end", "TEXT"],
+    ["observed_through", "TEXT"],
+    ["windows_json", "TEXT"],
+    ["bounded", "INTEGER NOT NULL DEFAULT 0"],
+  ];
+  for (const [name, type] of additions) {
+    if (!revenueColumns.has(name)) d.exec(`ALTER TABLE asa_kw_revenue ADD COLUMN ${name} ${type}`);
+  }
+
+  const campaignColumns = new Set(
+    (d.prepare("PRAGMA table_info(asa_campaigns)").all() as Array<{ name: string }>).map((column) => column.name),
+  );
+  if (!campaignColumns.has("countries_json")) d.exec("ALTER TABLE asa_campaigns ADD COLUMN countries_json TEXT");
 }

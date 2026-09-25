@@ -1,0 +1,129 @@
+/* ASO Studio design system — the look of an Adapty-style admin analytics dashboard
+   (Adapty-style, 2026-09-23), shared by every product in the studio.
+
+   Products keep their own component CSS; each one imports this file and a small
+   bridge that maps its legacy variables onto the --ds-* tokens below. Theme:
+   <html data-theme="light|dark">; light is the default. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+:root,
+:root[data-theme="light"] {
+  color-scheme: light;
+  --ds-font: Inter, -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --ds-font-mono: "SF Mono", ui-monospace, Menlo, monospace;
+
+  /* surfaces */
+  --ds-bg: #fafaf9;
+  --ds-panel: #ffffff;
+  --ds-panel-2: #f6f6f3;
+  --ds-hover: #f1f1ed;
+  --ds-selected: #f1ebff;
+  --ds-input-bg: #ffffff;
+  --ds-tip-bg: #ffffff;
+  --ds-row-total: #faf9fc;
+
+  /* lines */
+  --ds-border: #e5e5df;
+  --ds-hairline: #ececE7;
+  --ds-grid: #efefea;
+  --ds-axis: #d6d6cf;
+  --ds-ctl-border: #b8b8b8;
+
+  /* ink */
+  --ds-text: #363630;
+  --ds-strong: #111111;
+  --ds-muted: #696969;
+  --ds-subtle: #9a9a93;
+
+  /* accent — one purple action color */
+  --ds-accent: #6720ff;
+  --ds-accent-hover: #5516e0;
+  --ds-accent-soft: #f1ebff;
+  --ds-on-accent: #ffffff;
+
+  /* semantic */
+  --ds-good: #2f8f14;
+  --ds-bad: #e0401f;
+  --ds-warn: #b7791f;
+  --ds-good-soft: #e8f6e1;
+  --ds-bad-soft: #fde9e4;
+  --ds-warn-soft: #fbf1dc;
+  --ds-s-good: #4cbb17;
+  --ds-s-serious: #f5a078;
+  --ds-s-critical: #f13a13;
+  --ds-s-neutral: #c9c9c2;
+
+  /* categorical series */
+  --ds-c1: #7b5cff;
+  --ds-c2: #eb6834;
+  --ds-c3: #18a0a0;
+  --ds-c4: #e0a100;
+  --ds-dim: #e3e3dd;
+
+  /* shape */
+  /* shape — one radius family, nothing square and nothing round except badges */
+  --ds-radius-card: 8px;      /* cards, tables, popovers, controls */
+  --ds-radius-control: 8px;
+  --ds-radius-inner: 6px;     /* segment buttons, menu rows, rate chips */
+  --ds-radius-pill: 999px;    /* small status badges only */
+  --ds-control-h: 40px;
+  --ds-control-h-sm: 32px;
+  --ds-control-border: .75px solid var(--ds-ctl-border);
+  --ds-shadow: 0 1px 8px rgba(1, 0, 48, .10);
+  --ds-shadow-pop: 0 8px 28px rgba(1, 0, 48, .16);
+  --ds-scrollbar: rgba(54, 54, 48, .22);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ds-bg: #121216;
+  --ds-panel: #1b1b21;
+  --ds-panel-2: #212129;
+  --ds-hover: #26262d;
+  --ds-selected: #2a2342;
+  --ds-input-bg: #1b1b21;
+  --ds-tip-bg: #23232a;
+  --ds-row-total: #212129;
+
+  --ds-border: #2c2c34;
+  --ds-hairline: #2a2a31;
+  --ds-grid: #26262d;
+  --ds-axis: #3a3a43;
+  --ds-ctl-border: #44444e;
+
+  --ds-text: #ececf1;
+  --ds-strong: #ffffff;
+  --ds-muted: #9a9aa5;
+  --ds-subtle: #6b6b75;
+
+  --ds-accent: #8f76ff;
+  --ds-accent-hover: #a28dff;
+  --ds-accent-soft: #2a2342;
+  --ds-on-accent: #ffffff;
+
+  --ds-good: #5fd33a;
+  --ds-bad: #ff6a4d;
+  --ds-warn: #e0a100;
+  --ds-good-soft: #1b2e16;
+  --ds-bad-soft: #3a1f1a;
+  --ds-warn-soft: #362b14;
+  --ds-s-good: #4cbb17;
+  --ds-s-serious: #c9764f;
+  --ds-s-critical: #e0401f;
+  --ds-s-neutral: #4a4a53;
+
+  --ds-c1: #8f76ff;
+  --ds-c2: #d95926;
+  --ds-c3: #199e70;
+  --ds-c4: #c98500;
+  --ds-dim: #34343d;
+
+  --ds-shadow: 0 1px 8px rgba(0, 0, 0, .45);
+  --ds-shadow-pop: 0 8px 28px rgba(0, 0, 0, .5);
+  --ds-scrollbar: rgba(255, 255, 255, .16);
+}
+
+html, body {
+  font-family: var(--ds-font);
+  -webkit-font-smoothing: antialiased;
+}

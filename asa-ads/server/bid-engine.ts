@@ -154,7 +154,7 @@ export function suggestSearchTermActions(daysBack = 14, appId?: number, minImpFo
         installs: r.installs,
         spend: r.spend,
         suggestion: "add_as_keyword",
-        reason: `${r.installs} install(s) за период, но keyword не таргетится напрямую`,
+        reason: `Установок за период: ${r.installs}, но запрос не добавлен ключом`,
       });
     } else if (r.imp >= minImpForNegative && r.taps >= minTapForNegative && r.installs === 0) {
       out.push({
@@ -166,7 +166,7 @@ export function suggestSearchTermActions(daysBack = 14, appId?: number, minImpFo
         installs: 0,
         spend: r.spend,
         suggestion: "negative",
-        reason: `${r.imp} imp / ${r.taps} taps / 0 installs — мусорный трафик`,
+        reason: `${r.imp} показов · ${r.taps} тапов · 0 установок — нерелевантный трафик`,
       });
     }
   }

@@ -1,10 +1,8 @@
-# ASA Ads
+# Ads (Apple Ads)
 
 Self-hosted Apple Search Ads optimization dashboard with ROI projection, bid intelligence, multi-app support, and ASC trial cross-match. Sibling to [`aso-keywords`](../aso-keywords) in the ASO Studio monorepo.
 
-> **Status:** v0.2 (May 2026). Bloomberg-terminal aesthetic, fully real-time, designed to be driven by humans **or** an LLM agent.
-
-![ASA Ads demo](docs/demo.gif)
+> **Status:** September 2026. Served by the ASO Studio gateway at `http://localhost:5173/asa/` (API under `/asa-api/`), in the shared studio design system. Read-only by default: bid mutations are fail-closed (`ASA_MUTATIONS_ENABLED=false`). Designed to be driven by humans **or** an LLM agent.
 
 ## What it does
 
@@ -60,7 +58,7 @@ cp .env.example .env
 
 Or via UI: open the app, go to `Settings → API Credentials`, paste IDs + PEM contents. Saved to SQLite (still gitignored).
 
-**Optional — real revenue / ROAS overlay.** By default ROI uses a country-average estimate. To overlay deterministic revenue, point the `GEO_REVENUE_*` / `KEYWORD_REVENUE_*` env vars (see `.env.example`) at your own Cloud Functions: a geo-grained feed returning `{ rows: [{ country, trials, paid, revenueUsd }] }`, and/or a per-keyword feed (AdServices attribution) folded to country grain server-side. Set the matching app `adamId` per feed; leave unset to disable. Function keys stay server-side and never reach the browser.
+**Real revenue / ROAS overlay.** Set `ADAPTY_ANALYTICS_APP_ID` to MedScan's Apple adamId. The server reads the app-specific Adapty secret from GCP Secret Manager and requests Apple Ads installs, trials, paid subscriptions, and net revenue directly from the Adapty Analytics Export API, segmented by Apple's keyword ID. The legacy custom attribution Cloud Function path has been removed.
 
 ### 4. Run
 
@@ -107,8 +105,12 @@ curl -s -X POST http://localhost:5194/api/actions \
   -d '{"type":"update_bid","campaign_id":2143847206,"ad_group_id":2148358337,"keyword_id":2265071585,"amount":"0.60"}'
 # → {"id": 42}
 
-# 2. Apply it (calls ASA API)
-curl -s -X POST http://localhost:5194/api/actions/42/apply
+# 2. Apply it only after the user explicitly approves this exact run.
+# The server is fail-closed unless ASA_MUTATIONS_ENABLED=true and the
+# approval header is present. Keep the flag disabled during audits.
+ASA_MUTATIONS_ENABLED=true npm run server
+curl -s -X POST http://localhost:5194/api/actions/42/apply \
+  -H 'x-asa-approval: explicit-user-approved'
 # → {"ok": true}
 ```
 
@@ -135,7 +137,9 @@ HAVING spend > 1.0 AND installs = 0
 ORDER BY spend DESC;
 ```
 
-**Apply all high-confidence bid recommendations** (the dashboard has a "Bulk apply" button for this; programmatic equivalent):
+**Queue high-confidence bid recommendations for review**. This does not change
+the Apple Ads account; review every queued action in the dashboard and apply it
+only after explicit user approval:
 ```bash
 curl -s http://localhost:5194/api/recommendations/bids?days=7 \
   | jq -r '.[] | select(.confidence=="high") | "\(.keyword_id) \(.recommended_bid)"' \
@@ -147,8 +151,7 @@ curl -s http://localhost:5194/api/recommendations/bids?days=7 \
       enq=$(curl -s -X POST http://localhost:5194/api/actions \
         -H 'Content-Type: application/json' \
         -d "{\"type\":\"update_bid\",\"campaign_id\":$cid,\"ad_group_id\":$agid,\"keyword_id\":$kid,\"amount\":\"$amount\"}")
-      aid=$(echo $enq | jq -r .id)
-      curl -s -X POST http://localhost:5194/api/actions/$aid/apply
+      echo "$enq"
     done
 ```
 
@@ -231,7 +234,6 @@ asa-ads/
 │   │   └── sse.ts                — EventSource hook
 │   └── api.ts                    — typed fetch client
 ├── cli/sync.ts         — `npm run sync`
-├── docs/demo.mp4       — demo video
 └── data/               — SQLite (gitignored)
 ```
 
