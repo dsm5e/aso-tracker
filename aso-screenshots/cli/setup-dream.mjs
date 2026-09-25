@@ -13,6 +13,7 @@
  * Sources: public/uploads/dream/<device>-0N-<name>.png (root = en UI) and
  * public/uploads/dream/<lang>/… for de fr pt tr ar hi ja ko zh ru.
  * Backgrounds: public/uploads/dream/decor/bg-{iphone,ipad}.png (procedural).
+ * Per-locale frame swaps: public/uploads/dream/variants/ (sourceOverrides).
  *
  * API: the gateway serves the Studio on :5173 (`/studio-api`); override with
  * ASO_API for the standalone dev server (http://localhost:5181/api).
@@ -114,6 +115,13 @@ const layoutVariants = [
   { id: 'T', title: 'Tradition first', keys: ORDER_T },
 ].map((v) => ({ id: v.id, title: v.title, slotIds: ['iphone', 'ipad'].flatMap((dev) => v.keys.map((k) => `dr-${dev}-${k}`)) }));
 
+// en-UI tradition-first locales: the symbol frame opens on the Islamic tab
+// (en capture with "Islamic Interpretation / Islamic (Ibn Sirin)" selected).
+const ISLAMIC_EN_UI = ['ur-PK', 'id', 'ms', 'bn-BD'];
+const islamicSymbol = Object.fromEntries(['iphone', 'ipad'].map((dev) => [
+  `dr-${dev}-symbol`, `${BASE}/variants/${dev}-04-symbol-islamic.png`,
+]));
+
 const locales = LOCALES.map((code) => {
   const lang = LOCALE_COPY[code] ?? code;
   const copy = COPY[lang];
@@ -130,6 +138,10 @@ const locales = LOCALES.map((code) => {
     ...(meta.rtl ? { rtl: true } : {}),
     ...(meta.font ? { fontOverride: meta.font } : {}),
     translations,
+    ...(ISLAMIC_EN_UI.includes(code) ? { sourceOverrides: islamicSymbol } : {}),
+    // Bengali headline runs taller: shrink it a bit on the iPhone symbol frame so the
+    // phone rises and the Islamic tab row stays inside the canvas.
+    ...(code === 'bn-BD' ? { slotAdjustments: { 'dr-iphone-symbol': { titlePx: 112, subPx: 54 } } } : {}),
     variant: TRADITION_FIRST.includes(code) ? 'T' : 'A',
   };
 });
@@ -138,7 +150,7 @@ const locales = LOCALES.map((code) => {
 const rootFiles = new Set((await readdir(UPLOADS, { withFileTypes: true })).filter((e) => e.isFile()).map((e) => e.name));
 const files = {};
 for (const e of await readdir(UPLOADS, { withFileTypes: true })) {
-  if (!e.isDirectory() || e.name === 'decor') continue;
+  if (!e.isDirectory() || e.name === 'decor' || e.name === 'variants') continue;
   files[e.name] = (await readdir(path.join(UPLOADS, e.name))).filter((n) => rootFiles.has(n)).sort();
 }
 const localizedSources = { dir: DIR, rootLang: 'en', files, localeMap: LOCALE_MAP, fallback: ['en'], defaultLang: 'en' };
