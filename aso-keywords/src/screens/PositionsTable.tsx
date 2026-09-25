@@ -143,7 +143,10 @@ export default function PositionsTable({
   onKeywordsChanged,
   toolbarLead,
   toolbarTrail,
+  liveCells,
 }: {
+  /** `${locale}|${keyword lowercased}` → queued / updating / just done (refresh glow). */
+  liveCells?: Map<string, 'queued' | 'updating' | 'done'>;
   /** Page actions rendered at the start / end of the table's single toolbar row. */
   toolbarLead?: ReactNode;
   toolbarTrail?: ReactNode;
@@ -542,6 +545,7 @@ export default function PositionsTable({
                 <PositionRow
                   key={row.key}
                   alt={(start + offset) % 2 === 1}
+                  live={liveCells?.get(`${locale}|${row.keyword.toLocaleLowerCase()}`)}
                   row={row}
                   columns={visible}
                   selected={selected.has(row.key)}
@@ -593,10 +597,11 @@ export default function PositionsTable({
 const EMPTY: string[] = [];
 
 const PositionRow = memo(function PositionRow({
-  alt, row, columns, selected, updateState, trendDates, popularityUnavailable, onSelect,
+  alt, live, row, columns, selected, updateState, trendDates, popularityUnavailable, onSelect,
   renderKeywordExtra, renderTop5, renderUpdated, onOpenDetail, onRefresh, onRemove, onSaveNote,
 }: {
   alt: boolean;
+  live?: 'queued' | 'updating' | 'done';
   row: RowModel;
   columns: ColumnDef[];
   selected: boolean;
@@ -688,7 +693,7 @@ const PositionRow = memo(function PositionRow({
     }
   };
   return (
-    <tr className={[selected ? 'pt-row-selected' : '', alt ? 'pt-alt' : ''].filter(Boolean).join(' ') || undefined} onClick={onRowClick} aria-selected={selected}>
+    <tr className={[selected ? 'pt-row-selected' : '', alt ? 'pt-alt' : '', live ? `pt-live-${live}` : ''].filter(Boolean).join(' ') || undefined} onClick={onRowClick} aria-selected={selected}>
       <td className="pt-sel pt-sticky-0">
         <input type="checkbox" checked={selected} aria-label={`Выделить ${row.keyword}`}
           onClick={(event) => { event.preventDefault(); onSelect(row.key, event.shiftKey ? 'range' : 'toggle'); }} onChange={() => { /* handled on click */ }} />

@@ -10,6 +10,10 @@ export interface SnapshotProgress {
   completed?: number;
   locale?: string;
   keyword?: string;
+  /** App of a per-keyword event (keyword-start / retry / keyword). */
+  app?: string;
+  /** 'start' only: every `app|locale|keyword` combo of the run. */
+  queue?: string[];
   position?: number | null;
   error?: string;
   reason?: string;
@@ -215,7 +219,10 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
     }
   });
 
-  emit({ type: 'start', total: totalCombos, sleepMs, workers, rankSource, gate: hostGate(RANK_HOST).status() });
+  // The whole queue goes out once, so the UI can mark queued cells (index.ts keeps
+  // the pending set; it is not replayed through the event buffer).
+  const queue = Array.from(byLocale.values()).flat().map((t) => `${t.app.id}|${t.locale}|${t.keyword}`);
+  emit({ type: 'start', total: totalCombos, sleepMs, workers, rankSource, gate: hostGate(RANK_HOST).status(), queue });
 
   /** Both hosts limited this many times in a row → give up with a readable reason. */
   const MAX_CONSECUTIVE_LIMITS = 4;
@@ -243,6 +250,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
           try {
             emit({
               type: 'keyword-start',
+              app: task.app.id,
               completed,
               total: totalCombos,
               locale: task.locale,
@@ -255,6 +263,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
               signal: ctrl.signal,
               onRetry: ({ attempt, maxAttempts, reason }) => emit({
                 type: 'retry',
+                app: task.app.id,
                 completed,
                 total: totalCombos,
                 locale: task.locale,
@@ -286,6 +295,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             completed++;
             emit({
               type: 'keyword',
+              app: task.app.id,
               completed,
               total: totalCombos,
               locale: task.locale,
@@ -315,6 +325,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             if (attempt < MAX_TASK_ATTEMPTS) {
               emit({
                 type: 'retry',
+                app: task.app.id,
                 completed,
                 total: totalCombos,
                 locale: task.locale,
@@ -342,6 +353,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             completed++;
             emit({
               type: 'keyword',
+              app: task.app.id,
               completed,
               total: totalCombos,
               locale: task.locale,

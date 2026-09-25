@@ -165,3 +165,21 @@ body.pt-resizing, body.pt-resizing * { cursor: col-resize !important; user-selec
 .kba-global p { margin: 0; color: var(--ds-text); font-size: 13px; line-height: 19px; }
 .kba-global .kba-global-muted { color: var(--ds-muted); }
 .kba-global .kba-global-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--ds-warn); }
+
+/* ---------- Live refresh: queued (amber) · updating (green pulse) · just done (green flash) ---------- */
+:root, :root[data-theme="light"] { --live-queued: #c98a14; --live-queued-soft: rgba(224, 161, 0, .10); --live-on: #1a7d52; --live-on-soft: rgba(26, 125, 82, .14); }
+:root[data-theme="dark"] { --live-queued: #d9a23a; --live-queued-soft: rgba(224, 161, 0, .10); --live-on: #4cc38a; --live-on-soft: rgba(76, 195, 138, .16); }
+@keyframes live-pulse { 0%, 100% { box-shadow: inset 0 0 0 1.5px var(--live-on), 0 0 0 0 var(--live-on-soft); } 50% { box-shadow: inset 0 0 0 1.5px var(--live-on), 0 0 12px 2px var(--live-on-soft); } }
+@keyframes live-flash { 0% { background: var(--live-on-soft); } 100% { background: transparent; } }
+/* matrix cells */
+.mx-table td.mx-live-queued { background: var(--live-queued-soft) !important; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--live-queued) 45%, transparent); }
+.mx-table td.mx-live-updating { background: var(--live-on-soft) !important; animation: live-pulse 1.2s ease-in-out infinite; position: relative; z-index: 1; }
+.mx-table td.mx-live-done { animation: live-flash 2.4s ease-out; }
+/* positions rows */
+.pt-table tbody tr.pt-live-queued td { background: var(--live-queued-soft); }
+.pt-table tbody tr.pt-live-queued td:first-child { box-shadow: inset 3px 0 0 var(--live-queued); }
+@keyframes live-row { 0%, 100% { background: var(--live-on-soft); } 50% { background: color-mix(in srgb, var(--live-on) 26%, transparent); } }
+.pt-table tbody tr.pt-live-updating td { animation: live-row 1.2s ease-in-out infinite; }
+.pt-table tbody tr.pt-live-updating td:first-child { box-shadow: inset 3px 0 0 var(--live-on); }
+.pt-table tbody tr.pt-live-done td { animation: live-flash 2.4s ease-out; }
+@media (prefers-reduced-motion: reduce) { .mx-table td.mx-live-updating, .pt-table tbody tr.pt-live-updating td { animation: none; background: var(--live-on-soft); } }

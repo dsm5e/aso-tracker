@@ -718,7 +718,17 @@ const snapshotState: SnapshotRunState = {
 };
 const SNAPSHOT_BUFFER_CAP = 500;
 
+/** Combos of the running snapshot not answered yet — GET /api/snapshot/queue. */
+let snapshotPending = new Set<string>();
+
 function snapshotBroadcast(event: SnapshotEvent) {
+  if (event.type === 'start' && event.queue) {
+    snapshotPending = new Set(event.queue);
+    // Keep the replay buffer small: clients fetch the queue separately.
+    event = { ...event, queue: undefined };
+  }
+  if (event.type === 'keyword' && event.app && event.locale && event.keyword) snapshotPending.delete(`${event.app}|${event.locale}|${event.keyword}`);
+  if (event.type === 'done' || event.type === 'abort') snapshotPending = new Set();
   snapshotState.events.push(event);
   if (snapshotState.events.length > SNAPSHOT_BUFFER_CAP) {
     snapshotState.events.splice(0, snapshotState.events.length - SNAPSHOT_BUFFER_CAP);
@@ -853,6 +863,18 @@ const scheduler = new NightlyScheduler({
   save: (s) => saveScheduleState(s),
 });
 registerScheduleRoutes(app, scheduler);
+
+/** Pending combos of the running snapshot, optionally for one app: ["locale|keyword", …]. */
+app.get('/api/snapshot/queue', (req, res) => {
+  const appId = typeof req.query.app === 'string' ? req.query.app : null;
+  const out: string[] = [];
+  for (const combo of snapshotPending) {
+    const [app, ...rest] = combo.split('|');
+    if (!appId) out.push(combo);
+    else if (app === appId) out.push(rest.join('|'));
+  }
+  res.json({ running: snapshotState.running, pending: out });
+});
 
 app.get('/api/snapshot/state', (_req, res) => {
   res.json(snapshotPublicState());

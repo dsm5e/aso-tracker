@@ -495,6 +495,9 @@ export const api = {
     fetch('/api/snapshot/settings').then((r) => j<SnapshotSettings>(r)),
   schedule: () =>
     fetch('/api/schedule?brief=1').then((r) => j<ScheduleSummary>(r)),
+  /** Pending combos of the running snapshot for one app: ["locale|keyword", …]. */
+  snapshotQueue: (appId: string) =>
+    fetch(`/api/snapshot/queue?app=${encodeURIComponent(appId)}`).then((r) => j<{ running: boolean; pending: string[] }>(r)),
   movers: (period: 'day' | 'week' | 'month', appId?: string, locale?: string) => {
     const qs = new URLSearchParams({ period });
     if (appId) qs.set('app', appId);
@@ -592,6 +595,7 @@ export interface SnapshotEvent {
   completed?: number;
   locale?: string;
   keyword?: string;
+  app?: string;
   position?: number | null;
   error?: string;
   reason?: string;

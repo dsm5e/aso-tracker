@@ -59,7 +59,10 @@ export default function CountryMatrix({
   onOpenStorefront,
   refreshKey,
   toolbarLead,
+  liveCells,
 }: {
+  /** `${locale}|${keyword lowercased}` → cell being refreshed now / just refreshed. */
+  liveCells?: Map<string, 'queued' | 'updating' | 'done'>;
   /** Page actions (refresh) rendered at the start of the matrix toolbar. */
   toolbarLead?: ReactNode;
   appId: string;
@@ -303,7 +306,7 @@ export default function CountryMatrix({
               )) : <>
                 {start > 0 && <tr className="mx-spacer" style={{ height: start * ROW_H }}><td colSpan={2 + visibleColumns.length} /></tr>}
                 {windowRows.map((row, offset) => (
-                  <MatrixRow key={row.index} alt={(start + offset) % 2 === 1} row={row} columns={visibleColumns} lookup={lookup} dates={data?.dates ?? EMPTY_DATES} onOpen={onOpenCell} />
+                  <MatrixRow key={row.index} alt={(start + offset) % 2 === 1} row={row} columns={visibleColumns} lookup={lookup} dates={data?.dates ?? EMPTY_DATES} onOpen={onOpenCell} live={liveCells && liveCells.size ? liveCells : undefined} />
                 ))}
                 {end < rows.length && <tr className="mx-spacer" style={{ height: (rows.length - end) * ROW_H }}><td colSpan={2 + visibleColumns.length} /></tr>}
               </>}
@@ -318,8 +321,9 @@ export default function CountryMatrix({
 const EMPTY_DATES: string[] = [];
 
 /** One keyword row. Memoized: scrolling only renders rows entering the window. */
-const MatrixRow = memo(function MatrixRow({ alt, row, columns, lookup, dates, onOpen }: {
+const MatrixRow = memo(function MatrixRow({ alt, row, columns, lookup, dates, onOpen, live }: {
   alt: boolean;
+  live?: Map<string, 'queued' | 'updating' | 'done'>;
   row: RowModel;
   columns: string[];
   lookup: Map<string, Array<MatrixCell | undefined>>;
@@ -335,13 +339,14 @@ const MatrixRow = memo(function MatrixRow({ alt, row, columns, lookup, dates, on
         )}
       </td>
       {columns.map((code) => (
-        <Cell key={code} cell={lookup.get(code)?.[row.index]} keyword={row.keyword} code={code} dates={dates} onOpen={onOpen} />
+        <Cell key={code} cell={lookup.get(code)?.[row.index]} keyword={row.keyword} code={code} dates={dates} onOpen={onOpen} live={live?.get(`${code}|${row.keyword.toLocaleLowerCase()}`)} />
       ))}
     </tr>
   );
 });
 
-function Cell({ cell, keyword, code, dates, onOpen }: {
+function Cell({ cell, keyword, code, dates, onOpen, live }: {
+  live?: 'queued' | 'updating' | 'done';
   cell: MatrixCell | undefined;
   keyword: string;
   code: string;
@@ -365,7 +370,7 @@ function Cell({ cell, keyword, code, dates, onOpen }: {
     [null, 'Снимок', dateIndex >= 0 ? formatDate(dates[dateIndex]) : '—'],
   ];
   return (
-    <td className="mx-cell">
+    <td className={`mx-cell${live ? ` mx-live-${live}` : ''}`}>
       <button type="button" className="mx-cell-btn" onClick={() => onOpen(keyword, code)} {...tipProps(`${keyword} · ${storefront.flag} ${storefront.name}`, tip)} aria-label={`${keyword}, ${storefront.name}: ${tip[0][2]}`}>
         {tier === 'pending' ? <span className="mx-pending">…</span>
           : tier === 'out' ? <span className="mx-rank mx-zero">0</span>

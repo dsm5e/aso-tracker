@@ -170,6 +170,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [progress, setProgress] = useState<SnapshotEvent | null>(null);
+  const [liveCells, setLiveCells] = useState<Map<string, LiveState>>(() => new Map());
+  const [liveBump, setLiveBump] = useState(0);
+  const liveBumpAt = useRef(0);
   const [artworks, setArtworks] = useState<Record<string, string>>(initialArtworkCache);
   const artworksRef = useRef(artworks);
   const artworkWorkRef = useRef<Promise<void>>(Promise.resolve());
@@ -427,11 +430,51 @@ export default function App() {
     setLocale(normalized);
   };
 
+  // Queued cells come from the server (any run: manual, delta, nightly).
+  const loadLiveQueue = useCallback(() => {
+    const app = selectedAppRef.current;
+    if (!app) return;
+    api.snapshotQueue(app.id).then(({ pending }) => {
+      setLiveCells((current) => {
+        const next = new Map<string, LiveState>();
+        for (const [key, state] of current) if (state !== 'queued') next.set(key, state);
+        for (const combo of pending) {
+          const cut = combo.indexOf('|');
+          const key = `${combo.slice(0, cut)}|${combo.slice(cut + 1).toLocaleLowerCase()}`;
+          if (!next.has(key)) next.set(key, 'queued');
+        }
+        return next;
+      });
+    }).catch(() => {});
+  }, []);
+
   const applySnapshotEvent = useCallback((event: SnapshotEvent) => {
     setProgress(event);
+    // Live cells for the matrix glow: «updating» while Apple is asked, «done» flashes briefly.
+    if (event.type === 'start') loadLiveQueue();
+    if (event.keyword && event.locale && (!event.app || event.app === selectedAppRef.current?.id)) {
+      const cellKey = `${event.locale}|${event.keyword.toLocaleLowerCase()}`;
+      if (event.type === 'keyword-start' || event.type === 'retry') {
+        setLiveCells((current) => new Map(current).set(cellKey, 'updating'));
+      } else if (event.type === 'keyword') {
+        setLiveCells((current) => new Map(current).set(cellKey, 'done'));
+        window.setTimeout(() => setLiveCells((current) => {
+          if (current.get(cellKey) !== 'done') return current;
+          const next = new Map(current);
+          next.delete(cellKey);
+          return next;
+        }), 2600);
+        // Pull fresh positions into the matrix while the run goes, at most every 5 s.
+        if (Date.now() - liveBumpAt.current > 5000) {
+          liveBumpAt.current = Date.now();
+          setLiveBump((n) => n + 1);
+        }
+      }
+    }
     if (event.type === 'done' || event.type === 'abort') {
       setRefreshing(false);
       setRunFinishedAt(Date.now());
+      window.setTimeout(() => setLiveCells(new Map()), 2600);
       setRowUpdates({});
       setMatrixRefreshKey((key) => key + 1);
       const app = selectedAppRef.current;
@@ -482,7 +525,7 @@ export default function App() {
         [event.keyword!]: { status: event.error ? 'error' : 'done' },
       }));
     }
-  }, [loadApps]);
+  }, [loadApps, loadLiveQueue]);
 
   // A snapshot is a server-side singleton that survives page reloads. Attach on mount
   // and keep polling while idle, so runs started elsewhere (the 04:00 nightly job,
@@ -508,6 +551,7 @@ export default function App() {
           setRunFinishedAt(null);
           setRefreshing(true);
           if (state.lastProgress) setProgress(state.lastProgress);
+          loadLiveQueue();
           unsubscribe?.();
           unsubscribe = subscribeToSnapshot(applySnapshotEvent);
         })
@@ -516,7 +560,8 @@ export default function App() {
     attach();
     const timer = setInterval(attach, 15_000);
     return () => { alive = false; clearInterval(timer); if (unsubscribe) unsubscribe(); };
-  }, [applySnapshotEvent]);
+  }, [applySnapshotEvent, loadLiveQueue]);
+  useEffect(() => { if (refreshing) loadLiveQueue(); else setLiveCells((current) => (current.size ? new Map([...current].filter(([, state]) => state === 'done')) : current)); }, [refreshing, selectedApp?.id, loadLiveQueue]);
 
   const changeSpeed = (speed: SnapshotSpeed) => {
     setSnapshotSpeed(speed);
@@ -1083,7 +1128,8 @@ export default function App() {
               onDeleteSet={deleteMatrixSet}
               onOpenCell={openCell}
               onOpenStorefront={selectStorefront}
-              refreshKey={matrixRefreshKey}
+              refreshKey={matrixRefreshKey + liveBump}
+              liveCells={liveCells}
               toolbarLead={<>
                 {updateSplit('app')}
               </>}
@@ -1123,6 +1169,7 @@ export default function App() {
             onOpenDetail={setDetailKeyword}
             onRefresh={(keyword) => void refreshOne(keyword)}
             onKeywordsChanged={(map) => { setKeywordMap(map); setMatrixRefreshKey((key) => key + 1); loadApps().catch(() => {}); }}
+            liveCells={liveCells}
             toolbarLead={positionsLead}
             toolbarTrail={positionsTrail}
           />
@@ -1267,6 +1314,8 @@ function UpdateProgressBar({ running, progress, info, finishedAt, onStop }: {
     </div>
   );
 }
+
+type LiveState = 'queued' | 'updating' | 'done';
 
 const KEYWORD_TABS = [
   ['matrix', 'Матрица', 'Позиции каждого ключа во всех странах набора. Клик по ячейке — история и выдача, ⌘K — выбор страны'],
