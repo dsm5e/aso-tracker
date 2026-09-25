@@ -10,7 +10,7 @@
  * has to be base64-inlined.
  *
  * Reads the project from the running API, so it needs no argument:
- *   node cli/render-export.mjs [--out <folder>] [--locales ru,ja] [--slots 4,7]
+ *   node cli/render-export.mjs [--out <folder>] [--locales ru,ja] [--slots 4,7] [--devices iphone]
  *                              [--concurrency 3]
  *
  * `--slots` takes 1-based slot numbers, so reworking one frame and pushing it to
@@ -60,6 +60,9 @@ const wanted = only ? new Set(only.split(',').map((s) => s.trim())) : null;
 const slotArg = arg('slots');
 const wantedSlots = slotArg ? new Set(slotArg.split(',').map((s) => Number(s.trim()))) : null;
 const concurrency = Math.max(1, Number(arg('concurrency', '3')));
+// `--devices iphone` renders only that family (numbering stays per device).
+const devArg = arg('devices');
+const wantedDevices = devArg ? new Set(devArg.split(',').map((s) => s.trim())) : null;
 const pattern = arg('pattern', state.filenamePattern || '{n}-{app}.{ext}');
 const sourceLocale = state.sourceLocale || 'en';
 const ipadSize = state.ipadModel === 'ipad-pro-13' ? '2064x2752' : '2048x2732';
@@ -90,6 +93,7 @@ for (const loc of localeList) {
         const dev = slot.device ?? 'iphone';
         counters[dev] += 1;
         if (wantedSlots && !wantedSlots.has(counters[dev])) continue;
+        if (wantedDevices && !wantedDevices.has(dev)) continue;
         jobs.push({ slot, locale: loc, n: counters[dev], variant: v.id });
       }
     }
@@ -99,6 +103,7 @@ for (const loc of localeList) {
     // Slot numbers stay tied to the project index, so a re-render of slot 4
     // overwrites exactly 04-*.png in every locale folder.
     if (wantedSlots && !wantedSlots.has(i + 1)) return;
+    if (wantedDevices && !wantedDevices.has(slot.device ?? 'iphone')) return;
     jobs.push({ slot, locale: loc, n: i + 1 });
   });
 }

@@ -39,9 +39,18 @@ const FRAMES = {
   image: { file: '06-image.png', scale: { iphone: 1.3, ipad: 1.15 } },
   // iPad: the dual mockup's fixed offsets are iPhone-sized, so iPad shows Insights alone.
   insights: { file: '07-insights.png', secondary: { iphone: '08-journal.png' }, scale: { iphone: 0.86, ipad: 1 }, dx: { iphone: 0.03 } },
+  // Same pair with the phones swapped: Journal in front, Insights behind (iPhone only).
+  journal: { file: '08-journal.png', secondary: { iphone: '07-insights.png' }, scale: { iphone: 0.86 }, dx: { iphone: 0.03 }, copy: 'insights', devices: ['iphone'] },
 };
 const ORDER_A = ['result', 'voice', 'interp', 'symbol', 'chat', 'image', 'insights'];
 const ORDER_T = ['result', 'symbol', 'voice', 'interp', 'chat', 'image', 'insights'];
+// iPhone (owner feedback 2026-09-25): the patterns pair opens the set, the rest keeps
+// its relative order. FIRST = which phone of the pair stands in front.
+const FIRST = process.env.DREAM_FIRST ?? 'journal';
+const ORDERS = {
+  A: { iphone: [FIRST, ...ORDER_A.filter((k) => k !== 'insights')], ipad: ORDER_A },
+  T: { iphone: [FIRST, ...ORDER_T.filter((k) => k !== 'insights')], ipad: ORDER_T },
+};
 
 const DEVICE = {
   iphone: { W: 1320, titlePx: 128, subPx: 60, yFrac: 0.06 },
@@ -87,7 +96,7 @@ function slot(key, dev) {
     secondaryUrl: f.secondary?.[dev] ? `${BASE}/${dev}-${f.secondary[dev]}` : undefined,
     enhancedUrl: null,
     backgroundOverride: `#12142B url("${BASE}/decor/bg-${dev}.png") center / cover no-repeat`,
-    headline: { verb: COPY.en[key][0], descriptor: COPY.en[key][1], subhead: '' },
+    headline: { verb: COPY.en[f.copy ?? key][0], descriptor: COPY.en[f.copy ?? key][1], subhead: '' },
     font: 'Noto Serif Display',
     fontSize: d.titlePx,
     titlePx: d.titlePx,
@@ -108,12 +117,14 @@ function slot(key, dev) {
 }
 
 const screenshots = [];
-for (const dev of ['iphone', 'ipad']) for (const k of ORDER_A) screenshots.push(slot(k, dev));
+for (const dev of ['iphone', 'ipad']) {
+  for (const [k, f] of Object.entries(FRAMES)) if (!f.devices || f.devices.includes(dev)) screenshots.push(slot(k, dev));
+}
 
 const layoutVariants = [
-  { id: 'A', title: 'Default', keys: ORDER_A },
-  { id: 'T', title: 'Tradition first', keys: ORDER_T },
-].map((v) => ({ id: v.id, title: v.title, slotIds: ['iphone', 'ipad'].flatMap((dev) => v.keys.map((k) => `dr-${dev}-${k}`)) }));
+  { id: 'A', title: 'Default' },
+  { id: 'T', title: 'Tradition first' },
+].map((v) => ({ id: v.id, title: v.title, slotIds: ['iphone', 'ipad'].flatMap((dev) => ORDERS[v.id][dev].map((k) => `dr-${dev}-${k}`)) }));
 
 // en-UI tradition-first locales: the symbol frame opens on the Islamic tab
 // (en capture with "Islamic Interpretation / Islamic (Ibn Sirin)" selected).
@@ -129,7 +140,7 @@ const locales = LOCALES.map((code) => {
   const translations = {};
   for (const s of screenshots) {
     const key = s.id.split('-').pop();
-    const [verb, descriptor] = copy[key];
+    const [verb, descriptor] = copy[FRAMES[key].copy ?? key];
     translations[s.id] = { verb, descriptor, subhead: '' };
   }
   const meta = SCRIPT[code] ?? {};
