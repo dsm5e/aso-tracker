@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseMzSearch, positionFromRank } from './itunes.js';
 import { storeFrontHeader, storefrontCountry } from './storefront-ids.js';
-import { summarizeComparison } from './rank-source.js';
 
 const mzPayload = {
   pageData: {
@@ -51,20 +50,4 @@ test('storefront header has no language suffix', () => {
   assert.equal(storeFrontHeader('in-hi'), '143467,29');
   assert.equal(storefrontCountry('es-ca'), 'es');
   assert.equal(storeFrontHeader('xx'), null);
-});
-
-test('summarizeComparison: same-position share and mean abs diff', () => {
-  const s = summarizeComparison([
-    { date: 'd1', appstore: 10, itunes: 10 },
-    { date: 'd1', appstore: 37, itunes: 10 },
-    { date: 'd1', appstore: null, itunes: null },
-    { date: 'd1', appstore: null, itunes: 50 },
-  ]);
-  assert.equal(s.observations, 4);
-  assert.equal(s.samePositionPct, 50);
-  assert.equal(s.bothRanked, 2);
-  assert.equal(s.meanAbsDiff, 13.5);
-  assert.equal(s.meanSignedDiff, 13.5);
-  assert.equal(s.onlyItunes, 1);
-  assert.equal(summarizeComparison([]).samePositionPct, null);
 });

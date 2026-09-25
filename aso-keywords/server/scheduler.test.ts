@@ -27,12 +27,11 @@ import {
 
 const TODAY = '2026-09-25'; // Friday
 
-test('tiers: top-50, new (<7 days / never measured) and probe are daily; the rest weekly', () => {
+test('tiers: top-50 and new (<7 days / never measured) are daily; the rest weekly', () => {
   const base: ComboInfo = { app: 'medscan', locale: 'us', keyword: 'dicom viewer', firstDate: '2026-08-01', lastOkDate: '2026-09-24' };
   assert.deepEqual(tierOf({ ...base, lastPosition: 50 }, TODAY), { tier: 'daily', reason: 'top50' });
   assert.deepEqual(tierOf({ ...base, lastPosition: 51 }, TODAY), { tier: 'weekly', reason: null });
   assert.deepEqual(tierOf({ ...base, lastPosition: null }, TODAY), { tier: 'weekly', reason: null });
-  assert.deepEqual(tierOf({ ...base, lastPosition: 120, probe: true }, TODAY), { tier: 'daily', reason: 'probe' });
   assert.deepEqual(tierOf({ app: 'medscan', locale: 'us', keyword: 'fresh' }, TODAY), { tier: 'daily', reason: 'new' });
   // Added 6 days ago → still new; 7 days ago → regular.
   assert.equal(tierOf({ ...base, lastPosition: null, firstDate: '2026-09-19' }, TODAY).reason, 'new');

@@ -172,36 +172,11 @@ const APPSTORE_CACHE_MS = 15 * 60_000;
 const appStoreCache = new Map<string, { at: number; value: RankSearch }>();
 let schemaWarned = false;
 
-function fromItunes(results: SearchResult[], started: number, fallbackReason?: string): RankSearch {
-  const ids: string[] = [];
-  const lockups = new Map<string, RankLockup>();
-  for (const r of results) {
-    if (!r.trackId) continue;
-    const id = String(r.trackId);
-    ids.push(id);
-    lockups.set(id, {
-      name: r.trackName ?? '',
-      developer: r.artistName ?? '',
-      rating: r.averageUserRating,
-      ratingCount: r.userRatingCount,
-      genre: r.primaryGenreName,
-      bundleId: r.bundleId,
-    });
-  }
-  rememberLockups(lockups);
-  return { ids, lockups, source: 'itunes', fallbackReason, ms: Date.now() - started };
-}
-
-/** iTunes Search API reshaped as a rank result. */
-export async function searchItunesRanked(country: string, term: string, opts: GatedRequestOptions = {}): Promise<RankSearch> {
-  const started = Date.now();
-  return fromItunes(await searchItunes(country, term, opts), started);
-}
-
 /**
- * The App Store app's own search. Falls back to the iTunes Search API on
- * 400/403/429/5xx, timeouts, an unknown storefront, a paused host or a changed
- * response schema; the result's `source` tells which one answered.
+ * The App Store app's own search — the only rank source (the iTunes Search API
+ * was dropped as one on 2026-09-26: on-device checks in KZ and US matched this
+ * order, not iTunes'). No fallback: a failed request is an error the snapshot
+ * retries later, never a number from another search engine.
  */
 export async function searchAppStore(
   country: string,
@@ -214,17 +189,10 @@ export async function searchAppStore(
   const cached = appStoreCache.get(key);
   if (cached && Date.now() - cached.at < APPSTORE_CACHE_MS) return { ...cached.value, ms: 0 };
 
-  const fallback = async (reason: string) => {
-    const results = await searchItunes(country, term, opts);
-    const value = fromItunes(results, started, reason);
-    persistSerp(cc, term, 'itunes', value.ids);
-    return value;
-  };
-
   const header = storeFrontHeader(cc);
-  if (!header) return fallback(`storefront id for "${cc}" unknown`);
+  if (!header) throw new Error(`App Store storefront id for "${cc}" unknown`);
   const gate = hostGate('search.itunes.apple.com');
-  if (gate.isPaused()) return fallback('search.itunes.apple.com paused after a rate limit');
+  if (gate.isPaused()) throw new RateLimited('search.itunes.apple.com paused after a rate limit');
 
   const { priority = 'top', signal } = opts;
   let payload: unknown;
@@ -240,18 +208,20 @@ export async function searchAppStore(
     }, { key: `mz|${key}`, priority, signal });
   } catch (e) {
     if (isAbort(e)) throw e;
+    if (e instanceof RateLimited) throw e;
+    if (e instanceof GateHttpError && (e.status === 403 || e.status === 429)) throw new RateLimited(`App Store HTTP ${e.status}`);
     const reason = e instanceof GateHttpError ? `App Store HTTP ${e.status}` : isTimeout(e) ? 'App Store timeout' : (e as Error).message;
-    console.warn(`[appstore] ${cc}/"${term}" → ${reason}; falling back to iTunes`);
-    return fallback(reason);
+    console.warn(`[appstore] ${cc}/"${term}" → ${reason}`);
+    throw new Error(reason);
   }
 
   const parsed = parseMzSearch(payload);
   if (!parsed) {
     if (!schemaWarned) {
       schemaWarned = true;
-      console.warn('[appstore] ⚠️ MZStore response schema changed: pageData.bubbles[name=software].results missing — using iTunes API until fixed');
+      console.warn('[appstore] ⚠️ MZStore response schema changed: pageData.bubbles[name=software].results missing — ranks fail until fixed');
     }
-    return fallback('App Store response schema changed');
+    throw new Error('App Store response schema changed');
   }
   rememberLockups(parsed.lockups);
   const value: RankSearch = { ...parsed, source: 'appstore', ms: Date.now() - started };
@@ -259,10 +229,6 @@ export async function searchAppStore(
   appStoreCache.set(key, { at: Date.now(), value });
   if (appStoreCache.size > 5000) appStoreCache.delete(appStoreCache.keys().next().value!);
   return value;
-}
-
-export async function searchRanked(source: RankSource, country: string, term: string, opts: GatedRequestOptions = {}) {
-  return source === 'appstore' ? searchAppStore(country, term, opts) : searchItunesRanked(country, term, opts);
 }
 
 export async function lookupItunes(

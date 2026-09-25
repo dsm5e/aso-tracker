@@ -2,8 +2,7 @@
 //
 // Tiers per (app, storefront, keyword):
 //   daily  — last known position ≤ 50, or the keyword was added < 7 days ago
-//            (first snapshot row < 7 days old / never measured), or it is in
-//            the active App Store vs iTunes probe set;
+//            (first snapshot row < 7 days old / never measured);
 //   weekly — everything else, spread evenly over the week by a stable hash of
 //            keyword × storefront → weekday (the same search is shared by every
 //            app tracking it in that storefront, so they refresh on one day).
@@ -22,11 +21,10 @@ import { join } from 'node:path';
 import { db } from './db.js';
 import { loadApps, loadKeywords } from './config.js';
 import { KEYWORDS_HOME, ensureKeywordsHome } from './paths.js';
-import { activeProbeMatcher } from './rank-source.js';
 import { DEFAULT_GATE_CONFIG, hostGate, type GatePriority } from './host-gate.js';
 
 export type Tier = 'daily' | 'weekly';
-export type DeltaReason = 'top50' | 'new' | 'probe' | 'weekday' | 'overdue';
+export type DeltaReason = 'top50' | 'new' | 'weekday' | 'overdue';
 
 export const DAILY_MAX_POSITION = 50;
 export const NEW_KEYWORD_DAYS = 7;
@@ -44,7 +42,6 @@ export interface ComboInfo {
   firstDate?: string;
   /** Last successful snapshot, YYYY-MM-DD. */
   lastOkDate?: string;
-  probe?: boolean;
 }
 
 export interface PlannedTask {
@@ -95,7 +92,6 @@ export function weekdayFor(keyword: string, storefront: string): number {
 }
 
 export function tierOf(c: ComboInfo, today: string): { tier: Tier; reason: DeltaReason | null } {
-  if (c.probe) return { tier: 'daily', reason: 'probe' };
   if (c.lastPosition != null && c.lastPosition <= DAILY_MAX_POSITION) return { tier: 'daily', reason: 'top50' };
   if (c.lastOkDate === undefined && c.firstDate === undefined) return { tier: 'daily', reason: 'new' };
   if (c.firstDate !== undefined && daysBetween(c.firstDate, today) < NEW_KEYWORD_DAYS) return { tier: 'daily', reason: 'new' };
@@ -199,7 +195,6 @@ export function loadCombos(filter: { appIds?: string[]; locales?: string[] } = {
   `).all(...ids) as Array<{ app: string; locale: string; keyword: string; position: number | null }>) {
     pos.set(comboKey(r.app, r.locale, r.keyword), r.position);
   }
-  const isProbe = activeProbeMatcher();
 
   const out: ComboInfo[] = [];
   const seen = new Set<string>();
@@ -220,7 +215,6 @@ export function loadCombos(filter: { appIds?: string[]; locales?: string[] } = {
           lastPosition: pos.has(key) ? pos.get(key) : undefined,
           firstDate: h?.first,
           lastOkDate: h?.lastOk ?? undefined,
-          probe: isProbe?.({ app: app.id, locale, keyword }) ?? false,
         });
       }
     }

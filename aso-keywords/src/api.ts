@@ -495,12 +495,6 @@ export const api = {
     fetch('/api/snapshot/settings').then((r) => j<SnapshotSettings>(r)),
   schedule: () =>
     fetch('/api/schedule?brief=1').then((r) => j<ScheduleSummary>(r)),
-  setRankSource: (rankSource: RankSource) =>
-    fetch('/api/snapshot/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rankSource }),
-    }).then((r) => j<SnapshotSettings>(r)),
   movers: (period: 'day' | 'week' | 'month', appId?: string, locale?: string) => {
     const qs = new URLSearchParams({ period });
     if (appId) qs.set('app', appId);

@@ -1,7 +1,6 @@
 import { refreshOwnAppMeta } from './own-app-meta.js';
-import { RateLimited, fillTop5Names, positionFromRank, searchRanked, type RankSource, type Top5Entry } from './itunes.js';
+import { RateLimited, fillTop5Names, positionFromRank, searchAppStore, type RankSource, type Top5Entry } from './itunes.js';
 import { gateStatus, hostGate, onGateEvent, type GateHost, type GatePriority, type HostGateStatus } from './host-gate.js';
-import { activeProbeMatcher, insertProbe, loadSnapshotSettings, measureProbe, otherSource } from './rank-source.js';
 import { loadApps, loadKeywords, type AppConfig } from './config.js';
 import { insertSnapshot, type SnapshotRow, db } from './db.js';
 
@@ -22,7 +21,7 @@ export interface SnapshotProgress {
   attempt?: number;
   maxAttempts?: number;
   top5?: Top5Entry[];
-  /** Rank source that answered ('keyword') or the run's configured source ('start'). */
+  /** Rank source — always 'appstore' now; kept on events for older clients. */
   rankSource?: RankSource;
   /** Request latency for 'keyword' events, ms. */
   ms?: number;
@@ -36,8 +35,6 @@ export interface SnapshotOptions {
   workers?: number;
   /** Speed preset. ≤3250 ms = adaptive gate rate; slower presets cap the rate at 60000/sleepMs per minute. */
   sleepMs?: number;
-  /** Override the stored rank source setting for this run. */
-  rankSource?: RankSource;
   /** Skip (app, locale, keyword) combos that already have a successful snapshot today. */
   skipExisting?: boolean;
   /** Delta mode (scheduler.ts): only these `app|locale|keyword` combos, with their gate priority. */
@@ -47,7 +44,7 @@ export interface SnapshotOptions {
 }
 
 const RANK_HOSTS: GateHost[] = ['search.itunes.apple.com', 'itunes.apple.com'];
-const hostOf = (s: RankSource): GateHost => (s === 'appstore' ? 'search.itunes.apple.com' : 'itunes.apple.com');
+const RANK_HOST: GateHost = 'search.itunes.apple.com';
 
 /** Speed preset → optional gate cap. The default preset leaves pacing to AIMD. */
 function capFor(sleepMs: number): number | null {
@@ -121,7 +118,8 @@ function latestPositions(appIds: string[]): Map<string, number | null> {
  */
 export async function runSnapshot(opts: SnapshotOptions = {}) {
   const { appIds, locales, workers = 1, sleepMs = 3250, skipExisting = false, only, onProgress, isCancelled } = opts;
-  const rankSource: RankSource = opts.rankSource ?? loadSnapshotSettings().rankSource;
+  // Ranks come only from the App Store app's search (see itunes.ts searchAppStore).
+  const rankSource: RankSource = 'appstore';
 
   // Every refresh also pulls our apps' current icon/name/subtitle from the App Store,
   // so a new icon or title shows up with the new positions (best-effort, ~1–2 s per app).
@@ -217,9 +215,8 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
     }
   });
 
-  emit({ type: 'start', total: totalCombos, sleepMs, workers, rankSource, gate: hostGate(hostOf(rankSource)).status() });
+  emit({ type: 'start', total: totalCombos, sleepMs, workers, rankSource, gate: hostGate(RANK_HOST).status() });
 
-  const isProbe = activeProbeMatcher();
   /** Both hosts limited this many times in a row → give up with a readable reason. */
   const MAX_CONSECUTIVE_LIMITS = 4;
   let consecutiveLimits = 0;
@@ -253,7 +250,7 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
               attempt: (taskAttempts.get(taskKey) ?? 0) + 1,
               maxAttempts: MAX_TASK_ATTEMPTS,
             });
-            const res = await searchRanked(rankSource, task.locale, task.keyword, {
+            const res = await searchAppStore(task.locale, task.keyword, {
               priority: task.priority,
               signal: ctrl.signal,
               onRetry: ({ attempt, maxAttempts, reason }) => emit({
@@ -298,16 +295,6 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
               rankSource: res.source,
               ms: res.ms,
             });
-
-            // Dual measurement for the probe set: also record the other source.
-            const pair = { app: task.app.id, locale: task.locale, keyword: task.keyword };
-            if (isProbe?.(pair)) {
-              insertProbe({ ...pair, date: today, source: res.source, position, total, ms: res.ms });
-              if (res.source === rankSource) {
-                await measureProbe(pair, otherSource(rankSource), { priority: 'tail', signal: ctrl.signal, date: today })
-                  .catch((e) => console.warn(`[probe] ${taskKey}: ${(e as Error).message}`));
-              }
-            }
           } catch (e) {
             if (aborted || (e as Error).name === 'AbortError') return;
             if (e instanceof RateLimited) {
@@ -397,9 +384,9 @@ export async function refreshKeyword(
   const app = loadApps().find((a) => a.id === appId);
   if (!app) throw new Error(`unknown app ${appId}`);
   const today = new Date().toISOString().slice(0, 10);
-  const rankSource = loadSnapshotSettings().rankSource;
+  const rankSource: RankSource = 'appstore';
   try {
-    const res = await searchRanked(rankSource, locale, keyword, { priority: 'interactive' });
+    const res = await searchAppStore(locale, keyword, { priority: 'interactive' });
     const { position, total, top5 } = positionFromRank(res, app);
     const rec: SnapshotRow = {
       date: today,

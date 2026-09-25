@@ -12,7 +12,6 @@ import {
   type SnapshotSpeed,
   type SnapshotSettings,
   type ScheduleSummary,
-  type RankSource,
   type KeywordIdea,
   type KeywordSuggestionsResponse,
   type RelevanceRow,
@@ -107,11 +106,6 @@ function delta(from: number | null, to: number | null) {
   if (from == null || to == null) return null;
   return from - to;
 }
-
-const RANK_SOURCES: Array<{ value: RankSource; label: string; note: string }> = [
-  { value: 'appstore', label: 'App Store', note: 'как в приложении: порядок витрины, до 250 мест' },
-  { value: 'itunes', label: 'iTunes API', note: 'старый источник: до 200 мест, порядок расходится' },
-];
 
 function pluralKeys(n: number) {
   const m10 = n % 10, m100 = n % 100;
@@ -544,11 +538,8 @@ export default function App() {
     const timer = setInterval(load, 3000);
     return () => { alive = false; clearInterval(timer); };
   }, [updateMenuOpen]);
-  const changeRankSource = (rankSource: RankSource) => {
-    api.setRankSource(rankSource).then(setSnapshotSettings).catch(() => {});
-  };
-  const rankGate = snapshotSettings?.gates.find((g) =>
-    g.host === (snapshotSettings.rankSource === 'appstore' ? 'search.itunes.apple.com' : 'itunes.apple.com'));
+  // Ranks come only from the App Store search host.
+  const rankGate = snapshotSettings?.gates.find((g) => g.host === 'search.itunes.apple.com');
 
   const startSnapshot = async (scope: 'locale' | 'app' | 'all', delta = false) => {
     if (!selectedApp || !locale || refreshing) return;
@@ -921,15 +912,6 @@ export default function App() {
                     <strong>{SPEED_PRESETS[speed].label}</strong>
                     <small>{SPEED_PRESETS[speed].note}</small>
                     {snapshotSpeed === speed && <b><Icon name="check" /></b>}
-                  </button>
-                ))}
-                <div className="menu-separator" />
-                <div className="menu-label">Источник позиций</div>
-                {RANK_SOURCES.map(({ value, label, note }) => (
-                  <button key={value} onClick={() => changeRankSource(value)}>
-                    <strong>{label}</strong>
-                    <small>{note}</small>
-                    {snapshotSettings?.rankSource === value && <b><Icon name="check" /></b>}
                   </button>
                 ))}
                 {rankGate && (

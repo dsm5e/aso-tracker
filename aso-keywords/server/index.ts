@@ -14,7 +14,6 @@ import { appleJson, lookupBatch, lookupItunes, searchItunes } from './itunes.js'
 import { gateStatus, type GatePriority } from './host-gate.js';
 import { NightlyScheduler, buildDeltaPlan, loadScheduleState, planToOnly, saveScheduleState, type DeltaRunResult } from './scheduler.js';
 import { registerScheduleRoutes } from './routes-schedule.js';
-import { compareRankSources, isRankSource, loadSnapshotSettings, recordProbeSet, saveSnapshotSettings, type RankSource } from './rank-source.js';
 import { competitorInfo, competitorKeywords, topCompetitors } from './competitors.js';
 import { getCompetitorPricing } from './pricing.js';
 import { getCompetitorReviews } from './reviews.js';
@@ -656,55 +655,15 @@ app.post('/api/snapshot/speed', (req, res) => {
   res.json({ ok: true, runtime: getLiveRuntime() });
 });
 
-// --- Snapshot settings: rank source + per-host gate status ---
+// --- Snapshot settings: per-host gate status (ranks always come from the App Store) ---
 app.get('/api/snapshot/settings', (_req, res) => {
-  res.json({ ...loadSnapshotSettings(), gates: gateStatus() });
-});
-
-app.post('/api/snapshot/settings', (req, res) => {
-  const { rankSource } = req.body || {};
-  if (!isRankSource(rankSource)) {
-    res.status(400).json({ error: "rankSource must be 'appstore' or 'itunes'" });
-    return;
-  }
-  res.json({ ...saveSnapshotSettings({ rankSource }), gates: gateStatus() });
+  res.json({ rankSource: 'appstore', gates: gateStatus() });
 });
 
 app.get('/api/gate/status', (_req, res) => {
   res.json({ gates: gateStatus() });
 });
 
-// --- Rank source dual measurement (App Store vs iTunes on the probe set) ---
-app.get('/api/rank-source/compare', (_req, res) => {
-  try {
-    res.json(compareRankSources());
-  } catch (e) {
-    res.status(500).json({ error: (e as Error).message });
-  }
-});
-
-let probeRun: Promise<unknown> | null = null;
-/** Record the probe set once with both sources (pairs already done today are
- * skipped). `?wait=1` responds when finished; otherwise runs in the background. */
-app.post('/api/rank-source/probe', async (req, res) => {
-  if (probeRun) {
-    res.status(409).json({ error: 'probe run already in progress' });
-    return;
-  }
-  const started = Date.now();
-  const run = recordProbeSet().finally(() => { probeRun = null; });
-  probeRun = run;
-  if (req.query.wait !== '1') {
-    res.status(202).json({ ok: true });
-    return;
-  }
-  try {
-    const result = await run;
-    res.json({ ok: true, measured: result.measured, ms: Date.now() - started, rows: result.rows });
-  } catch (e) {
-    res.status(500).json({ error: (e as Error).message });
-  }
-});
 
 // --- Analytics: movers across apps & periods ---
 app.get('/api/analytics/movers', (req, res) => {
@@ -782,7 +741,6 @@ type StartSnapshotOptions = {
   workers?: number;
   sleepMs?: number;
   skipExisting?: boolean;
-  rankSource?: RankSource;
   /** Delta mode: only these combos (scheduler.ts). */
   only?: Map<string, GatePriority>;
   kind?: 'full' | 'delta' | 'nightly';
@@ -812,7 +770,6 @@ function startSnapshot(opts: StartSnapshotOptions): false | Promise<DeltaRunResu
     workers: typeof opts.workers === 'number' ? opts.workers : undefined,
     sleepMs: typeof opts.sleepMs === 'number' ? opts.sleepMs : undefined,
     skipExisting: opts.skipExisting === true,
-    rankSource: opts.rankSource,
     only: opts.only,
     onProgress: (ev) => {
       // Track total once we receive the start event so reconnecting clients
@@ -849,12 +806,11 @@ app.post('/api/snapshot', (req, res) => {
     res.status(409).json({ error: 'snapshot already running', state: snapshotPublicState() });
     return;
   }
-  const { appIds, locales, workers, sleepMs, skipExisting, rankSource, delta } = req.body || {};
+  const { appIds, locales, workers, sleepMs, skipExisting, delta } = req.body || {};
   // «Только изменяемые (дельта)»: today's delta plan within the chosen scope.
   const only = delta === true ? planToOnly(buildDeltaPlan({ appIds, locales })) : undefined;
   startSnapshot({
     appIds, locales, workers, sleepMs, skipExisting,
-    rankSource: isRankSource(rankSource) ? rankSource : undefined,
     only,
     kind: only ? 'delta' : 'full',
   });

@@ -648,7 +648,7 @@ export function startSpyCheck(storefront: string, rawTerms: string[]): SpyCheckJ
         if (hasFreshStoreSerp(country, term)) { job.done++; continue; }
         // App Store search (~250 ids) through the search.itunes.apple.com gate,
         // ahead of the snapshot tail; searchAppStore persists the list to
-        // serp_cache (iTunes fallback on errors). 403/429 pause the host.
+        // serp_cache. 403/429 pause the host.
         let ids: string[] | null = null;
         for (let limits = 0; ids == null; limits++) {
           try {
@@ -657,7 +657,6 @@ export function startSpyCheck(storefront: string, rawTerms: string[]): SpyCheckJ
               onRetry: ({ reason }) => { job.note = `${reason}; повтор`; },
             });
             ids = result.ids;
-            if (result.source !== 'appstore') job.note = `iTunes вместо App Store: ${result.fallbackReason ?? 'ошибка'}`;
           } catch (error) {
             if (!(error instanceof RateLimited) || limits >= 2) throw error;
             job.note = 'Лимит Apple: пауза 5 мин, потом продолжим';
