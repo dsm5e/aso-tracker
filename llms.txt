@@ -1,23 +1,25 @@
 # ASO Studio
 
-> Self-hosted indie iOS App Store toolkit — keyword tracking, screenshot generation, and PPO experiments. Open source, AI-friendly. Pairs with Claude Code via MCP servers.
+> Self-hosted App Store toolkit for indie iOS developers: keyword rank tracking, Apple Ads analytics, screenshots/PPO, video ads and In-App Events. It runs as one local gateway on :5173. Open source and agent-friendly, and pairs with Claude Code via MCP servers.
 
 ## Features
 
 - [README](https://github.com/dsm5e/aso-tracker#readme): What ASO Studio is and what it does
 - [Full LLM context](llms-full.txt): Architecture, file map, state schema, recipes for AI agents
 
-## Sub-tools
+## Products
 
-- **Keywords**: per-keyword, per-locale rank tracking via iTunes Search API
-- **Screenshots**: App Store screenshot generator with AI hero (fal.ai gpt-image-2)
-- **PPO**: multi-strategy A/B treatment generator for App Store Product Page Optimization
+- **Keywords** (`/`): rank tracking in 175 storefronts from native App Store search order (up to 250 deep); country matrix, positions, ideas, competitor spy, nightly delta refresh behind a per-host adaptive rate gate
+- **Ads** (`/asa/`): Apple Ads keyword economics, traffic intelligence, keyword popularity (5–100); read-only by default
+- **Screenshots** (`/studio/`): App Store screenshot generator with AI polish (fal.ai gpt-image-2), PPO treatment generator, icon variants
+- **Video** (`/video/`): node-based UGC video-ad pipeline
+- **In-App** (`/inapp/`): In-App Event card/detail designer
 
 ## Stack
 
 - React 19 + Vite + TypeScript (frontend)
-- Express + better-sqlite3 + Sharp (backend)
-- fal.ai for image gen, OpenAI for translation, public iTunes API for ranks
+- Express + better-sqlite3 + Sharp (backend), one-port gateway `studio/server.ts` with lazy product activation
+- Data under `~/.aso-studio/` (outside the repo)
 
 ## License
 

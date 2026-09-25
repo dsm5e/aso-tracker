@@ -1,10 +1,8 @@
-# ASA Ads
+# Ads (Apple Ads)
 
 Self-hosted Apple Search Ads optimization dashboard with ROI projection, bid intelligence, multi-app support, and ASC trial cross-match. Sibling to [`aso-keywords`](../aso-keywords) in the ASO Studio monorepo.
 
-> **Status:** v0.2 (May 2026). Bloomberg-terminal aesthetic, fully real-time, designed to be driven by humans **or** an LLM agent.
-
-![ASA Ads demo](docs/demo.gif)
+> **Status:** September 2026. Served by the ASO Studio gateway at `http://localhost:5173/asa/` (API under `/asa-api/`), in the shared studio design system. Read-only by default: bid mutations are fail-closed (`ASA_MUTATIONS_ENABLED=false`). Designed to be driven by humans **or** an LLM agent.
 
 ## What it does
 
@@ -236,7 +234,6 @@ asa-ads/
 │   │   └── sse.ts                — EventSource hook
 │   └── api.ts                    — typed fetch client
 ├── cli/sync.ts         — `npm run sync`
-├── docs/demo.mp4       — demo video
 └── data/               — SQLite (gitignored)
 ```
 
