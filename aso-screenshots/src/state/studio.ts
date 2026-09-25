@@ -280,7 +280,9 @@ export interface LayoutVariant {
  *  Stored in `Screenshot.decor`; text is localised by index through
  *  `LocaleEntry.decorTranslations`. */
 export interface DecorItem {
-  kind: 'image' | 'bubble' | 'doodle';
+  /** `laurel` = two laurel branches around localisable copy: first line of
+   *  `text` is the big figure ("300+"), the rest the caption ("dream symbols"). */
+  kind: 'image' | 'bubble' | 'doodle' | 'laurel';
   /** Centre of the item, fractions of the canvas. */
   xFrac: number;
   yFrac: number;
@@ -296,7 +298,7 @@ export interface DecorItem {
   src?: string;
   /** Soft drop shadow under image/bubble (default true for image). */
   shadow?: boolean;
-  /** kind=bubble: speech-bubble copy (localised). */
+  /** kind=bubble / laurel: copy (localised via decorTranslations). */
   text?: string;
   /** kind=bubble: tail direction. */
   tail?: 'left' | 'right' | 'bottom-left' | 'bottom-right' | 'none';

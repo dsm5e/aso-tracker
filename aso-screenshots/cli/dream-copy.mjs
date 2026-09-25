@@ -427,3 +427,57 @@ export const LOCALE_COPY = {
 
 /** Locales whose symbol/tradition frame moves to position 2 (vault §8). */
 export const TRADITION_FIRST = ['ar-SA', 'tr', 'ur-PK', 'id', 'ms', 'bn-BD'];
+
+/**
+ * Hero (frame 1, concept A, owner-approved 2026-09-25):
+ * [headline, laurel 1 "300+ <dream symbols>", laurel 2 "11 <languages>"].
+ * Laurels carry product facts only: 300+ symbols, 11 app UI languages.
+ * The subline reuses `insights[1]`.
+ */
+export const HERO = {
+  en: ['Your dreams, finally understood', '300+\ndream symbols', '11\nlanguages'],
+  ru: ['Ваши сны —\nс толкованием', '300+\nсимволов снов', '11\nязыков'],
+  uk: ['Ваші сни —\nз тлумаченням', '300+\nсимволів снів', '11\nмов'],
+  de: ['Deine Träume, endlich verstanden', '300+\nTraumsymbole', '11\nSprachen'],
+  fr: ['Vos rêves, enfin compris', '300+\nsymboles de rêves', '11\nlangues'],
+  es: ['Tus sueños, por fin entendidos', '300+\nsímbolos de sueños', '11\nidiomas'],
+  ca: ['Els teus somnis, per fi entesos', '300+\nsímbols de somnis', '11\nidiomes'],
+  it: ['I tuoi sogni, finalmente capiti', '300+\nsimboli dei sogni', '11\nlingue'],
+  'pt-BR': ['Seus sonhos, enfim compreendidos', '300+\nsímbolos de sonhos', '11\nidiomas'],
+  'pt-PT': ['Os seus sonhos, enfim compreendidos', '300+\nsímbolos de sonhos', '11\nidiomas'],
+  nl: ['Je dromen, eindelijk begrepen', '300+\ndroomsymbolen', '11\ntalen'],
+  sv: ['Dina drömmar, äntligen förstådda', '300+\ndrömsymboler', '11\nspråk'],
+  da: ['Dine drømme, endelig forstået', '300+\ndrømmesymboler', '11\nsprog'],
+  no: ['Drømmene dine, endelig forstått', '300+\ndrømmesymboler', '11\nspråk'],
+  fi: ['Unesi, vihdoin ymmärrettyinä', '300+\nunisymbolia', '11\nkieltä'],
+  pl: ['Twoje sny, wreszcie zrozumiałe', '300+\nsymboli snów', '11\njęzyków'],
+  cs: ['Tvoje sny, konečně pochopené', '300+\nsymbolů snů', '11\njazyků'],
+  sk: ['Tvoje sny, konečne pochopené', '300+\nsymbolov snov', '11\njazykov'],
+  hu: ['Az álmaid, végre megértve', '300+\nálomszimbólum', '11\nnyelv'],
+  ro: ['Visele tale, în sfârșit înțelese', '300+\nsimboluri de vis', '11\nlimbi'],
+  hr: ['Tvoji snovi, napokon shvaćeni', '300+\nsimbola snova', '11\njezika'],
+  'sl-SI': ['Tvoje sanje, končno razumljene', '300+\nsimbolov sanj', '11\njezikov'],
+  el: ['Τα όνειρά σου, επιτέλους κατανοητά', '300+\nσύμβολα ονείρων', '11\nγλώσσες'],
+  vi: ['Hiểu thấu giấc mơ của bạn', '300+\nbiểu tượng giấc mơ', '11\nngôn ngữ'],
+  th: ['เข้าใจความฝันของคุณ', '300+\nสัญลักษณ์ความฝัน', '11\nภาษา'],
+  he: ['סוף סוף להבין את החלומות', '300+\nסמלי חלום', '11\nשפות'],
+  ar: ['أحلامك، مفهومة أخيرًا', '300+\nرمز للأحلام', '11\nلغة'],
+  tr: ['Rüyalarını sonunda anla', '300+\nrüya sembolü', '11\ndil'],
+  ur: ['آخرکار اپنے خوابوں کو سمجھیں', '300+\nخوابی علامتیں', '11\nزبانیں'],
+  bn: ['অবশেষে বুঝুন আপনার স্বপ্ন', '৩০০+\nস্বপ্নের প্রতীক', '১১\nভাষা'],
+  id: ['Akhirnya paham arti mimpimu', '300+\nsimbol mimpi', '11\nbahasa'],
+  ms: ['Akhirnya fahami mimpi anda', '300+\nsimbol mimpi', '11\nbahasa'],
+  ja: ['夢の意味が、\nやっとわかる', '300+\n夢シンボル', '11\n言語'],
+  ko: ['드디어 이해되는\n나의 꿈', '300+\n꿈 상징', '11\n개 언어'],
+  'zh-Hans': ['终于读懂\n你的梦', '300+\n梦境象征', '11\n种语言'],
+  'zh-Hant': ['終於讀懂\n你的夢', '300+\n夢境象徵', '11\n種語言'],
+  hi: ['आख़िरकार समझिए अपने सपने', '300+\nस्वप्न प्रतीक', '11\nभाषाएँ'],
+  mr: ['शेवटी समजून घ्या तुमची स्वप्ने', '300+\nस्वप्न प्रतीके', '11\nभाषा'],
+  gu: ['આખરે સમજો તમારાં સપનાં', '300+\nસ્વપ્ન પ્રતીકો', '11\nભાષાઓ'],
+  kn: ['ಕೊನೆಗೂ ನಿಮ್ಮ ಕನಸುಗಳ ಅರ್ಥ', '300+\nಕನಸಿನ ಸಂಕೇತಗಳು', '11\nಭಾಷೆಗಳು'],
+  ml: ['ഒടുവിൽ സ്വപ്നങ്ങൾ മനസ്സിലാക്കൂ', '300+\nസ്വപ്ന ചിഹ്നങ്ങൾ', '11\nഭാഷകൾ'],
+  or: ['ଶେଷରେ ବୁଝନ୍ତୁ ଆପଣଙ୍କ ସ୍ୱପ୍ନ', '300+\nସ୍ୱପ୍ନ ପ୍ରତୀକ', '11\nଭାଷା'],
+  pa: ['ਆਖ਼ਰਕਾਰ ਸਮਝੋ ਆਪਣੇ ਸੁਪਨੇ', '300+\nਸੁਪਨ ਪ੍ਰਤੀਕ', '11\nਭਾਸ਼ਾਵਾਂ'],
+  ta: ['கனவுகளின் அர்த்தம், இனி தெளிவாக', '300+\nகனவுக் குறியீடுகள்', '11\nமொழிகள்'],
+  te: ['చివరికి మీ కలల అర్థం', '300+\nకలల సంకేతాలు', '11\nభాషలు'],
+};

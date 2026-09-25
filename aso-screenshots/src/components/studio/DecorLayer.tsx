@@ -142,6 +142,78 @@ function Bubble({ item, fontFamily, u, rtl, lang }: { item: DecorItem; fontFamil
   );
 }
 
+/** One laurel branch on a 40×100 box: a curved stem with alternating leaves. */
+function LaurelBranch({ color, mirror }: { color: string; mirror?: boolean }) {
+  // Stem = cubic bezier; leaves sit along it, angled off the tangent.
+  const P = [[30, 97], [6, 78], [4, 30], [27, 3]];
+  const at = (t: number) => {
+    const m = 1 - t;
+    const x = m * m * m * P[0][0] + 3 * m * m * t * P[1][0] + 3 * m * t * t * P[2][0] + t * t * t * P[3][0];
+    const y = m * m * m * P[0][1] + 3 * m * m * t * P[1][1] + 3 * m * t * t * P[2][1] + t * t * t * P[3][1];
+    const dx = 3 * m * m * (P[1][0] - P[0][0]) + 6 * m * t * (P[2][0] - P[1][0]) + 3 * t * t * (P[3][0] - P[2][0]);
+    const dy = 3 * m * m * (P[1][1] - P[0][1]) + 6 * m * t * (P[2][1] - P[1][1]) + 3 * t * t * (P[3][1] - P[2][1]);
+    return { x, y, a: (Math.atan2(dy, dx) * 180) / Math.PI };
+  };
+  const leaves = [0.1, 0.22, 0.34, 0.46, 0.58, 0.7, 0.82, 0.93];
+  return (
+    <svg viewBox="0 0 40 100" style={{ display: 'block', height: '100%', width: 'auto', overflow: 'visible', transform: mirror ? 'scaleX(-1)' : undefined }}>
+      <path d="M30 97 C 6 78, 4 30, 27 3" stroke={color} strokeWidth={1.8} fill="none" strokeLinecap="round" />
+      {leaves.map((t, i) => {
+        const p = at(t);
+        const side = i % 2 === 0 ? -1 : 1;
+        const len = 8.5 - t * 2.5;
+        return (
+          <ellipse key={i} cx={p.x} cy={p.y} rx={len * 0.42} ry={len}
+            transform={`rotate(${p.a + 90 + side * 38} ${p.x} ${p.y}) translate(0 ${-len * 0.9})`}
+            fill={color} />
+        );
+      })}
+      <ellipse cx={27} cy={3} rx={3} ry={6.5} transform="rotate(20 27 3) translate(0 -4)" fill={color} />
+    </svg>
+  );
+}
+
+function Laurel({ item, fontFamily, u, rtl, lang }: { item: DecorItem; fontFamily: string; u: number; rtl?: boolean; lang?: string }) {
+  const color = item.color ?? '#E9C98B';
+  const [figure, ...rest] = (item.text ?? '').split('\n');
+  const caption = rest.join(' ');
+  const capPx = item.fontPx ?? 3.4 * u;
+  const capRef = useRef<HTMLDivElement>(null);
+  // The caption stays on one line and shrinks to the space between the
+  // branches; below 60% it may wrap to two lines instead.
+  useLayoutEffect(() => {
+    const el = capRef.current;
+    if (!el) return;
+    const fit = () => {
+      let size = capPx;
+      el.style.whiteSpace = 'nowrap';
+      el.style.fontSize = `${size}px`;
+      while (el.scrollWidth > el.clientWidth + 1 && size > capPx * 0.6) {
+        size -= 1;
+        el.style.fontSize = `${size}px`;
+      }
+      if (el.scrollWidth > el.clientWidth + 1) el.style.whiteSpace = 'normal';
+    };
+    fit();
+    void document.fonts?.ready.then(fit);
+  }, [item.text, capPx, fontFamily]);
+  return (
+    <div style={{ display: 'flex', alignItems: 'stretch', justifyContent: 'center', height: capPx * 4.4, direction: 'ltr',
+      filter: item.shadow === false ? undefined : `drop-shadow(0 ${0.3 * u}px ${1 * u}px rgba(6,6,30,.6))` }}>
+      <LaurelBranch color={color} />
+      <div lang={lang} style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center',
+        alignItems: 'center', textAlign: 'center', color, direction: rtl ? 'rtl' : undefined, padding: `0 ${0.4 * u}px` }}>
+        <div style={{ fontFamily: `"${fontFamily}", Inter, sans-serif`, fontWeight: 700, fontSize: capPx * 1.9, lineHeight: 1, whiteSpace: 'nowrap' }}>{figure}</div>
+        {caption && (
+          <div ref={capRef} style={{ width: '100%', fontFamily: `Inter, "${fontFamily}", sans-serif`, fontWeight: 600, fontSize: capPx,
+            lineHeight: 1.12, marginTop: 0.5 * u, letterSpacing: '0.01em' }}>{caption}</div>
+        )}
+      </div>
+      <LaurelBranch color={color} mirror />
+    </div>
+  );
+}
+
 interface Props {
   items: DecorItem[] | undefined;
   layer: NonNullable<DecorItem['layer']>;
@@ -194,6 +266,9 @@ export function DecorLayer({ items, layer, width, height, fontFamily, rtl, lang 
               <div style={{ transform: d.flipX ? 'scaleX(-1)' : undefined, textAlign: 'center' }}>
                 <Bubble item={d} fontFamily={fontFamily} u={u} rtl={rtl} lang={lang} />
               </div>
+            )}
+            {d.kind === 'laurel' && d.text && (
+              <Laurel item={d} fontFamily={fontFamily} u={u} rtl={rtl} lang={lang} />
             )}
             {d.kind === 'doodle' && d.shape && (
               <svg

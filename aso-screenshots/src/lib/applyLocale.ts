@@ -8,7 +8,7 @@
  * added after the translate run.
  */
 import { useStudio, type LocaleEntry, type Screenshot } from '../state/studio';
-import { localizedSlotSources } from './localizedSources';
+import { localizedSlotSources, resolveLocalizedUrl } from './localizedSources';
 
 export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Screenshot {
   if (!loc) return ss;
@@ -70,10 +70,14 @@ export function applyLocaleToSlot(ss: Screenshot, loc: LocaleEntry | null): Scre
           };
         })
       : ss.stickers,
-    // Decor copy (speech bubbles) is translated by index; null keeps the source.
-    decor: ss.decor && decorTr
-      ? ss.decor.map((d, i) => (decorTr?.[i] ? { ...d, text: decorTr[i] as string } : d))
-      : ss.decor,
+    // Decor copy (speech bubbles, laurels) is translated by index; null keeps the
+    // source. Decor images that are root captures (e.g. a card cut from an app
+    // screen) follow the same per-language chain as the slot's own sources.
+    decor: ss.decor?.map((d, i) => {
+      const text = decorTr?.[i];
+      const src = d.src ? resolveLocalizedUrl(d.src, loc.code, useStudio.getState().localizedSources) ?? d.src : d.src;
+      return text || src !== d.src ? { ...d, ...(text ? { text: text as string } : {}), src } : d;
+    }),
     // Localized footer capsule + V captions (fall back to source when absent).
     footer: extra?.footer ?? ss.footer,
     frontLabel: extra?.frontLabel ?? ss.frontLabel,

@@ -21,7 +21,7 @@
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COPY, LOCALE_COPY, TRADITION_FIRST } from './dream-copy.mjs';
+import { COPY, HERO, LOCALE_COPY, TRADITION_FIRST } from './dream-copy.mjs';
 
 const API = process.env.ASO_API ?? 'http://localhost:5173/studio-api';
 const DIR = 'dream';
@@ -39,17 +39,48 @@ const FRAMES = {
   image: { file: '06-image.png', scale: { iphone: 1.3, ipad: 1.15 } },
   // iPad: the dual mockup's fixed offsets are iPhone-sized, so iPad shows Insights alone.
   insights: { file: '07-insights.png', secondary: { iphone: '08-journal.png' }, scale: { iphone: 0.86, ipad: 1 }, dx: { iphone: 0.03 } },
-  // Same pair with the phones swapped: Journal in front, Insights behind (iPhone only).
-  journal: { file: '08-journal.png', secondary: { iphone: '07-insights.png' }, scale: { iphone: 0.86 }, dx: { iphone: 0.03 }, copy: 'insights', devices: ['iphone'] },
+  // Hero (frame 1, concept A): Journal in front, Insights behind on iPhone; on iPad
+  // Journal alone plus a "Luna noticed" card cut from the localized Insights screen.
+  // AI background (fal gpt-image-2 edit, medium), laurels with product facts,
+  // symbol tiles cut from the real result screen, lavender glow.
+  hero: { file: '08-journal.png', secondary: { iphone: '07-insights.png' }, scale: { iphone: 0.8, ipad: 0.86 }, dx: { iphone: 0.03 }, hero: true },
+};
+
+const DECOR = `${BASE}/decor`;
+const HERO_DECOR = {
+  iphone: {
+    yFrac: 0.13,
+    items: [
+      { kind: 'laurel', xFrac: 0.28, yFrac: 0.064, widthFrac: 0.42, fontPx: 44, layer: 'top' },
+      { kind: 'laurel', xFrac: 0.72, yFrac: 0.064, widthFrac: 0.42, fontPx: 44, layer: 'top' },
+      { kind: 'image', src: `${DECOR}/glow.png`, xFrac: 0.5, yFrac: 0.62, widthFrac: 1.35, layer: 'back', shadow: false, opacity: 0.85 },
+      { kind: 'image', src: `${DECOR}/chip-moon.png`, xFrac: 0.1, yFrac: 0.45, widthFrac: 0.15, rotate: -10, layer: 'top' },
+      { kind: 'image', src: `${DECOR}/chip-water.png`, xFrac: 0.92, yFrac: 0.6, widthFrac: 0.13, rotate: 9, layer: 'top' },
+      { kind: 'image', src: `${DECOR}/chip-horse.png`, xFrac: 0.1, yFrac: 0.76, widthFrac: 0.16, rotate: 7, layer: 'top' },
+    ],
+  },
+  ipad: {
+    yFrac: 0.125,
+    items: [
+      { kind: 'laurel', xFrac: 0.34, yFrac: 0.058, widthFrac: 0.3, fontPx: 58, layer: 'top' },
+      { kind: 'laurel', xFrac: 0.66, yFrac: 0.058, widthFrac: 0.3, fontPx: 58, layer: 'top' },
+      { kind: 'image', src: `${DECOR}/glow.png`, xFrac: 0.5, yFrac: 0.62, widthFrac: 1.1, layer: 'back', shadow: false, opacity: 0.85 },
+      { kind: 'image', src: `${BASE}/ipad-09-insightscard.png`, xFrac: 0.76, yFrac: 0.7, widthFrac: 0.44, rotate: 3, layer: 'top' },
+      { kind: 'image', src: `${DECOR}/chip-moon.png`, xFrac: 0.08, yFrac: 0.46, widthFrac: 0.1, rotate: -10, layer: 'top' },
+      { kind: 'image', src: `${DECOR}/chip-water.png`, xFrac: 0.93, yFrac: 0.42, widthFrac: 0.09, rotate: 9, layer: 'top' },
+      { kind: 'image', src: `${DECOR}/chip-horse.png`, xFrac: 0.1, yFrac: 0.8, widthFrac: 0.11, rotate: 7, layer: 'top' },
+    ],
+  },
 };
 const ORDER_A = ['result', 'voice', 'interp', 'symbol', 'chat', 'image', 'insights'];
 const ORDER_T = ['result', 'symbol', 'voice', 'interp', 'chat', 'image', 'insights'];
 // iPhone (owner feedback 2026-09-25): the patterns pair opens the set, the rest keeps
 // its relative order. FIRST = which phone of the pair stands in front.
-const FIRST = process.env.DREAM_FIRST ?? 'journal';
+// iPad follows the same order and hero (owner decision 2026-09-25).
+const opener = (order) => ['hero', ...order.filter((k) => k !== 'insights')];
 const ORDERS = {
-  A: { iphone: [FIRST, ...ORDER_A.filter((k) => k !== 'insights')], ipad: ORDER_A },
-  T: { iphone: [FIRST, ...ORDER_T.filter((k) => k !== 'insights')], ipad: ORDER_T },
+  A: { iphone: opener(ORDER_A), ipad: opener(ORDER_A) },
+  T: { iphone: opener(ORDER_T), ipad: opener(ORDER_T) },
 };
 
 const DEVICE = {
@@ -95,13 +126,15 @@ function slot(key, dev) {
     sourceUrl: `${BASE}/${dev}-${f.file}`,
     secondaryUrl: f.secondary?.[dev] ? `${BASE}/${dev}-${f.secondary[dev]}` : undefined,
     enhancedUrl: null,
-    backgroundOverride: `#12142B url("${BASE}/decor/bg-${dev}.png") center / cover no-repeat`,
-    headline: { verb: COPY.en[f.copy ?? key][0], descriptor: COPY.en[f.copy ?? key][1], subhead: '' },
+    backgroundOverride: `#12142B url("${BASE}/decor/${f.hero ? 'hero-bg' : 'bg'}-${dev}.png") center / cover no-repeat`,
+    headline: f.hero
+      ? { verb: HERO.en[0], descriptor: COPY.en.insights[1], subhead: '' }
+      : { verb: COPY.en[f.copy ?? key][0], descriptor: COPY.en[f.copy ?? key][1], subhead: '' },
     font: 'Noto Serif Display',
     fontSize: d.titlePx,
     titlePx: d.titlePx,
     subPx: d.subPx,
-    textYFraction: d.yFrac,
+    textYFraction: f.hero ? HERO_DECOR[dev].yFrac : d.yFrac,
     textX: 0,
     textY: 0,
     deviceX: Math.round((f.dx?.[dev] ?? 0) * d.W),
@@ -113,6 +146,7 @@ function slot(key, dev) {
     breakout: false,
     pulseScreen: 0,
     enhanceState: 'idle',
+    ...(f.hero ? { decor: HERO_DECOR[dev].items.map((it, i) => (i < 2 ? { ...it, text: HERO.en[i + 1] } : it)) } : {}),
   };
 }
 
@@ -140,15 +174,20 @@ const locales = LOCALES.map((code) => {
   const translations = {};
   for (const s of screenshots) {
     const key = s.id.split('-').pop();
-    const [verb, descriptor] = copy[FRAMES[key].copy ?? key];
+    const [verb, descriptor] = FRAMES[key].hero ? [HERO[lang][0], copy.insights[1]] : copy[FRAMES[key].copy ?? key];
     translations[s.id] = { verb, descriptor, subhead: '' };
   }
+  // Laurel copy = decor slots 0 and 1 of each hero slot.
+  const decorTranslations = Object.fromEntries(['iphone', 'ipad'].map((dev) => [
+    `dr-${dev}-hero`, HERO_DECOR[dev].items.map((_, i) => (i < 2 ? HERO[lang][i + 1] : null)),
+  ]));
   const meta = SCRIPT[code] ?? {};
   return {
     id: code, code, name: NAMES.of(code), flag: '',
     ...(meta.rtl ? { rtl: true } : {}),
     ...(meta.font ? { fontOverride: meta.font } : {}),
     translations,
+    decorTranslations,
     ...(ISLAMIC_EN_UI.includes(code) ? { sourceOverrides: islamicSymbol } : {}),
     // Bengali headline runs taller: shrink it a bit on the iPhone symbol frame so the
     // phone rises and the Islamic tab row stays inside the canvas.
