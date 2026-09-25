@@ -1,11 +1,15 @@
 import type { Express, Request, Response } from 'express';
 import { db } from './db.js';
 import { assertSafeAppId, loadApps, loadKeywords, saveKeywords, type AppConfig } from './config.js';
-import { RateLimited, searchItunes, type SearchResult } from './itunes.js';
+import { RateLimited, appleJson, appleText, lookupBatch, searchAppStore, type SearchResult } from './itunes.js';
+import type { GatePriority } from './host-gate.js';
+import { SERP_TTL_MS, readAppMeta, readSerp, serpsForCountry, type AppMetaRecord } from './meta-store.js';
 import { asaPopularity, normalized, tokenize } from './suggestions.js';
 
 // Competitor spy: reverse keyword lookup + gap analysis for one competitor in
-// one storefront. Everything is built from App Store result sets we actually
+// one storefront. Main evidence: full App Store result sets (~250 ordered ids)
+// from serp_cache, written by snapshots and by «Проверить ещё»; names/ratings
+// for those ids come from the batched iTunes lookup cache (app_meta_cache). Everything is built from App Store result sets we actually
 // fetched (crowd-sourced across all our apps, like Astro): nothing here is a
 // private competitor metric. Each row says how deep the result set it comes
 // from was, so "not found" is never confused with "not checked".
@@ -177,15 +181,9 @@ export interface SpyAppMeta {
 
 const metaCache = new Map<string, { expiresAt: number; value: SpyAppMeta | null }>();
 
-export async function productPageSubtitle(trackId: number, country: string, genre: string | undefined): Promise<string | null> {
+export async function productPageSubtitle(trackId: number, country: string, genre: string | undefined, priority: GatePriority = 'interactive'): Promise<string | null> {
   try {
-    const response = await fetch(`https://apps.apple.com/${country}/app/id${trackId}`, {
-      headers: { Accept: 'text/html', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36' },
-      redirect: 'follow',
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) return null;
-    const html = await response.text();
+    const html = await appleText(`https://apps.apple.com/${country}/app/id${trackId}`, { priority });
     const match = html.match(/<script[^>]+id=["']serialized-server-data["'][^>]*>([\s\S]*?)<\/script>/i);
     if (!match) return null;
     const payload = JSON.parse(match[1]) as { data?: Array<{ data?: { lockup?: { subtitle?: string; adamId?: string } } }> };
@@ -203,14 +201,18 @@ export async function appMeta(idOrBundle: string, country: string): Promise<SpyA
   const key = `${country}:${idOrBundle.toLocaleLowerCase()}`;
   const cached = metaCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value;
-  const params = new URLSearchParams({ country });
-  if (/^\d+$/.test(idOrBundle)) params.set('id', idOrBundle); else params.set('bundleId', idOrBundle);
   let value: SpyAppMeta | null = null;
   try {
-    const response = await fetch(`https://itunes.apple.com/lookup?${params}`, { signal: AbortSignal.timeout(15_000) });
-    if (response.ok) {
-      const data = (await response.json()) as { results?: Array<SearchResult & { currentVersionReleaseDate?: string }> };
-      const item = data.results?.[0];
+    let item: (SearchResult & { currentVersionReleaseDate?: string }) | AppMetaRecord | undefined;
+    if (/^\d+$/.test(idOrBundle)) {
+      // Numeric ids share the 24 h batch lookup cache with the spy's result sets.
+      item = (await lookupBatch([idOrBundle], country, { priority: 'interactive' })).get(idOrBundle);
+    } else {
+      const params = new URLSearchParams({ country, bundleId: idOrBundle });
+      const data = await appleJson<{ results?: Array<SearchResult & { currentVersionReleaseDate?: string }> }>(`https://itunes.apple.com/lookup?${params}`);
+      item = data.results?.[0];
+    }
+    {
       if (item?.trackId) {
         value = {
           trackId: item.trackId,
@@ -234,7 +236,9 @@ export async function appMeta(idOrBundle: string, country: string): Promise<SpyA
 // --- Evidence: which result sets exist for this storefront ------------------------
 
 interface SerpApp { tid: number | null; id: string; name: string; dev: string; ratings: number | null; updatedAt: string | null }
-interface Serp { term: string; apps: SerpApp[]; depth: number; source: 'full' | 'cache' | 'snapshot'; checkedAt: string }
+/** store = App Store search (~250, serp_cache); full = legacy iTunes spy fetch (200);
+ * cache = App Store search screen cache (15); snapshot = tracker top-5. */
+interface Serp { term: string; apps: SerpApp[]; depth: number; source: 'store' | 'full' | 'cache' | 'snapshot'; checkedAt: string }
 
 function parseJson<T>(raw: string | null | undefined, fallback: T): T {
   if (!raw) return fallback;
@@ -244,7 +248,36 @@ function parseJson<T>(raw: string | null | undefined, fallback: T): T {
 const isQueryTerm = (term: string) => !/^\d+$/.test(term) && !(/^[\w.-]+$/.test(term) && term.includes('.'));
 const isoDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-/** Best result set per term: full spy fetch (200) > App Store search cache (15) > snapshot top-5. */
+/** Nominal depth of a complete App Store result set (MZStore returns up to ~250). */
+export const STORE_DEPTH = 250;
+
+/** SerpApp for an id from a stored list, labelled from the lookup cache when known. */
+function serpAppFromMeta(id: string, meta: AppMetaRecord | null | undefined): SerpApp {
+  return {
+    tid: Number(id),
+    id: meta?.bundleId ?? '',
+    name: meta?.trackName ?? '',
+    dev: meta?.artistName ?? '',
+    ratings: meta?.userRatingCount ?? null,
+    updatedAt: meta?.currentVersionReleaseDate ?? null,
+  };
+}
+
+/** Result set from a stored ordered id list. A list shorter than the cap is
+ * the whole result set, so absence in it is final up to the cap. */
+export function serpFromIds(term: string, source: string, ids: string[], fetchedAt: number, meta: Map<string, AppMetaRecord | null>): Serp {
+  const cap = source === 'appstore' ? STORE_DEPTH : 200;
+  return {
+    term,
+    apps: ids.map((id) => serpAppFromMeta(id, meta.get(id))),
+    depth: Math.max(ids.length, cap),
+    source: source === 'appstore' ? 'store' : 'full',
+    checkedAt: isoDate(fetchedAt),
+  };
+}
+
+/** Best result set per term: App Store ~250 (serp_cache) > legacy iTunes 200 > search cache 15 > snapshot top-5.
+ * Equal depth → the fresher one wins. */
 function storefrontSerps(storefront: string): Map<string, Serp> {
   const country = storefront.split('-')[0].toLowerCase();
   const out = new Map<string, Serp>();
@@ -292,6 +325,11 @@ function storefrontSerps(storefront: string): Map<string, Serp> {
     // An empty full result set is still evidence: nobody ranks for it.
     put({ term: normalized(row.term), apps, depth: Math.max(apps.length, 200), source: 'full', checkedAt: isoDate(row.fetched_at) });
   }
+
+  const stored = serpsForCountry(country).filter((row) => isQueryTerm(row.term));
+  const ids = Array.from(new Set(stored.flatMap((row) => row.ids.slice(0, 10))));
+  const meta = readAppMeta(country, ids, Date.now());
+  for (const row of stored) put(serpFromIds(normalized(row.term), row.source, row.ids, row.fetchedAt, meta));
   return out;
 }
 
@@ -355,7 +393,7 @@ export interface SpyReport {
   competitor: SpyAppMeta;
   ours: SpyAppMeta | null;
   ourStrength: number;
-  coverage: { checked: number; found: number; full: number; cache: number; snapshot: number; trackedUnchecked: number };
+  coverage: { checked: number; found: number; store: number; full: number; cache: number; snapshot: number; trackedUnchecked: number; depth: number };
   popularity: 'ok' | 'no-data' | 'unavailable';
   counts: Record<Exclude<GapClass, 'none'>, number>;
   rows: SpyRow[];
@@ -395,8 +433,24 @@ export async function competitorSpyReport(appId: string, competitorRef: string, 
   const target = competitor ?? { trackId: null, bundleId: competitorRef, name: competitorRef, subtitle: null, developer: '', iconUrl: null, ratings: null, rating: null, updatedAt: null, storeUrl: null };
   const self = { trackId: Number(app.iTunesId) || null, bundleId: app.bundle };
 
-  const serps = storefrontSerps(storefront);
+  let serps = storefrontSerps(storefront);
   const pool = trackedPool(storefront);
+
+  // Names/ratings for the top 10 of App Store sets that can show up in the
+  // report (competitor or we are in them): one lookup per ≤150 ids, cached 24 h.
+  const unlabeled = new Set<string>();
+  for (const serp of serps.values()) {
+    if (serp.source !== 'store') continue;
+    if (rankIn(serp, target).rank == null && rankIn(serp, self, true).rank == null) continue;
+    for (const item of serp.apps.slice(0, 10)) if (!item.name && item.tid != null) unlabeled.add(String(item.tid));
+  }
+  if (unlabeled.size) {
+    const all = [...unlabeled];
+    // A report waits for at most 4 lookups; the rest is fetched in the background.
+    await lookupBatch(all.slice(0, 600), country, { priority: 'interactive' }).catch(() => null);
+    if (all.length > 600) void lookupBatch(all.slice(600), country, { priority: 'tail' }).catch(() => null);
+    serps = storefrontSerps(storefront);
+  }
 
   // App facts (ratings, update date) known anywhere, to score top-5-only sets.
   const facts = new Map<number, { ratings: number | null; updatedAt: string | null }>();
@@ -420,7 +474,7 @@ export async function competitorSpyReport(appId: string, competitorRef: string, 
 
   const ourTitle = ours?.name ?? app.name;
   const rowsBase: Array<Omit<SpyRow, 'popularity' | 'opportunity' | 'gap' | 'uncertain'>> = [];
-  const coverage = { checked: serps.size, found: 0, full: 0, cache: 0, snapshot: 0, trackedUnchecked: 0 };
+  const coverage = { checked: serps.size, found: 0, store: 0, full: 0, cache: 0, snapshot: 0, trackedUnchecked: 0, depth: STORE_DEPTH };
   for (const serp of serps.values()) {
     coverage[serp.source]++;
     const their = rankIn(serp, target);
@@ -472,9 +526,10 @@ export async function competitorSpyReport(appId: string, competitorRef: string, 
   const candidates = candidatePhrases(target.name, target.subtitle, target.developer)
     .filter((phrase) => !checked.has(phrase))
     .concat([...pool.keys()].filter((term) => !checked.has(term)))
-    // Then re-check shallow sets (top-5/top-15) where the competitor shows up
-    // or where the gap class is uncertain, to full depth.
-    .concat(rows.filter((row) => row.source !== 'full' && (row.uncertain || row.theirRank != null)).map((row) => row.keyword))
+    // Then re-check sets that are not App Store ~250 (top-5/top-15 and legacy
+    // iTunes 200, whose order differs from the store) where the competitor shows
+    // up or the gap class is uncertain.
+    .concat(rows.filter((row) => row.source !== 'store' && (row.uncertain || row.theirRank != null)).map((row) => row.keyword))
     .filter((value, index, all) => all.indexOf(value) === index)
       .slice(0, 120);
 
@@ -560,19 +615,10 @@ export interface SpyCheckJob {
 const jobs = new Map<string, SpyCheckJob>();
 let activeJob: SpyCheckJob | null = null;
 
-function saveFullSerp(country: string, term: string, results: SearchResult[]) {
-  const apps: SerpApp[] = results.slice(0, 200).map((item) => ({
-    tid: item.trackId ?? null,
-    id: item.bundleId ?? '',
-    name: item.trackName ?? '',
-    dev: item.artistName ?? '',
-    ratings: item.userRatingCount ?? null,
-    updatedAt: (item as SearchResult & { currentVersionReleaseDate?: string }).currentVersionReleaseDate ?? null,
-  }));
-  db.prepare(`
-    INSERT INTO competitor_spy_serp (country, term, payload, fetched_at) VALUES (?, ?, ?, ?)
-    ON CONFLICT(country, term) DO UPDATE SET payload = excluded.payload, fetched_at = excluded.fetched_at
-  `).run(country, term, JSON.stringify(apps), Date.now());
+/** A fresh (<12 h) App Store list for the term already exists — no request needed. */
+export function hasFreshStoreSerp(country: string, term: string, now = Date.now()): boolean {
+  const row = readSerp(country, term.trim().toLowerCase().replace(/\s+/g, ' '));
+  return Boolean(row && row.source === 'appstore' && now - row.fetchedAt < SERP_TTL_MS);
 }
 
 export function startSpyCheck(storefront: string, rawTerms: string[]): SpyCheckJob {
@@ -592,29 +638,40 @@ export function startSpyCheck(storefront: string, rawTerms: string[]): SpyCheckJ
   jobs.set(job.id, job);
   activeJob = job;
   const country = storefront.split('-')[0].toLowerCase();
+  const topIds = new Set<string>();
   void (async () => {
     try {
       for (const term of terms) {
         if (job.status !== 'running') return;
         job.current = term;
         job.note = null;
-        // searchItunes shares the itunes.apple.com gate with snapshots (tail
-        // priority). A 403/429 pauses the host; the retry waits in the gate.
-        let results: SearchResult[] | null = null;
-        for (let limits = 0; results == null; limits++) {
+        if (hasFreshStoreSerp(country, term)) { job.done++; continue; }
+        // App Store search (~250 ids) through the search.itunes.apple.com gate,
+        // ahead of the snapshot tail; searchAppStore persists the list to
+        // serp_cache (iTunes fallback on errors). 403/429 pause the host.
+        let ids: string[] | null = null;
+        for (let limits = 0; ids == null; limits++) {
           try {
-            results = await searchItunes(storefront, term, {
-              priority: 'tail',
+            const result = await searchAppStore(storefront, term, {
+              priority: 'top',
               onRetry: ({ reason }) => { job.note = `${reason}; повтор`; },
             });
+            ids = result.ids;
+            if (result.source !== 'appstore') job.note = `iTunes вместо App Store: ${result.fallbackReason ?? 'ошибка'}`;
           } catch (error) {
             if (!(error instanceof RateLimited) || limits >= 2) throw error;
             job.note = 'Лимит Apple: пауза 5 мин, потом продолжим';
           }
         }
-        job.note = null;
-        saveFullSerp(country, term, results);
+        for (const id of ids.slice(0, 10)) topIds.add(id);
         job.done++;
+      }
+      // Names/ratings for every checked top 10 (Difficulty), ≤150 ids per lookup.
+      if (topIds.size) {
+        job.current = null;
+        job.note = `Метаданные ${topIds.size} приложений`;
+        await lookupBatch([...topIds], country, { priority: 'top' });
+        job.note = null;
       }
       job.status = 'done';
     } catch (error) {

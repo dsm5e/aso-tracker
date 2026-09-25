@@ -6,7 +6,8 @@
 // - `searchItunes` — the public iTunes Search API: ≤200 results with metadata,
 //   ordered differently from the store. Fallback and dual-measurement source.
 
-import { GateHttpError, hostGate, isGateLimitStatus, type GatePriority } from './host-gate.js';
+import { GateHttpError, hostGate, isGateLimitStatus, type GateHost, type GatePriority } from './host-gate.js';
+import type { AppMetaRecord } from './meta-store.js';
 import { storeFrontHeader, storefrontCountry } from './storefront-ids.js';
 
 export class RateLimited extends Error {
@@ -215,7 +216,9 @@ export async function searchAppStore(
 
   const fallback = async (reason: string) => {
     const results = await searchItunes(country, term, opts);
-    return fromItunes(results, started, reason);
+    const value = fromItunes(results, started, reason);
+    persistSerp(cc, term, 'itunes', value.ids);
+    return value;
   };
 
   const header = storeFrontHeader(cc);
@@ -252,6 +255,7 @@ export async function searchAppStore(
   }
   rememberLockups(parsed.lockups);
   const value: RankSearch = { ...parsed, source: 'appstore', ms: Date.now() - started };
+  persistSerp(cc, term, 'appstore', parsed.ids);
   appStoreCache.set(key, { at: Date.now(), value });
   if (appStoreCache.size > 5000) appStoreCache.delete(appStoreCache.keys().next().value!);
   return value;
@@ -424,3 +428,189 @@ export function positionFromRank(search: Pick<RankSearch, 'ids' | 'lockups'>, ap
   });
   return { position, total: ids.length, top5 };
 }
+
+// --- Gated generic Apple requests -----------------------------------------------
+
+/** Thrown for an interactive request while its host sits out a rate-limit pause. */
+export class HostPaused extends Error {
+  constructor(readonly host: GateHost) {
+    super(`${host}: пауза после лимита Apple`);
+    this.name = 'HostPaused';
+  }
+}
+
+export interface AppleRequestOptions {
+  priority?: GatePriority;
+  signal?: AbortSignal;
+  /** Coalescing key; defaults to the URL. */
+  key?: string;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
+  /** Injected fetch (tests, metadata-history). */
+  fetchImpl?: typeof fetch;
+}
+
+export function gateHostOf(url: string): GateHost {
+  const host = new URL(url).hostname;
+  if (host === 'search.itunes.apple.com') return 'search.itunes.apple.com';
+  if (host === 'apps.apple.com') return 'apps.apple.com';
+  if (host === 'itunes.apple.com') return 'itunes.apple.com';
+  throw new Error(`no gate for host ${host}`);
+}
+
+/**
+ * One request to an Apple host through its gate, body read inside the gated
+ * task so identical requests can share it. Non-2xx throws `GateHttpError`
+ * (403/429 also pause the host). Interactive requests fail fast with
+ * `HostPaused` instead of waiting out a 5-minute pause.
+ */
+async function appleRequest<T>(url: string, read: (res: Response) => Promise<T>, opts: AppleRequestOptions): Promise<T> {
+  const host = gateHostOf(url);
+  const gate = hostGate(host);
+  const priority = opts.priority ?? 'interactive';
+  if (priority === 'interactive' && gate.isPaused()) throw new HostPaused(host);
+  const timeout = AbortSignal.timeout(opts.timeoutMs ?? REQUEST_TIMEOUT_MS);
+  // `via` (egress lane) is optional so this also works with a gate that passes none.
+  return gate.run(async (via?: { fetch?: (url: string, init?: RequestInit) => Promise<Response> }) => {
+    const doFetch = opts.fetchImpl ?? via?.fetch ?? fetch;
+    const res = await doFetch(url, {
+      headers: opts.headers ?? { Accept: 'application/json' },
+      redirect: 'follow',
+      signal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout,
+    });
+    if (!res.ok) throw new GateHttpError(res.status, `${host} HTTP ${res.status}`);
+    return read(res);
+  }, { key: opts.key ?? url, priority, signal: opts.signal });
+}
+
+export function appleJson<T = unknown>(url: string, opts: AppleRequestOptions = {}): Promise<T> {
+  return appleRequest(url, (res) => res.json() as Promise<T>, opts);
+}
+
+export function appleText(url: string, opts: AppleRequestOptions = {}): Promise<string> {
+  return appleRequest(url, (res) => res.text(), {
+    ...opts,
+    headers: opts.headers ?? { Accept: 'text/html,application/xhtml+xml', 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36' },
+  });
+}
+
+// --- Batch lookup + SERP persistence ----------------------------------------------
+
+/** 150 ids → 150 results in tests; 250 ids → only 210, so never more than 150. */
+export const LOOKUP_CHUNK = 150;
+
+type MetaStore = typeof import('./meta-store.js');
+let metaStorePromise: Promise<MetaStore> | null = null;
+/** Lazy so importing itunes.ts (pure helpers, tests) never opens the database. */
+function metaStore(): Promise<MetaStore> {
+  metaStorePromise ??= import('./meta-store.js');
+  return metaStorePromise;
+}
+
+function persistSerp(cc: string, term: string, source: RankSource, ids: string[]) {
+  const t = term.trim().toLowerCase().replace(/\s+/g, ' ');
+  void metaStore()
+    .then((store) => store.writeSerp(cc, t, source, ids))
+    .catch((e) => console.warn(`[serp] persist ${cc}/"${t}" failed: ${(e as Error).message}`));
+}
+
+/** In-flight per-id lookups, so overlapping batches share one request per id. */
+const lookupPending = new Map<string, Promise<AppMetaRecord | null>>();
+
+export interface LookupBatchOptions {
+  priority?: GatePriority;
+  signal?: AbortSignal;
+}
+
+/**
+ * iTunes lookup for many ids in one storefront: 24 h SQLite cache, then
+ * requests of ≤150 ids through the `itunes.apple.com` gate. Ids already being
+ * fetched by another call are awaited, not requested twice. Best-effort: a
+ * failed chunk leaves its ids out of the result (aborts still throw).
+ */
+export async function lookupBatch(ids: Array<string | number>, country: string, opts: LookupBatchOptions = {}): Promise<Map<string, AppMetaRecord>> {
+  const cc = storefrontCountry(country);
+  const uniq = Array.from(new Set(ids.map((id) => String(id).trim()).filter((id) => /^\d+$/.test(id))));
+  const out = new Map<string, AppMetaRecord>();
+  if (!uniq.length) return out;
+  const store = await metaStore();
+  const cached = store.readAppMeta(cc, uniq);
+  const waits: Array<Promise<void>> = [];
+  const toFetch: string[] = [];
+  for (const id of uniq) {
+    if (cached.has(id)) {
+      const value = cached.get(id);
+      if (value) out.set(id, value);
+      continue;
+    }
+    const pending = lookupPending.get(`${cc}|${id}`);
+    if (pending) waits.push(pending.then((value) => { if (value) out.set(id, value); }));
+    else toFetch.push(id);
+  }
+
+  for (let i = 0; i < toFetch.length; i += LOOKUP_CHUNK) {
+    const chunk = toFetch.slice(i, i + LOOKUP_CHUNK);
+    const request = fetchLookupChunk(cc, chunk, opts, store);
+    request.catch(() => { /* surfaced below */ });
+    for (const id of chunk) {
+      const key = `${cc}|${id}`;
+      const perId = request.then((found) => found.get(id) ?? null, () => null);
+      lookupPending.set(key, perId);
+      void perId.finally(() => { if (lookupPending.get(key) === perId) lookupPending.delete(key); });
+    }
+    waits.push(request.then(
+      (found) => { for (const [id, value] of found) out.set(id, value); },
+      (e) => {
+        if (isAbort(e)) throw e;
+        console.warn(`[lookup] ${cc} batch of ${chunk.length} failed: ${(e as Error).message}`);
+      }
+    ));
+  }
+  await Promise.all(waits);
+  return out;
+}
+
+async function fetchLookupChunk(cc: string, chunk: string[], opts: LookupBatchOptions, store: MetaStore): Promise<Map<string, AppMetaRecord>> {
+  const params = new URLSearchParams({ id: chunk.join(','), country: cc });
+  const data = await appleJson<{ results?: Array<Record<string, unknown>> }>(`${BASE}/lookup?${params}`, {
+    priority: opts.priority ?? 'top',
+    signal: opts.signal,
+    key: `lookupBatch|${cc}|${chunk.join(',')}`,
+    headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.3 (self-hosted)' },
+  });
+  const found = new Map<string, AppMetaRecord>();
+  for (const item of data.results ?? []) {
+    if (!item?.trackId) continue;
+    found.set(String(item.trackId), store.slimLookupItem(item));
+  }
+  // Ids Apple did not return (removed / not sold here) are cached as misses for 1 h.
+  store.writeAppMeta(cc, chunk.map((id) => [id, found.get(id) ?? null] as [string, AppMetaRecord | null]));
+  return found;
+}
+
+/** Cached metadata only (no network): for sync readers such as the spy report. */
+export async function cachedAppMeta(ids: string[], country: string): Promise<Map<string, AppMetaRecord>> {
+  const store = await metaStore();
+  const out = new Map<string, AppMetaRecord>();
+  for (const [id, value] of store.readAppMeta(storefrontCountry(country), ids)) if (value) out.set(id, value);
+  return out;
+}
+
+/**
+ * Fill top-5 entries that have no name (MZStore lockups cover only the first
+ * 8, and some ids come without one) from `lookupBatch`. Mutates and returns `top5`.
+ */
+export async function fillTop5Names(top5: Top5Entry[], country: string, opts: LookupBatchOptions = {}): Promise<Top5Entry[]> {
+  const missing = top5.filter((e) => !e.name && e.tid).map((e) => String(e.tid));
+  if (!missing.length) return top5;
+  const meta = await lookupBatch(missing, country, opts);
+  for (const entry of top5) {
+    const m = entry.tid ? meta.get(String(entry.tid)) : undefined;
+    if (!m) continue;
+    entry.name ||= m.trackName ?? '';
+    entry.dev ||= m.artistName ?? '';
+    entry.id ||= m.bundleId ?? '';
+  }
+  return top5;
+}
+export type { AppMetaRecord };

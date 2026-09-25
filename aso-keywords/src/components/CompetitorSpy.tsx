@@ -16,7 +16,9 @@ const GAP_TABS: Array<{ id: GapTab; label: string; hint: string }> = [
 ];
 const LIMITS = [10, 30, 100];
 const CHECK_BATCH = 20;
-const SOURCE_LABEL: Record<SpyRow['source'], string> = { full: 'полная выдача', cache: 'кэш поиска', snapshot: 'снимок топ-5' };
+const SOURCE_LABEL: Record<SpyRow['source'], string> = { store: 'выдача App Store', full: 'выдача iTunes API', cache: 'кэш поиска', snapshot: 'снимок топ-5' };
+/** Deepest result set we can have (App Store search returns ~250 ids). */
+const MAX_DEPTH = 250;
 
 const fmtDate = (value: string) => {
   const date = new Date(`${value}T00:00:00Z`);
@@ -182,7 +184,7 @@ export default function CompetitorSpy({
       <div className="spy-coverage">
         <p {...tipProps('Покрытие', coverageTip(report))}>
           Найден в <b>{coverage.found}</b> из <b>{coverage.checked}</b> проверенных выдач {cc}.{' '}
-          <span className="spy-muted">Глубина: {coverage.full} полных (топ-200), {coverage.cache} из кэша поиска (топ-15), {coverage.snapshot} снимков (топ-5).{coverage.trackedUnchecked ? ` Ещё ${coverage.trackedUnchecked} отслеживаемых ключей без выдачи.` : ''}</span>
+          <span className="spy-muted">Глубина: {coverage.store} выдач App Store (топ-{coverage.depth}){coverage.full ? `, ${coverage.full} старых iTunes (топ-200)` : ''}, {coverage.cache} из кэша поиска (топ-15), {coverage.snapshot} снимков (топ-5).{coverage.trackedUnchecked ? ` Ещё ${coverage.trackedUnchecked} отслеживаемых ключей без выдачи.` : ''}</span>
         </p>
         <div className="spy-check">
           {running && job ? (
@@ -198,7 +200,7 @@ export default function CompetitorSpy({
               disabled={!report.candidates.length}
               onClick={startCheck}
               {...tipProps('Новые запросы в App Store', [
-                [null, 'Сначала фразы из названия и подзаголовка конкурента, которых нет в наших выдачах,', ''], [null, 'затем перепроверка неглубоких выдач (топ-5/15) до топ-200', ''],
+                [null, 'Сначала фразы из названия и подзаголовка конкурента, которых нет в наших выдачах,', ''], [null, `затем перепроверка неглубоких выдач (топ-5/15, iTunes) по App Store до топ-${MAX_DEPTH}`, ''], [null, 'Свежие (< 12 ч) выдачи App Store не запрашиваются повторно', ''],
                 [null, 'Скорость', '≈18 запросов в минуту'],
                 ...report.candidates.slice(0, CHECK_BATCH).slice(0, 8).map((term): TipRow => [null, term, '']),
               ])}
@@ -286,8 +288,8 @@ export default function CompetitorSpy({
                   <td className="spy-num">{fmtNum(row.difficulty)}</td>
                   <td className="spy-num">{fmtNum(row.chance)}</td>
                   <td className="spy-num spy-opp" {...tipProps(`Opportunity · ${row.keyword}`, oppTip(row))}>{row.opportunity == null ? '—' : row.opportunity.toFixed(1)}</td>
-                  <td className="spy-src" {...tipProps('Источник выдачи', [[null, SOURCE_LABEL[row.source], `топ-${Math.min(row.theirDepth, 200)}`], [null, 'Проверено', fmtDate(row.checkedAt)]])}>
-                    топ-{Math.min(row.theirDepth, 200)} · {fmtDate(row.checkedAt)}
+                  <td className="spy-src" {...tipProps('Источник выдачи', [[null, SOURCE_LABEL[row.source], `топ-${Math.min(row.theirDepth, MAX_DEPTH)}`], [null, 'Проверено', fmtDate(row.checkedAt)]])}>
+                    топ-{Math.min(row.theirDepth, MAX_DEPTH)} · {fmtDate(row.checkedAt)}
                   </td>
                 </tr>
               ))}
@@ -311,7 +313,8 @@ function coverageTip(report: SpyReport): TipRow[] {
   return [
     [null, 'Проверенных выдач', String(report.coverage.checked)],
     [null, 'Конкурент найден', String(report.coverage.found)],
-    [null, 'Полная выдача (топ-200)', String(report.coverage.full)],
+    [null, `Выдача App Store (топ-${report.coverage.depth})`, String(report.coverage.store)],
+    [null, 'Старая выдача iTunes API (топ-200)', String(report.coverage.full)],
     [null, 'Кэш поиска (топ-15)', String(report.coverage.cache)],
     [null, 'Снимок трекера (топ-5)', String(report.coverage.snapshot)],
     [null, 'Отсутствие в неглубокой выдаче не значит «не ранжируется»', ''],
@@ -349,7 +352,7 @@ function SortTh({ label, k, sort, onSort, num, tip }: {
 }
 
 function RankCell({ rank, depth, uncertain }: { rank: number | null; depth: number; uncertain?: boolean }) {
-  const shown = Math.min(depth, 200);
+  const shown = Math.min(depth, MAX_DEPTH);
   if (rank != null) {
     return <td className={`spy-num spy-rank${rank <= 3 ? ' spy-rank-top' : rank <= 10 ? ' spy-rank-ten' : ''}`}>#{rank}</td>;
   }

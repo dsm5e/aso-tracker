@@ -1,4 +1,5 @@
 import { db } from './db.js';
+import { appleJson } from './itunes.js';
 
 export interface Review {
   id: string;
@@ -61,9 +62,7 @@ export async function getCompetitorReviews(
   const url = `https://itunes.apple.com/${cc}/rss/customerreviews/id=${iTunesId}/sortBy=mostRecent/json`;
   let json: any;
   try {
-    const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
-    if (!res.ok) return null;
-    json = await res.json();
+    json = await appleJson(url, { timeoutMs: 12_000 });
   } catch {
     return null;
   }

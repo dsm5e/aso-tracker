@@ -3,6 +3,8 @@ import { db } from './db.js';
 import type { AppConfig } from './config.js';
 import { normalizeLocale } from './paid-observations.js';
 import { idempotentCreate, normalizeIdempotencyKey } from './idempotency.js';
+import { appleJson } from './itunes.js';
+import { GateHttpError } from './host-gate.js';
 
 const METADATA_CACHE_TTL_MS = 24 * 60 * 60_000;
 const ITUNES_ROOT = 'https://itunes.apple.com';
@@ -125,8 +127,6 @@ type ExperimentRow = {
 type ExperimentEventRow = { id: number; action: AsoExperimentEvent['action']; payload_json: string; created_at: number };
 type FetchLike = typeof fetch;
 
-let publicMetadataQueue: Promise<void> = Promise.resolve();
-let nextPublicMetadataRequestAt = 0;
 const publicMetadataInFlight = new Map<string, Promise<PublicCaptureResult>>();
 
 function text(value: unknown, field: string, max = 20_000, required = false): string | null {
@@ -270,22 +270,22 @@ export function appendMetadataSnapshot(appId: string, input: unknown, now = Date
   return { snapshot: result.value, created: result.created };
 }
 
-async function requestPublicMetadata(url: string, fetchImpl: FetchLike): Promise<Response> {
-  const operation = publicMetadataQueue.then(async () => {
-    const wait = Math.max(0, nextPublicMetadataRequestAt - Date.now());
-    if (wait) await new Promise<void>((resolve) => setTimeout(resolve, wait));
-    let lastResponse: Response | null = null;
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const response = await fetchImpl(url, { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(15_000) });
-      nextPublicMetadataRequestAt = Date.now() + 3_250;
-      lastResponse = response;
-      if (![403, 429, 500, 502, 503, 504].includes(response.status) || attempt === 2) return response;
-      await new Promise<void>((resolve) => setTimeout(resolve, 1_000 * (2 ** attempt)));
+/** iTunes lookup through the itunes.apple.com gate (pacing, 403/429 pause,
+ * coalescing); 5xx and timeouts are retried up to 3 times. */
+async function requestPublicMetadata(url: string, fetchImpl?: FetchLike): Promise<unknown> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await appleJson(url, { fetchImpl });
+    } catch (error) {
+      lastError = error;
+      const status = error instanceof GateHttpError ? error.status : null;
+      const transient = status == null ? (error as Error)?.name === 'TimeoutError' : status >= 500;
+      if (!transient) break;
     }
-    return lastResponse!;
-  });
-  publicMetadataQueue = operation.then(() => undefined, () => undefined);
-  return operation;
+  }
+  if (lastError instanceof GateHttpError) throw new Error(`Public App Store lookup failed (${lastError.status})`);
+  throw lastError;
 }
 
 type PublicCaptureResult = {
@@ -332,9 +332,8 @@ export async function capturePublicMetadata(
     const country = COUNTRY_OVERRIDE[locale] ?? locale.split('-')[0];
     const params = new URLSearchParams({ id: app.iTunesId, country });
     try {
-      const response = await requestPublicMetadata(`${ITUNES_ROOT}/lookup?${params}`, options.fetchImpl ?? fetch);
-      if (!response.ok) throw new Error(`Public App Store lookup failed (${response.status})`);
-      const input = publicPayloadToInput(await response.json(), locale, app.iTunesId);
+      const payload = await requestPublicMetadata(`${ITUNES_ROOT}/lookup?${params}`, options.fetchImpl);
+      const input = publicPayloadToInput(payload, locale, app.iTunesId);
       if (!input) throw new Error('App not returned by this storefront');
       const normalized = normalizeMetadataSnapshotInput(input, now);
       const fingerprint = snapshotFingerprint(normalized);

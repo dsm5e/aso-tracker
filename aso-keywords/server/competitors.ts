@@ -1,6 +1,7 @@
 import { db } from './db.js';
 import { loadApps } from './config.js';
 import { isMedScanCompetitorEvidence } from './medical-intent.js';
+import { appleJson } from './itunes.js';
 
 export interface CompetitorInfo {
   bundleId: string;
@@ -230,11 +231,7 @@ export function competitorKeywords(appId: string, bundleId: string): CompetitorK
 export async function competitorInfo(bundleId: string, country = 'us'): Promise<CompetitorInfo | null> {
   const storefront = /^[a-z]{2}$/i.test(country) ? country.toLowerCase() : 'us';
   const query = new URLSearchParams({ bundleId, country: storefront });
-  const response = await fetch(`https://itunes.apple.com/lookup?${query}`, {
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) return null;
-  const data = (await response.json()) as {
+  let data: {
     results?: Array<{
       bundleId?: string;
       trackName?: string;
@@ -256,6 +253,11 @@ export async function competitorInfo(bundleId: string, country = 'us'): Promise<
       formattedPrice?: string;
     }>;
   };
+  try {
+    data = await appleJson(`https://itunes.apple.com/lookup?${query}`);
+  } catch {
+    return null;
+  }
   const item = data.results?.[0];
   if (!item) return null;
   return {

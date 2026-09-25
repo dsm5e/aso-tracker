@@ -4,6 +4,7 @@
 // tracked storefront. Best-effort: a failed lookup keeps the previous values.
 import { loadApps, loadKeywords, saveApps, type AppConfig } from './config.js';
 import { productPageSubtitle } from './competitor-spy.js';
+import { appleJson } from './itunes.js';
 
 const DAY_MS = 24 * 60 * 60_000;
 
@@ -14,9 +15,8 @@ interface LookupItem {
 
 async function lookup(iTunesId: string, country: string): Promise<LookupItem | null> {
   try {
-    const r = await fetch(`https://itunes.apple.com/lookup?id=${encodeURIComponent(iTunesId)}&country=${country}`, { signal: AbortSignal.timeout(15_000) });
-    if (!r.ok) return null;
-    const data = (await r.json()) as { results?: LookupItem[] };
+    // Runs at server start and before every snapshot: 'top', not interactive.
+    const data = await appleJson<{ results?: LookupItem[] }>(`https://itunes.apple.com/lookup?id=${encodeURIComponent(iTunesId)}&country=${country}`, { priority: 'top' });
     return data.results?.[0]?.trackId ? data.results[0] : null;
   } catch { return null; }
 }
@@ -33,7 +33,7 @@ async function refreshOne(app: AppConfig): Promise<{ changed: string[] }> {
   let item: LookupItem | null = null; let country = 'us';
   for (const c of countries) { item = await lookup(app.iTunesId, c); if (item) { country = c; break; } }
   if (!item) return { changed: [] };
-  const subtitle = item.trackId ? await productPageSubtitle(item.trackId, country, item.primaryGenreName) : null;
+  const subtitle = item.trackId ? await productPageSubtitle(item.trackId, country, item.primaryGenreName, 'top') : null;
   const next: Partial<AppConfig> = {
     iconUrl: item.artworkUrl512 || item.artworkUrl100?.replace('100x100bb', '512x512bb') || app.iconUrl,
     storeName: item.trackName ?? app.storeName,

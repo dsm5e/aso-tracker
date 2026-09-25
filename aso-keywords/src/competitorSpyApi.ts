@@ -21,7 +21,8 @@ export interface SpyRow {
   theirDepth: number;
   ourRank: number | null;
   ourDepth: number;
-  source: 'full' | 'cache' | 'snapshot';
+  /** store = App Store search (~250); full = legacy iTunes (200); cache = search screen (15); snapshot = top-5. */
+  source: 'store' | 'full' | 'cache' | 'snapshot';
   checkedAt: string;
   tracked: boolean;
   trackedBy: string[];
@@ -44,7 +45,7 @@ export interface SpyReport {
   competitor: SpyAppMeta;
   ours: SpyAppMeta | null;
   ourStrength: number;
-  coverage: { checked: number; found: number; full: number; cache: number; snapshot: number; trackedUnchecked: number };
+  coverage: { checked: number; found: number; store: number; full: number; cache: number; snapshot: number; trackedUnchecked: number; depth: number };
   popularity: 'ok' | 'no-data' | 'unavailable';
   counts: { theirs: number; shared: number; ours: number };
   rows: SpyRow[];

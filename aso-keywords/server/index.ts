@@ -10,7 +10,7 @@ import { assertSafeAppId, loadApps, saveApps, loadKeywords, saveKeywords, type A
 import { db } from './db.js';
 import { runSnapshot, refreshKeyword, getLiveRuntime, setLiveSpeed } from './snapshot.js';
 import { getMovers } from './analytics.js';
-import { lookupItunes, searchItunes } from './itunes.js';
+import { appleJson, lookupBatch, lookupItunes, searchItunes } from './itunes.js';
 import { gateStatus } from './host-gate.js';
 import { compareRankSources, isRankSource, loadSnapshotSettings, recordProbeSet, saveSnapshotSettings, type RankSource } from './rank-source.js';
 import { competitorInfo, competitorKeywords, topCompetitors } from './competitors.js';
@@ -109,9 +109,7 @@ async function searchAppStore(term: string, country: string): Promise<any[]> {
     if (/^\d+$/.test(term)) {
       url = `https://itunes.apple.com/lookup?id=${term}&country=${country}`;
     } else if (/^[a-zA-Z0-9.\-_]+$/.test(term) && term.includes('.')) {
-      const lookup = await fetch(`https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(term)}&country=${country}`, { signal: AbortSignal.timeout(15_000) });
-      if (!lookup.ok) throw new Error(`App Store lookup failed (${lookup.status})`);
-      const data = (await lookup.json()) as { results?: any[] };
+      const data = await appleJson<{ results?: any[] }>(`https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(term)}&country=${country}`);
       if (data.results?.length) return data.results;
       const params = new URLSearchParams({ term, country, media: 'software', entity: 'software', limit: '15' });
       url = `https://itunes.apple.com/search?${params}`;
@@ -131,9 +129,7 @@ async function searchAppStore(term: string, country: string): Promise<any[]> {
         trackViewUrl: item.trackViewUrl,
       }));
     }
-    const response = await fetch(url, { signal: AbortSignal.timeout(15_000) });
-    if (!response.ok) throw new Error(`App Store search failed (${response.status})`);
-    const data = (await response.json()) as { results?: any[] };
+    const data = await appleJson<{ results?: any[] }>(url);
     return data.results || [];
   })();
 
@@ -176,8 +172,7 @@ app.post('/api/apps', async (req, res) => {
   // Auto-fetch the real App Store artwork so the icon shows immediately.
   if (!body.iconUrl) {
     try {
-      const r = await fetch(`https://itunes.apple.com/lookup?id=${encodeURIComponent(body.iTunesId)}`);
-      const j = (await r.json()) as { results?: Array<{ artworkUrl512?: string; artworkUrl100?: string }> };
+      const j = await appleJson<{ results?: Array<{ artworkUrl512?: string; artworkUrl100?: string }> }>(`https://itunes.apple.com/lookup?id=${encodeURIComponent(body.iTunesId)}`);
       const art = j.results?.[0];
       if (art) body.iconUrl = art.artworkUrl512 || art.artworkUrl100?.replace('100x100bb', '512x512bb');
     } catch {/* ignore — falls back to emoji/gradient */}
@@ -544,31 +539,16 @@ app.post('/api/itunes/artworks', async (req, res) => {
 
   if (missing.length) {
     try {
-      const params = new URLSearchParams({ id: missing.join(','), country });
-      const response = await fetch(`https://itunes.apple.com/lookup?${params}`, {
-        headers: { Accept: 'application/json' },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (response.ok) {
-        const payload = await response.json() as {
-          results?: Array<{
-            trackId?: number;
-            artworkUrl60?: string;
-            artworkUrl100?: string;
-            artworkUrl512?: string;
-          }>;
-        };
-        for (const app of payload.results ?? []) {
-          if (!app.trackId) continue;
-          const url = app.artworkUrl100 || app.artworkUrl60 || app.artworkUrl512;
-          if (!url) continue;
-          const id = String(app.trackId);
-          result[id] = url;
-          artworkCache.set(`${country}:${id}`, {
-            url,
-            expiresAt: now + 24 * 60 * 60 * 1000,
-          });
-        }
+      // Shared 24 h lookup cache, ≤150 ids per request through the itunes.apple.com gate.
+      const meta = await lookupBatch(missing, country, { priority: 'interactive' });
+      for (const [id, app] of meta) {
+        const url = app.artworkUrl100 || app.artworkUrl60 || app.artworkUrl512;
+        if (!url) continue;
+        result[id] = url;
+        artworkCache.set(`${country}:${id}`, {
+          url,
+          expiresAt: now + 24 * 60 * 60 * 1000,
+        });
       }
     } catch {
       // Artwork is progressive enhancement; ranking data remains usable.
@@ -590,19 +570,14 @@ app.post('/api/itunes/artworks', async (req, res) => {
       const bundle = missingBundles[bundlePointer++];
       try {
         const params = new URLSearchParams({ bundleId: bundle, country });
-        const response = await fetch(`https://itunes.apple.com/lookup?${params}`, {
-          headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(15_000),
-        });
-        if (!response.ok) continue;
-        const payload = await response.json() as {
+        const payload = await appleJson<{
           results?: Array<{
             trackId?: number;
             artworkUrl60?: string;
             artworkUrl100?: string;
             artworkUrl512?: string;
           }>;
-        };
+        }>(`https://itunes.apple.com/lookup?${params}`);
         const app = payload.results?.[0];
         const url = app?.artworkUrl100 || app?.artworkUrl60 || app?.artworkUrl512;
         if (!url) continue;

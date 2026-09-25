@@ -1,4 +1,5 @@
 import { db } from './db.js';
+import { appleJson } from './itunes.js';
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS app_genres (
@@ -13,14 +14,9 @@ const GENRE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function fetchGenre(bundleId: string): Promise<{ genre: string; name: string } | null> {
   try {
-    const res = await fetch(
-      `https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(bundleId)}`,
-      { signal: AbortSignal.timeout(10_000) }
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
+    const data = await appleJson<{
       results?: Array<{ primaryGenreName?: string; trackName?: string }>;
-    };
+    }>(`https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(bundleId)}`);
     const r = data.results?.[0];
     if (!r?.primaryGenreName) return null;
     return { genre: r.primaryGenreName, name: r.trackName ?? '' };
@@ -31,14 +27,9 @@ async function fetchGenre(bundleId: string): Promise<{ genre: string; name: stri
 
 export async function getGenreById(iTunesId: string): Promise<{ genre: string; name: string } | null> {
   try {
-    const res = await fetch(
-      `https://itunes.apple.com/lookup?id=${encodeURIComponent(iTunesId)}`,
-      { signal: AbortSignal.timeout(10_000) }
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
+    const data = await appleJson<{
       results?: Array<{ primaryGenreName?: string; trackName?: string; bundleId?: string }>;
-    };
+    }>(`https://itunes.apple.com/lookup?id=${encodeURIComponent(iTunesId)}`);
     const r = data.results?.[0];
     if (!r?.primaryGenreName) return null;
     // Cache under real bundleId

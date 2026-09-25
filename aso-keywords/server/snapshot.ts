@@ -1,5 +1,5 @@
 import { refreshOwnAppMeta } from './own-app-meta.js';
-import { RateLimited, positionFromRank, searchRanked, type RankSource, type Top5Entry } from './itunes.js';
+import { RateLimited, fillTop5Names, positionFromRank, searchRanked, type RankSource, type Top5Entry } from './itunes.js';
 import { gateStatus, hostGate, onGateEvent, type GateHost, type GatePriority, type HostGateStatus } from './host-gate.js';
 import { activeProbeMatcher, insertProbe, loadSnapshotSettings, measureProbe, otherSource } from './rank-source.js';
 import { loadApps, loadKeywords, type AppConfig } from './config.js';
@@ -266,6 +266,9 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
             });
             consecutiveLimits = 0;
             const { position, total, top5 } = positionFromRank(res, task.app);
+            // P1: names for top-5 ids without a lockup come from the 24 h lookup cache
+            // (the full id list itself is already persisted to serp_cache by searchAppStore).
+            await fillTop5Names(top5, task.locale, { priority: 'tail', signal: ctrl.signal }).catch(() => {});
             const rec: SnapshotRow = {
               date: today,
               app: task.app.id,

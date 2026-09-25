@@ -1,7 +1,7 @@
 // Apple storefront ids (the numeric part of the `X-Apple-Store-Front` header)
 // by ISO alpha-2 code. Single source for MZStore search and MZSearchHints.
-// Only ids we are confident in are listed; an unknown storefront makes
-// `searchAppStore` fall back to the iTunes Search API instead of guessing.
+// Every storefront in storefronts.ts has an id (storefronts.test.ts checks it);
+// an unknown one makes `searchAppStore` fall back to the iTunes Search API.
 
 const IDS: Record<string, number> = {
   us: 143441, fr: 143442, de: 143443, gb: 143444, at: 143445, be: 143446, fi: 143447, gr: 143448,
@@ -24,6 +24,14 @@ const IDS: Record<string, number> = {
   gm: 143584, gw: 143585, kg: 143586, la: 143587, lr: 143588, mw: 143589, mr: 143590, fm: 143591,
   mn: 143592, mz: 143593, na: 143594, pw: 143595, pg: 143597, st: 143598, sc: 143599, sl: 143600,
   sb: 143601, sz: 143602, tj: 143603, tm: 143604, zw: 143605,
+  // 2020+ storefronts. ci/ge/iq: ipatool's table; the rest were confirmed on
+  // 2026-09-25 with one MZStore search each (product URLs came back as /<cc>/):
+  // ma, cm, me, ba, ly, mm, rw, zm, af, xk. nr/to/vu/cd/ga follow the same
+  // 1436xx sequence but were not probed (budget); a wrong id would show up as
+  // foreign product URLs in the payload.
+  ci: 143527, ly: 143567, mm: 143570, cm: 143574, nr: 143606, to: 143608, vu: 143609,
+  af: 143610, ba: 143612, cd: 143613, ga: 143614, ge: 143615, iq: 143617, me: 143619,
+  ma: 143620, rw: 143621, zm: 143622, xk: 143624,
 };
 
 /** Keyword-file locales that are language variants of one storefront. */

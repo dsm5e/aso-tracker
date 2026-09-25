@@ -68,3 +68,13 @@ test('country sets are sanitized before they reach disk', () => {
   ]);
   assert.deepEqual(sanitizeCountrySets(null), { favorites: [], sets: [] });
 });
+
+test('every storefront has an App Store storefront id, all distinct', async () => {
+  const { storefrontId } = await import('./storefront-ids.js');
+  const missing = STOREFRONTS.filter((s) => storefrontId(s.code) == null).map((s) => s.code);
+  assert.deepEqual(missing, []);
+  const ids = STOREFRONTS.map((s) => storefrontId(s.code));
+  assert.equal(new Set(ids).size, ids.length, 'unique storefront ids');
+  assert.equal(storefrontId('ma'), 143620);
+  assert.equal(storefrontId('iq'), 143617);
+});
