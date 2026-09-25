@@ -39,7 +39,7 @@ export default function KeywordExpand({ keyword }: Props) {
             value={String(daily.reduce((a, d) => a + d.impressions, 0))}
             data={daily.map((d) => d.impressions)}
             labels={daily.map((d) => d.date)}
-            color="var(--amber)"
+            color="var(--ds-c1)"
             width={260}
             height={50}
             format={(n) => String(Math.round(n))}
@@ -49,7 +49,7 @@ export default function KeywordExpand({ keyword }: Props) {
             value={fmtUsd(daily.reduce((a, d) => a + d.spend, 0))}
             data={daily.map((d) => d.spend)}
             labels={daily.map((d) => d.date)}
-            color="var(--amber)"
+            color="var(--ds-c2)"
             width={260}
             height={50}
             format={fmtUsd}
@@ -59,7 +59,7 @@ export default function KeywordExpand({ keyword }: Props) {
             value={String(daily.reduce((a, d) => a + d.installs, 0))}
             data={daily.map((d) => d.installs)}
             labels={daily.map((d) => d.date)}
-            color="var(--cyan)"
+            color="var(--ds-c3)"
             width={260}
             height={50}
             format={(n) => String(Math.round(n))}
@@ -69,7 +69,7 @@ export default function KeywordExpand({ keyword }: Props) {
             value={daily.length ? fmtUsd(daily.reduce((a, d) => a + d.spend, 0) / Math.max(1, daily.reduce((a, d) => a + d.taps, 0))) : "—"}
             data={daily.map((d) => d.cpt)}
             labels={daily.map((d) => d.date)}
-            color="var(--red)"
+            color="var(--ds-c4)"
             width={260}
             height={50}
             format={fmtUsd}

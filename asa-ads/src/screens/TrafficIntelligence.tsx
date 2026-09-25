@@ -3,6 +3,7 @@ import { asaApiUrl } from '../api.ts';
 import type { RankingRow } from '../lib/keywordsApi.ts';
 import { KeywordTopFiveInline } from '../components/KeywordResultsDrawer.tsx';
 import { appStoreCountry } from '../lib/appStoreLocales.ts';
+import { SERIES, hbarPath, tipProps, useWidth, type TipRow } from '../../../shared/charts/Charts.tsx';
 import './TrafficIntelligence.css';
 
 export interface TrafficIntelligenceApp {
@@ -472,6 +473,10 @@ function StatusNotice({ tone, title, children }: { tone: 'info' | 'warning' | 'e
   );
 }
 
+const TRAFFIC_POPULARITY = SERIES[0];
+const TRAFFIC_CAPTURED = SERIES[1];
+const TRAFFIC_AVAILABLE = SERIES[2];
+
 function TrafficChart({ rows }: { rows: TrafficKeywordRow[] }) {
   const chartRows = rows
     .filter((row) => row.popularity != null && row.capturedMidpoint != null)
@@ -480,48 +485,56 @@ function TrafficChart({ rows }: { rows: TrafficKeywordRow[] }) {
   if (chartRows.length === 0) {
     return <div className="traffic-chart-empty">Для карты спроса нужны данные о популярности и доле показов.</div>;
   }
-  const width = 920;
-  const labelWidth = 174;
-  const plotWidth = width - labelWidth - 30;
-  const rowHeight = 34;
-  const top = 30;
-  const height = top + chartRows.length * rowHeight + 18;
+  return <TrafficBars rows={chartRows} />;
+}
+
+/** Two bars per keyword on a shared 0–100 axis: Apple popularity index, and the
+ *  impression share split into captured + still available (stacked). Kit look:
+ *  --ds-grid gridlines, --ds-axis baseline, 4px rounded data-ends, kit tooltip. */
+function TrafficBars({ rows }: { rows: TrafficKeywordRow[] }) {
+  const [ref, width] = useWidth<HTMLDivElement>(920);
+  const labelWidth = Math.min(174, width * 0.3);
+  const plotWidth = Math.max(1, width - labelWidth - 24);
+  const rowHeight = 44;
+  const top = 22;
+  const height = top + rows.length * rowHeight + 4;
+  const X = (value: number) => labelWidth + (plotWidth * value) / 100;
   return (
     <div className="traffic-chart-wrap">
-      <svg className="traffic-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby="traffic-chart-title traffic-chart-desc">
-        <title id="traffic-chart-title">Спрос по ключам и захват трафика</title>
-        <desc id="traffic-chart-desc">В каждой строке верхняя тонкая полоса — индекс популярности Apple. Нижняя — доля показов: захваченная вашим приложением и оставшаяся доступной.</desc>
-        {[0, 25, 50, 75, 100].map((tick) => {
-          const x = labelWidth + (plotWidth * tick) / 100;
-          return (
-            <g key={tick} className="traffic-chart-grid">
-              <line x1={x} x2={x} y1={24} y2={height - 12} />
-              <text x={x} y={14} textAnchor={tick === 0 ? 'start' : tick === 100 ? 'end' : 'middle'}>{tick}</text>
+      <div className="dsc" ref={ref}>
+        <svg viewBox={`0 0 ${width} ${height}`} height={height} role="img" aria-label="Спрос по ключам и захват трафика">
+          {[0, 25, 50, 75, 100].map((tick) => (
+            <g key={tick}>
+              <line x1={X(tick)} x2={X(tick)} y1={top - 6} y2={height - 4} stroke={tick ? 'var(--ds-grid)' : 'var(--ds-axis)'} />
+              <text x={X(tick)} y={11} textAnchor={tick === 0 ? 'start' : tick === 100 ? 'end' : 'middle'}>{tick}</text>
             </g>
-          );
-        })}
-        {chartRows.map((row, index) => {
-          const y = top + index * rowHeight;
-          const popularity = normalizeScore(row.popularity) ?? 0;
-          const captured = row.capturedMidpoint ?? 0;
-          const available = 100 - captured;
-          return (
-            <g key={row.keyword} className="traffic-chart-row">
-              <text className="traffic-chart-label" x={0} y={y + 18}>{row.keyword}</text>
-              <rect className="traffic-chart-track" x={labelWidth} y={y + 4} width={plotWidth} height={5} rx={2.5} />
-              <rect className="traffic-chart-popularity" x={labelWidth} y={y + 4} width={(plotWidth * popularity) / 100} height={5} rx={2.5}>
-                <title>{`Индекс популярности Apple: ${Math.round(popularity)}/100`}</title>
-              </rect>
-              <rect className="traffic-chart-captured" x={labelWidth} y={y + 16} width={(plotWidth * captured) / 100} height={6} rx={3}>
-                <title>{`Смоделированная захваченная доля: ${Math.round(captured)}%`}</title>
-              </rect>
-              <rect className="traffic-chart-available" x={labelWidth + (plotWidth * captured) / 100} y={y + 16} width={(plotWidth * available) / 100} height={6} rx={3}>
-                <title>{`Смоделированная доступная доля: ${Math.round(available)}%`}</title>
-              </rect>
-            </g>
-          );
-        })}
-      </svg>
+          ))}
+          {rows.map((row, index) => {
+            const y = top + index * rowHeight;
+            const popularity = normalizeScore(row.popularity) ?? 0;
+            const captured = row.capturedMidpoint ?? 0;
+            const available = 100 - captured;
+            const tip: TipRow[] = [
+              [TRAFFIC_POPULARITY, 'Индекс популярности', `${Math.round(popularity)}/100`],
+              [TRAFFIC_CAPTURED, 'Захвачено (модель)', `${Math.round(captured)}%`],
+              [TRAFFIC_AVAILABLE, 'Доступно (модель)', `${Math.round(available)}%`],
+            ];
+            const capturedW = (plotWidth * captured) / 100;
+            const availableW = (plotWidth * available) / 100;
+            return (
+              <g key={row.keyword} {...tipProps(row.keyword, tip)}>
+                <rect className="dsc-hit" x={0} y={y - 4} width={width} height={rowHeight} fill="transparent" />
+                <text className="lab" x={0} y={y + 16}>{row.keyword}</text>
+                <path d={hbarPath(labelWidth, y + 2, Math.max(2, (plotWidth * popularity) / 100), 10)} fill={TRAFFIC_POPULARITY} />
+                {capturedW > 0 && (availableW > 0
+                  ? <rect x={labelWidth} y={y + 18} width={Math.max(0, capturedW - 2)} height={10} fill={TRAFFIC_CAPTURED} />
+                  : <path d={hbarPath(labelWidth, y + 18, capturedW, 10)} fill={TRAFFIC_CAPTURED} />)}
+                {availableW > 0 && <path d={hbarPath(labelWidth + capturedW, y + 18, availableW, 10)} fill={TRAFFIC_AVAILABLE} />}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
     </div>
   );
 }
@@ -1102,7 +1115,7 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
                 <section className="traffic-panel traffic-chart-panel">
                   <header className="traffic-section-header">
                     <div><span className="traffic-eyebrow">Карта спроса</span><h2>Где остаётся спрос</h2><p className="traffic-muted">Верхняя линия — популярность ключа; нижняя — какая доля уже захвачена и какая остаётся расчётно доступной.</p></div>
-                    <div className="traffic-legend" aria-label="Легенда графика"><span className="traffic-legend-popularity">Индекс популярности <InfoHint text="Верхняя тонкая полоса. Шкала от 0 до 100 показывает относительную популярность Apple, не число поисков." /></span><span className="traffic-legend-captured">Захвачено <InfoHint text="Левая часть нижней полосы: смоделированная или ограниченная диапазоном доля показов вашего приложения." /></span><span className="traffic-legend-available">Доступно <InfoHint text="Правая часть нижней полосы: остаток после захваченной доли. Он не гарантирует получение трафика." /></span></div>
+                    <div className="dsc-legend" aria-label="Легенда графика"><span><i style={{ background: TRAFFIC_POPULARITY }} />Индекс популярности <InfoHint text="Верхняя полоса. Шкала от 0 до 100 показывает относительную популярность Apple, не число поисков." /></span><span><i style={{ background: TRAFFIC_CAPTURED }} />Захвачено <InfoHint text="Левая часть нижней полосы: смоделированная или ограниченная диапазоном доля показов вашего приложения." /></span><span><i style={{ background: TRAFFIC_AVAILABLE }} />Доступно <InfoHint text="Правая часть нижней полосы: остаток после захваченной доли. Он не гарантирует получение трафика." /></span></div>
                   </header>
                   <TrafficChart rows={trafficRows} />
                 </section>

@@ -436,7 +436,6 @@ button.compact.down:not(.primary):hover { border-color: var(--ds-bad); }
   color: var(--ds-muted);
   font-size: 13px;
 }
-.spark svg path[fill="none"] { filter: none; }
 
 .card.stat { display: flex; flex-direction: column; gap: 8px; }
 .card.stat > .muted:first-child { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--ds-text); }

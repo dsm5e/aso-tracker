@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import './Competitors.css';
+import { Sparkline } from '../../../shared/charts/Charts';
 import {
   api,
   type AdRepositoryAd,
@@ -115,20 +116,15 @@ function FactBadge({ kind }: { kind: 'fact' | 'estimate' | 'unavailable' }) {
 }
 
 function HistoryLine({ rows }: { rows: CompetitorKeywordRow[] }) {
-  const values = rows.flatMap((row) => row.history.map((point) => point.rank).filter((rank): rank is number => rank != null));
-  if (values.length < 2) return <span className="competitor-history-empty" title="Для графика нужны минимум две точки" aria-label="Недостаточно данных">—</span>;
-  const width = 180;
-  const height = 42;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const range = max - min || 1;
-  const points = values.slice(-24).map((rank, index, list) => {
-    const x = index * (width / Math.max(list.length - 1, 1));
-    // Lower App Store rank is better, so it is shown higher on the line.
-    const y = 4 + ((rank - min) / range) * (height - 8);
-    return `${x},${y}`;
-  }).join(' ');
-  return <svg className="competitor-history-line" width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-label="История позиций: меньший номер позиции находится выше"><polyline fill="none" points={points} /></svg>;
+  const points = rows.flatMap((row) => row.history.filter((point): point is { date: string; rank: number } => point.rank != null));
+  if (points.length < 2) return <span className="competitor-history-empty" title="Для графика нужны минимум две точки" aria-label="Недостаточно данных">—</span>;
+  const recent = points.slice(-24);
+  // Lower App Store rank is better, so it is shown higher on the line.
+  return (
+    <div className="competitor-history" style={{ width: "100%", minWidth: 64 }} aria-label="История позиций: меньший номер позиции находится выше">
+      <Sparkline values={recent.map((point) => point.rank)} labels={recent.map((point) => point.date)} height={42} invert label="Позиция" fmt={(rank) => `#${rank}`} />
+    </div>
+  );
 }
 
 export default function Competitors({ app, locale }: CompetitorsProps) {

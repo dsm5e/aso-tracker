@@ -2,7 +2,7 @@
 // 2px lines, rounded data-ends, recessive grid, hover tooltips with every series).
 // Colors come from shared/ds.css: pass 'var(--ds-c1)'…'var(--ds-c4)' or semantic tokens.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { createPortal } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import './charts.css';
 
 export const SERIES = ['var(--ds-c1)', 'var(--ds-c2)', 'var(--ds-c3)', 'var(--ds-c4)'];
@@ -22,21 +22,32 @@ function TipHost() {
     el.style.top = Math.min(tip.y + 14, innerHeight - el.offsetHeight - 8) + 'px';
   });
   if (!tip) return null;
-  return createPortal(
+  return (
     <div className="dsc-tip" ref={ref}>
       <div className="th">{tip.head}</div>
       {tip.rows.map(([c, l, v], i) => (
         <div className="tr" key={i}>{c && <span className="k" style={{ background: c }} />}<span>{l}</span><b>{v}</b></div>
       ))}
-    </div>, document.body);
+    </div>
+  );
 }
-let hostMounted = false;
+// One tooltip layer per page, mounted lazily into <body> and never unmounted, so
+// tooltips keep working when the chart that happened to render first goes away
+// (table rows re-sorting, tab switches) and for plain elements using tipProps.
+let hostStarted = false;
+function ensureTipHost() {
+  if (hostStarted || typeof document === 'undefined') return;
+  hostStarted = true;
+  const el = document.createElement('div');
+  el.className = 'dsc-tip-layer';
+  document.body.appendChild(el);
+  createRoot(el).render(<TipHost />);
+}
 function useTipHost() {
-  const [mine, setMine] = useState(false);
-  useEffect(() => { if (!hostMounted) { hostMounted = true; setMine(true); return () => { hostMounted = false; }; } }, []);
-  return mine ? <TipHost /> : null;
+  useEffect(ensureTipHost, []);
+  return null;
 }
-export const showTip = (e: { clientX: number; clientY: number }, head: string, rows: TipRow[]) => setGlobalTip?.({ x: e.clientX, y: e.clientY, head, rows });
+export const showTip = (e: { clientX: number; clientY: number }, head: string, rows: TipRow[]) => { ensureTipHost(); setGlobalTip?.({ x: e.clientX, y: e.clientY, head, rows }); };
 export const hideTip = () => setGlobalTip?.(null);
 /** Props for any SVG/HTML element that should show a tooltip on hover. */
 export const tipProps = (head: string, rows: TipRow[]) => ({
@@ -45,7 +56,7 @@ export const tipProps = (head: string, rows: TipRow[]) => ({
 });
 
 // ---------- helpers ----------
-function useWidth<T extends HTMLElement>(fallback = 600): [React.RefObject<T | null>, number] {
+export function useWidth<T extends HTMLElement>(fallback = 600): [React.RefObject<T | null>, number] {
   const ref = useRef<T>(null);
   const [w, setW] = useState(fallback);
   useLayoutEffect(() => {
@@ -64,11 +75,11 @@ export function nice(max: number): [number, number[]] {
   for (let v = 0; v <= top + 1e-9; v += step) t.push(+v.toFixed(6));
   return [top, t];
 }
-const colPath = (x: number, y: number, w: number, h: number, r = 4) => {
+export const colPath = (x: number, y: number, w: number, h: number, r = 4) => {
   if (h <= 0) return ''; r = Math.min(r, h, w / 2);
   return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
 };
-const hbarPath = (x: number, y: number, w: number, h: number, r = 4) => {
+export const hbarPath = (x: number, y: number, w: number, h: number, r = 4) => {
   if (w <= 0) return ''; r = Math.min(r, w, h / 2);
   return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
 };
@@ -165,8 +176,10 @@ export function BarChart({ labels, series, height = 220, yFmt = num, tipHead }: 
 }
 
 // ---------- sparkline ----------
-export function Sparkline({ values, labels, color = 'var(--ds-c1)', height = 40, fmt = num, invert = false }: {
+export function Sparkline({ values, labels, color = 'var(--ds-c1)', height = 40, fmt = num, invert = false, label = 'Значение' }: {
   values: (number | null)[]; labels?: string[]; color?: string; height?: number; fmt?: (v: number) => string; invert?: boolean;
+  /** series name in the tooltip row */
+  label?: string;
 }) {
   const host = useTipHost();
   const [ref, w] = useWidth<HTMLDivElement>(120);
@@ -185,35 +198,48 @@ export function Sparkline({ values, labels, color = 'var(--ds-c1)', height = 40,
       {host}
       <svg viewBox={`0 0 ${w} ${h}`} height={h} preserveAspectRatio="none"
         onPointerMove={(e) => { const bb = e.currentTarget.getBoundingClientRect(); const i = Math.max(0, Math.min(n - 1, Math.round((e.clientX - bb.left) / bb.width * (n - 1)))); setHover(i);
-          showTip(e, labels?.[i] ?? String(i + 1), [[color, 'Значение', vs[i] == null ? '—' : fmt(vs[i] as number)]]); }}
+          showTip(e, labels?.[i] ?? String(i + 1), [[color, label, vs[i] == null ? '—' : fmt(vs[i] as number)]]); }}
         onPointerLeave={() => { setHover(null); hideTip(); }}>
         <defs><linearGradient id={gid} x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity={0.28} /><stop offset="100%" stopColor={color} stopOpacity={0} /></linearGradient></defs>
         <path d={`${line}L${X(last)},${h}L${X(first)},${h}Z`} fill={`url(#${gid})`} />
         <path d={line} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         {hover != null && <line x1={X(hover)} x2={X(hover)} y1={0} y2={h} stroke="var(--ds-muted)" strokeWidth={1} opacity={0.6} vectorEffect="non-scaling-stroke" />}
+        {(() => { const i = hover != null && vs[hover] != null ? hover : last; return <circle cx={X(i)} cy={Y(vs[i] as number)} r={3.5} fill={color} stroke="var(--ds-panel)" strokeWidth={2} />; })()}
       </svg>
     </div>
   );
 }
 
 // ---------- horizontal bars (ranked list) ----------
-export function HBars({ rows, fmt = num, max }: {
-  rows: { label: ReactNode; value: number; color?: string; tip?: TipRow[]; tipHead?: string; note?: string }[]; fmt?: (v: number) => string; max?: number;
+export interface HBarRow { label: ReactNode; value: number; color?: string; tip?: TipRow[]; tipHead?: string; note?: string; /** replaces the value label */ text?: string }
+export function HBars({ rows, fmt = num, max, marker, valueWidth = 70, labelWidth = 180 }: {
+  rows: HBarRow[]; fmt?: (v: number) => string; max?: number;
+  /** vertical reference line (average, break-even…) at this value */
+  marker?: { value: number; label: string };
+  /** room right of the longest bar for its value label */
+  valueWidth?: number;
+  labelWidth?: number;
 }) {
   const host = useTipHost();
   const [ref, w] = useWidth<HTMLDivElement>();
-  const L = Math.min(180, w * 0.34), RR = 70, rowH = 26, H = rows.length * rowH;
-  const mx = max ?? Math.max(...rows.map((r) => r.value), 1e-9);
+  const L = Math.min(labelWidth, w * 0.34), RR = valueWidth, rowH = 26, body = rows.length * rowH, H = body + (marker ? 18 : 0);
+  const mx = max ?? Math.max(...rows.map((r) => r.value), marker?.value ?? 0, 1e-9);
+  const plot = Math.max(0, w - L - RR);
   return (
     <div className="dsc dsc-hbars" ref={ref}>
       {host}
       <div className="dsc-hbar-labels" style={{ width: L }}>{rows.map((r, i) => <div key={i} style={{ height: rowH }}>{r.label}</div>)}</div>
-      <svg viewBox={`0 0 ${w - L} ${H}`} height={H} style={{ width: `calc(100% - ${L}px)` }}>
+      <svg viewBox={`0 0 ${Math.max(1, w - L)} ${H}`} height={H} style={{ width: `calc(100% - ${L}px)` }}>
+        {marker && <g>
+          <line x1={plot * marker.value / mx} x2={plot * marker.value / mx} y1={0} y2={body} stroke="var(--ds-muted)" strokeDasharray="3 4" opacity={0.6} />
+          <text x={plot * marker.value / mx} y={body + 13} textAnchor="middle">{marker.label}</text>
+        </g>}
         {rows.map((r, i) => {
-          const bw = Math.max(2, (w - L - RR) * r.value / mx), y = i * rowH + 6;
+          const bw = Math.max(2, plot * Math.min(r.value, mx) / mx), y = i * rowH + 6;
           return <g key={i} {...tipProps(r.tipHead ?? String(r.label), r.tip ?? [[r.color ?? 'var(--ds-c1)', 'Значение', fmt(r.value)]])}>
+            <rect className="dsc-hit" x={0} y={i * rowH} width={Math.max(0, w - L)} height={rowH} fill="transparent" />
             <path d={hbarPath(0, y, bw, 14)} fill={r.color ?? 'var(--ds-c1)'} />
-            <text className="lab" x={bw + 6} y={y + 11}>{fmt(r.value)}{r.note ? ` · ${r.note}` : ''}</text>
+            <text className="lab" x={bw + 6} y={y + 11}>{r.text ?? fmt(r.value)}{r.note ? ` · ${r.note}` : ''}</text>
           </g>;
         })}
       </svg>

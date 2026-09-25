@@ -89,18 +89,18 @@ export default function Profitability({ reloadKey }: Props) {
       </div>
 
       <div className="spark-row">
-        <Sparkline title="Расход" value={fmtUsd(t.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--amber)" format={fmtUsd} />
+        <Sparkline title="Расход" value={fmtUsd(t.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--ds-c1)" format={fmtUsd} />
         {hasRevenue ? (
-          <Sparkline title="Выручка" value={fmtUsd(t.revenue)} data={daily.map((d) => d.spend)} labels={dates} color="var(--green)" format={fmtUsd} />
+          <Sparkline title="Выручка" value={fmtUsd(t.revenue)} data={daily.map((d) => d.spend)} labels={dates} color="var(--ds-c2)" format={fmtUsd} />
         ) : (
-          <Sparkline title="Старты триала" value={String(t.trials)} data={daily.map((d) => d.trial_starts)} labels={dates} color="var(--green)" format={(n) => String(Math.round(n))} />
+          <Sparkline title="Старты триала" value={String(t.trials)} data={daily.map((d) => d.trial_starts)} labels={dates} color="var(--ds-c2)" format={(n) => String(Math.round(n))} />
         )}
         {hasRevenue ? (
-          <Sparkline title="ROAS" value={t.roas > 0 ? `${(t.roas * 100).toFixed(0)}%` : "—"} data={dailyCpt} labels={dates} color="var(--cyan)" format={fmtUsd} />
+          <Sparkline title="ROAS" value={t.roas > 0 ? `${(t.roas * 100).toFixed(0)}%` : "—"} data={dailyCpt} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
         ) : (
-          <Sparkline title="Цена триала" value={t.cpt > 0 ? fmtUsd(t.cpt) : "—"} data={dailyCpt} labels={dates} color="var(--cyan)" format={fmtUsd} />
+          <Sparkline title="Цена триала" value={t.cpt > 0 ? fmtUsd(t.cpt) : "—"} data={dailyCpt} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
         )}
-        <Sparkline title={hasRevenue ? "Оплаты" : "Установки"} value={String(hasRevenue ? t.paid : t.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--red)" format={(n) => String(Math.round(n))} />
+        <Sparkline title={hasRevenue ? "Оплаты" : "Установки"} value={String(hasRevenue ? t.paid : t.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--ds-c4)" format={(n) => String(Math.round(n))} />
       </div>
 
       <div className="divider">Динамика</div>

@@ -1,4 +1,5 @@
 import type { AppStats, LocaleAvg } from '../api';
+import { Sparkline } from '../../../shared/charts/Charts';
 import './Overview.css';
 
 export interface OverviewProps {
@@ -28,18 +29,12 @@ function PortfolioTrend({ values }: { values: number[] }) {
   // A table/card cell must not grow just because historical data is absent.
   // The accessible name preserves the explanation without adding visual noise.
   if (clean.length < 2) return <span className="overview2-trend-empty" title="Для тренда нужны минимум два снимка" aria-label="Для тренда нужны минимум два снимка">—</span>;
-
-  const width = 220;
-  const height = 40;
-  const min = Math.min(...clean);
-  const range = Math.max(...clean) - min || 1;
-  const points = clean.map((value, index) => {
-    const x = (index / (clean.length - 1)) * width;
-    const y = 4 + (1 - (value - min) / range) * (height - 8);
-    return `${x},${y}`;
-  }).join(' ');
-
-  return <svg className="overview2-trend-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Динамика ключевых слов в топ-10"><polyline points={points} /></svg>;
+  const labels = clean.map((_, index) => `Снимок ${index + 1} из ${clean.length}`);
+  return (
+    <div className="overview2-trend" style={{ marginTop: 8 }} role="img" aria-label="Динамика ключевых слов в топ-10">
+      <Sparkline values={clean} labels={labels} height={48} label="Ключей в топ-10" />
+    </div>
+  );
 }
 
 function AppArtwork({ app }: { app: AppStats }) {

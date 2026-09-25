@@ -24,8 +24,6 @@
 .overview2-section-heading h2 { margin: 0; color: var(--ds-text); font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: 0; }
 .overview2-section-heading p { margin: 0; color: var(--ds-muted); font-size: 14px; line-height: 20px; }
 .overview2-section-heading > strong { margin-left: auto; font-size: 24px; line-height: 28px; font-weight: 600; }
-.overview2-trend-svg { width: 100%; height: 48px; margin-top: 8px; overflow: visible; color: var(--chart-violet); }
-.overview2-trend-svg polyline { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 .overview2-trend-empty { display: block; margin-top: 24px; color: var(--ink-subtle); font-size: 16px; line-height: 1; }
 .overview2-coverage { min-width: 0; display: flex; flex-direction: column; justify-content: center; padding: 16px; border-left: 1px solid var(--ds-hairline); background: var(--ds-panel); }
 .overview2-coverage strong { font-size: 24px; line-height: 28px; font-weight: 600; letter-spacing: 0; }

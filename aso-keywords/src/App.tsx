@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   api,
   runSnapshot,
@@ -24,6 +24,7 @@ import AcquisitionFunnel from './screens/AcquisitionFunnel';
 import ConnectGate from './components/ConnectGate';
 import Experiments from './screens/Experiments';
 import { TopFiveArtwork } from './components/KeywordResultsDrawer';
+import { HBars, Legend, SERIES, Sparkline as ChartSparkline, type TipRow } from '../../shared/charts/Charts';
 
 type TopFiveCandidate = { id: string; tid?: number };
 
@@ -1038,36 +1039,17 @@ function Delta({ value }: { value: number | null }) {
 }
 
 function MiniTrend({ values }: { values: number[] }) {
-  const titleId = useId();
   const cleanValues = values.filter((value) => Number.isFinite(value) && value > 0).slice(-16);
   if (cleanValues.length < 2) return <span className="muted-cell">—</span>;
-  const width = 104;
-  const height = 30;
-  const inset = 3;
-  const min = Math.min(...cleanValues);
-  const max = Math.max(...cleanValues);
-  const range = max - min || 1;
-  const points = cleanValues.map((value, index) => ({
-    x: inset + index * ((width - inset * 2) / (cleanValues.length - 1)),
-    y: inset + ((value - min) / range) * (height - inset * 2),
-  }));
-  const line = points.slice(1).reduce((path, point, index) => {
-    const previous = points[index];
-    const dx = point.x - previous.x;
-    return `${path} C ${previous.x + dx * .45},${previous.y} ${point.x - dx * .45},${point.y} ${point.x},${point.y}`;
-  }, `M ${points[0].x},${points[0].y}`);
-  const area = `${line} L ${points.at(-1)!.x},${height - 1} L ${points[0].x},${height - 1} Z`;
   const start = cleanValues[0];
   const end = cleanValues.at(-1)!;
-  const tone = end < start ? 'positive' : end > start ? 'negative' : 'neutral';
-  const label = `Позиция изменилась с ${start} на ${end}. Меньше значит лучше.`;
+  // Rank: smaller is better, so a falling number is growth.
+  const color = end < start ? 'var(--ds-good)' : end > start ? 'var(--ds-bad)' : 'var(--ds-c1)';
+  const labels = cleanValues.map((_, index) => `Снимок ${index + 1} из ${cleanValues.length}`);
   return (
-    <svg className={`position-trend position-trend-${tone}`} viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={titleId}>
-      <title id={titleId}>{label}</title>
-      <path className="position-trend-area" d={area} />
-      <path className="position-trend-line" d={line} />
-      <circle className="position-trend-end" cx={points.at(-1)!.x} cy={points.at(-1)!.y} r="2" />
-    </svg>
+    <div className="position-trend" style={{ width: 104 }} aria-label={`Позиция изменилась с ${start} на ${end}. Меньше значит лучше.`}>
+      <ChartSparkline values={cleanValues} labels={labels} color={color} height={30} invert label="Позиция" fmt={(value) => `#${value}`} />
+    </div>
   );
 }
 
@@ -1522,18 +1504,12 @@ function SuggestionsPanel({
       </section>
   );
 }
-function Sparkline({ values, width = 120, height = 26 }: { values: number[]; width?: number; height?: number }) {
+/** Position history in the keyword drawer. 0 in the trend means «not in results» → a gap. */
+function PositionHistory({ values, height = 26 }: { values: number[]; height?: number }) {
   const clean = values.filter((value) => Number.isFinite(value));
   if (clean.length < 2) return <span className="muted-cell">—</span>;
-  const min = Math.min(...clean);
-  const max = Math.max(...clean);
-  const range = max - min || 1;
-  const points = clean.map((value, index) => {
-    const x = index * (width / (clean.length - 1));
-    const y = 3 + (1 - (value - min) / range) * (height - 6);
-    return `${x},${y}`;
-  }).join(' ');
-  return <svg className="mini-trend sparkline" viewBox={`0 0 ${width} ${height}`}><polyline points={points} /></svg>;
+  const labels = clean.map((_, index) => `Снимок ${index + 1} из ${clean.length}`);
+  return <ChartSparkline values={clean.map((value) => (value > 0 ? value : null))} labels={labels} height={height} invert label="Позиция" fmt={(value) => `#${value}`} />;
 }
 
 function KeywordDrawer({
@@ -1600,7 +1576,7 @@ function KeywordDrawer({
           {(ranking?.trend?.length ?? 0) >= 2 && (
             <section>
               <div className="sheet-section-title">Динамика позиции</div>
-              <div className="drawer-trend"><Sparkline values={ranking!.trend} width={380} height={64} /></div>
+              <div className="drawer-trend"><PositionHistory values={ranking!.trend} height={64} /></div>
             </section>
           )}
 
@@ -1745,16 +1721,22 @@ function AnalyticsComparison({ summary }: { summary: MoversResponse['summary'] }
     { label: 'Топ-10', current: summary.top10, previous: summary.prevTop10 },
   ];
   const max = Math.max(1, ...metrics.flatMap((metric) => [metric.current, metric.previous]));
+  const rows = metrics.flatMap((metric) => {
+    const change = metric.current - metric.previous;
+    const tip: TipRow[] = [
+      [SERIES[0], 'Сейчас', String(metric.current)],
+      [SERIES[1], 'Прошлый период', String(metric.previous)],
+      [null, 'Изменение', change > 0 ? `+${change}` : String(change)],
+    ];
+    return [
+      { label: metric.label, value: metric.current, color: SERIES[0], tip, tipHead: metric.label },
+      { label: '', value: metric.previous, color: SERIES[1], tip, tipHead: metric.label },
+    ];
+  });
   return (
     <div className="analytics-comparison" aria-label="Сравнение текущего и прошлого периода">
-      <header><strong>Изменение видимости</strong><span><i /> Сейчас <i /> Прошлый период</span></header>
-      {metrics.map((metric) => (
-        <div key={metric.label}>
-          <span>{metric.label}</span>
-          <div><i style={{ width: `${(metric.current / max) * 100}%` }} /><i style={{ width: `${(metric.previous / max) * 100}%` }} /></div>
-          <b>{metric.current}</b>
-        </div>
-      ))}
+      <header><strong>Изменение видимости</strong><Legend items={[[SERIES[0], 'Сейчас'], [SERIES[1], 'Прошлый период']]} /></header>
+      <HBars rows={rows} max={max} labelWidth={110} fmt={(value) => String(value)} />
     </div>
   );
 }
