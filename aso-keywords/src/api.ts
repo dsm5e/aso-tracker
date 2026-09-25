@@ -493,6 +493,8 @@ export const api = {
     }).then((r) => j<{ ok: true; runtime: { sleepMs: number; workers: number } }>(r)),
   snapshotSettings: () =>
     fetch('/api/snapshot/settings').then((r) => j<SnapshotSettings>(r)),
+  schedule: () =>
+    fetch('/api/schedule?brief=1').then((r) => j<ScheduleSummary>(r)),
   setRankSource: (rankSource: RankSource) =>
     fetch('/api/snapshot/settings', {
       method: 'POST',
@@ -506,6 +508,28 @@ export const api = {
     return fetch(`/api/analytics/movers?${qs}`).then((r) => j<MoversResponse>(r));
   },
 };
+
+/** GET /api/schedule — nightly delta refresh (server/scheduler.ts). */
+export interface ScheduleRunInfo {
+  trigger: 'nightly' | 'run-now';
+  startedAt: number;
+  endedAt: number | null;
+  planned: number;
+  completed: number;
+  errors: number;
+  status: 'running' | 'ok' | 'aborted' | 'failed';
+  reason?: string;
+}
+export interface ScheduleSummary {
+  config: { enabled: boolean; hour: number };
+  nextRunAt: number | null;
+  running: ScheduleRunInfo | null;
+  lastRun: ScheduleRunInfo | null;
+  tiers: { total: number; daily: number; weekly: number };
+  nextPlan: { date: string; total: number; daily: number; weekly: number; overdue: number; requests: number };
+  todayPlan: { date: string; total: number; byApp: Record<string, number> };
+  estimate: { ratePerMin: number; lanes: number; minutes: number };
+}
 
 export interface MoversSummary {
   totalRanked: number;
@@ -674,7 +698,7 @@ export function subscribeToSnapshot(onEvent: (e: SnapshotEvent) => void): () => 
 }
 
 export async function runSnapshot(
-  opts: { appIds?: string[]; locales?: string[]; speed?: SnapshotSpeed; skipExisting?: boolean },
+  opts: { appIds?: string[]; locales?: string[]; speed?: SnapshotSpeed; skipExisting?: boolean; delta?: boolean },
   onEvent: (e: SnapshotEvent) => void,
   signal?: AbortSignal
 ): Promise<void> {
@@ -691,6 +715,7 @@ export async function runSnapshot(
       workers: preset.workers,
       sleepMs: preset.sleepMs,
       skipExisting: !!opts.skipExisting,
+      delta: !!opts.delta,
     }),
   });
   if (!startRes.ok && startRes.status !== 409) {

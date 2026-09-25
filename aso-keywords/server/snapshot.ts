@@ -40,6 +40,8 @@ export interface SnapshotOptions {
   rankSource?: RankSource;
   /** Skip (app, locale, keyword) combos that already have a successful snapshot today. */
   skipExisting?: boolean;
+  /** Delta mode (scheduler.ts): only these `app|locale|keyword` combos, with their gate priority. */
+  only?: Map<string, GatePriority>;
   onProgress?: (p: SnapshotProgress) => void;
   isCancelled?: () => boolean;
 }
@@ -118,7 +120,7 @@ function latestPositions(appIds: string[]): Map<string, number | null> {
  * rows and reports progress. Probe pairs are also measured with the other source.
  */
 export async function runSnapshot(opts: SnapshotOptions = {}) {
-  const { appIds, locales, workers = 1, sleepMs = 3250, skipExisting = false, onProgress, isCancelled } = opts;
+  const { appIds, locales, workers = 1, sleepMs = 3250, skipExisting = false, only, onProgress, isCancelled } = opts;
   const rankSource: RankSource = opts.rankSource ?? loadSnapshotSettings().rankSource;
 
   // Every refresh also pulls our apps' current icon/name/subtitle from the App Store,
@@ -160,10 +162,11 @@ export async function runSnapshot(opts: SnapshotOptions = {}) {
         const key = `${app.id}|${loc}|${normalized}`;
         if (seenTasks.has(key)) continue;
         seenTasks.add(key);
+        if (only && !only.has(key)) continue;
         if (alreadyDone.has(key)) continue;
         if (!byLocale.has(loc)) byLocale.set(loc, []);
         const pos = lastPos.get(key);
-        byLocale.get(loc)!.push({ app, locale: loc, keyword: normalized, priority: pos != null && pos <= 10 ? 'top' : 'tail' });
+        byLocale.get(loc)!.push({ app, locale: loc, keyword: normalized, priority: only?.get(key) ?? (pos != null && pos <= 10 ? 'top' : 'tail') });
       }
     }
   }

@@ -1,0 +1,11 @@
+# Template — fill in nothing secret here. Deploy with `npx wrangler deploy`
+# from this folder; wrangler asks for / uses the Cloudflare account you are
+# logged into (`npx wrangler login`). Add the secret with
+# `npx wrangler secret put EGRESS_SECRET`.
+name = "aso-egress"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = true
+
+# Optional: pin a specific account instead of the logged-in default.
+# account_id = "<your account id>"

@@ -11,7 +11,9 @@ import { db } from './db.js';
 import { runSnapshot, refreshKeyword, getLiveRuntime, setLiveSpeed } from './snapshot.js';
 import { getMovers } from './analytics.js';
 import { appleJson, lookupBatch, lookupItunes, searchItunes } from './itunes.js';
-import { gateStatus } from './host-gate.js';
+import { gateStatus, type GatePriority } from './host-gate.js';
+import { NightlyScheduler, buildDeltaPlan, loadScheduleState, planToOnly, saveScheduleState, type DeltaRunResult } from './scheduler.js';
+import { registerScheduleRoutes } from './routes-schedule.js';
 import { compareRankSources, isRankSource, loadSnapshotSettings, recordProbeSet, saveSnapshotSettings, type RankSource } from './rank-source.js';
 import { competitorInfo, competitorKeywords, topCompetitors } from './competitors.js';
 import { getCompetitorPricing } from './pricing.js';
@@ -741,7 +743,7 @@ interface SnapshotRunState {
   /** Active SSE subscribers. Disconnect → remove; does NOT abort the run. */
   subscribers: Set<express.Response>;
   /** Snapshot of options the run started with — useful for the UI capsule. */
-  options: { appIds?: string[]; locales?: string[]; total: number } | null;
+  options: { appIds?: string[]; locales?: string[]; total: number; kind?: 'full' | 'delta' | 'nightly' } | null;
 }
 
 const snapshotState: SnapshotRunState = {
@@ -774,7 +776,20 @@ function snapshotBroadcast(event: SnapshotEvent) {
   }
 }
 
-function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: number; sleepMs?: number; skipExisting?: boolean; rankSource?: RankSource }) {
+type StartSnapshotOptions = {
+  appIds?: string[];
+  locales?: string[];
+  workers?: number;
+  sleepMs?: number;
+  skipExisting?: boolean;
+  rankSource?: RankSource;
+  /** Delta mode: only these combos (scheduler.ts). */
+  only?: Map<string, GatePriority>;
+  kind?: 'full' | 'delta' | 'nightly';
+};
+
+/** Starts the singleton run; resolves with its outcome, or false if one is already running. */
+function startSnapshot(opts: StartSnapshotOptions): false | Promise<DeltaRunResult> {
   if (snapshotState.running) return false;
   snapshotState.running = true;
   snapshotState.startedAt = Date.now();
@@ -787,16 +802,18 @@ function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: 
     appIds: opts.appIds,
     locales: opts.locales,
     total: 0, // populated by first 'init' event from runSnapshot
+    kind: opts.kind ?? 'full',
   };
   snapshotBroadcast({ type: 'started', startedAt: snapshotState.startedAt });
 
-  runSnapshot({
+  return runSnapshot({
     appIds: opts.appIds,
     locales: opts.locales,
     workers: typeof opts.workers === 'number' ? opts.workers : undefined,
     sleepMs: typeof opts.sleepMs === 'number' ? opts.sleepMs : undefined,
     skipExisting: opts.skipExisting === true,
     rankSource: opts.rankSource,
+    only: opts.only,
     onProgress: (ev) => {
       // Track total once we receive the start event so reconnecting clients
       // can render accurate progress without replaying the full buffer.
@@ -808,17 +825,23 @@ function startSnapshot(opts: { appIds?: string[]; locales?: string[]; workers?: 
     },
     isCancelled: () => snapshotState.cancelled,
   })
-    .then(() => {
+    .then((r) => {
       snapshotState.running = false;
       snapshotState.endedAt = Date.now();
       snapshotBroadcast({ type: 'done', at: snapshotState.endedAt });
+      return {
+        completed: r.records.length,
+        errors: r.records.filter((x) => x.error).length,
+        aborted: r.aborted,
+        abortReason: 'abortReason' in r ? r.abortReason : undefined,
+      };
     })
     .catch((e) => {
       snapshotState.running = false;
       snapshotState.endedAt = Date.now();
       snapshotBroadcast({ type: 'abort', reason: (e as Error).message });
+      return { completed: 0, errors: 0, aborted: true, abortReason: (e as Error).message };
     });
-  return true;
 }
 
 app.post('/api/snapshot', (req, res) => {
@@ -826,8 +849,15 @@ app.post('/api/snapshot', (req, res) => {
     res.status(409).json({ error: 'snapshot already running', state: snapshotPublicState() });
     return;
   }
-  const { appIds, locales, workers, sleepMs, skipExisting, rankSource } = req.body || {};
-  startSnapshot({ appIds, locales, workers, sleepMs, skipExisting, rankSource: isRankSource(rankSource) ? rankSource : undefined });
+  const { appIds, locales, workers, sleepMs, skipExisting, rankSource, delta } = req.body || {};
+  // «Только изменяемые (дельта)»: today's delta plan within the chosen scope.
+  const only = delta === true ? planToOnly(buildDeltaPlan({ appIds, locales })) : undefined;
+  startSnapshot({
+    appIds, locales, workers, sleepMs, skipExisting,
+    rankSource: isRankSource(rankSource) ? rankSource : undefined,
+    only,
+    kind: only ? 'delta' : 'full',
+  });
   res.status(202).json({ ok: true, state: snapshotPublicState() });
 });
 
@@ -851,6 +881,22 @@ function snapshotPublicState() {
     finalEvent: snapshotState.finalEvent,
   };
 }
+
+// --- Nightly delta schedule (scheduler.ts) ---
+const scheduler = new NightlyScheduler({
+  now: () => Date.now(),
+  isSnapshotRunning: () => snapshotState.running,
+  runDelta: (plan, trigger) => startSnapshot({
+    only: planToOnly(plan),
+    appIds: Array.from(new Set(plan.tasks.map((t) => t.app))),
+    skipExisting: true,
+    kind: trigger === 'nightly' ? 'nightly' : 'delta',
+  }) || null,
+  plan: (atMs) => buildDeltaPlan({}, atMs),
+  load: () => loadScheduleState(),
+  save: (s) => saveScheduleState(s),
+});
+registerScheduleRoutes(app, scheduler);
 
 app.get('/api/snapshot/state', (_req, res) => {
   res.json(snapshotPublicState());
@@ -893,9 +939,11 @@ export function serverHost(password = process.env.APP_PASSWORD): string | undefi
 export { app };
 
 /** Listen-time side effects. Keywords has no background jobs; kept for a uniform product contract. */
-// Listen-time side effects: refresh our apps' App Store icon/name/subtitle if older than a day.
+// Listen-time side effects: refresh our apps' App Store icon/name/subtitle if
+// older than a day; start the nightly delta scheduler.
 export function start(): void {
   refreshStaleOwnAppMeta();
+  scheduler.start();
 }
 
 // Standalone entry (`tsx server/index.ts`, `npm start` in production): serve the

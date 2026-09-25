@@ -353,8 +353,8 @@ async function appleHints(seed: string, country: string, priority: GatePriority 
   try {
     // Hints share the search.itunes.apple.com budget with MZStore rank checks;
     // they are user-triggered, so they jump the snapshot queue.
-    const xml = await hostGate('search.itunes.apple.com').run(async () => {
-      const response = await fetch(
+    const xml = await hostGate('search.itunes.apple.com').run(async (via) => {
+      const response = await via.fetch(
         `https://search.itunes.apple.com/WebObjects/MZSearchHints.woa/wa/hints?${params}`,
         { headers: { 'X-Apple-Store-Front': storefront }, signal: AbortSignal.timeout(10_000) }
       );

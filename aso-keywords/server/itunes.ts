@@ -74,8 +74,8 @@ export async function searchItunes(
   let lastReason = '';
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      return await gate.run(async () => {
-        const res = await fetch(`${BASE}/search?${params}`, {
+      return await gate.run(async (via) => {
+        const res = await via.fetch(`${BASE}/search?${params}`, {
           headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.3 (self-hosted)' },
           signal: requestSignal(signal),
         });
@@ -229,9 +229,9 @@ export async function searchAppStore(
   const { priority = 'top', signal } = opts;
   let payload: unknown;
   try {
-    payload = await gate.run(async () => {
+    payload = await gate.run(async (via) => {
       const params = new URLSearchParams({ clientApplication: 'Software', media: 'software', term });
-      const res = await fetch(`${MZSTORE_SEARCH}?${params}`, {
+      const res = await via.fetch(`${MZSTORE_SEARCH}?${params}`, {
         headers: { 'User-Agent': APP_STORE_UA, 'X-Apple-Store-Front': header, Accept: 'application/json' },
         signal: requestSignal(signal),
       });
@@ -275,8 +275,8 @@ export async function lookupItunes(
 
   if (hostGate('itunes.apple.com').isPaused()) return lookupFromAppStorePage(appId, cc);
   try {
-    const result = await hostGate('itunes.apple.com').run(async () => {
-      const res = await fetch(`${BASE}/lookup?${params}`, {
+    const result = await hostGate('itunes.apple.com').run(async (via) => {
+      const res = await via.fetch(`${BASE}/lookup?${params}`, {
         headers: { Accept: 'application/json', 'User-Agent': 'aso-tracker/0.3 (self-hosted)' },
         signal: requestSignal(),
       });
@@ -299,8 +299,8 @@ async function lookupFromAppStorePage(appId: string, country: string): Promise<S
   const pageUrl = `https://apps.apple.com/${encodeURIComponent(country)}/app/id${encodeURIComponent(appId)}`;
   let html: string;
   try {
-    html = await hostGate('apps.apple.com').run(async () => {
-      const res = await fetch(pageUrl, {
+    html = await hostGate('apps.apple.com').run(async (via) => {
+      const res = await via.fetch(pageUrl, {
         headers: {
           Accept: 'text/html,application/xhtml+xml',
           'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Safari/537.36',

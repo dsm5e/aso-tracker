@@ -266,6 +266,31 @@ function statusJson() {
   });
 }
 
+/** GET a JSON endpoint of this gateway in-process via loopback (short timeout). */
+async function selfJson(path: string): Promise<unknown> {
+  try {
+    const r = await fetch(`http://127.0.0.1:${PORT}${path}`, { signal: AbortSignal.timeout(3000) });
+    return r.ok ? await r.json() : { error: `HTTP ${r.status}` };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
+/** Keywords request budgets + nightly schedule; Ads popularity queue only when
+ * the Ads API is already loaded (the status page never activates Ads). */
+async function jobsJson() {
+  const ads = state.get('ads')!;
+  const [gates, schedule, popularity] = await Promise.all([
+    selfJson('/api/gate/status'),
+    selfJson('/api/schedule?brief=1'),
+    ads.api ? selfJson('/asa-api/keyword-popularity/status') : Promise.resolve(null),
+  ]);
+  return {
+    keywords: { gates: (gates as { gates?: unknown })?.gates ?? gates, schedule },
+    ads: { popularity: popularity ?? { inactive: true, note: 'Ads API not loaded — open /asa/ to activate' } },
+  };
+}
+
 function handle(req: IncomingMessage, res: ServerResponse): void {
   const url = req.url ?? '/';
   const q = url.indexOf('?');
@@ -273,8 +298,10 @@ function handle(req: IncomingMessage, res: ServerResponse): void {
   const search = q === -1 ? '' : url.slice(q);
 
   if (path === '/__studio/status') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ port: PORT, idleMin: IDLE_MS / 60_000, products: statusJson() }, null, 2));
+    void jobsJson().then((jobs) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ port: PORT, idleMin: IDLE_MS / 60_000, products: statusJson(), jobs }, null, 2));
+    });
     return;
   }
 

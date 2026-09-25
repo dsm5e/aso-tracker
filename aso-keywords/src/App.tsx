@@ -11,6 +11,7 @@ import {
   type SnapshotEvent,
   type SnapshotSpeed,
   type SnapshotSettings,
+  type ScheduleSummary,
   type RankSource,
   type KeywordIdea,
   type KeywordSuggestionsResponse,
@@ -111,6 +112,29 @@ const RANK_SOURCES: Array<{ value: RankSource; label: string; note: string }> = 
   { value: 'appstore', label: 'App Store', note: 'как в приложении: порядок витрины, до 250 мест' },
   { value: 'itunes', label: 'iTunes API', note: 'старый источник: до 200 мест, порядок расходится' },
 ];
+
+function pluralKeys(n: number) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'ключ';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'ключа';
+  return 'ключей';
+}
+
+/** «Ночное обновление: 04:00 · 1126 ключей · ~36 мин · последнее: 26.09, 04:00» */
+function nightlyLine(s: ScheduleSummary) {
+  if (!s.config.enabled) return 'Ночное обновление выключено';
+  const hh = `${String(s.config.hour).padStart(2, '0')}:00`;
+  const fmt = (ms: number) => new Date(ms).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const run = s.running ?? s.lastRun;
+  let last = 'ещё не было';
+  if (s.running) last = `идёт с ${fmt(s.running.startedAt)}`;
+  else if (run) {
+    const mark = run.status === 'ok' ? `${run.completed}/${run.planned}` : run.status === 'aborted' ? 'прервано' : 'ошибка';
+    last = `${fmt(run.startedAt)} · ${mark}`;
+  }
+  const n = s.nextPlan.total;
+  return `Ночное обновление: ${hh} · ${n} ${pluralKeys(n)} · ~${s.estimate.minutes} мин · последнее: ${last}`;
+}
 
 function snapshotStatusText(progress: SnapshotEvent | null, fallbackTotal: number | string) {
   const completed = progress?.completed ?? 0;
@@ -501,11 +525,13 @@ export default function App() {
 
   // Rank source + gate status for the update menu; polled while it is open.
   const [snapshotSettings, setSnapshotSettings] = useState<SnapshotSettings | null>(null);
+  const [schedule, setSchedule] = useState<ScheduleSummary | null>(null);
   useEffect(() => {
     if (!updateMenuOpen) return;
     let alive = true;
     const load = () => api.snapshotSettings().then((s) => { if (alive) setSnapshotSettings(s); }).catch(() => {});
     load();
+    api.schedule().then((s) => { if (alive) setSchedule(s); }).catch(() => {});
     const timer = setInterval(load, 3000);
     return () => { alive = false; clearInterval(timer); };
   }, [updateMenuOpen]);
@@ -515,7 +541,7 @@ export default function App() {
   const rankGate = snapshotSettings?.gates.find((g) =>
     g.host === (snapshotSettings.rankSource === 'appstore' ? 'search.itunes.apple.com' : 'itunes.apple.com'));
 
-  const startSnapshot = async (scope: 'locale' | 'app' | 'all') => {
+  const startSnapshot = async (scope: 'locale' | 'app' | 'all', delta = false) => {
     if (!selectedApp || !locale || refreshing) return;
     setUpdateMenuOpen(false);
     setRefreshing(true);
@@ -529,7 +555,7 @@ export default function App() {
         ? { appIds: [selectedApp.id] }
         : {};
     try {
-      await runSnapshot({ ...scopeOpts, speed: snapshotSpeed }, applySnapshotEvent);
+      await runSnapshot({ ...scopeOpts, speed: snapshotSpeed, delta }, applySnapshotEvent);
     } finally {
       setRefreshing(false);
     }
@@ -996,6 +1022,14 @@ export default function App() {
                 <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>Этот регион ({locale.toUpperCase()})</strong><small>только ключевые слова текущего региона</small></button>
                 <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Всё приложение ({selectedApp?.name})</strong><small>все регионы этого приложения</small></button>
                 <button onClick={() => startSnapshot('all')} disabled={refreshing}><strong>Все приложения</strong><small>каждое приложение и каждый регион</small></button>
+                <button onClick={() => startSnapshot('app', true)} disabled={refreshing}>
+                  <strong>Только изменяемые (дельта)</strong>
+                  <small>
+                    {selectedApp?.name}: топ-50, новые и ключи этого дня недели
+                    {schedule && selectedApp ? ` · ${schedule.todayPlan.byApp[selectedApp.id] ?? 0} ${pluralKeys(schedule.todayPlan.byApp[selectedApp.id] ?? 0)}` : ''}
+                  </small>
+                </button>
+                {schedule && <div className="menu-label gate-status">{nightlyLine(schedule)}</div>}
                 <div className="menu-separator" />
                 <div className="menu-label">Скорость обновления</div>
                 {(Object.keys(SPEED_PRESETS) as SnapshotSpeed[]).map((speed) => (
