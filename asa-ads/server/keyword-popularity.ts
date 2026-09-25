@@ -1,7 +1,7 @@
 import type Database from "better-sqlite3";
 import { appleFilter, type PlatformApiClient } from "./platform-api-client.ts";
 
-// One consistent Apple Ads popularity (5–100) per keyword × storefront.
+// One consistent Apple Ads popularity (5–100) per keyword — storefront-independent.
 //
 // Why a separate store: Apple exposes popularity on two scales. Keyword
 // recommendations (`/suggestions/keywords/query`) return `popularity` 5–100,
@@ -24,6 +24,16 @@ import { appleFilter, type PlatformApiClient } from "./platform-api-client.ts";
 // call and yields one trustworthy value, so there is no safe batching rule. The
 // single-call path is kept and hardened instead: ≤2 in flight, in-flight dedupe,
 // queue-wide backoff on 429, and a nightly refresh of recently requested terms.
+//
+// Storefront re-checked 2026-09-25 on non-English terms (37 read-only single
+// calls: DE/AT/US, ES/MX/US, JP/US, SA/AE/US, RU/UA/KZ; German, Spanish,
+// Japanese, Arabic and Russian MedScan/Elara keywords): every response was
+// byte-for-byte identical across storefronts, siblings included — as with the
+// 12 English terms in US/GB. Apple's docs call popularity a score «across App
+// Store countries or regions»; the `countriesOrRegions` filter is ignored. So
+// the cache is keyed by term only: one call serves every storefront. The
+// `storefront` column stays as provenance (the storefront the call was made
+// for) and for schema compatibility; reads ignore it.
 
 type JsonRecord = Record<string, unknown>;
 
@@ -46,6 +56,8 @@ export interface PopularityItem {
   low: boolean;
   /** UTC day the value was observed. */
   day: string | null;
+  /** Storefront the cached call was made for (provenance only; the value is storefront-independent). */
+  fetchedFor: string | null;
   fetchedAt: string | null;
   status: PopularityStatus;
 }
@@ -76,7 +88,7 @@ export function toPopularity5to100(value: unknown): number | null {
   return Math.max(POPULARITY_FLOOR, Math.min(100, Math.round(n)));
 }
 
-interface StoredRow { term: string; popularity: number | null; day: string; fetched_at: string }
+interface StoredRow { term: string; popularity: number | null; day: string; fetched_at: string; storefront: string }
 
 type QueryClient = Pick<PlatformApiClient, "queryRows">;
 
@@ -87,6 +99,7 @@ export interface PopularityErrorEntry { at: string; storefront: string; term: st
 export interface PopularityServiceStatus {
   source: typeof POPULARITY_SOURCE;
   batching: { enabled: false; reason: string };
+  cacheKey: { scope: "term"; reason: string };
   cache: { rows: number; terms: number; storefronts: number; todayRows: number; today: string; oldestDay: string | null };
   lookups: { fresh: number; stale: number; miss: number; hitRate: number | null; since: string };
   queue: { queued: number; inflight: number; concurrency: number };
@@ -152,6 +165,7 @@ export class KeywordPopularityService {
         PRIMARY KEY (storefront, term, day)
       );
       CREATE INDEX IF NOT EXISTS idx_asa_kw_popularity_term ON asa_keyword_popularity(storefront, term, day DESC);
+      CREATE INDEX IF NOT EXISTS idx_asa_kw_popularity_term_day ON asa_keyword_popularity(term, day DESC, fetched_at DESC);
     `);
   }
 
@@ -159,16 +173,19 @@ export class KeywordPopularityService {
     return this.now().toISOString().slice(0, 10);
   }
 
-  /** Cached values only (today, else latest older day); schedules fetches for the rest. */
+  /**
+   * Cached values only (today, else latest older day); schedules fetches for the
+   * rest. The cache is per term: a value fetched for any storefront serves all.
+   */
   peek(appId: number, storefront: string, terms: string[], fill = true): Map<string, PopularityItem> {
     const sf = storefront.toUpperCase();
     const unique = [...new Set(terms.map(normalizePopularityTerm).filter(Boolean))].slice(0, MAX_TERMS);
     const today = this.today();
-    const latest = this.readLatest(sf, unique);
+    const latest = this.readLatest(unique);
     const out = new Map<string, PopularityItem>();
     for (const term of unique) {
       const row = latest.get(term);
-      const key = `${sf}|${term}`;
+      const key = term;
       const fresh = row?.day === today;
       if (fill) {
         if (fresh) this.stats.fresh += 1;
@@ -186,6 +203,7 @@ export class KeywordPopularityService {
         label: popularityLabel(row?.popularity ?? null),
         low: row?.popularity != null && row.popularity <= POPULARITY_FLOOR,
         day: row?.day ?? null,
+        fetchedFor: row?.storefront ?? null,
         fetchedAt: row?.fetched_at ?? null,
         status,
       });
@@ -201,7 +219,7 @@ export class KeywordPopularityService {
     let items = this.peek(appId, sf, terms);
     const missing = [...items.values()].filter((item) => item.status !== "ok" && item.status !== "none");
     if (missing.length && waitMs > 0) {
-      const done = Promise.all(missing.map((item) => this.whenSettled(`${sf}|${item.term}`)));
+      const done = Promise.all(missing.map((item) => this.whenSettled(item.term)));
       let timer: NodeJS.Timeout | undefined;
       await Promise.race([done, new Promise((resolve) => { timer = setTimeout(resolve, waitMs); })]);
       clearTimeout(timer);
@@ -220,26 +238,28 @@ export class KeywordPopularityService {
   }
 
   /**
-   * Re-fetch every term × storefront requested within the last `days` days that
+   * Re-fetch every term requested (for any storefront) within the last `days` days that
    * has no value for today yet, so the studio opens on fresh numbers. Returns
    * how many terms were queued.
    */
   prefetchRecent(days = this.prefetchLookbackDays): number {
     const since = new Date(this.now().getTime() - Math.max(1, days) * DAY_MS).toISOString().slice(0, 10);
     const rows = this.db.prepare(`
-      SELECT storefront, term, MAX(day) AS day,
+      SELECT term, MAX(day) AS day,
+             (SELECT storefront FROM asa_keyword_popularity l
+               WHERE l.term = p.term ORDER BY l.day DESC, l.fetched_at DESC LIMIT 1) AS storefront,
              (SELECT app_id FROM asa_keyword_popularity l
-               WHERE l.storefront = p.storefront AND l.term = p.term AND l.app_id IS NOT NULL
-               ORDER BY l.day DESC LIMIT 1) AS app_id
+               WHERE l.term = p.term AND l.app_id IS NOT NULL
+               ORDER BY l.day DESC, l.fetched_at DESC LIMIT 1) AS app_id
       FROM asa_keyword_popularity p
       WHERE day >= ?
-      GROUP BY storefront, term
+      GROUP BY term
       HAVING MAX(day) < ?
     `).all(since, this.today()) as Array<{ storefront: string; term: string; day: string; app_id: number | null }>;
     let enqueued = 0;
     for (const row of rows) {
       if (!row.app_id) continue;
-      const key = `${row.storefront}|${row.term}`;
+      const key = row.term;
       this.failedUntil.delete(key);
       if (this.enqueue(key, row.app_id, row.storefront, row.term)) enqueued += 1;
     }
@@ -277,7 +297,7 @@ export class KeywordPopularityService {
   status(): PopularityServiceStatus {
     const today = this.today();
     const cache = this.db.prepare(`
-      SELECT COUNT(*) AS rows, COUNT(DISTINCT storefront || '|' || term) AS terms,
+      SELECT COUNT(*) AS rows, COUNT(DISTINCT term) AS terms,
              COUNT(DISTINCT storefront) AS storefronts,
              SUM(CASE WHEN day = ? THEN 1 ELSE 0 END) AS todayRows, MIN(day) AS oldestDay
       FROM asa_keyword_popularity
@@ -288,6 +308,10 @@ export class KeywordPopularityService {
       batching: {
         enabled: false,
         reason: "Apple evaluates only terms[0] of a multi-term query; other requested terms come back as siblings with inconsistent values (verified 2026-09-25).",
+      },
+      cacheKey: {
+        scope: "term",
+        reason: "Apple ignores countriesOrRegions for keyword popularity: identical responses across storefronts for English, German, Spanish, Japanese, Arabic and Russian terms (verified 2026-09-25); storefront is kept as provenance only.",
       },
       cache: { rows: cache.rows, terms: cache.terms, storefronts: cache.storefronts, todayRows: cache.todayRows ?? 0, today, oldestDay: cache.oldestDay },
       lookups: {
@@ -313,15 +337,15 @@ export class KeywordPopularityService {
     };
   }
 
-  private readLatest(storefront: string, terms: string[]): Map<string, StoredRow> {
+  private readLatest(terms: string[]): Map<string, StoredRow> {
     const out = new Map<string, StoredRow>();
     for (let i = 0; i < terms.length; i += 400) {
       const chunk = terms.slice(i, i + 400);
       const rows = this.db.prepare(`
-        SELECT term, popularity, day, fetched_at FROM asa_keyword_popularity
-        WHERE storefront = ? AND term IN (${chunk.map(() => "?").join(",")})
-        ORDER BY day DESC
-      `).all(storefront, ...chunk) as StoredRow[];
+        SELECT term, popularity, day, fetched_at, storefront FROM asa_keyword_popularity
+        WHERE term IN (${chunk.map(() => "?").join(",")})
+        ORDER BY day DESC, fetched_at DESC
+      `).all(...chunk) as StoredRow[];
       for (const row of rows) if (!out.has(row.term)) out.set(row.term, row);
     }
     return out;
@@ -405,6 +429,7 @@ export class KeywordPopularityService {
 
   private async fetchOne(appId: number, storefront: string, term: string): Promise<void> {
     // Always exactly one term: Apple answers a multi-term query for terms[0] only.
+    // The storefront filter is sent for completeness but does not change the answer.
     const read = await this.client.queryRows<JsonRecord>("/suggestions/keywords/query", {
       filters: [
         appleFilter("promotedObjectId", "EQUALS", [String(appId)]),

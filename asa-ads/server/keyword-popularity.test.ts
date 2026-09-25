@@ -104,6 +104,7 @@ interface FixtureRow { text: string; popularity: number }
 interface Fixtures {
   singles: Record<string, { countries: string[]; totalCount: number; rows: FixtureRow[] }>;
   batches: Array<{ label: string; terms: string[]; identicalToSingleOf: string; echoed: FixtureRow[] }>;
+  storefronts: { terms: Record<string, { appId: number; responses: Record<string, { rowCount: number; own: number | null; rows: FixtureRow[] }> }> };
 }
 const FIXTURES = JSON.parse(readFileSync(new URL("./keyword-popularity.fixtures.json", import.meta.url), "utf8")) as Fixtures;
 
@@ -219,5 +220,62 @@ test("nightly prefetch refreshes terms requested in the last week", async () => 
   assert.equal(calls.length, 2, "lookups after the prefetch are served from today's cache");
   assert.equal(service.prefetchRecent(7), 0, "nothing left to refresh today");
   assert.equal(service.status().prefetch.lastEnqueued, 0);
+  db.close();
+});
+
+test("recorded non-English terms: popularity does not depend on the storefront", () => {
+  const terms = Object.entries(FIXTURES.storefronts.terms);
+  assert.ok(terms.length >= 10);
+  const storefronts = new Set(terms.flatMap(([, entry]) => Object.keys(entry.responses)));
+  for (const sf of ["DE", "AT", "ES", "MX", "JP", "SA", "AE", "RU", "UA", "KZ", "US"]) assert.ok(storefronts.has(sf), sf);
+  for (const [term, entry] of terms) {
+    const responses = Object.values(entry.responses);
+    assert.ok(responses.length >= 2, term);
+    for (const response of responses) assert.deepEqual(response, responses[0], term);
+    assert.notEqual(responses[0].own, null, term);
+  }
+  assert.equal(FIXTURES.storefronts.terms["wehenzähler"].responses.AT.own, 33);
+  assert.equal(FIXTURES.storefronts.terms["胎動カウンター"].responses.US.own, 15);
+});
+
+test("one Apple call per term serves every storefront; storefront is kept as provenance", async () => {
+  const db = new Database(":memory:");
+  const calls: Array<{ term: string; storefront: string }> = [];
+  const client = {
+    queryRows: async (_path: string, body: { filters: Array<{ field: string; value: unknown }> }) => {
+      const term = (body.filters.find((filter) => filter.field === "terms")?.value as string[])[0];
+      const storefront = (body.filters.find((filter) => filter.field === "countriesOrRegions")?.value as string[])[0];
+      calls.push({ term, storefront });
+      const entry = FIXTURES.storefronts.terms[term];
+      return { data: entry?.responses[storefront]?.rows ?? [{ text: term, popularity: 5 }], meta };
+    },
+  } as unknown as Pick<PlatformApiClient, "queryRows">;
+  let now = new Date("2026-09-25T10:00:00Z");
+  const service = new KeywordPopularityService(db, client, { now: () => now });
+  const de = await service.lookup(6771391236, "DE", ["wehenzähler", "babynamen"], 1000);
+  const at = await service.lookup(6771391236, "at", ["Wehenzähler", "babynamen"], 1000);
+  const us = await service.lookup(6771391236, "US", ["wehenzähler"], 0);
+  assert.equal(calls.length, 2, "AT and US are served from the DE fetch");
+  for (const res of [de, at, us]) {
+    const item = res.items.find((row) => row.term === "wehenzähler");
+    assert.equal(item?.popularity, 33);
+    assert.equal(item?.status, "ok");
+    assert.equal(item?.fetchedFor, "DE");
+  }
+  assert.equal(at.storefront, "AT");
+  // Concurrent requests for the same term from different storefronts share one call.
+  await Promise.all([
+    service.lookup(6771391236, "JP", ["胎動カウンター"], 1000),
+    service.lookup(6771391236, "US", ["胎動カウンター"], 1000),
+  ]);
+  assert.equal(calls.length, 3);
+  const status = service.status();
+  assert.equal(status.cacheKey.scope, "term");
+  assert.equal(status.cache.terms, 3);
+  // The nightly prefetch refreshes each term once, whichever storefronts asked for it.
+  now = new Date("2026-09-26T03:05:00Z");
+  assert.equal(service.prefetchRecent(7), 3);
+  await service.lookup(6771391236, "MX", ["wehenzähler", "babynamen", "胎動カウンター"], 1000);
+  assert.equal(calls.length, 6);
   db.close();
 });

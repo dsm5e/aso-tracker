@@ -385,7 +385,7 @@ export function modelTermTraffic(args: {
   impressionShareRows: JsonRecord[];
   popularityRows: JsonRecord[];
   suggestionPopularity?: number | null;
-  /** Canonical per-storefront value from KeywordPopularityService. */
+  /** Canonical per-keyword value from KeywordPopularityService (storefront-independent). */
   storedPopularity?: number | null;
   keywords: LocalKeywordRow[];
   searchTerm?: LocalSearchTermRow;

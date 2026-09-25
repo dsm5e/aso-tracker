@@ -362,5 +362,715 @@
     }
    ]
   }
- ]
+ ],
+ "storefronts": {
+  "recordedAt": "2026-09-25",
+  "note": "Single-term queries for non-English tracked keywords, same term in several storefronts. Every full response (all rows, siblings included) was byte-for-byte identical across storefronts; rows trimmed here to the term plus up to 3 siblings.",
+  "terms": {
+   "schwangerschaftskalender": {
+    "appId": 6771391236,
+    "responses": {
+     "DE": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "schwangerschaftskalender",
+        "popularity": 5
+       }
+      ]
+     },
+     "AT": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "schwangerschaftskalender",
+        "popularity": 5
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "schwangerschaftskalender",
+        "popularity": 5
+       }
+      ]
+     }
+    }
+   },
+   "babynamen": {
+    "appId": 6771391236,
+    "responses": {
+     "DE": {
+      "rowCount": 17,
+      "own": 5,
+      "rows": [
+       {
+        "text": "babynamen",
+        "popularity": 5
+       },
+       {
+        "text": "charlies names",
+        "popularity": 33
+       },
+       {
+        "text": "namensfinder",
+        "popularity": 27
+       },
+       {
+        "text": "babynamen tinder",
+        "popularity": 21
+       }
+      ]
+     },
+     "AT": {
+      "rowCount": 17,
+      "own": 5,
+      "rows": [
+       {
+        "text": "babynamen",
+        "popularity": 5
+       },
+       {
+        "text": "charlies names",
+        "popularity": 33
+       },
+       {
+        "text": "namensfinder",
+        "popularity": 27
+       },
+       {
+        "text": "babynamen tinder",
+        "popularity": 21
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 17,
+      "own": 5,
+      "rows": [
+       {
+        "text": "babynamen",
+        "popularity": 5
+       },
+       {
+        "text": "charlies names",
+        "popularity": 33
+       },
+       {
+        "text": "namensfinder",
+        "popularity": 27
+       },
+       {
+        "text": "babynamen tinder",
+        "popularity": 21
+       }
+      ]
+     }
+    }
+   },
+   "wehenzähler": {
+    "appId": 6771391236,
+    "responses": {
+     "DE": {
+      "rowCount": 17,
+      "own": 33,
+      "rows": [
+       {
+        "text": "wehenzähler",
+        "popularity": 33
+       },
+       {
+        "text": "wehentracker",
+        "popularity": 29
+       },
+       {
+        "text": "wehentracker kostenlos",
+        "popularity": 28
+       },
+       {
+        "text": "contraction timer",
+        "popularity": 25
+       }
+      ]
+     },
+     "AT": {
+      "rowCount": 17,
+      "own": 33,
+      "rows": [
+       {
+        "text": "wehenzähler",
+        "popularity": 33
+       },
+       {
+        "text": "wehentracker",
+        "popularity": 29
+       },
+       {
+        "text": "wehentracker kostenlos",
+        "popularity": 28
+       },
+       {
+        "text": "contraction timer",
+        "popularity": 25
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 17,
+      "own": 33,
+      "rows": [
+       {
+        "text": "wehenzähler",
+        "popularity": 33
+       },
+       {
+        "text": "wehentracker",
+        "popularity": 29
+       },
+       {
+        "text": "wehentracker kostenlos",
+        "popularity": 28
+       },
+       {
+        "text": "contraction timer",
+        "popularity": 25
+       }
+      ]
+     }
+    }
+   },
+   "dicom betrachter": {
+    "appId": 6762091560,
+    "responses": {
+     "DE": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "dicom betrachter",
+        "popularity": 5
+       }
+      ]
+     },
+     "AT": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "dicom betrachter",
+        "popularity": 5
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "dicom betrachter",
+        "popularity": 5
+       }
+      ]
+     }
+    }
+   },
+   "calendario de embarazo": {
+    "appId": 6771391236,
+    "responses": {
+     "ES": {
+      "rowCount": 10,
+      "own": 23,
+      "rows": [
+       {
+        "text": "calendario de embarazo",
+        "popularity": 23
+       },
+       {
+        "text": "mi embarazo y bebe",
+        "popularity": 29
+       },
+       {
+        "text": "control de embarazo",
+        "popularity": 20
+       },
+       {
+        "text": "enbarazo",
+        "popularity": 16
+       }
+      ]
+     },
+     "MX": {
+      "rowCount": 10,
+      "own": 23,
+      "rows": [
+       {
+        "text": "calendario de embarazo",
+        "popularity": 23
+       },
+       {
+        "text": "mi embarazo y bebe",
+        "popularity": 29
+       },
+       {
+        "text": "control de embarazo",
+        "popularity": 20
+       },
+       {
+        "text": "enbarazo",
+        "popularity": 16
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 10,
+      "own": 23,
+      "rows": [
+       {
+        "text": "calendario de embarazo",
+        "popularity": 23
+       },
+       {
+        "text": "mi embarazo y bebe",
+        "popularity": 29
+       },
+       {
+        "text": "control de embarazo",
+        "popularity": 20
+       },
+       {
+        "text": "enbarazo",
+        "popularity": 16
+       }
+      ]
+     }
+    }
+   },
+   "nombres de bebé": {
+    "appId": 6771391236,
+    "responses": {
+     "ES": {
+      "rowCount": 10,
+      "own": 5,
+      "rows": [
+       {
+        "text": "nombres de bebé",
+        "popularity": 5
+       },
+       {
+        "text": "amma",
+        "popularity": 9
+       },
+       {
+        "text": "embarazo app semana a semana",
+        "popularity": 6
+       },
+       {
+        "text": "seguimiento embarazo gratis",
+        "popularity": 6
+       }
+      ]
+     },
+     "MX": {
+      "rowCount": 10,
+      "own": 5,
+      "rows": [
+       {
+        "text": "nombres de bebé",
+        "popularity": 5
+       },
+       {
+        "text": "amma",
+        "popularity": 9
+       },
+       {
+        "text": "embarazo app semana a semana",
+        "popularity": 6
+       },
+       {
+        "text": "seguimiento embarazo gratis",
+        "popularity": 6
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 10,
+      "own": 5,
+      "rows": [
+       {
+        "text": "nombres de bebé",
+        "popularity": 5
+       },
+       {
+        "text": "amma",
+        "popularity": 9
+       },
+       {
+        "text": "embarazo app semana a semana",
+        "popularity": 6
+       },
+       {
+        "text": "seguimiento embarazo gratis",
+        "popularity": 6
+       }
+      ]
+     }
+    }
+   },
+   "contador de contracciones": {
+    "appId": 6771391236,
+    "responses": {
+     "ES": {
+      "rowCount": 24,
+      "own": 5,
+      "rows": [
+       {
+        "text": "contador de contracciones",
+        "popularity": 5
+       },
+       {
+        "text": "contracciones",
+        "popularity": 34
+       },
+       {
+        "text": "free comtraction timer",
+        "popularity": 23
+       },
+       {
+        "text": "contraction tracker timer free",
+        "popularity": 14
+       }
+      ]
+     },
+     "MX": {
+      "rowCount": 24,
+      "own": 5,
+      "rows": [
+       {
+        "text": "contador de contracciones",
+        "popularity": 5
+       },
+       {
+        "text": "contracciones",
+        "popularity": 34
+       },
+       {
+        "text": "free comtraction timer",
+        "popularity": 23
+       },
+       {
+        "text": "contraction tracker timer free",
+        "popularity": 14
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 24,
+      "own": 5,
+      "rows": [
+       {
+        "text": "contador de contracciones",
+        "popularity": 5
+       },
+       {
+        "text": "contracciones",
+        "popularity": 34
+       },
+       {
+        "text": "free comtraction timer",
+        "popularity": 23
+       },
+       {
+        "text": "contraction tracker timer free",
+        "popularity": 14
+       }
+      ]
+     }
+    }
+   },
+   "出産予定日 計算": {
+    "appId": 6771391236,
+    "responses": {
+     "JP": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "出産予定日 計算",
+        "popularity": 5
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "出産予定日 計算",
+        "popularity": 5
+       }
+      ]
+     }
+    }
+   },
+   "胎動カウンター": {
+    "appId": 6771391236,
+    "responses": {
+     "JP": {
+      "rowCount": 10,
+      "own": 15,
+      "rows": [
+       {
+        "text": "胎動カウンター",
+        "popularity": 15
+       },
+       {
+        "text": "陣痛きたかも",
+        "popularity": 47
+       },
+       {
+        "text": "胎動カウント",
+        "popularity": 33
+       },
+       {
+        "text": "陣痛カウント",
+        "popularity": 17
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 10,
+      "own": 15,
+      "rows": [
+       {
+        "text": "胎動カウンター",
+        "popularity": 15
+       },
+       {
+        "text": "陣痛きたかも",
+        "popularity": 47
+       },
+       {
+        "text": "胎動カウント",
+        "popularity": 33
+       },
+       {
+        "text": "陣痛カウント",
+        "popularity": 17
+       }
+      ]
+     }
+    }
+   },
+   "dicom ビューア": {
+    "appId": 6762091560,
+    "responses": {
+     "JP": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "dicom ビューア",
+        "popularity": 5
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "dicom ビューア",
+        "popularity": 5
+       }
+      ]
+     }
+    }
+   },
+   "تقويم الحمل": {
+    "appId": 6771391236,
+    "responses": {
+     "SA": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "تقويم الحمل",
+        "popularity": 5
+       }
+      ]
+     },
+     "AE": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "تقويم الحمل",
+        "popularity": 5
+       }
+      ]
+     },
+     "US": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "تقويم الحمل",
+        "popularity": 5
+       }
+      ]
+     }
+    }
+   },
+   "أسماء أطفال": {
+    "appId": 6771391236,
+    "responses": {
+     "SA": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "أسماء أطفال",
+        "popularity": 5
+       }
+      ]
+     },
+     "AE": {
+      "rowCount": 1,
+      "own": 5,
+      "rows": [
+       {
+        "text": "أسماء أطفال",
+        "popularity": 5
+       }
+      ]
+     }
+    }
+   },
+   "календарь беременности": {
+    "appId": 6771391236,
+    "responses": {
+     "RU": {
+      "rowCount": 18,
+      "own": 7,
+      "rows": [
+       {
+        "text": "календарь беременности",
+        "popularity": 7
+       },
+       {
+        "text": "беременность",
+        "popularity": 28
+       },
+       {
+        "text": "amma",
+        "popularity": 15
+       },
+       {
+        "text": "himommy",
+        "popularity": 15
+       }
+      ]
+     },
+     "UA": {
+      "rowCount": 18,
+      "own": 7,
+      "rows": [
+       {
+        "text": "календарь беременности",
+        "popularity": 7
+       },
+       {
+        "text": "беременность",
+        "popularity": 28
+       },
+       {
+        "text": "amma",
+        "popularity": 15
+       },
+       {
+        "text": "himommy",
+        "popularity": 15
+       }
+      ]
+     },
+     "KZ": {
+      "rowCount": 18,
+      "own": 7,
+      "rows": [
+       {
+        "text": "календарь беременности",
+        "popularity": 7
+       },
+       {
+        "text": "беременность",
+        "popularity": 28
+       },
+       {
+        "text": "amma",
+        "popularity": 15
+       },
+       {
+        "text": "himommy",
+        "popularity": 15
+       }
+      ]
+     }
+    }
+   },
+   "счетчик схваток": {
+    "appId": 6771391236,
+    "responses": {
+     "UA": {
+      "rowCount": 18,
+      "own": 5,
+      "rows": [
+       {
+        "text": "счетчик схваток",
+        "popularity": 5
+       },
+       {
+        "text": "contraction tracker timer",
+        "popularity": 44
+       },
+       {
+        "text": "contraction timer",
+        "popularity": 25
+       },
+       {
+        "text": "wehen",
+        "popularity": 24
+       }
+      ]
+     },
+     "KZ": {
+      "rowCount": 18,
+      "own": 5,
+      "rows": [
+       {
+        "text": "счетчик схваток",
+        "popularity": 5
+       },
+       {
+        "text": "contraction tracker timer",
+        "popularity": 44
+       },
+       {
+        "text": "contraction timer",
+        "popularity": 25
+       },
+       {
+        "text": "wehen",
+        "popularity": 24
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
 }
