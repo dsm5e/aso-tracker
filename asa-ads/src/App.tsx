@@ -15,7 +15,7 @@ import KeywordMatrix from "./screens/KeywordMatrix.tsx";
 import TrafficIntelligence from "./screens/TrafficIntelligence.tsx";
 import KeywordScreen from "./components/KeywordScreen.tsx";
 import AppSwitcher from "./components/AppSwitcher.tsx";
-import StudioSwitcher from "./components/StudioSwitcher.tsx";
+import { StudioSwitcher } from "../../shared/shell/StudioSwitcher.tsx";
 import { api } from "./api.ts";
 
 export default function App() {
@@ -83,7 +83,7 @@ export default function App() {
   return (
     <div className="app">
       <aside className="sidebar">
-        <StudioSwitcher />
+        <StudioSwitcher current="ads" />
         <AppSwitcher />
         <nav>
           <NavLink to="/" end>Обзор</NavLink>

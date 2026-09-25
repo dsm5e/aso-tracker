@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Settings, ChevronDown, Check, Sparkles } from 'lucide-react';
+import { Settings, Sparkles } from 'lucide-react';
 import { Button } from './components/shared/Button';
 import { Topbar } from './components/shared/Topbar';
+import { StudioSwitcher } from '../../shared/shell/StudioSwitcher';
 import { SettingsModal } from './components/SettingsModal';
 import { KeyMissingDialog } from './components/KeyMissingDialog';
 import { useStudio } from './state/studio';
@@ -16,137 +16,6 @@ const STEPS = [
   { value: '/locales', label: 'Locales', n: 5 },
   { value: '/export', label: 'Export', n: 6 },
 ];
-
-interface SwitcherItem {
-  id: 'aso' | 'shot' | 'vid' | 'asa' | 'inapp';
-  label: string;
-  hint: string;
-  href: string;
-  glyph: string;
-  disabled?: boolean;
-}
-
-// In dev the canonical unified origin is the Tracker's vite (:5173); it
-// reverse-proxies /studio/* to Studio's vite (:5180). When the user opens
-// Studio directly on :5180/studio/, an origin-relative '/' wouldn't reach
-// Tracker — so we hardcode the absolute :5173 URL for that case in dev.
-const TRACKER_ORIGIN =
-  typeof window !== 'undefined' && window.location.port === '5180'
-    ? 'http://localhost:5173'
-    : '';
-
-const SWITCHER_ITEMS: SwitcherItem[] = [
-  { id: 'aso',  label: 'Keywords',    hint: 'Keywords & rankings', href: `${TRACKER_ORIGIN}/`,         glyph: '◇' },
-  { id: 'shot', label: 'Screenshots', hint: 'App Store visuals',   href: `${TRACKER_ORIGIN}/studio/`,  glyph: '▤' },
-  { id: 'vid',  label: 'Video',       hint: 'Ad video pipeline',   href: `${TRACKER_ORIGIN}/video/`,   glyph: '▶' },
-  { id: 'asa',  label: 'Ads',         hint: 'Search Ads ROI',      href: `${TRACKER_ORIGIN}/asa/`,     glyph: '$' },
-  { id: 'inapp', label: 'In-App',     hint: 'In-App Events',       href: '/inapp/',  glyph: '✦' },
-];
-
-function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {
-  const [open, setOpen] = useState(false);
-  const [rect, setRect] = useState<{ top: number; left: number } | null>(null);
-  const btnRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) { setRect(null); return; }
-    const r = btnRef.current?.getBoundingClientRect();
-    if (r) setRect({ top: r.bottom + 6, left: r.left });
-
-    const onClick = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (btnRef.current?.contains(t)) return;
-      if (menuRef.current?.contains(t)) return;
-      setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    const onScroll = () => setOpen(false);
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    window.addEventListener('scroll', onScroll, true);
-    window.addEventListener('resize', onScroll);
-    return () => {
-      document.removeEventListener('mousedown', onClick);
-      document.removeEventListener('keydown', onKey);
-      window.removeEventListener('scroll', onScroll, true);
-      window.removeEventListener('resize', onScroll);
-    };
-  }, [open]);
-
-  const active = SWITCHER_ITEMS.find((i) => i.id === current) ?? SWITCHER_ITEMS[0];
-  return (
-    <>
-      <button
-        ref={btnRef}
-        onClick={() => setOpen((v) => !v)}
-        className="btn btn--ghost"
-        style={{
-          gap: 10, height: 40, padding: '0 8px 0 4px',
-          background: open ? 'var(--ds-accent-soft)' : undefined,
-          color: 'var(--fg-0)',
-        }}
-      >
-        <span className="logo" style={{ width: 26, height: 26, fontSize: 12 }}>A</span>
-        <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.15 }}>
-          <span style={{ fontSize: 14, fontWeight: 600 }}>Studio</span>
-          <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--fg-2)' }}>{active.label}</span>
-        </span>
-        <ChevronDown size={12} style={{ color: 'var(--fg-2)', marginLeft: 2 }} />
-      </button>
-
-      {/* position:fixed escapes the .app-shell overflow:hidden that would clip an absolute dropdown */}
-      {open && rect && (
-        <div ref={menuRef} className="ds-pop" style={{
-          position: 'fixed', top: rect.top, left: rect.left,
-          minWidth: 240,
-          zIndex: 1000,
-        }}>
-          {SWITCHER_ITEMS.map((it) => {
-            const isActive = it.id === current;
-            const disabled = it.disabled;
-            return (
-              <a key={it.id} href={disabled ? undefined : it.href}
-                 onClick={(e) => { if (disabled) e.preventDefault(); }}
-                 className={`ds-pop-row${isActive ? ' on' : ''}`}
-                 aria-selected={isActive}
-                 style={{
-                   gap: 10,
-                   textDecoration: 'none',
-                   background: isActive ? 'var(--ds-accent-soft)' : undefined,
-                   opacity: disabled ? 0.5 : 1,
-                   cursor: disabled ? 'not-allowed' : 'pointer',
-                 }}
-              >
-                <span style={{
-                  width: 24, height: 24, borderRadius: 6,
-                  background: it.id === 'aso'
-                    ? 'linear-gradient(135deg, #FF8C42, #F25C1F)'
-                    : it.id === 'shot'
-                    ? 'linear-gradient(135deg, #7C3AED, #A78BFA)'
-                    : it.id === 'vid'
-                    ? 'linear-gradient(135deg, #14B8A6, #5EEAD4)'
-                    : it.id === 'asa'
-                    ? 'linear-gradient(135deg, #FFB000, #B87D00)'
-                    : 'var(--ds-accent)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: '#fff', fontSize: 12, fontWeight: 700,
-                  flex: 'none',
-                  lineHeight: 1,
-                }}>{it.glyph}</span>
-                <span style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 14 }}>{it.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--fg-2)' }}>{it.hint}</span>
-                </span>
-                {isActive && <Check size={12} style={{ color: 'var(--accent)' }} />}
-              </a>
-            );
-          })}
-        </div>
-      )}
-    </>
-  );
-}
 
 /** Tiny pill in the topbar — running cost of all gpt-image-2 calls in this project.
  *  Click → reset (with confirm). */
@@ -186,7 +55,7 @@ export function AppShell() {
       <KeyMissingDialog />
       <SettingsModal open={settingsOpen} onClose={closeSettings} />
       <Topbar
-        brand={<BrandSwitcher current="shot" />}
+        brand={<StudioSwitcher current="screenshots" />}
         steps={STEPS.map((s) => {
           // Sequential gate: free to step backward, only one step forward at a time.
           // Anything farther than current + 1 is disabled to avoid jumping into a

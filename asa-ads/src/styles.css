@@ -59,47 +59,8 @@ a:hover { text-decoration: underline; }
   overflow-y: auto;
 }
 
-/* Studio switcher (StudioSwitcher.tsx — inline styles, overridden until the TSX moves to classes) */
-.sidebar > div:first-child { margin: 0 0 16px !important; }
-.sidebar > div:first-child > button {
-  min-height: 48px !important;
-  padding: 6px 10px !important;
-  background: var(--ds-input-bg) !important;
-  border: var(--ds-control-border) !important;
-  border-radius: var(--ds-radius-control) !important;
-  box-shadow: none !important;
-}
-.sidebar > div:first-child > button:hover { border-color: var(--ds-muted) !important; }
-.sidebar > div:first-child > button > span:first-child,
-.sidebar > div:first-child > div > a > span:first-child { border-radius: var(--ds-radius-inner) !important; }
-.sidebar > div:first-child > button > span:nth-child(2) > span:first-child {
-  font-size: 12px !important; font-weight: 600; color: var(--ds-muted) !important;
-}
-.sidebar > div:first-child > button > span:nth-child(2) > span:last-child {
-  font-size: 14px !important; font-weight: 600 !important; color: var(--ds-strong) !important;
-}
-.sidebar > div:first-child > div {
-  background: var(--ds-tip-bg) !important;
-  border: 1px solid var(--ds-border) !important;
-  border-radius: var(--ds-radius-card) !important;
-  box-shadow: var(--ds-shadow-pop) !important;
-  padding: 6px !important;
-  top: calc(100% + 6px) !important;
-}
-.sidebar > div:first-child > div > a {
-  border-left: 0 !important;
-  border-radius: var(--ds-radius-inner) !important;
-  background: transparent !important;
-  padding: 8px 10px !important;
-}
-.sidebar > div:first-child > div > a:hover { background: var(--ds-accent-soft) !important; text-decoration: none; }
-.sidebar > div:first-child > div > a[style*="var(--amber)"] > span:nth-child(2) > span:first-child { color: var(--ds-accent) !important; font-weight: 600; }
-.sidebar > div:first-child > div > a > span:nth-child(2) > span:first-child { font-size: 14px !important; font-weight: 500; }
-.sidebar > div:first-child > div > a > span:nth-child(2) > span:last-child { font-size: 12px !important; }
-.sidebar > div:first-child [style*="text-transform: uppercase"],
-.sidebar > div:first-child [style*="letter-spacing"] { text-transform: none !important; letter-spacing: 0 !important; }
-.sidebar > div:first-child [style*="font-size: 10px"],
-.sidebar > div:first-child [style*="font-size: 11px"] { font-size: 12px !important; }
+/* Studio switcher — shared/shell/StudioSwitcher; only its place in the sidebar lives here */
+.sidebar > .studio-sw { margin: 0 0 16px; }
 
 /* App switcher */
 .app-switcher { margin: 0 0 16px; }

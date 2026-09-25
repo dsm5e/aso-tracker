@@ -39,6 +39,7 @@ import {
   type CountrySetsResponse,
 } from './countries';
 import { HBars, Legend, SERIES, Sparkline as ChartSparkline, type TipRow } from '../../shared/charts/Charts';
+import { StudioSwitcher } from '../../shared/shell/StudioSwitcher';
 
 type TopFiveCandidate = { id: string; tid?: number };
 
@@ -71,16 +72,6 @@ type AppStoreSearchResult = {
 };
 
 const ARTWORK_SESSION_KEY = 'aso-keywords.artworks.v1';
-
-// Sibling studio products, reverse-proxied under the same origin in dev
-// (see vite.config.ts) and by the hub in production.
-const STUDIO_LINKS = [
-  { id: 'aso', label: 'Keywords', hint: 'Позиции и идеи', href: '/' },
-  { id: 'shot', label: 'Screenshots', hint: 'Визуалы App Store', href: '/studio/' },
-  { id: 'vid', label: 'Video', hint: 'Подготовка рекламных видео', href: '/video/' },
-  { id: 'asa', label: 'Ads', hint: 'Окупаемость рекламы', href: '/asa/' },
-  { id: 'inapp', label: 'In-App', hint: 'In-App Events', href: '/inapp/' },
-];
 
 function initialArtworkCache(): Record<string, string> {
   try {
@@ -182,7 +173,6 @@ export default function App() {
   const [suggestions, setSuggestions] = useState<KeywordSuggestionsResponse | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [suggestionsError, setSuggestionsError] = useState<string | null>(null);
-  const [studioMenuOpen, setStudioMenuOpen] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [updateMenuOpen, setUpdateMenuOpen] = useState(false);
   const updateMenuRef = useRef<HTMLDivElement>(null);
@@ -869,23 +859,7 @@ export default function App() {
     <div className="workspace">
       <aside className={`sidebar ${mobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-titlebar">
-          <button className="brand-mark brand-button" onClick={() => setStudioMenuOpen((open) => !open)} aria-label="Переключить инструмент студии">K</button>
-          <div className="brand-copy">
-            <strong>Keywords</strong>
-            <span>Аналитика ключевых слов</span>
-          </div>
-          {studioMenuOpen && (
-            <div className="menu studio-menu" onMouseLeave={() => setStudioMenuOpen(false)}>
-              <div className="menu-label">Studio</div>
-              {STUDIO_LINKS.map((link) => (
-                <a key={link.id} href={link.href} className={link.id === 'aso' ? 'active' : ''}>
-                  <strong>{link.label}</strong>
-                  <small>{link.hint}</small>
-                  {link.id === 'aso' && <b>✓</b>}
-                </a>
-              ))}
-            </div>
-          )}
+          <StudioSwitcher current="keywords" />
         </div>
 
         <nav className="utility-nav" aria-label="Рабочая область">

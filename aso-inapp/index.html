@@ -200,21 +200,36 @@
   /* ---- toolbar ---- */
   header{height:64px;padding:0 24px;display:flex;gap:12px;align-items:center;
     position:sticky;top:0;background:var(--ds-panel);box-shadow:var(--ds-shadow);z-index:20}
-  .switcher{position:relative}
-  .switcher>.ds-btn{padding:0 10px 0 6px;gap:10px}
-  .chip{width:28px;height:28px;border-radius:var(--ds-radius-inner);display:flex;align-items:center;justify-content:center;
-    color:#fff;font-weight:700;font-size:13px;flex:none}
-  .switcher .lbl{display:flex;flex-direction:column;line-height:15px;text-align:left}
-  .switcher .lbl small{font-size:12px;font-weight:600;color:var(--ds-muted)}
-  .switcher .lbl b{font-size:14px;font-weight:600;color:var(--ds-strong)}
-  .switcher .caret{color:var(--ds-muted);font-size:12px;line-height:1}
-  .menu{position:absolute;top:calc(100% + 6px);left:0;width:256px;z-index:50;display:none}
-  .menu.open{display:block}
-  .menu a{text-decoration:none}
-  .menu a .t{display:flex;flex-direction:column;line-height:18px;flex:1}
-  .menu a .t small{color:var(--ds-muted);font-size:12px;font-weight:500}
-  .menu a.on{background:var(--ds-accent-soft)}
-  .menu a .tick{color:var(--ds-accent);font-weight:700}
+  /* ---- studio switcher — synced from shared/shell/StudioSwitcher (.tsx + .css); keep identical ---- */
+  .studio-sw{position:relative;display:flex;flex:none;min-width:0}
+  .studio-sw .studio-sw-btn{display:inline-flex;align-items:center;gap:10px;height:40px;min-width:0;max-width:100%;margin:0;
+    padding:0 8px 0 6px;border:0;border-radius:var(--ds-radius-control);background:transparent;box-shadow:none;
+    color:var(--ds-text);font-family:var(--ds-font);font-variant-numeric:normal;text-align:left;cursor:pointer}
+  .studio-sw .studio-sw-btn:hover,.studio-sw .studio-sw-btn.is-open{background:var(--ds-hover)}
+  .studio-sw .studio-sw-btn:focus-visible{outline:2px solid var(--ds-accent);outline-offset:1px}
+  .studio-sw-icon{width:28px;height:28px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+    border-radius:8px;color:#fff;margin:0}
+  .studio-sw-icon--keywords{background:var(--ds-accent)}
+  .studio-sw-icon--ads{background:var(--ds-c4)}
+  .studio-sw-icon--screenshots{background:var(--ds-c2)}
+  .studio-sw-icon--video{background:var(--ds-c3)}
+  .studio-sw-icon--inapp{background:var(--ds-good)}
+  .studio-sw-text{display:flex;flex-direction:column;min-width:0;margin:0}
+  .studio-sw-btn .studio-sw-name{font-size:14px;line-height:18px;font-weight:600;color:var(--ds-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .studio-sw-btn .studio-sw-cap{font-size:12px;line-height:16px;font-weight:400;color:var(--ds-muted);white-space:nowrap}
+  .studio-sw-chev{flex:none;color:var(--ds-muted);margin-left:2px}
+  .ds-pop.studio-sw-pop{position:absolute;top:calc(100% + 6px);left:0;z-index:10000;width:300px;box-sizing:border-box;
+    display:none;flex-direction:column;gap:2px;font-family:var(--ds-font);font-variant-numeric:normal}
+  .ds-pop.studio-sw-pop.open{display:flex}
+  .studio-sw-pop .studio-sw-row{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:var(--ds-radius-inner);
+    color:var(--ds-text);text-decoration:none;background:none}
+  .studio-sw-pop .studio-sw-row:hover{background:var(--ds-accent-soft)}
+  .studio-sw-pop .studio-sw-row:focus-visible{outline:2px solid var(--ds-accent);outline-offset:-2px}
+  .studio-sw-pop .studio-sw-row.on{background:var(--ds-accent-soft)}
+  .studio-sw-pop .studio-sw-row .studio-sw-name{font-size:14px;line-height:18px;font-weight:500;color:var(--ds-strong)}
+  .studio-sw-pop .studio-sw-row.on .studio-sw-name{color:var(--ds-accent);font-weight:600}
+  .studio-sw-pop .studio-sw-row .studio-sw-cap{font-size:12px;line-height:16px;font-weight:400;color:var(--ds-muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .spacer{flex:1}
   .ctrl{display:flex;gap:8px;white-space:nowrap;align-items:center;color:var(--ds-muted);font-size:14px;font-weight:500}
   input#appId{width:132px}
@@ -285,18 +300,19 @@
 </head>
 <body>
 <header>
-  <div class="switcher" id="switcher">
-    <button id="swBtn" class="ds-btn">
-      <span class="chip" style="background:var(--ds-accent)">✦</span>
-      <span class="lbl"><small>Studio</small><b>In-App</b></span>
-      <span class="caret">▾</span>
+  <!-- synced from shared/shell/StudioSwitcher -->
+  <div class="studio-sw">
+    <button type="button" id="swBtn" class="studio-sw-btn" aria-haspopup="menu" aria-expanded="false" aria-label="In-App Studio — переключить продукт">
+      <span class="studio-sw-icon studio-sw-icon--inapp"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5l1.6 3.4 3.7.4-2.8 2.5.8 3.7L8 10.6l-3.3 1.9.8-3.7-2.8-2.5 3.7-.4z"/></svg></span>
+      <span class="studio-sw-text"><span class="studio-sw-name">In-App</span><span class="studio-sw-cap">Studio</span></span>
+      <svg class="studio-sw-chev" width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg>
     </button>
-    <div class="menu ds-pop" id="swMenu">
-      <a class="ds-pop-row" href="http://localhost:5173/"><span class="chip" style="background:linear-gradient(135deg,#FF8C42,#F25C1F)">◇</span><span class="t">Keywords<small>Keywords &amp; rankings</small></span></a>
-      <a class="ds-pop-row" href="http://localhost:5173/studio/"><span class="chip" style="background:linear-gradient(135deg,#7C3AED,#A78BFA)">▤</span><span class="t">Screenshots<small>App Store visuals</small></span></a>
-      <a class="ds-pop-row" href="http://localhost:5173/video/"><span class="chip" style="background:linear-gradient(135deg,#14B8A6,#5EEAD4)">▶</span><span class="t">Video<small>Ad video pipeline</small></span></a>
-      <a class="ds-pop-row" href="http://localhost:5173/asa/"><span class="chip" style="background:linear-gradient(135deg,#FFB000,#B87D00)">$</span><span class="t">Ads<small>Search Ads ROI</small></span></a>
-      <a class="ds-pop-row on" href="/inapp/" aria-selected="true"><span class="chip" style="background:var(--ds-accent)">✦</span><span class="t">In-App<small>Event cards &amp; detail</small></span><span class="tick">✓</span></a>
+    <div class="ds-pop studio-sw-pop" id="swMenu" role="menu">
+      <a href="/" role="menuitem" class="studio-sw-row"><span class="studio-sw-icon studio-sw-icon--keywords"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="7" r="4.25"/><path d="M10.2 10.2 13.5 13.5"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">Keywords</span><span class="studio-sw-cap">Ключи и позиции в App Store</span></span></a>
+      <a href="/asa/" role="menuitem" class="studio-sw-row"><span class="studio-sw-icon studio-sw-icon--ads"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 13V9M8 13V3M13 13V6"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">Ads</span><span class="studio-sw-cap">Экономика Apple Search Ads</span></span></a>
+      <a href="/studio/" role="menuitem" class="studio-sw-row"><span class="studio-sw-icon studio-sw-icon--screenshots"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="2" width="7" height="12" rx="1.6"/><path d="M7 11.5h2"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">Screenshots</span><span class="studio-sw-cap">Скриншоты для страницы App Store</span></span></a>
+      <a href="/video/" role="menuitem" class="studio-sw-row"><span class="studio-sw-icon studio-sw-icon--video"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3.2v9.6L12.5 8z"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">Video</span><span class="studio-sw-cap">Производство рекламных видео</span></span></a>
+      <a href="/inapp/" role="menuitem" class="studio-sw-row on" aria-current="page"><span class="studio-sw-icon studio-sw-icon--inapp"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5l1.6 3.4 3.7.4-2.8 2.5.8 3.7L8 10.6l-3.3 1.9.8-3.7-2.8-2.5 3.7-.4z"/></svg></span><span class="studio-sw-text"><span class="studio-sw-name">In-App</span><span class="studio-sw-cap">Карточки In-App Events</span></span></a>
     </div>
   </div>
   <div class="spacer"></div>
@@ -395,8 +411,17 @@ const $=id=>document.getElementById(id);
 $("themeBtn").onclick=()=>{const t=document.documentElement.dataset.theme==="dark"?"light":"dark";
   document.documentElement.dataset.theme=t;try{localStorage.setItem("theme",t);}catch(e){}};
 
-$("swBtn").onclick=e=>{e.stopPropagation();$("swMenu").classList.toggle("open");};
-document.addEventListener("click",()=>$("swMenu").classList.remove("open"));
+// synced from shared/shell/StudioSwitcher: toggle, outside click / Esc close, arrow keys walk rows
+function swSet(open){$("swMenu").classList.toggle("open",open);$("swBtn").classList.toggle("is-open",open);
+  $("swBtn").setAttribute("aria-expanded",String(open));}
+$("swBtn").onclick=e=>{e.stopPropagation();swSet(!$("swMenu").classList.contains("open"));};
+$("swBtn").addEventListener("keydown",e=>{if(e.key!=="ArrowDown")return;e.preventDefault();swSet(true);
+  $("swMenu").querySelector("a[aria-current]").focus();});
+$("swMenu").addEventListener("keydown",e=>{if(e.key!=="ArrowDown"&&e.key!=="ArrowUp")return;e.preventDefault();
+  const rows=[...$("swMenu").querySelectorAll("a")],i=rows.indexOf(document.activeElement);
+  rows[e.key==="ArrowDown"?(i+1)%rows.length:(i-1+rows.length)%rows.length].focus();});
+document.addEventListener("mousedown",e=>{if(!e.target.closest(".studio-sw"))swSet(false);});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("swMenu").classList.contains("open")){swSet(false);$("swBtn").focus();}});
 
 // ---- iTunes lookup (JSONP → real icon + name, avoids CORS) ----
 function loadApp(id){

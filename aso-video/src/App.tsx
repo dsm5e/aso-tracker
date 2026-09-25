@@ -56,7 +56,7 @@ import { OutputNode } from './nodes/OutputNode';
 import { installBridge } from './lib/claudeBridge';
 import { LightboxRoot } from './components/Lightbox';
 import { LibrarySidebar } from './components/LibrarySidebar';
-import { BrandSwitcher } from './components/BrandSwitcher';
+import { StudioSwitcher } from '../../shared/shell/StudioSwitcher';
 // MockupProvider/useMockupToggle now live inside OutputNode itself.
 import SettingsModal from './components/SettingsModal';
 import { TimelineEditor } from './components/TimelineEditor';
@@ -898,7 +898,7 @@ function GraphEditor() {
       {/* toolbar — wraps to multiple lines when the viewport gets narrow so
           buttons stay reachable instead of overflowing off-screen. */}
       <div className="vid-toolbar">
-        <BrandSwitcher current="vid" />
+        <StudioSwitcher current="video" />
         <div className="vid-toolbar-sep" />
         <div className="ds-seg" role="tablist" aria-label="Editor mode">
           <button role="tab" aria-selected={editorMode === 'nodes'} onClick={() => setEditorMode('nodes')}>Nodes</button>
