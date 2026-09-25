@@ -922,7 +922,7 @@ export default function App() {
         )}
       </section>
       ) : view === 'competitors' ? (
-        selectedApp ? <Competitors app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} /> : null
+        selectedApp ? <Competitors app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} onKeywordsChanged={setKeywordMap} /> : null
       ) : view === 'funnel' ? (
         selectedApp ? <ConnectGate requires={['adapty', 'asc']} title="Воронка"><AcquisitionFunnel app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} countries={Object.keys(keywordMap)} /></ConnectGate> : null
       ) : (
