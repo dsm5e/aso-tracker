@@ -4,6 +4,9 @@ import type { RankingRow } from '../lib/keywordsApi.ts';
 import { KeywordTopFiveInline } from '../components/KeywordResultsDrawer.tsx';
 import { useFoldOnScroll } from '../components/FillPage.tsx';
 import { appStoreCountry } from '../lib/appStoreLocales.ts';
+import { useCountry } from '../lib/CountryContext.tsx';
+import { WORLD } from '../lib/countries.ts';
+import { ScopeBadge } from '../components/CountrySwitcher.tsx';
 import { SERIES, hbarPath, tipProps, useWidth, type TipRow } from '../../../shared/charts/Charts.tsx';
 import './TrafficIntelligence.css';
 
@@ -681,7 +684,7 @@ function KeywordTable({ rows, app, scopeCountry, top5Country, top5Scope, organic
             <th><span>Сложность <InfoHint text="Модель сервера, если она передана; иначе расчёт интерфейса. Наведите на оценку или откройте детали, чтобы увидеть факторы." /></span></th>
             <th><span>Потенциал <InfoHint text="Модель сервера, если она передана; иначе расчёт интерфейса. Наведите на оценку или откройте детали, чтобы увидеть факторы." /></span></th>
             <th>Наша органика {organicScope ? `· ${organicScope}` : '· скрыта'}</th>
-            <th><span>Топ‑5 · {top5Country.toUpperCase()}{scopeCountry === 'ALL' ? ' (метрики: все страны)' : ''} <InfoHint text="Фактический порядок пяти приложений в последнем сохранённом ASO snapshot этой витрины. При «Все страны» метрики агрегированы, но выдача остаётся витриной контекста; это не global SERP и не список платных рекламодателей." /></span></th>
+            <th><span>Топ‑5 · {top5Country.toUpperCase()}{scopeCountry === 'ALL' ? ' (метрики: все страны)' : appStoreCountry(top5Country).toUpperCase() !== scopeCountry ? ` (${scopeCountry} не отслеживается в Keywords)` : ''} <InfoHint text="Фактический порядок пяти приложений в последнем сохранённом ASO snapshot этой витрины. При «Все страны» метрики агрегированы, но выдача остаётся витриной контекста; это не global SERP и не список платных рекламодателей." /></span></th>
             <th>Расход</th>
             <th><span className="traffic-sr-only">Детали</span></th>
           </tr>
@@ -836,8 +839,8 @@ function ApiCoverage({ payload, loading, error }: {
 export default function TrafficIntelligence({ app, locale, rankings = [], artworks: sharedArtworks = {}, sharedTopFive = {}, sharedTopFiveStatus = {}, onResolveTopFive, onEnsureArtworks, className = '', onOpenCompetitor }: TrafficIntelligenceProps) {
   const [view, setView] = useState<View>('traffic');
   const [compactHeader, workspaceRef] = useFoldOnScroll();
-  const [countryByApp, setCountryByApp] = useState<Record<string, string>>({});
-  const [countriesByApp, setCountriesByApp] = useState<Record<string, NonNullable<TrafficIntelligencePayload['availableCountries']>>>({});
+  // Storefront scope comes from the global «Страна» filter in the sidebar.
+  const { country: globalCountry, label: scopeLabelText } = useCountry();
   const [trafficRemote, setTrafficRemote] = useState<{
     requestKey: string;
     payloadScope: string;
@@ -854,16 +857,16 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
   const [sort, setSort] = useState<SortKey>('opportunity');
   const [selectedRow, setSelectedRow] = useState<TrafficKeywordRow | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
-  const countryScope = countryByApp[app.iTunesId] ?? 'ALL';
+  // A drawer row belongs to the previous storefront scope.
+  useEffect(() => { setSelectedRow(null); }, [globalCountry]);
+  const countryScope = globalCountry === WORLD ? 'ALL' : globalCountry;
   const localeCountry = appStoreCountry(locale).toUpperCase();
   const organicScope = countryScope !== 'ALL' && countryScope === localeCountry ? countryScope : null;
-  const countryOptions = countriesByApp[app.iTunesId] ?? [];
   const trafficScope = `${app.id}:${app.iTunesId}:${countryScope}`;
-  // One real storefront gives the ASO context for all-country aggregates.
-  // It is deliberately not an invented global search result.
-  const top5Country = countryScope === 'ALL' || countryScope.toUpperCase() === localeCountry
-    ? locale.toLocaleLowerCase()
-    : countryScope.toLocaleLowerCase();
+  // One real storefront gives the ASO context: the chosen country when
+  // Keywords tracks it, else the app's default storefront (the bridge picks
+  // it). It is deliberately not an invented global search result.
+  const top5Country = locale.toLocaleLowerCase();
   const top5Scope = `${app.id}:${app.iTunesId}:${top5Country}`;
   const artworks = sharedArtworks;
   const trafficRequestKey = `${trafficScope}:${refreshKey}`;
@@ -900,9 +903,6 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
       .then((value) => {
         const nextPayload = unwrapTrafficPayload(value);
         setTrafficRemote({ requestKey: trafficRequestKey, payloadScope: trafficScope, payload: nextPayload, error: null });
-        if (nextPayload.availableCountries) {
-          setCountriesByApp((current) => ({ ...current, [app.iTunesId]: nextPayload.availableCountries ?? [] }));
-        }
       })
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) {
@@ -1030,7 +1030,7 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
   const scopeStorefronts = summaryNumber(payload?.summary, 'countries');
   const scopeExplanation = countryScope === 'ALL'
     ? payload?.limitations?.allScope ?? 'Доставка и экономика суммируются; популярность и доля усредняются только по витринам с доступным сигналом Apple.'
-    : 'Trials, paid и net revenue отфильтрованы по выбранной стране. Доставка и расход мультигео-кампаний исключаются, если Apple не позволяет разделить их по витринам.';
+    : 'Trials, paid и net revenue отфильтрованы по выбранной стране. Доставка и расход мультигео-кампаний — доля этой страны из отчёта Apple «ключ × страна»; кампании без такой разбивки не учитываются.';
   const forceRefresh = () => {
     setRefreshKey((value) => value + 1);
   };
@@ -1054,19 +1054,10 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
       <header className="traffic-header">
         <div className="traffic-title-block">
           <div className="traffic-title-line"><h1 className="ds-page-title">Аналитика трафика</h1>{isStale(payload) ? <span className="traffic-stale-badge">Данные устарели</span> : null}</div>
-          <p className="ds-page-sub fold">{app.name} · {countryScope === 'ALL' ? 'Все страны' : countryScope} · последние 30 дней · Apple ID {app.iTunesId}</p>
+          <p className="ds-page-sub fold">{app.name} · {scopeLabelText} · последние 30 дней · Apple ID {app.iTunesId}</p>
         </div>
         <div className="traffic-header-actions">
-          <label className="traffic-country-control">
-            <span>Страна</span>
-            <select className="ds-select" value={countryScope} onChange={(event) => {
-              setCountryByApp((current) => ({ ...current, [app.iTunesId]: event.target.value }));
-              setSelectedRow(null);
-            }}>
-              <option value="ALL">Все страны</option>
-              {countryOptions.map((country) => <option key={country.code} value={country.code}>{country.code}</option>)}
-            </select>
-          </label>
+          <ScopeBadge />
           <span className="traffic-freshness">{generatedAt ? `Обновлено: ${generatedAt}${payload?.servedFromCache ? ' · сохранённый снимок' : ''}` : 'Время обновления неизвестно'}</span>
           <button className="ds-btn traffic-refresh-button" type="button" onClick={forceRefresh} disabled={loading}>↻ <span>{loading ? 'Обновление' : 'Обновить'}</span></button>
         </div>

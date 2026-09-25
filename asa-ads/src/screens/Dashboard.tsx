@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, type Campaign, type DailyTotals } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
+import { useCountry } from "../lib/CountryContext.tsx";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
 import Sparkline from "../components/Sparkline.tsx";
 import HeroChart from "../components/HeroChart.tsx";
 import GeoHeatmap from "../components/GeoHeatmap.tsx";
@@ -27,6 +29,7 @@ interface VerdictMap { [campaignId: number]: { kind: "scale" | "hold" | "cut" | 
 
 export default function Dashboard({ reloadKey }: Props) {
   const { selected } = useApp();
+  const { country, isWorld, label } = useCountry();
   const [rows, setRows] = useState<Campaign[]>([]);
   const [daily, setDaily] = useState<DailyTotals[]>([]);
   const [days, setDays] = useState(14);
@@ -39,7 +42,7 @@ export default function Dashboard({ reloadKey }: Props) {
   const prevRef = useRef<Map<number, Campaign>>(new Map());
 
   async function load(): Promise<void> {
-    const [data, dailyData] = await Promise.all([api.campaigns(days, selected), api.daily(days, undefined, selected)]);
+    const [data, dailyData] = await Promise.all([api.campaigns(days, selected, country), api.daily(days, undefined, selected, country)]);
 
     const newFlash = new Set<number>();
     for (const c of data) {
@@ -76,7 +79,7 @@ export default function Dashboard({ reloadKey }: Props) {
       console.error(reason);
       setError(reason instanceof Error ? reason.message : "Не удалось получить данные Apple Ads");
     }).finally(() => setLoading(false));
-  }, [days, reloadKey, selected]);
+  }, [country, days, reloadKey, selected]);
 
   const totals = useMemo(() => {
     return rows.reduce((acc, r) => ({
@@ -84,9 +87,11 @@ export default function Dashboard({ reloadKey }: Props) {
       installs: acc.installs + r.installs,
       taps: acc.taps + r.taps,
       impressions: acc.impressions + r.impressions,
-      trials: acc.trials + r.trial_starts,
-    }), { spend: 0, installs: 0, taps: 0, impressions: 0, trials: 0 });
+    }), { spend: 0, installs: 0, taps: 0, impressions: 0 });
   }, [rows]);
+  // Trial starts are per storefront (ASC), not per campaign: summing campaign
+  // rows would count a storefront once per campaign that serves it.
+  const trialsTotal = daily.reduce((sum, d) => sum + d.trial_starts, 0);
 
   const overallCpi = totals.installs > 0 ? totals.spend / totals.installs : 0;
 
@@ -105,7 +110,10 @@ export default function Dashboard({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <h1 className="ds-page-title" title="Все страны · источник: отчёты Apple Ads · обновляется после синхронизации">Обзор Apple Ads</h1>
+        <div className="title-with-scope">
+          <h1 className="ds-page-title" title={`${isWorld ? "Все страны" : `${label}: доля страны из отчёта Apple Ads по витринам`} · источник: отчёты Apple Ads · обновляется после синхронизации`}>Обзор Apple Ads</h1>
+          <ScopeBadge />
+        </div>
         <div className="controls">
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 1, label: "Сегодня" }, { value: 3, label: "3 дня" }, { value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }]} />
         </div>
@@ -115,14 +123,14 @@ export default function Dashboard({ reloadKey }: Props) {
         <Sparkline title="Расход" value={fmtUsd(totals.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--ds-c1)" format={fmtUsd} />
         <Sparkline title="Установки" value={String(totals.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--ds-c2)" format={(n) => String(Math.round(n))} />
         <Sparkline title="CPI" lowerIsBetter value={overallCpi > 0 ? fmtUsd(overallCpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
-        <Sparkline title="Старты триала" value={String(totals.trials)} data={daily.map((d) => d.trial_starts)} labels={dates} color="var(--ds-c4)" format={(n) => String(Math.round(n))} />
+        <Sparkline title="Старты триала" value={String(trialsTotal)} data={daily.map((d) => d.trial_starts)} labels={dates} color="var(--ds-c4)" format={(n) => String(Math.round(n))} />
       </div>
 
       <h2 className="ds-h2">Динамика</h2>
       <HeroChart daily={daily} />
 
       <h2 className="ds-h2">Страны</h2>
-      <GeoHeatmap days={days} />
+      <GeoHeatmap days={days} country={country} />
 
       <div className="section-head">
         <h2 className="ds-h2">Кампании · {rows.length}</h2>
@@ -136,7 +144,7 @@ export default function Dashboard({ reloadKey }: Props) {
       {error && rows.length === 0 ? <div className="data-state error">Не удалось обновить обзор: {error}</div> : loading && rows.length === 0 ? (
         <div className="data-state loading">Загружаем показатели…</div>
       ) : rows.length === 0 ? (
-        <div className="data-state">Нет данных за этот период. Запустите синхронизацию.</div>
+        <div className="data-state">{isWorld ? "Нет данных за этот период. Запустите синхронизацию." : `Нет кампаний, которые работают в стране «${label}» за этот период.`}</div>
       ) : (
         <div className="table-wrap table-tall">
         <table>
@@ -148,7 +156,7 @@ export default function Dashboard({ reloadKey }: Props) {
               <th className="num">Расход</th>
               <th className="num">Установки</th>
               <th className="num">CPI</th>
-              <th>Решение <InfoTooltip title="Как читать решение">Рекомендация — ориентир на основе доступных затрат, установок и доступной экономики. Откройте прогноз, чтобы увидеть источники и объём выборки.</InfoTooltip></th>
+              <th>Решение <InfoTooltip title="Как читать решение">Рекомендация — ориентир на основе доступных затрат, установок и доступной экономики. Откройте прогноз, чтобы увидеть источники и объём выборки.{!isWorld && " При выбранной стране решение всё равно считается по кампании целиком (все её страны): бюджет и ставки у кампании общие."}</InfoTooltip></th>
               <th className="col-controls">Управление</th>
             </tr>
           </thead>

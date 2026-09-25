@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type ActionRow } from "../api.ts";
 import FillPage from "../components/FillPage.tsx";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
 
 interface Props { reloadKey: number }
 
@@ -90,7 +91,10 @@ export default function Actions({ reloadKey }: Props) {
   return (
     <FillPage>
       <div className="topbar">
-        <h1 className="ds-page-title" title="Все изменения проходят через подтверждение, журнал и readback Apple Ads">Очередь действий</h1>
+        <div className="title-with-scope">
+          <h1 className="ds-page-title" title="Все изменения проходят через подтверждение, журнал и readback Apple Ads">Очередь действий</h1>
+          <ScopeBadge notApplied />
+        </div>
         {rows.length > 0 && <span className="meta">{rows.length} записей</span>}
       </div>
       {loading ? <div className="data-state loading">Загружаем очередь…</div> : rows.length === 0 ? (

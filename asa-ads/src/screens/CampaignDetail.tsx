@@ -6,6 +6,9 @@ import CampaignControls from "../components/CampaignControls.tsx";
 import BidChangeConfirm from "../components/BidChangeConfirm.tsx";
 import { campaignDisplayName, campaignTechnicalName } from "../lib/campaignNames.ts";
 import Dropdown from "../components/Dropdown.tsx";
+import { useCountry } from "../lib/CountryContext.tsx";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
+import { BIDS_GLOBAL_HINT } from "../lib/countries.ts";
 
 function fmtUsd(n: number): string { return `$${n.toFixed(2)}`; }
 function fmtPct(n: number): string { return `${(n * 100).toFixed(1)}%`; }
@@ -13,7 +16,10 @@ function fmtPct(n: number): string { return `${(n * 100).toFixed(1)}%`; }
 export default function CampaignDetail() {
   const { id } = useParams();
   const cid = Number(id);
+  const { country, isWorld, label } = useCountry();
   const [campaign, setCampaign] = useState<Campaign | undefined>();
+  /** Country mode: the campaign exists but does not target / deliver there. */
+  const [notServing, setNotServing] = useState(false);
   const [daily, setDaily] = useState<DailyTotals[]>([]);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [recs, setRecs] = useState<BidRec[]>([]);
@@ -23,13 +29,21 @@ export default function CampaignDetail() {
   const [pendingChange, setPendingChange] = useState<{ keyword: Keyword; newBid: number; reason?: string } | null>(null);
 
   async function load(): Promise<void> {
-    const [allCamps, d, kw, r] = await Promise.all([
+    const [allCamps, scoped, d, kw, r] = await Promise.all([
       api.campaigns(days),
-      api.daily(days, cid),
-      api.keywords(days, cid),
+      isWorld ? Promise.resolve(null) : api.campaigns(days, undefined, country),
+      api.daily(days, cid, undefined, country),
+      api.keywords(days, cid, undefined, country),
+      // A keyword bid is one number for every storefront: recommendations are
+      // always the campaign's world ones, whatever the country filter.
       api.bidRecs(days, cid),
     ]);
-    setCampaign(allCamps.find((c) => c.id === cid));
+    const world = allCamps.find((c) => c.id === cid);
+    const inCountry = scoped?.find((c) => c.id === cid);
+    // Country mode: metadata from the campaign, metrics from its storefront
+    // slice; zero when the campaign does not serve that storefront.
+    setNotServing(Boolean(scoped && world && !inCountry));
+    setCampaign(scoped && world ? inCountry ?? { ...world, impressions: 0, taps: 0, installs: 0, spend: 0, cpi: 0, cpt: 0, ttr: 0, install_rate: 0, trial_starts: 0 } : world);
     setDaily(d);
     setKeywords(kw);
     setRecs(r);
@@ -38,7 +52,7 @@ export default function CampaignDetail() {
   useEffect(() => {
     setLoading(true);
     load().finally(() => setLoading(false));
-  }, [cid, days]);
+  }, [cid, country, days]);
 
   const recMap = new Map(recs.map((r) => [r.keyword_id, r]));
   const dates = daily.map((d) => d.date);
@@ -91,7 +105,10 @@ export default function CampaignDetail() {
       <div className="topbar">
         <div>
           <Link to="/" className="back-link">← Обзор</Link>
-          <h1 className="ds-page-title">{campaignDisplayName(campaign.name)}</h1>
+          <div className="title-with-scope">
+            <h1 className="ds-page-title">{campaignDisplayName(campaign.name)}</h1>
+            <ScopeBadge />
+          </div>
           {campaignTechnicalName(campaign.name) && <p className="note">{campaign.name}</p>}
           <p className="ds-page-sub">
             {campaign.country} · {campaign.bidding_strategy} · дневной лимит {fmtUsd(campaign.daily_budget)} · лимит на весь срок {fmtUsd(campaign.lifetime_budget)} · {campaign.status}
@@ -102,6 +119,13 @@ export default function CampaignDetail() {
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }]} />
         </div>
       </div>
+
+      {notServing && (
+        <div className="callout warn callout-block">Кампания не работает в стране «{label}»: у неё нет этой витрины и показов там за период. Метрики ниже — нули; выберите «Весь мир», чтобы увидеть кампанию целиком.</div>
+      )}
+      {!isWorld && !notServing && (
+        <p className="note country-note">Метрики — только витрина «{label}» (отчёт Apple Ads по странам). Ставки ключей общие для всех стран кампании, поэтому менять их можно только в режиме «Весь мир».</p>
+      )}
 
       <div className="spark-row">
         <Sparkline title="Расход" value={fmtUsd(campaign.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--ds-c1)" format={fmtUsd} />
@@ -125,14 +149,15 @@ export default function CampaignDetail() {
             <th className="num">Установки</th>
             <th className="num">CPT</th>
             <th className="num">Расход</th>
-            <th>Рекомендация</th>
+            <th title={isWorld ? undefined : "Рекомендация ставки считается по всем странам кампании: ставка ключа одна на все витрины"}>{isWorld ? "Рекомендация" : "Рекомендация · все страны"}</th>
             <th className="col-bid">Ставка</th>
           </tr>
         </thead>
         <tbody>
           {keywords.map((k) => {
             const rec = recMap.get(k.id);
-            const isBusy = busy.has(k.id);
+            // A keyword bid applies to every storefront of the campaign.
+            const isBusy = busy.has(k.id) || !isWorld;
             const alreadyAtRec = rec && Math.abs(k.bid - rec.recommended_bid) < 0.005;
             const down10 = Math.max(0.05, Math.round(k.bid * 0.9 * 100) / 100);
             const up10 = Math.round(k.bid * 1.1 * 100) / 100;
@@ -160,10 +185,10 @@ export default function CampaignDetail() {
                 </td>
                 <td>
                   <div className="btn-group">
-                    <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Контролируемое снижение ставки на 10%")} title={`Снизить на 10% → ${fmtUsd(down10)}`}>−10%</button>
-                    <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Контролируемое повышение ставки на 10%")} title={`Повысить на 10% → ${fmtUsd(up10)}`}>+10%</button>
+                    <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Контролируемое снижение ставки на 10%")} title={isWorld ? `Снизить на 10% → ${fmtUsd(down10)}` : BIDS_GLOBAL_HINT}>−10%</button>
+                    <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Контролируемое повышение ставки на 10%")} title={isWorld ? `Повысить на 10% → ${fmtUsd(up10)}` : BIDS_GLOBAL_HINT}>+10%</button>
                     {rec && !alreadyAtRec && (
-                      <button className={`compact ${delta > 0 ? "up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={rec.reason}>
+                      <button className={`compact ${delta > 0 ? "up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={isWorld ? rec.reason : BIDS_GLOBAL_HINT}>
                         → {fmtUsd(rec.recommended_bid)}
                       </button>
                     )}

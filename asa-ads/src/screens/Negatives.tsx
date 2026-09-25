@@ -4,6 +4,8 @@ import { useApp } from "../lib/AppContext.tsx";
 import { exportRows } from "../lib/csv.ts";
 import { campaignDisplayName } from "../lib/campaignNames.ts";
 import FillPage from "../components/FillPage.tsx";
+import { useCountry } from "../lib/CountryContext.tsx";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
 
 interface NegRow {
   id: number;
@@ -18,14 +20,15 @@ interface NegRow {
 
 export default function Negatives() {
   const { selected: appSel } = useApp();
+  const { country, isWorld, label } = useCountry();
   const [rows, setRows] = useState<NegRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
     setLoading(true);
-    api.negatives(appSel).then(setRows).finally(() => setLoading(false));
-  }, [appSel]);
+    api.negatives(appSel, country).then(setRows).finally(() => setLoading(false));
+  }, [appSel, country]);
 
   const filtered = rows.filter((r) =>
     !filter ||
@@ -44,7 +47,10 @@ export default function Negatives() {
   return (
     <FillPage>
       <div className="topbar">
-        <h1 className="ds-page-title" title="Все страны выбранного приложения · защита от нерелевантных запросов и пересечения кампаний">Минус-слова</h1>
+        <div className="title-with-scope">
+          <h1 className="ds-page-title" title={`${isWorld ? "Все страны выбранного приложения" : `Минус-слова кампаний, которые работают в стране «${label}» (минус-слово действует на все страны кампании)`} · защита от нерелевантных запросов и пересечения кампаний`}>Минус-слова</h1>
+          <ScopeBadge />
+        </div>
         <div className="controls">
           <input type="text" aria-label="Поиск минус-слов" placeholder="Найти слово или кампанию" value={filter} onChange={(e) => setFilter(e.target.value)} />
           <button onClick={doExport} disabled={filtered.length === 0}>Экспорт CSV</button>
@@ -58,7 +64,7 @@ export default function Negatives() {
       </div>
 
       {loading ? <div className="data-state loading">Загружаем минус-слова…</div> : filtered.length === 0 ? (
-        <div className="data-state">Нет минус-слов по этому фильтру.</div>
+        <div className="data-state">{isWorld ? "Нет минус-слов по этому фильтру." : `Нет минус-слов в кампаниях, которые работают в стране «${label}».`}</div>
       ) : (
         <div className="table-wrap">
         <table>

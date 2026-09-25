@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type AccountHealth, type CommandCenterData, type CommandGeoRow } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
+import { useCountry } from "../lib/CountryContext.tsx";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
 import { exportRows } from "../lib/csv.ts";
 import InfoTooltip from "../components/InfoTooltip.tsx";
 import Dropdown from "../components/Dropdown.tsx";
@@ -29,6 +31,7 @@ function snapshotAgeDays(date: string | null): number | null {
 
 export default function CommandCenter({ reloadKey }: Props) {
   const { apps, selected, setSelected } = useApp();
+  const { country, isWorld, label } = useCountry();
   const [data, setData] = useState<CommandCenterData | null>(null);
   const [health, setHealth] = useState<AccountHealth | null>(null);
   const [days, setDays] = useState(30);
@@ -48,14 +51,14 @@ export default function CommandCenter({ reloadKey }: Props) {
     if (!appId) return;
     setLoading(true);
     setError("");
-    Promise.all([api.commandCenter(appId, days), api.accountHealth()])
+    Promise.all([api.commandCenter(appId, days, country), api.accountHealth()])
       .then(([d, h]) => { setData(d); setHealth(h); })
       .catch((reason: unknown) => {
         console.error(reason);
         setError(reason instanceof Error ? reason.message : "Не удалось загрузить матрицу решений");
       })
       .finally(() => setLoading(false));
-  }, [appId, days, reloadKey]);
+  }, [appId, country, days, reloadKey]);
 
   const totals = useMemo(() => {
     const rows = data?.rows ?? [];
@@ -75,12 +78,15 @@ export default function CommandCenter({ reloadKey }: Props) {
   return (
     <FillPage>
       <div className="topbar">
-        <h1
-          className="ds-page-title"
-          title={`${shortAppName(shownApp?.app_name) ?? `Приложение ${appId}`} · страны × Apple Ads × органика × выручка · источники: Apple Ads, Adapty, ASO${selected === "all" && localApp === null ? " · приложение выбрано по наибольшему расходу за 14 дней" : ""}`}
-        >
-          Матрица решений
-        </h1>
+        <div className="title-with-scope">
+          <h1
+            className="ds-page-title"
+            title={`${shortAppName(shownApp?.app_name) ?? `Приложение ${appId}`} · ${isWorld ? "страны" : label} × Apple Ads × органика × выручка · источники: Apple Ads, Adapty, ASO${selected === "all" && localApp === null ? " · приложение выбрано по наибольшему расходу за 14 дней" : ""}`}
+          >
+            Матрица решений
+          </h1>
+          <ScopeBadge />
+        </div>
         <div className="controls">
           {appOptions.length > 1 && (
             <span title={selected === "all" && localApp === null ? "Выбрано по наибольшему расходу за 14 дней" : undefined}>
@@ -140,7 +146,7 @@ export default function CommandCenter({ reloadKey }: Props) {
       {error && !data ? <div className="data-state error">{error}</div> : loading && !data ? (
         <div className="data-state loading">Загружаем данные по странам…</div>
       ) : (data?.rows.length ?? 0) === 0 ? (
-        <div className="data-state">Нет расхода по странам за {days} дней. Увеличьте период или выберите другое приложение.</div>
+        <div className="data-state">{isWorld ? `Нет расхода по странам за ${days} дней. Увеличьте период или выберите другое приложение.` : `Нет расхода Apple Ads в стране «${label}» за ${days} дней. Увеличьте период или выберите «Весь мир».`}</div>
       ) : (
         <div className="table-wrap">
         <table>

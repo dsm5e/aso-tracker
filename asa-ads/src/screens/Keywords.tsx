@@ -8,6 +8,9 @@ import { exportRows } from "../lib/csv.ts";
 import { campaignDisplayName } from "../lib/campaignNames.ts";
 import Dropdown from "../components/Dropdown.tsx";
 import FillPage from "../components/FillPage.tsx";
+import { useCountry } from "../lib/CountryContext.tsx";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
+import { BIDS_GLOBAL_HINT } from "../lib/countries.ts";
 
 interface Props { reloadKey: number }
 
@@ -15,6 +18,7 @@ function fmtBid(n: number): string { return `$${n.toFixed(2)}`; }
 
 export default function Keywords({ reloadKey }: Props) {
   const { selected: appSel } = useApp();
+  const { country, isWorld, label } = useCountry();
   const [rows, setRows] = useState<Keyword[]>([]);
   const [recs, setRecs] = useState<BidRec[]>([]);
   const [days, setDays] = useState(7);
@@ -31,7 +35,9 @@ export default function Keywords({ reloadKey }: Props) {
   const [pendingBulk, setPendingBulk] = useState<Array<{ keyword: Keyword; rec: BidRec }> | null>(null);
 
   async function load(): Promise<void> {
-    const [k, r] = await Promise.all([api.keywords(days, undefined, appSel), api.bidRecs(days, undefined, appSel)]);
+    // Rows: storefront slice when a country is set. Bid recommendations: always
+    // from world metrics (a keyword has one bid for all storefronts).
+    const [k, r] = await Promise.all([api.keywords(days, undefined, appSel, country), api.bidRecs(days, undefined, appSel)]);
     setRows(k);
     setRecs(r);
   }
@@ -39,7 +45,10 @@ export default function Keywords({ reloadKey }: Props) {
   useEffect(() => {
     setLoading(true);
     load().finally(() => setLoading(false));
-  }, [days, reloadKey, appSel]);
+  }, [days, reloadKey, appSel, country]);
+
+  // Leaving world mode drops any pending bid selection.
+  useEffect(() => { if (!isWorld) setSelected(new Set()); }, [isWorld]);
 
   function toggleExpand(id: number): void {
     setExpanded((s) => {
@@ -79,6 +88,8 @@ export default function Keywords({ reloadKey }: Props) {
     return fl;
   }, [rows, filter, sortBy, statusFilter]);
   const kwMap = useMemo(() => new Map(rows.map((k) => [k.id, k])), [rows]);
+  // World recommendations of the keywords listed in the current scope.
+  const recsInView = useMemo(() => recs.filter((r) => kwMap.has(r.keyword_id)).length, [kwMap, recs]);
 
   function flashRow(kid: number): void {
     setFlashed((s) => new Set(s).add(kid));
@@ -192,7 +203,10 @@ export default function Keywords({ reloadKey }: Props) {
   return (
     <FillPage>
       <div className="topbar">
-        <h1 className="ds-page-title" title="Все страны выбранного приложения · ставки меняются только после подтверждения">Ключевые слова</h1>
+        <div className="title-with-scope">
+          <h1 className="ds-page-title" title={`${isWorld ? "Все страны выбранного приложения" : `${label}: показы, тапы, установки и расход — только эта витрина`} · ставки меняются только после подтверждения`}>Ключевые слова</h1>
+          <ScopeBadge />
+        </div>
         <div className="controls">
           <input type="text" aria-label="Поиск ключевых слов" placeholder="Найти ключ или кампанию" value={filter} onChange={(e) => setFilter(e.target.value)} />
           <div className="ds-seg" title="Фильтр по статусу ключа">
@@ -206,18 +220,18 @@ export default function Keywords({ reloadKey }: Props) {
       </div>
 
       <div className="list-bar">
-        <span className="list-bar-count" title="Отметьте ключи или выберите группой — ставки меняются только после подтверждения.">
-          <b>{recs.length}</b> рекомендаций{selected.size > 0 && <> · выбрано: <b>{selectedWithRec}</b></>}
+        <span className="list-bar-count" title={isWorld ? "Отметьте ключи или выберите группой — ставки меняются только после подтверждения." : `Метрики строк — только «${label}». Рекомендации ставок считаются по всем странам кампании: ставка ключа одна на все витрины.`}>
+          <b>{recsInView}</b> рекомендаций{isWorld ? "" : " · по всем странам"}{selected.size > 0 && <> · выбрано: <b>{selectedWithRec}</b></>}
         </span>
-        <div className="btn-group">
-          <button className="compact" onClick={() => selectByConfidence("high")} title="Только рекомендации с высокой уверенностью">Только надёжные</button>
-          <button className="compact" onClick={() => selectAllVisible(true)} title="Все ключи, у которых есть рекомендация">Все с рекомендацией</button>
+        <div className="btn-group" title={isWorld ? undefined : BIDS_GLOBAL_HINT}>
+          <button className="compact" disabled={!isWorld} onClick={() => selectByConfidence("high")} title="Только рекомендации с высокой уверенностью">Только надёжные</button>
+          <button className="compact" disabled={!isWorld} onClick={() => selectAllVisible(true)} title="Все ключи, у которых есть рекомендация">Все с рекомендацией</button>
           <button className="compact" onClick={() => setSelected(new Set())} disabled={selected.size === 0}>Снять выбор</button>
           <button
             className="compact primary"
-            disabled={selectedWithRec === 0 || bulkRunning}
+            disabled={!isWorld || selectedWithRec === 0 || bulkRunning}
             onClick={requestBulkApply}
-            title="Покажет окно с прогнозом и подтверждением перед применением"
+            title={isWorld ? "Покажет окно с прогнозом и подтверждением перед применением" : BIDS_GLOBAL_HINT}
           >
             {bulkRunning ? `Применяю… (${selected.size})` : `Применить (${selectedWithRec})`}
           </button>
@@ -251,7 +265,7 @@ export default function Keywords({ reloadKey }: Props) {
         />
       )}
 
-      {loading ? <div className="data-state loading">Загружаем ключевые слова…</div> : filtered.length === 0 ? <div className="data-state">По этому фильтру нет ключевых слов.</div> : (
+      {loading ? <div className="data-state loading">Загружаем ключевые слова…</div> : filtered.length === 0 ? <div className="data-state">{isWorld ? "По этому фильтру нет ключевых слов." : `Нет ключевых слов в кампаниях, которые работают в стране «${label}».`}</div> : (
         <div className="table-wrap">
         <table className="keywords-table">
           <thead>
@@ -259,6 +273,8 @@ export default function Keywords({ reloadKey }: Props) {
               <th className="col-check">
                 <input
                   type="checkbox"
+                  disabled={!isWorld}
+                  title={isWorld ? undefined : BIDS_GLOBAL_HINT}
                   checked={filtered.length > 0 && filtered.every((k) => selected.has(k.id))}
                   onChange={(e) => {
                     if (e.target.checked) selectAllVisible(false);
@@ -276,7 +292,7 @@ export default function Keywords({ reloadKey }: Props) {
               <th className="num">Установки</th>
               <th className="num">CPT</th>
               <th className="num">Расход</th>
-              <th>Рекомендация</th>
+              <th title={isWorld ? undefined : "Считается по всем странам кампании: ставка ключа одна на все витрины"}>{isWorld ? "Рекомендация" : "Рекомендация · все страны"}</th>
               <th className="col-bid">Изменение ставки</th>
             </tr>
           </thead>
@@ -284,7 +300,8 @@ export default function Keywords({ reloadKey }: Props) {
             {filtered.flatMap((k) => {
               const rec = recMap.get(k.id);
               const delta = rec ? rec.recommended_bid - rec.current_bid : 0;
-              const isBusy = busy.has(k.id);
+              // Bids are global per keyword: locked while a storefront is selected.
+              const isBusy = busy.has(k.id) || !isWorld;
               const alreadyAtRec = rec && Math.abs(k.bid - rec.recommended_bid) < 0.005;
               const down10 = Math.max(0.05, Math.round(k.bid * 0.9 * 100) / 100);
               const up10 = Math.round(k.bid * 1.1 * 100) / 100;
@@ -292,7 +309,7 @@ export default function Keywords({ reloadKey }: Props) {
               return [
                 <tr key={k.id} className={flashed.has(k.id) ? "flash" : isExp ? "expanded" : ""}>
                   <td>
-                    <input type="checkbox" checked={selected.has(k.id)} onChange={() => toggle(k.id)} disabled={!rec} />
+                    <input type="checkbox" checked={selected.has(k.id)} onChange={() => toggle(k.id)} disabled={!rec || !isWorld} title={isWorld ? undefined : BIDS_GLOBAL_HINT} />
                   </td>
                   <td className="nowrap">
                     <span className={`expand-toggle inline-label ${isExp ? "open" : ""}`} onClick={() => toggleExpand(k.id)}>▸</span>
@@ -328,10 +345,10 @@ export default function Keywords({ reloadKey }: Props) {
                   </td>
                   <td>
                     <div className="btn-group">
-                      <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Снизить ставку на 10% для контролируемого теста") } title={`Снизить на 10% → ${fmtBid(down10)}`}>−10%</button>
-                      <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Повысить ставку на 10% для контролируемого теста")} title={`Повысить на 10% → ${fmtBid(up10)}`}>+10%</button>
+                      <button className="compact down" disabled={isBusy || k.bid <= 0.05} onClick={() => requestBidChange(k, down10, "Снизить ставку на 10% для контролируемого теста") } title={isWorld ? `Снизить на 10% → ${fmtBid(down10)}` : BIDS_GLOBAL_HINT}>−10%</button>
+                      <button className="compact up" disabled={isBusy} onClick={() => requestBidChange(k, up10, "Повысить ставку на 10% для контролируемого теста")} title={isWorld ? `Повысить на 10% → ${fmtBid(up10)}` : BIDS_GLOBAL_HINT}>+10%</button>
                       {rec && !alreadyAtRec && (
-                        <button className={`compact ${delta > 0 ? "up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={rec.reason}>
+                        <button className={`compact ${delta > 0 ? "up" : "down"}`} disabled={isBusy} onClick={() => requestBidChange(k, rec.recommended_bid, rec.reason)} title={isWorld ? rec.reason : BIDS_GLOBAL_HINT}>
                           → {fmtBid(rec.recommended_bid)}
                         </button>
                       )}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api, type Keyword, type Projection } from "../api.ts";
 import Sparkline from "./Sparkline.tsx";
 import { verdictLabel } from "../lib/verdictLabel.ts";
+import { useCountry } from "../lib/CountryContext.tsx";
 
 interface Props {
   keyword: Keyword;
@@ -17,23 +18,24 @@ export default function KeywordExpand({ keyword }: Props) {
   const [proj, setProj] = useState<Projection | null>(null);
   const [spend, setSpend] = useState(100);
   const [loading, setLoading] = useState(true);
+  const { country, isWorld, label } = useCountry();
 
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      api.keywordDaily(keyword.id, 14),
+      api.keywordDaily(keyword.id, 14, country),
       api.roiKeyword(keyword.id, spend, 14),
     ]).then(([d, p]) => {
       setDaily(d);
       setProj(p);
     }).finally(() => setLoading(false));
-  }, [keyword.id, spend]);
+  }, [country, keyword.id, spend]);
 
   return (
     <div className="expand-grid kw-expand">
       {/* Left: history charts */}
       <div>
-        <div className="field-label">История за 14 дней</div>
+        <div className="field-label">История за 14 дней{isWorld ? "" : ` · ${label}`}</div>
         <div className="kw-expand-sparks">
           <Sparkline
             title="Показы"
@@ -81,7 +83,7 @@ export default function KeywordExpand({ keyword }: Props) {
 
       {/* Right: ROI projection */}
       <div>
-        <div className="field-label">Сценарий расхода</div>
+        <div className="field-label" title={isWorld ? undefined : "Прогноз строится по ключу целиком (все страны кампании)"}>Сценарий расхода{isWorld ? "" : " · все страны"}</div>
         <div className="ds-seg kw-expand-block">
           {SPEND_LEVELS.map((s) => (
             <button key={s} className={s === spend ? "on" : ""} onClick={() => setSpend(s)}>${s}</button>

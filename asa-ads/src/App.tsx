@@ -15,6 +15,8 @@ import KeywordMatrix from "./screens/KeywordMatrix.tsx";
 import TrafficIntelligence from "./screens/TrafficIntelligence.tsx";
 import KeywordScreen from "./components/KeywordScreen.tsx";
 import AppSwitcher from "./components/AppSwitcher.tsx";
+import CountrySwitcher from "./components/CountrySwitcher.tsx";
+import { useCountry } from "./lib/CountryContext.tsx";
 import { StudioSwitcher } from "../../shared/shell/StudioSwitcher.tsx";
 import { api } from "./api.ts";
 
@@ -23,6 +25,7 @@ export default function App() {
   const [phase, setPhase] = useState<{ label: string; progress: number } | null>(null);
   const [lastSync, setLastSync] = useState<string>("");
   const [reloadKey, setReloadKey] = useState(0);
+  const { reload: reloadCountries } = useCountry();
 
   // On mount — check if a sync is in progress (e.g. user navigated away and back)
   useEffect(() => {
@@ -49,6 +52,7 @@ export default function App() {
       setPhase({ label: "Синхронизировано", progress: 1 });
       setLastSync(new Date().toLocaleTimeString());
       setReloadKey((k) => k + 1);
+      reloadCountries();
       setTimeout(() => {
         setSyncing(false);
         setPhase(null);
@@ -85,6 +89,7 @@ export default function App() {
       <aside className="sidebar">
         <StudioSwitcher current="ads" />
         <AppSwitcher />
+        <CountrySwitcher />
         <nav>
           <NavLink to="/" end>Обзор</NavLink>
           <NavLink to="/command">Матрица решений</NavLink>

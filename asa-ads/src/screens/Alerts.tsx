@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api.ts";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
 
 interface AlertRow {
   id: number;
@@ -40,7 +41,10 @@ export default function Alerts({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <h1 className="ds-page-title" title="Контроль расхода, CPI и остановившихся кампаний">Оповещения</h1>
+        <div className="title-with-scope">
+          <h1 className="ds-page-title" title="Контроль расхода, CPI и остановившихся кампаний">Оповещения</h1>
+          <ScopeBadge notApplied />
+        </div>
         <div className="controls">
           <button onClick={runCheck} disabled={checking}>{checking ? "Проверяем…" : "Проверить сейчас"}</button>
         </div>

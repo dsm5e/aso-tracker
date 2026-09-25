@@ -6,6 +6,9 @@ import DataQuality from '../components/DataQuality.tsx';
 import { useFoldOnScroll } from '../components/FillPage.tsx';
 import KeywordResultsDrawer, { KeywordTopFiveInline } from '../components/KeywordResultsDrawer.tsx';
 import { appStoreCountry } from '../lib/appStoreLocales.ts';
+import { useCountry } from '../lib/CountryContext.tsx';
+import { WORLD, countryNameRu } from '../lib/countries.ts';
+import { ScopeBadge } from '../components/CountrySwitcher.tsx';
 import './DecisionMatrix.css';
 
 export interface DecisionMatrixApp {
@@ -519,20 +522,7 @@ function formatNumberRange(value: { min: number; max: number } | null, prefix = 
   return `${prefix}${formatDecimal(value.min)}–${prefix}${formatDecimal(value.max)}`;
 }
 
-function countryName(code: string) {
-  try {
-    return new Intl.DisplayNames(['ru'], { type: 'region' }).of(code.toUpperCase()) ?? code.toUpperCase();
-  } catch {
-    return code.toUpperCase();
-  }
-}
-
-function countryFlag(code: string) {
-  const normalized = code.toUpperCase();
-  return /^[A-Z]{2}$/.test(normalized)
-    ? String.fromCodePoint(...[...normalized].map((letter) => 127397 + letter.charCodeAt(0)))
-    : '🌐';
-}
+const countryName = countryNameRu;
 
 function basisLabel(value: ShareEstimate['basis']) {
   return value === 'bounded' ? 'диапазон Apple' : 'модель';
@@ -661,7 +651,9 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
   const [traffic, setTraffic] = useState<RemoteState<DecisionMatrixPayload>>({ key: '', data: null, error: null });
   const [organic, setOrganic] = useState<RemoteState<RankingRow[]>>({ key: '', data: null, error: null });
   const [quality, setQuality] = useState<RemoteState<DataQualityPayload>>({ key: '', data: null, error: null });
-  const [countryScope, setCountryScope] = useState('all');
+  // Storefront scope comes from the global «Страна» filter in the sidebar.
+  const { country: globalCountry } = useCountry();
+  const countryScope = globalCountry === WORLD ? 'all' : globalCountry;
   const [refresh, setRefresh] = useState(0);
   const [query, setQuery] = useState('');
   const [action, setAction] = useState<ActionFilter>('all');
@@ -671,18 +663,19 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
   const [compactHeader, workspaceRef] = useFoldOnScroll();
   const top5ContextLocale = locale.toLocaleLowerCase();
   const localeCountry = appStoreCountry(locale);
-  const top5Country = countryScope === 'all' || countryScope.toLocaleLowerCase() === localeCountry
-    ? top5ContextLocale
-    : countryScope.toLocaleLowerCase();
+  // The bridge resolves the organic storefront: the chosen country when
+  // Keywords tracks it, else the app's default storefront.
+  const countryTracked = countryScope !== 'all' && countryScope.toLocaleLowerCase() === localeCountry;
+  const top5Country = top5ContextLocale;
   const scopeReady = Boolean(app.id && app.iTunesId);
   const loading = scopeReady && traffic.key !== requestKey;
   const organicLoading = scopeReady && organic.key !== requestKey;
 
   useEffect(() => {
-    setCountryScope('all');
     setSelected(null);
     setResultsRow(null);
-  }, [app.id]);
+    setAction('all');
+  }, [app.id, countryScope]);
 
   useEffect(() => {
     if (!scopeReady) return;
@@ -698,6 +691,12 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
 
   useEffect(() => {
     if (!scopeReady) return;
+    // An untracked storefront has no organic positions: never borrow another
+    // storefront's ranks for it (top-5 context still comes from the bridge).
+    if (countryScope !== 'all' && !countryTracked) {
+      setOrganic({ key: requestKey, data: [], error: null });
+      return;
+    }
     const controller = new AbortController();
     const countryQuery = countryScope === 'all' ? '' : `?locale=${encodeURIComponent(top5Country)}`;
     fetchJson(keywordsApiUrl(`/apps/${encodeURIComponent(app.id)}/rankings${countryQuery}`), controller.signal)
@@ -706,7 +705,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
         if (!controller.signal.aborted) setOrganic({ key: requestKey, data: [], error: reason instanceof Error ? reason.message : String(reason) });
     });
     return () => controller.abort();
-  }, [app.id, countryScope, requestKey, scopeReady, top5Country]);
+  }, [app.id, countryScope, countryTracked, requestKey, scopeReady, top5Country]);
 
   useEffect(() => {
     if (!scopeReady) return;
@@ -824,7 +823,6 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
 
   const payload = traffic.data;
   const summary = payload?.summary;
-  const countries = payload?.availableCountries ?? [];
   const unverifiedCount = payload?.unverifiedSuggestions?.length ?? 0;
   const partialErrors = payload?.partialErrors ?? payload?.errors ?? [];
   const stale = payload?.stale === true;
@@ -841,13 +839,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
           <p className="ds-page-sub fold" title={`Apple Ads · только чтение · ${app.bundle}`}>{app.name} · {countryScope === 'all' ? 'все страны' : `${countryName(countryScope)} (${countryScope.toUpperCase()})`} · только чтение</p>
         </div>
         <div className="decision-header-actions">
-          <label className="decision-country-select">
-            <span>Страна</span>
-            <select className="ds-select" value={countryScope} onChange={(event) => { setCountryScope(event.target.value); setAction('all'); }}>
-              <option value="all">Все страны</option>
-              {countries.map((country) => <option key={country.code} value={country.code}>{countryFlag(country.code)} {countryName(country.code)} · {country.code}</option>)}
-            </select>
-          </label>
+          <ScopeBadge />
           <small>Обновлено: {freshness(payload?.generatedAt)}</small>
           <button type="button" className="ds-btn" onClick={() => setRefresh((value) => value + 1)} disabled={loading}>↻ {loading ? 'Обновляем' : 'Обновить срез'}</button>
         </div>
@@ -898,7 +890,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
                   <thead><tr>
                     <th>Гео / ключ / источник</th>
                     <th title="Органическая позиция из Keywords">Органика</th>
-                    <th title="Реальный порядок приложений в последнем сохранённом snapshot Keywords">{countryScope === 'all' ? `Топ‑5 · ${top5ContextLocale.toUpperCase()} (метрики: все страны)` : `Топ‑5 · ${top5Country.toUpperCase()}`}</th>
+                    <th title="Реальный порядок приложений в последнем сохранённом snapshot Keywords">{countryScope === 'all' ? `Топ‑5 · ${top5ContextLocale.toUpperCase()} (метрики: все страны)` : countryTracked ? `Топ‑5 · ${top5Country.toUpperCase()}` : `Топ‑5 · ${top5Country.toUpperCase()} (${countryScope.toUpperCase()} не отслеживается в Keywords)`}</th>
                     <th title="Относительный индекс Apple 1–100, не число поисков">Спрос</th>
                     <th title="Диапазон или модель доли показов и позиция в платной выдаче">Доля / позиция</th>
                     <th>Ставка</th>

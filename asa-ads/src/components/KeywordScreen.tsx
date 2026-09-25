@@ -1,23 +1,20 @@
 import type { ReactNode } from "react";
 import ConnectGate from "./ConnectGate.tsx";
 import { useKeywordsBridge, type KeywordsBridge } from "../lib/useKeywordsBridge.ts";
-import { APP_STORE_LOCALES } from "../lib/appStoreLocales.ts";
+import { useCountry } from "../lib/CountryContext.tsx";
+import { countryFlag, countryNameRu } from "../lib/countries.ts";
 
 // Shell for the keyword-level screens that read the Keywords product's data:
-// «Подключить» gate (Apple Ads keys), app + storefront context, and the
-// .kw-scope wrapper that supplies the keyword components' token names.
-
-const LOCALE_NAMES = new Map(APP_STORE_LOCALES.map((l) => [l.code, l.name]));
-
-function flag(code: string): string {
-  const country = code.split("-")[0].toUpperCase();
-  if (!/^[A-Z]{2}$/.test(country)) return "🌐";
-  return String.fromCodePoint(...[...country].map((c) => c.charCodeAt(0) + 127397));
-}
+// «Подключить» gate (Apple Ads keys), app context, and the .kw-scope wrapper
+// that supplies the keyword components' token names. The storefront comes
+// from the global «Страна» filter in the sidebar.
 
 export default function KeywordScreen({ title, children }: { title: string; children: (bridge: KeywordsBridge & { app: NonNullable<KeywordsBridge["app"]> }) => ReactNode }) {
   const bridge = useKeywordsBridge();
-  const { app, candidates, locales, locale } = bridge;
+  const { app, candidates, locale, countryTracked } = bridge;
+  const { isWorld, label } = useCountry();
+  const organicCode = locale.split("-")[0].toUpperCase();
+  const organicLabel = locale ? `${countryFlag(organicCode)} ${countryNameRu(organicCode)}` : "—";
 
   let body: ReactNode;
   if (bridge.status === "loading") body = <div className="kw-screen-note">Загружаем приложения из Keywords…</div>;
@@ -38,15 +35,18 @@ export default function KeywordScreen({ title, children }: { title: string; chil
                 {candidates.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
-            {app && locales.length > 0 && (
-              <label>
-                <span>Витрина</span>
-                <select className="ds-select" value={locale} onChange={(e) => bridge.setLocale(e.target.value)}>
-                  {locales.map((code) => <option key={code} value={code}>{flag(code)} {code.toUpperCase()} · {LOCALE_NAMES.get(code) ?? code}</option>)}
-                </select>
-              </label>
+            {app && locale && (
+              <span
+                className="kw-screen-hint kw-screen-organic"
+                title={isWorld
+                  ? "Метрики — все страны; органика и топ‑5 — витрина по умолчанию из Keywords"
+                  : countryTracked
+                    ? "Органика и топ‑5 — выбранная страна (отслеживается в Keywords)"
+                    : `${label} не отслеживается в Keywords: органика и топ‑5 — витрина по умолчанию`}
+              >
+                Органика и топ‑5: {organicLabel}{!isWorld && !countryTracked ? ` · ${label} не отслеживается в Keywords` : ""}
+              </span>
             )}
-            <span className="kw-screen-hint">Позиции и ключи — из Keywords</span>
           </div>
         )}
         {body}

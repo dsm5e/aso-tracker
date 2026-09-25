@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { api, type DailyTotals } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
+import { useCountry } from "../lib/CountryContext.tsx";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
 import Sparkline from "../components/Sparkline.tsx";
 import HeroChart from "../components/HeroChart.tsx";
 import { CostPerTrialBars, EfficiencyScatter, RoasByGeoBars, zoneColor, type GeoRow } from "../components/ProfitCharts.tsx";
@@ -18,6 +20,8 @@ const MIN_CHART_SPEND = 5;
 
 export default function Profitability({ reloadKey }: Props) {
   const { selected } = useApp();
+  const { country, isWorld, label } = useCountry();
+  const [feed, setFeed] = useState(false);
   const [geo, setGeo] = useState<GeoRow[]>([]);
   const [daily, setDaily] = useState<DailyTotals[]>([]);
   const [rev, setRev] = useState<RevRow[]>([]);
@@ -29,18 +33,19 @@ export default function Profitability({ reloadKey }: Props) {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([api.geo(days, selected), api.daily(days, undefined, selected), api.revenue(days, selected)])
-      .then(([g, d, r]) => { setGeo(g); setDaily(d); setRev(r.rows ?? []); setRevDaily(r.daily ?? []); setRevError(r.error ?? ""); })
+    Promise.all([api.geo(days, selected, country), api.daily(days, undefined, selected, country), api.revenue(days, selected, country)])
+      .then(([g, d, r]) => { setGeo(g); setDaily(d); setRev(r.rows ?? []); setRevDaily(r.daily ?? []); setRevError(r.error ?? ""); setFeed(r.feed ?? (r.rows ?? []).length > 0); })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [days, reloadKey, selected]);
+  }, [country, days, reloadKey, selected]);
 
   const revByCountry = useMemo(() => {
     const m = new Map<string, RevRow>();
     for (const r of rev) m.set(r.country.toUpperCase(), r);
     return m;
   }, [rev]);
-  const hasRevenue = rev.length > 0;
+  // A storefront without attributed rows still has a feed: its revenue is 0.
+  const hasRevenue = feed || rev.length > 0;
 
   // Merge spend/installs (ASA) with trials/paid/revenue per geo. With an
   // Adapty feed the trials are Apple Ads-attributed (0 when Adapty has none);
@@ -108,7 +113,10 @@ export default function Profitability({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <h1 className="ds-page-title" title={`Все страны выбранного приложения · факт выручки и прогноз показываются раздельно · ${hasRevenue ? "расход Apple Ads × атрибуция Adapty" : "расход Apple Ads × триалы App Store Connect"}`}>Экономика</h1>
+        <div className="title-with-scope">
+          <h1 className="ds-page-title" title={`${isWorld ? "Все страны выбранного приложения" : label} · факт выручки и прогноз показываются раздельно · ${hasRevenue ? "расход Apple Ads × атрибуция Adapty" : "расход Apple Ads × триалы App Store Connect"}`}>Экономика</h1>
+          <ScopeBadge />
+        </div>
         <div className="controls">
           <span className="meta">{hasRevenue ? "Apple Ads × Adapty" : "Apple Ads × App Store Connect"}</span>
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }, { value: 90, label: "90 дней" }]} />

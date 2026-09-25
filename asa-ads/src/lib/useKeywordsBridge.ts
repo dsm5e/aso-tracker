@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type AppRow } from "../api.ts";
 import { useApp } from "./AppContext.tsx";
+import { useCountry } from "./CountryContext.tsx";
+import { WORLD } from "./countries.ts";
+import { appStoreCountry } from "./appStoreLocales.ts";
 import { keywordsApi, type KeywordsApp, type RankingRow } from "./keywordsApi.ts";
 
 // The keyword screens (matrix, traffic) came from the Keywords product and still
@@ -13,7 +16,6 @@ type TopFiveCandidate = { id: string; tid?: number };
 export type SharedTopFiveStatus = "loading" | "ready" | "empty" | "error";
 
 const ARTWORK_SESSION_KEY = "asa-ads.keyword-artworks.v1";
-const LOCALE_KEY = "asa-ads.keyword-locale";
 
 function topFiveKey(appId: string, country: string, keyword: string) {
   return `${appId}:${country.toLocaleLowerCase()}:${keyword.toLocaleLowerCase()}`;
@@ -35,8 +37,11 @@ export interface KeywordsBridge {
   app: KeywordsApp | null;
   selectApp: (keywordsAppId: string) => void;
   locales: string[];
+  /** Storefront of the organic context (top-5, positions): the global country
+   *  when Keywords tracks it, otherwise the app's default storefront. */
   locale: string;
-  setLocale: (locale: string) => void;
+  /** True when `locale` is the storefront chosen in the global country filter. */
+  countryTracked: boolean;
   rankings: RankingRow[];
   artworks: Record<string, string>;
   sharedTopFive: Record<string, RankingRow>;
@@ -54,10 +59,10 @@ function sameApp(ads: AppRow, keywordsName: string): boolean {
 
 export function useKeywordsBridge(): KeywordsBridge {
   const { apps: adsApps, selected, setSelected } = useApp();
+  const { country } = useCountry();
   const [kwApps, setKwApps] = useState<KeywordsApp[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locales, setLocales] = useState<string[]>([]);
-  const [locale, setLocaleRaw] = useState<string>(() => { try { return localStorage.getItem(LOCALE_KEY) ?? ""; } catch { return ""; } });
   const [rankings, setRankings] = useState<RankingRow[]>([]);
 
   useEffect(() => {
@@ -91,34 +96,36 @@ export function useKeywordsBridge(): KeywordsBridge {
     if (ads) setSelected(ads.app_id);
   }, [adsApps, kwApps, setSelected]);
 
-  const setLocale = useCallback((next: string) => {
-    setLocaleRaw(next);
-    try { localStorage.setItem(LOCALE_KEY, next); } catch { /* per-viewer convenience only */ }
-  }, []);
-
-  // Tracked storefronts of the app; default to its primary (first) one.
+  // Tracked storefronts of the app.
   useEffect(() => {
     if (!app) return;
     let cancelled = false;
     setRankings([]);
-    // Primary storefront: US when tracked, else the app's first tracked locale.
-    const primary = (list: string[]) => (list.includes("us") ? "us" : app.locales.find((l) => list.includes(l)) ?? list[0] ?? "");
     keywordsApi.keywords(app.id)
       .then((map) => {
         if (cancelled) return;
         const tracked = Object.keys(map).filter((code) => map[code]?.length).sort();
-        const list = tracked.length ? tracked : [...app.locales].sort();
-        setLocales(list);
-        setLocaleRaw((current) => (current && list.includes(current) ? current : primary(list)));
+        setLocales(tracked.length ? tracked : [...app.locales].sort());
       })
       .catch(() => {
-        if (cancelled) return;
-        const list = [...app.locales].sort();
-        setLocales(list);
-        setLocaleRaw((current) => (current && list.includes(current) ? current : primary(list)));
+        if (!cancelled) setLocales([...app.locales].sort());
       });
     return () => { cancelled = true; };
   }, [app]);
+
+  // The global country picks the storefront when Keywords tracks it; World or
+  // an untracked country use the default one (US when tracked, else the app's
+  // first tracked locale).
+  const { locale, countryTracked } = useMemo(() => {
+    if (!app || !locales.length) return { locale: "", countryTracked: false };
+    if (country !== WORLD) {
+      const cc = country.toLocaleLowerCase();
+      const match = locales.find((l) => l === cc) ?? locales.find((l) => appStoreCountry(l) === cc);
+      if (match) return { locale: match, countryTracked: true };
+    }
+    const primary = locales.includes("us") ? "us" : app.locales.find((l) => locales.includes(l)) ?? locales[0] ?? "";
+    return { locale: primary, countryTracked: false };
+  }, [app, country, locales]);
 
   useEffect(() => {
     if (!app || !locale || !locales.includes(locale)) return;
@@ -229,7 +236,7 @@ export function useKeywordsBridge(): KeywordsBridge {
     selectApp,
     locales,
     locale: app && locales.includes(locale) ? locale : "",
-    setLocale,
+    countryTracked,
     rankings,
     artworks,
     sharedTopFive,

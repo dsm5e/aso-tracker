@@ -31,17 +31,19 @@ const METRIC_LABEL = { spend: "Расход", installs: "Установки", cp
 
 interface Props {
   days: number;
+  /** Global storefront filter ("ALL" = every storefront). */
+  country?: string;
 }
 
-export default function GeoHeatmap({ days }: Props) {
+export default function GeoHeatmap({ days, country }: Props) {
   const { selected } = useApp();
   const [rows, setRows] = useState<GeoRow[]>([]);
   const [metric, setMetric] = useState<"spend" | "installs" | "cpi" | "trials">("spend");
   const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
-    api.geo(days, selected).then(setRows);
-  }, [days, selected]);
+    api.geo(days, selected, country).then(setRows);
+  }, [country, days, selected]);
 
   if (rows.length === 0) return null;
 

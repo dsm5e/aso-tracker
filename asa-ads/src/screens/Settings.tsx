@@ -3,6 +3,7 @@ import InfoTooltip from "../components/InfoTooltip.tsx";
 import CredentialsCard from "../components/CredentialsCard.tsx";
 import PlatformApiExplorer from "../components/PlatformApiExplorer.tsx";
 import { useApp } from "../lib/AppContext.tsx";
+import { ScopeBadge } from "../components/CountrySwitcher.tsx";
 import { apiUrl, sseUrl } from "../lib/apiBase.ts";
 
 interface Settings {
@@ -247,14 +248,17 @@ export default function SettingsPage() {
   return (
     <>
       <div className="topbar">
-        <h1
-          className="ds-page-title"
-          title={selected === "all"
-            ? "Общие значения применяются, когда для конкретного приложения нет переопределения. Пороги достоверности общие."
-            : "Переопределение для приложения. Если значение не задано, используется общее; переключите приложение слева для редактирования другого профиля."}
-        >
-          Настройки · <span className="accent-text">{currentAppName}</span>
-        </h1>
+        <div className="title-with-scope">
+          <h1
+            className="ds-page-title"
+            title={selected === "all"
+              ? "Общие значения применяются, когда для конкретного приложения нет переопределения. Пороги достоверности общие."
+              : "Переопределение для приложения. Если значение не задано, используется общее; переключите приложение слева для редактирования другого профиля."}
+          >
+            Настройки · <span className="accent-text">{currentAppName}</span>
+          </h1>
+          <ScopeBadge notApplied />
+        </div>
         <div className="controls">
           <button onClick={recomputeSuggestions} disabled={refreshing} title="Recompute suggestions from latest data">
             {refreshing ? "Считаем…" : "↺ Пересчитать"}
