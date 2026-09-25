@@ -242,8 +242,7 @@ export default function CountryMatrix({
         <span><b>{visibleColumns.length}</b> {plural(visibleColumns.length, 'страна', 'страны', 'стран')}</span>
         <span>в топ‑10 где-либо: <b>{anyTop10}</b></span>
         <span className="mx-legend" aria-label="Шкала позиций">
-          <i className="mx-rank mx-top3">1–3</i><i className="mx-rank mx-top10">4–10</i><i className="mx-rank mx-top50">11–50</i><i className="mx-rank mx-deep">51+</i><i className="mx-rank mx-out">—</i> не в выдаче · пусто — не отслеживается
-        </span>
+          <i className="mx-rank mx-top3">1–3</i><i className="mx-rank mx-top10">4–10</i><i className="mx-rank mx-top50">11–50</i><i className="mx-rank mx-deep">51+</i><i className="mx-rank mx-zero">0</i> нет позиции: не в выдаче или не отслеживается</span>
         <span className="toolbar-spacer" />
         {data?.latestDate && <span>снимок {formatDate(data.latestDate)}</span>}
         {latency != null && <span className="mx-latency" title={`сервер ${data?.ms ?? '?'} мс${data?.cached ? ' (кэш)' : ''}`}>{latency} мс</span>}
@@ -327,7 +326,7 @@ const MatrixRow = memo(function MatrixRow({ alt, row, columns, lookup, dates, on
     <tr className={alt ? 'mx-alt' : undefined}>
       <td className="mx-sticky mx-kw" title={row.keyword}>{row.keyword}</td>
       <td className="mx-sticky-2 mx-best">
-        {row.best === Infinity ? <span className="mx-out-text">—</span> : (
+        {row.best === Infinity ? <span className="mx-rank mx-zero" {...tipProps(row.keyword, [[null, 'Лучшая позиция', 'нет ни в одной из показанных стран']])}>0</span> : (
           <span className={`mx-rank mx-${rankTier(row.best)}`} {...tipProps(row.keyword, [[null, 'Лучшая позиция', `#${row.best}`], [null, 'Страна', row.bestLocale ? `${storefrontOf(row.bestLocale).flag} ${storefrontOf(row.bestLocale).name}` : '—'], ['var(--ds-good)', 'В топ-10 в странах', String(row.top10)]])}>{row.best}</span>
         )}
       </td>
@@ -345,7 +344,11 @@ function Cell({ cell, keyword, code, dates, onOpen }: {
   dates: string[];
   onOpen: (keyword: string, locale: string) => void;
 }) {
-  if (!cell) return <td className="mx-cell mx-untracked" aria-label="Не отслеживается" />;
+  if (!cell) return (
+    <td className="mx-cell mx-untracked" aria-label="Не отслеживается">
+      <span className="mx-cell-static"><span className="mx-rank mx-zero mx-zero-untracked" {...tipProps(`${keyword} · ${storefrontOf(code).flag} ${storefrontOf(code).name}`, [[null, 'Позиция', 'не отслеживается в этой стране']])}>0</span></span>
+    </td>
+  );
   const [, pos, prev1, prev7, dateIndex] = cell;
   const tier = rankTier(pos);
   const week = rankChange(pos, prev7);
@@ -361,7 +364,7 @@ function Cell({ cell, keyword, code, dates, onOpen }: {
     <td className="mx-cell">
       <button type="button" className="mx-cell-btn" onClick={() => onOpen(keyword, code)} {...tipProps(`${keyword} · ${storefront.flag} ${storefront.name}`, tip)} aria-label={`${keyword}, ${storefront.name}: ${tip[0][2]}`}>
         {tier === 'pending' ? <span className="mx-pending">…</span>
-          : tier === 'out' ? <span className="mx-out-text">—</span>
+          : tier === 'out' ? <span className="mx-rank mx-zero">0</span>
             : <span className={`mx-rank mx-${tier}`}>{pos}</span>}
         {week.tone !== 'flat' && (
           <span className={`mx-delta mx-delta-${week.tone}`}>{week.value != null ? `${week.tone === 'up' ? '↑' : '↓'}${Math.abs(week.value)}` : week.tone === 'up' ? '↑' : '↓'}</span>

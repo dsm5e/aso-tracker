@@ -342,7 +342,7 @@ export default function PositionsTable({
     for (const row of source) {
       lines.push([
         row.keyword, locale.toUpperCase(),
-        row.state === 'ranked' ? row.pos : row.state === 'out' ? 'out' : '',
+        row.state === 'ranked' ? row.pos : row.state === 'out' ? 0 : '',
         row.d1.value ?? (row.d1.label === '—' ? '' : row.d1.label), row.d7.value ?? (row.d7.label === '—' ? '' : row.d7.label),
         row.m?.popularity ?? '', row.m?.popularityDay ?? '', row.m?.difficulty ?? '', row.m?.chance ?? '', row.m?.opportunity ?? '', row.m?.total ?? '',
         (row.ranking?.top5 ?? []).map((app) => app.name).join(' | '), (row.m?.tags ?? []).join(' | '), row.m?.note ?? '',
@@ -613,7 +613,7 @@ const PositionRow = memo(function PositionRow({
       case 'rank': {
         const tier = rankTier(row.pos);
         if (row.state === 'pending') return <span className="mx-pending" {...tipProps(row.keyword, [[null, 'Позиция', 'ещё не снимали']])}>…</span>;
-        if (row.state === 'out') return <span className="mx-out-text" {...tipProps(row.keyword, [[null, 'Позиция', 'не в выдаче (топ-200)']])}>—</span>;
+        if (row.state === 'out') return <span className="mx-rank mx-zero" {...tipProps(row.keyword, [[null, 'Позиция', 'не в выдаче']])}>0</span>;
         return <span className={`mx-rank mx-${tier}`}>{row.pos}</span>;
       }
       case 'd1':
