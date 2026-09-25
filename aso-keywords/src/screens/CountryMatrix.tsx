@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Icon from '../components/Icon';
 import Picker from '../components/Picker';
 import { useDismiss } from '../components/useDismiss';
@@ -58,7 +58,10 @@ export default function CountryMatrix({
   onOpenCell,
   onOpenStorefront,
   refreshKey,
+  toolbarLead,
 }: {
+  /** Page actions (refresh) rendered at the start of the matrix toolbar. */
+  toolbarLead?: ReactNode;
   appId: string;
   sets: ColumnSetOption[];
   activeSet: ColumnSetOption | undefined;
@@ -204,6 +207,7 @@ export default function CountryMatrix({
   return (
     <div className="mx">
       <div className="toolbar mx-toolbar">
+        {toolbarLead}
         {activeSet && (
           <Picker
             className="mx-set-picker"

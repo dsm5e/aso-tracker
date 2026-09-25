@@ -578,7 +578,6 @@ export default function App() {
     }
   };
 
-  const refresh = () => startSnapshot('locale');
 
   const refreshOne = async (keyword: string) => {
     if (!selectedApp || !locale) return;
@@ -897,9 +896,11 @@ export default function App() {
     setKeywordView('positions');
   };
 
-  const positionsLead = (<>
+  // «Обновить» split control: the main click refreshes this region (positions) or every
+  // region of the app (matrix); the menu has the other scopes, speed and rank source.
+  const updateSplit = (mainScope: 'locale' | 'app') => (<>
           <div className="split-btn" ref={updateMenuRef}>
-            <button className="split-btn-main" onClick={refresh} disabled={refreshing} aria-label="Обновить позиции">
+            <button className="split-btn-main" onClick={() => startSnapshot(mainScope)} disabled={refreshing} aria-label={mainScope === 'app' ? 'Обновить все регионы приложения' : 'Обновить позиции региона'} title={mainScope === 'app' ? `Все регионы ${selectedApp?.name ?? ''} · другие варианты — в меню` : `Регион ${locale.toUpperCase()} · другие варианты — в меню`}>
               <Icon name="refresh" className={refreshing ? 'spinning' : ''} /> Обновить
             </button>
             <button className="split-btn-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Параметры обновления" aria-haspopup="menu" aria-expanded={updateMenuOpen}>
@@ -946,6 +947,9 @@ export default function App() {
               </div>
             )}
           </div>
+  </>);
+  const positionsLead = (<>
+          {updateSplit('locale')}
           <button className="ds-btn" onClick={openLocaleDialog} aria-label="Добавить регион"><Icon name="plus" /> Регион</button>
   </>);
   const positionsTrail = (<>
@@ -1097,6 +1101,15 @@ export default function App() {
               onOpenCell={openCell}
               onOpenStorefront={selectStorefront}
               refreshKey={matrixRefreshKey}
+              toolbarLead={<>
+                {updateSplit('app')}
+                {refreshing && (
+                  <span className="snapshot-status">
+                    <i /> {snapshotStatusText(progress, rows.length)}
+                    <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Остановить обновление"><Icon name="stop" size={12} /> Стоп</button>
+                  </span>
+                )}
+              </>}
             />
           ) : null
         ) : keywordView === 'positions' ? <>
