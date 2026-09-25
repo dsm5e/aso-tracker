@@ -18,7 +18,7 @@ const STEPS = [
 ];
 
 interface SwitcherItem {
-  id: 'aso' | 'shot' | 'vid' | 'asa';
+  id: 'aso' | 'shot' | 'vid' | 'asa' | 'inapp';
   label: string;
   hint: string;
   href: string;
@@ -36,10 +36,11 @@ const TRACKER_ORIGIN =
     : '';
 
 const SWITCHER_ITEMS: SwitcherItem[] = [
-  { id: 'aso',  label: 'ASO',         hint: 'Keywords & rankings', href: `${TRACKER_ORIGIN}/`,         glyph: '◇' },
+  { id: 'aso',  label: 'Keywords',    hint: 'Keywords & rankings', href: `${TRACKER_ORIGIN}/`,         glyph: '◇' },
   { id: 'shot', label: 'Screenshots', hint: 'App Store visuals',   href: `${TRACKER_ORIGIN}/studio/`,  glyph: '▤' },
   { id: 'vid',  label: 'Video',       hint: 'Ad video pipeline',   href: `${TRACKER_ORIGIN}/video/`,   glyph: '▶' },
-  { id: 'asa',  label: 'ASA Ads',     hint: 'Search Ads ROI',      href: `${TRACKER_ORIGIN}/asa/`,     glyph: '$' },
+  { id: 'asa',  label: 'Ads',         hint: 'Search Ads ROI',      href: `${TRACKER_ORIGIN}/asa/`,     glyph: '$' },
+  { id: 'inapp', label: 'In-App',     hint: 'In-App Events',       href: 'http://localhost:5196/',  glyph: '✦' },
 ];
 
 function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {
@@ -89,7 +90,7 @@ function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {
       >
         <span className="logo" style={{ width: 26, height: 26, fontSize: 12 }}>A</span>
         <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.15 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em' }}>ASO Studio</span>
+          <span style={{ fontSize: 13, fontWeight: 600, letterSpacing: '-0.01em' }}>Studio</span>
           <span style={{ fontSize: 11.5, color: 'var(--fg-2)' }}>{active.label}</span>
         </span>
         <ChevronDown size={12} style={{ color: 'var(--fg-2)', marginLeft: 2 }} />
@@ -129,7 +130,11 @@ function BrandSwitcher({ current }: { current: 'aso' | 'shot' | 'vid' }) {
                     ? 'linear-gradient(135deg, #FF8C42, #F25C1F)'
                     : it.id === 'shot'
                     ? 'linear-gradient(135deg, #7C3AED, #A78BFA)'
-                    : 'linear-gradient(135deg, #14B8A6, #5EEAD4)',
+                    : it.id === 'vid'
+                    ? 'linear-gradient(135deg, #14B8A6, #5EEAD4)'
+                    : it.id === 'asa'
+                    ? 'linear-gradient(135deg, #FFB000, #B87D00)'
+                    : 'var(--ds-accent)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   color: '#fff', fontSize: 12, fontWeight: 700,
                   flex: 'none',

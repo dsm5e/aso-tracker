@@ -198,4 +198,57 @@ export const api = {
   cancelAction: (id: number) => post<{ ok: boolean }>(`/api/actions/${id}/cancel`),
   sync: (days = 14) => post<{ ok: boolean; started: boolean }>(`/api/sync`, { days }),
   syncStatus: () => get<{ active: boolean; phase: string; label: string; progress: number; started_at: string | null; finished_at: string | null; ok: number | null; error: string | null }>(`/api/sync/status`),
+  /** Source freshness for the keyword matrix (Apple Ads server). */
+  dataQuality: (iTunesId: string, country?: string) => {
+    const params = new URLSearchParams({ app_id: iTunesId });
+    if (country) params.set("country", country);
+    return get<DataQualityPayload>(`/api/data-quality?${params}`);
+  },
+  /** Cached organic top-5 per keyword (Apple Ads server keeps the ASO snapshots). */
+  cachedTopFiveBatch: (input: { appId: number; locales: string[]; terms: string[]; limit?: number }) =>
+    post<CachedTopFiveBatchPayload>("/api/aso/rankings/top5-batch", input),
 };
+
+/** Resolves an Apple Ads API path (/api/...) for raw fetch calls with custom signals. */
+export const asaApiUrl = url;
+
+export interface DataQualitySource {
+  id: string;
+  name: string;
+  status: "ok" | "stale" | "missing" | "error";
+  updatedAt?: string | null;
+  window?: string;
+  coverage?: number | null;
+  kind: "fact" | "model";
+  message: string;
+}
+
+export interface DataQualityPayload {
+  generatedAt: string;
+  sources: DataQualitySource[];
+}
+
+export interface CachedTopFiveApp {
+  name: string;
+  bundleId?: string | null;
+  iTunesId?: string | null;
+  developer?: string | null;
+  rank: number;
+  iconUrl?: string | null;
+  isOwn?: boolean;
+}
+
+export interface CachedTopFiveItem {
+  locale: string;
+  term: string;
+  observedAt: string | null;
+  yourRank: number | null;
+  total: number | null;
+  apps: CachedTopFiveApp[];
+}
+
+export interface CachedTopFiveBatchPayload {
+  appId: number;
+  items: CachedTopFiveItem[];
+  missing: Array<{ locale: string; term: string; reason: string }>;
+}

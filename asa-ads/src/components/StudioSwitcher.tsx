@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 interface Item {
-  id: "aso" | "shot" | "vid" | "asa";
+  id: "aso" | "shot" | "vid" | "asa" | "inapp";
   label: string;
   hint: string;
   glyph: string;
@@ -16,10 +16,11 @@ const TRACKER_ORIGIN =
     : "";
 
 const ITEMS: Item[] = [
-  { id: "aso",  label: "ASO",         hint: "Ключи и позиции", glyph: "◇", href: `${TRACKER_ORIGIN}/` },
-  { id: "shot", label: "Скриншоты",   hint: "Визуалы App Store", glyph: "▤", href: `${TRACKER_ORIGIN}/studio/` },
-  { id: "vid",  label: "Видео",       hint: "Производство рекламных видео", glyph: "▶", href: `${TRACKER_ORIGIN}/video/` },
-  { id: "asa",  label: "Apple Ads",   hint: "Экономика поисковой рекламы", glyph: "$", href: `${TRACKER_ORIGIN}/asa/` },
+  { id: "aso",  label: "Keywords",    hint: "Ключи и позиции", glyph: "◇", href: `${TRACKER_ORIGIN}/` },
+  { id: "shot", label: "Screenshots", hint: "Визуалы App Store", glyph: "▤", href: `${TRACKER_ORIGIN}/studio/` },
+  { id: "vid",  label: "Video",       hint: "Производство рекламных видео", glyph: "▶", href: `${TRACKER_ORIGIN}/video/` },
+  { id: "asa",  label: "Ads",         hint: "Экономика поисковой рекламы", glyph: "$", href: `${TRACKER_ORIGIN}/asa/` },
+  { id: "inapp", label: "In-App",     hint: "In-App Events", glyph: "✦", href: "http://localhost:5196/" },
 ];
 
 export default function StudioSwitcher() {
@@ -69,7 +70,7 @@ export default function StudioSwitcher() {
         }}>◆</span>
         <span style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, lineHeight: 1.2 }}>
           <span style={{ fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--bone-mute)" }}>
-            ASO Studio
+            Studio
           </span>
           <span style={{ fontSize: 13, fontWeight: 500, color: "var(--amber)" }}>
             {active.label}
@@ -114,6 +115,7 @@ export default function StudioSwitcher() {
                   background: it.id === "aso" ? "linear-gradient(135deg, #FF8C42, #F25C1F)"
                     : it.id === "shot" ? "linear-gradient(135deg, #7C3AED, #A78BFA)"
                     : it.id === "vid" ? "linear-gradient(135deg, #14B8A6, #5EEAD4)"
+                    : it.id === "inapp" ? "var(--ds-accent)"
                     : "linear-gradient(135deg, var(--amber), #d97706)",
                   color: "#fff",
                   display: "flex", alignItems: "center", justifyContent: "center",

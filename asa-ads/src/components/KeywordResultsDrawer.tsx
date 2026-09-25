@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { RankingRow } from '../api';
+import type { RankingRow } from '../lib/keywordsApi.ts';
 import './KeywordResultsDrawer.css';
 
 export interface KeywordResultApp {

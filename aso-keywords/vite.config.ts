@@ -56,7 +56,7 @@ function offlinePage({ label, port }: StudioTarget) {
     <code class="cmd">cd ~/Developer/MYPROJECT/aso-studio &amp;&amp; npm run dev</code>
     <br>
     <a href="/">← Back to Keywords</a>
-    <small>ASO Studio · dev proxy</small>
+    <small>Studio · dev proxy</small>
   </main>
 </body>
 </html>`;
@@ -99,12 +99,12 @@ function withOffline(target: StudioTarget, { sse = false } = {}) {
 }
 
 const KEYWORDS_API: StudioTarget = { label: 'Keywords API', port: 5174 };
-const SCREENSHOTS: StudioTarget = { label: 'Screenshots studio', port: 5180 };
+const SCREENSHOTS: StudioTarget = { label: 'Screenshots', port: 5180 };
 const SCREENSHOTS_API: StudioTarget = { label: 'Screenshots API', port: 5181 };
-const VIDEO: StudioTarget = { label: 'Video studio', port: 5190 };
+const VIDEO: StudioTarget = { label: 'Video', port: 5190 };
 const VIDEO_API: StudioTarget = { label: 'Video API', port: 5191 };
-const ASA: StudioTarget = { label: 'ASA Ads studio', port: 5193 };
-const ASA_API: StudioTarget = { label: 'ASA Ads API', port: 5194 };
+const ASA: StudioTarget = { label: 'Ads', port: 5193 };
+const ASA_API: StudioTarget = { label: 'Ads API', port: 5194 };
 
 export default defineConfig({
   plugins: [react(), subpathRedirect],
@@ -119,6 +119,14 @@ export default defineConfig({
         proxyTimeout: 0,
         ws: true,
         configure: withOffline(KEYWORDS_API, { sse: true }),
+      },
+      // Keywords API under an explicit prefix, for sibling products (Ads) whose own
+      // /api points at their own server. /keywords-api/* → :5174/api/*.
+      '/keywords-api': {
+        target: 'http://localhost:5174',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/keywords-api/, '/api'),
+        configure: withOffline(KEYWORDS_API),
       },
       // Screenshots app reverse-proxied so both apps live under one origin (5173).
       // /studio        → screenshots vite dev server  (HTML, JS, CSS, HMR over WS)
@@ -176,7 +184,7 @@ export default defineConfig({
         ws: true, // HMR socket
         configure: withOffline(VIDEO),
       },
-      // ASA Ads app reverse-proxied so all 4 tools live under one origin (5173).
+      // Ads app reverse-proxied so all 4 tools live under one origin (5173).
       // /asa          → asa-ads vite dev server  (HTML, JS, CSS, HMR over WS)
       // /asa-api      → asa-ads express server   (rewritten to /api/* upstream)
       // /asa-sse      → asa-ads SSE stream

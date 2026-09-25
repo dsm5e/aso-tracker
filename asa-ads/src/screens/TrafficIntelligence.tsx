@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { type RankingRow } from '../api';
-import { KeywordTopFiveInline } from '../components/KeywordResultsDrawer';
-import { appStoreCountry } from '../appStoreLocales';
+import { asaApiUrl } from '../api.ts';
+import type { RankingRow } from '../lib/keywordsApi.ts';
+import { KeywordTopFiveInline } from '../components/KeywordResultsDrawer.tsx';
+import { appStoreCountry } from '../lib/appStoreLocales.ts';
+import './TrafficIntelligence.css';
 
 export interface TrafficIntelligenceApp {
   id: string;
@@ -879,7 +881,7 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
     if (!app.id || !app.iTunesId) return;
     const controller = new AbortController();
     const params = new URLSearchParams({ app_id: app.iTunesId, country: countryScope, days: '30' });
-    requestJson(`/asa-api/decision-matrix?${params}`, controller.signal)
+    requestJson(asaApiUrl(`/api/decision-matrix?${params}`), controller.signal)
       .then((value) => {
         const nextPayload = unwrapTrafficPayload(value);
         setTrafficRemote({ requestKey: trafficRequestKey, payloadScope: trafficScope, payload: nextPayload, error: null });
@@ -902,7 +904,7 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
 
   useEffect(() => {
     const controller = new AbortController();
-    requestJson('/asa-api/platform/methods', controller.signal)
+    requestJson(asaApiUrl('/api/platform/methods'), controller.signal)
       .then((value) => setMethodsRemote({ requestKey: methodsRequestKey, payload: unwrapMethodsPayload(value), error: null }))
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) {

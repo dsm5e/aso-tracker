@@ -6,7 +6,7 @@ const TRACKER_ORIGIN =
   typeof window !== 'undefined' && window.location.port === '5190' ? 'http://localhost:5173' : '';
 
 type Item = {
-  id: 'aso' | 'shot' | 'vid' | 'asa';
+  id: 'aso' | 'shot' | 'vid' | 'asa' | 'inapp';
   label: string;
   hint: string;
   href: string;
@@ -14,10 +14,11 @@ type Item = {
 };
 
 const ITEMS: Item[] = [
-  { id: 'aso',  label: 'ASO',         hint: 'Keywords & rankings', href: `${TRACKER_ORIGIN}/`,        glyph: '◇' },
+  { id: 'aso',  label: 'Keywords',    hint: 'Keywords & rankings', href: `${TRACKER_ORIGIN}/`,        glyph: '◇' },
   { id: 'shot', label: 'Screenshots', hint: 'App Store visuals',   href: `${TRACKER_ORIGIN}/studio/`, glyph: '▤' },
   { id: 'vid',  label: 'Video',       hint: 'Ad video pipeline',   href: `${TRACKER_ORIGIN}/video/`,  glyph: '▶' },
-  { id: 'asa',  label: 'ASA Ads',     hint: 'Search Ads ROI',      href: `${TRACKER_ORIGIN}/asa/`,    glyph: '$' },
+  { id: 'asa',  label: 'Ads',         hint: 'Search Ads ROI',      href: `${TRACKER_ORIGIN}/asa/`,    glyph: '$' },
+  { id: 'inapp', label: 'In-App',     hint: 'In-App Events',       href: 'http://localhost:5196/', glyph: '✦' },
 ];
 
 const COLORS: Record<Item['id'], string> = {
@@ -25,6 +26,7 @@ const COLORS: Record<Item['id'], string> = {
   shot: 'linear-gradient(135deg, #7C3AED, #A78BFA)',
   vid: 'linear-gradient(135deg, #14B8A6, #5EEAD4)',
   asa: 'linear-gradient(135deg, #FFB000, #B87D00)',
+  inapp: 'var(--ds-accent)',
 };
 
 export function BrandSwitcher({ current = 'vid' as Item['id'] }: { current?: Item['id'] }) {
@@ -67,7 +69,7 @@ export function BrandSwitcher({ current = 'vid' as Item['id'] }: { current?: Ite
           flex: 'none', lineHeight: 1,
         }}>{active.glyph}</span>
         <span style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: 1.15 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '-0.01em' }}>ASO Studio</span>
+          <span style={{ fontSize: 12, fontWeight: 600, letterSpacing: '-0.01em' }}>Studio</span>
           <span style={{ fontSize: 10, opacity: 0.6 }}>{active.label}</span>
         </span>
         <span style={{ fontSize: 10, opacity: 0.5, marginLeft: 2 }}>▾</span>

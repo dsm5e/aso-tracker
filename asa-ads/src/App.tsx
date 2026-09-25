@@ -11,6 +11,9 @@ import CampaignDetail from "./screens/CampaignDetail.tsx";
 import Alerts from "./screens/Alerts.tsx";
 import SettingsPage from "./screens/Settings.tsx";
 import Negatives from "./screens/Negatives.tsx";
+import KeywordMatrix from "./screens/KeywordMatrix.tsx";
+import TrafficIntelligence from "./screens/TrafficIntelligence.tsx";
+import KeywordScreen from "./components/KeywordScreen.tsx";
 import AppSwitcher from "./components/AppSwitcher.tsx";
 import StudioSwitcher from "./components/StudioSwitcher.tsx";
 import { api } from "./api.ts";
@@ -74,7 +77,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    document.title = "Apple Ads · MedScan";
+    document.title = "Ads";
   }, []);
 
   return (
@@ -86,6 +89,8 @@ export default function App() {
           <NavLink to="/" end>Обзор</NavLink>
           <NavLink to="/command">Матрица решений</NavLink>
           <NavLink to="/profitability">Экономика</NavLink>
+          <NavLink to="/keyword-matrix">Матрица ключей</NavLink>
+          <NavLink to="/traffic">Трафик</NavLink>
           <NavLink to="/keywords">Ключевые слова</NavLink>
           <NavLink to="/search-terms">Поисковые запросы</NavLink>
           <NavLink to="/negatives">Минус-слова</NavLink>
@@ -119,6 +124,38 @@ export default function App() {
           <Route path="/profitability" element={<Profitability reloadKey={reloadKey} />} />
           <Route path="/campaigns/:id" element={<CampaignDetail />} />
           <Route path="/keywords" element={<Keywords reloadKey={reloadKey} />} />
+          <Route path="/keyword-matrix" element={
+            <KeywordScreen title="Матрица ключей">
+              {(k) => (
+                <KeywordMatrix
+                  app={{ id: k.app.id, name: k.app.name, iTunesId: k.app.iTunesId, bundle: k.app.bundle, iconUrl: k.app.iconUrl }}
+                  locale={k.locale}
+                  artworks={k.artworks}
+                  sharedTopFive={k.sharedTopFive}
+                  sharedTopFiveStatus={k.sharedTopFiveStatus}
+                  onResolveTopFive={k.resolveTopFive}
+                  onEnsureArtworks={k.ensureArtworks}
+                />
+              )}
+            </KeywordScreen>
+          } />
+          <Route path="/traffic" element={
+            <KeywordScreen title="Трафик">
+              {(k) => (
+                <TrafficIntelligence
+                  className="content"
+                  app={{ id: k.app.id, name: k.app.name, iTunesId: k.app.iTunesId, bundle: k.app.bundle, iconUrl: k.app.iconUrl }}
+                  locale={k.locale}
+                  rankings={k.rankings}
+                  artworks={k.artworks}
+                  sharedTopFive={k.sharedTopFive}
+                  sharedTopFiveStatus={k.sharedTopFiveStatus}
+                  onResolveTopFive={k.resolveTopFive}
+                  onEnsureArtworks={k.ensureArtworks}
+                />
+              )}
+            </KeywordScreen>
+          } />
           <Route path="/search-terms" element={<SearchTerms reloadKey={reloadKey} />} />
           <Route path="/actions" element={<Actions reloadKey={reloadKey} />} />
           <Route path="/negatives" element={<Negatives />} />

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { api, type DataQualityPayload, type RankingRow } from '../api';
-import type { ShareEstimate, TrafficIntelligencePayload, TrafficKeywordInput } from './TrafficIntelligence';
-import DataQuality from './DataQuality';
-import KeywordResultsDrawer, { KeywordTopFiveInline } from '../components/KeywordResultsDrawer';
-import { appStoreCountry } from '../appStoreLocales';
+import { api, asaApiUrl, type DataQualityPayload } from '../api.ts';
+import { keywordsApiUrl, type RankingRow } from '../lib/keywordsApi.ts';
+import type { ShareEstimate, TrafficIntelligencePayload, TrafficKeywordInput } from './TrafficIntelligence.tsx';
+import DataQuality from '../components/DataQuality.tsx';
+import KeywordResultsDrawer, { KeywordTopFiveInline } from '../components/KeywordResultsDrawer.tsx';
+import { appStoreCountry } from '../lib/appStoreLocales.ts';
 import './DecisionMatrix.css';
 
 export interface DecisionMatrixApp {
@@ -685,7 +686,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
     if (!scopeReady) return;
     const controller = new AbortController();
     const params = new URLSearchParams({ app_id: app.iTunesId, country: countryScope === 'all' ? 'ALL' : countryScope, days: '30' });
-    fetchJson(`/asa-api/decision-matrix?${params}`, controller.signal)
+    fetchJson(asaApiUrl(`/api/decision-matrix?${params}`), controller.signal)
       .then((value) => setTraffic({ key: requestKey, data: unwrapTraffic(value) as DecisionMatrixPayload, error: null }))
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) setTraffic({ key: requestKey, data: null, error: reason instanceof Error ? reason.message : String(reason) });
@@ -697,7 +698,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
     if (!scopeReady) return;
     const controller = new AbortController();
     const countryQuery = countryScope === 'all' ? '' : `?locale=${encodeURIComponent(top5Country)}`;
-    fetchJson(`/api/apps/${encodeURIComponent(app.id)}/rankings${countryQuery}`, controller.signal)
+    fetchJson(keywordsApiUrl(`/apps/${encodeURIComponent(app.id)}/rankings${countryQuery}`), controller.signal)
       .then((value) => setOrganic({ key: requestKey, data: Array.isArray(value) ? value as RankingRow[] : [], error: null }))
       .catch((reason: unknown) => {
         if (!controller.signal.aborted) setOrganic({ key: requestKey, data: [], error: reason instanceof Error ? reason.message : String(reason) });
@@ -835,7 +836,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
       <header className="decision-header">
         <div>
           <span className="decision-eyebrow">Apple Ads · только чтение</span>
-          <div className="decision-title-line"><h1>Матрица решений</h1>{stale ? <span className="decision-stale">Устаревший снимок</span> : null}</div>
+          <div className="decision-title-line"><h1>Матрица ключей</h1>{stale ? <span className="decision-stale">Устаревший снимок</span> : null}</div>
           <p>{app.name} · {countryScope === 'all' ? 'все страны' : `${countryName(countryScope)} (${countryScope.toUpperCase()})`} · {app.bundle}</p>
         </div>
         <div className="decision-header-actions">
@@ -895,8 +896,8 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
                 <table className="decision-table">
                   <thead><tr>
                     <th>Гео / ключ / источник</th>
-                    <th title="Органическая позиция из ASO Tracker">Органика</th>
-                    <th title="Реальный порядок приложений в последнем сохранённом snapshot ASO Tracker">{countryScope === 'all' ? `Топ‑5 · ${top5ContextLocale.toUpperCase()} (метрики: все страны)` : `Топ‑5 · ${top5Country.toUpperCase()}`}</th>
+                    <th title="Органическая позиция из Keywords">Органика</th>
+                    <th title="Реальный порядок приложений в последнем сохранённом snapshot Keywords">{countryScope === 'all' ? `Топ‑5 · ${top5ContextLocale.toUpperCase()} (метрики: все страны)` : `Топ‑5 · ${top5Country.toUpperCase()}`}</th>
                     <th title="Относительный индекс Apple 1–100, не число поисков">Спрос</th>
                     <th title="Диапазон или модель доли показов и позиция в платной выдаче">Доля / позиция</th>
                     <th>Ставка</th>
@@ -910,7 +911,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
                   <tbody>{visible.map((row) => (
                     <tr key={`${row.geo}-${row.queue}-${row.keyword}`}>
                       <td><div className="decision-keyword"><span>{row.geo}</span><button type="button" className="decision-keyword-open" onClick={() => setResultsRow(row)}>{row.keyword}</button><small>{queueLabel(row.queue)} · {sourceLabel(row.source)}</small></div></td>
-                      <td>{row.organicRank == null ? <span className="decision-no-data">{NO_DATA}</span> : <><strong className="decision-tabular">{countryScope === 'all' ? `медиана #${formatDecimal(row.organicRank)}` : `#${formatInteger(row.organicRank)}`}</strong><small>{countryScope === 'all' ? `${row.organicCountryCount} витрин · диапазон ${formatNumberRange(row.organicRankRange, '#')}` : 'ASO Tracker'}</small></>}</td>
+                      <td>{row.organicRank == null ? <span className="decision-no-data">{NO_DATA}</span> : <><strong className="decision-tabular">{countryScope === 'all' ? `медиана #${formatDecimal(row.organicRank)}` : `#${formatInteger(row.organicRank)}`}</strong><small>{countryScope === 'all' ? `${row.organicCountryCount} витрин · диапазон ${formatNumberRange(row.organicRankRange, '#')}` : 'Keywords'}</small></>}</td>
                       <td><KeywordTopFiveInline keyword={row.keyword} scopeKey={`${app.id}:${top5Country}`} ranking={selectedRanking(row)} app={app} artworks={artworks} status={organicLoading ? 'loading' : selectedRanking(row) ? 'ready' : sharedTopFiveStatus[`${app.id}:${top5Country}:${row.keyword.toLocaleLowerCase()}`] ?? (organic.error ? 'error' : 'empty')} onVisible={requestVisibleArtwork} /></td>
                       <td><strong className="decision-demand">{formatInteger(row.popularity)}</strong><small>{countryScope === 'all' ? `среднее · ${row.signalCountryCount} витрин` : 'индекс Apple'}</small></td>
                       <td><strong>{formatShare(row.share)}</strong><small>{countryScope === 'all' ? `средняя доля · paid rank ${formatNumberRange(row.paidRankRange, '#')}` : `${row.paidRank == null ? `позиция: ${NO_DATA}` : `позиция #${row.paidRank}`} · ${basisLabel(row.share.basis)}`}</small></td>

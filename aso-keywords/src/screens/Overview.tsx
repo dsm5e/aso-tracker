@@ -72,7 +72,7 @@ export function Overview({ apps, localeAvgByApp, onOpenApp, onDeleteApp, onRunAl
     <section className="overview2" aria-label="Обзор портфеля">
       <header className="overview2-header">
         <div className="overview2-heading">
-          <span className="overview2-eyebrow">ASO Studio</span>
+          <span className="overview2-eyebrow">Keywords</span>
           <h1>Обзор портфеля</h1>
           <p>Видимость, покрытие и изменения по отслеживаемым приложениям.</p>
         </div>

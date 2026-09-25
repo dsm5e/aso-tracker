@@ -18,9 +18,7 @@ import {
   type LocaleAvg,
 } from './api';
 import { APP_STORE_LOCALES } from './appStoreLocales';
-import TrafficIntelligence from './screens/TrafficIntelligence';
 import Competitors from './screens/Competitors';
-import DecisionMatrix from './screens/DecisionMatrix';
 import Overview from './screens/Overview';
 import AcquisitionFunnel from './screens/AcquisitionFunnel';
 import ConnectGate from './components/ConnectGate';
@@ -28,13 +26,8 @@ import Experiments from './screens/Experiments';
 import { TopFiveArtwork } from './components/KeywordResultsDrawer';
 
 type TopFiveCandidate = { id: string; tid?: number };
-type SharedTopFiveStatus = 'loading' | 'ready' | 'empty' | 'error';
 
-function sharedTopFiveKey(appId: string, country: string, keyword: string) {
-  return `${appId}:${country.toLocaleLowerCase()}:${keyword.toLocaleLowerCase()}`;
-}
-
-type AppView = 'overview' | 'keywords' | 'traffic' | 'competitors' | 'matrix' | 'funnel' | 'experiments';
+type AppView = 'overview' | 'keywords' | 'competitors' | 'funnel' | 'experiments';
 type KeywordView = 'positions' | 'analytics' | 'ideas';
 
 type DialogKind = 'keywords' | 'locale' | 'app' | 'error' | 'delete-app';
@@ -64,13 +57,14 @@ type AppStoreSearchResult = {
 
 const ARTWORK_SESSION_KEY = 'aso-keywords.artworks.v1';
 
-// Sibling ASO Studio tools, reverse-proxied under the same origin in dev
+// Sibling studio products, reverse-proxied under the same origin in dev
 // (see vite.config.ts) and by the hub in production.
 const STUDIO_LINKS = [
-  { id: 'aso', label: 'Ключевые слова', hint: 'Позиции и идеи', href: '/' },
-  { id: 'shot', label: 'Скриншоты', hint: 'Визуалы App Store', href: '/studio/' },
-  { id: 'vid', label: 'Видео', hint: 'Подготовка рекламных видео', href: '/video/' },
-  { id: 'asa', label: 'Apple Ads', hint: 'Окупаемость рекламы', href: '/asa/' },
+  { id: 'aso', label: 'Keywords', hint: 'Позиции и идеи', href: '/' },
+  { id: 'shot', label: 'Screenshots', hint: 'Визуалы App Store', href: '/studio/' },
+  { id: 'vid', label: 'Video', hint: 'Подготовка рекламных видео', href: '/video/' },
+  { id: 'asa', label: 'Ads', hint: 'Окупаемость рекламы', href: '/asa/' },
+  { id: 'inapp', label: 'In-App', hint: 'In-App Events', href: 'http://localhost:5196/' },
 ];
 
 function initialArtworkCache(): Record<string, string> {
@@ -157,9 +151,6 @@ export default function App() {
   const [keywordMap, setKeywordMap] = useState<Record<string, string[]>>({});
   const [locale, setLocale] = useState('');
   const [rankings, setRankings] = useState<RankingRow[]>([]);
-  const [sharedTopFive, setSharedTopFive] = useState<Record<string, RankingRow>>({});
-  const sharedTopFiveRef = useRef(sharedTopFive);
-  const [sharedTopFiveStatus, setSharedTopFiveStatus] = useState<Record<string, SharedTopFiveStatus>>({});
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -169,8 +160,6 @@ export default function App() {
   const artworkWorkRef = useRef<Promise<void>>(Promise.resolve());
   const artworkInFlightRef = useRef(new Set<string>());
   const artworkNegativeRef = useRef(new Map<string, number>());
-  const topFiveWorkRef = useRef<Promise<void>>(Promise.resolve());
-  const topFiveInFlightRef = useRef(new Set<string>());
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [dialogBusy, setDialogBusy] = useState(false);
   const [rowUpdates, setRowUpdates] = useState<Record<string, RowUpdateState>>({});
@@ -188,7 +177,7 @@ export default function App() {
   );
   const [view, setView] = useState<AppView>(() => {
     const requested = window.location.hash.slice(1);
-    return requested === 'overview' || requested === 'traffic' || requested === 'competitors' || requested === 'matrix' || requested === 'funnel' ? requested : 'keywords';
+    return requested === 'overview' || requested === 'competitors' || requested === 'funnel' || requested === 'experiments' ? requested : 'keywords';
   });
   const [keywordView, setKeywordView] = useState<KeywordView>(() => {
     const requested = window.location.hash.slice(1);
@@ -252,63 +241,6 @@ export default function App() {
       finally { missing.forEach((key) => artworkInFlightRef.current.delete(`${country}:${key}`)); }
     });
   }, []);
-
-  useEffect(() => {
-    if (!selectedApp) return;
-    setSharedTopFive((current) => {
-      const next = { ...current };
-      for (const row of rankings) next[sharedTopFiveKey(selectedApp.id, row.locale, row.keyword)] = row;
-      sharedTopFiveRef.current = next;
-      return next;
-    });
-  }, [rankings, selectedApp]);
-
-  const resolveTopFive = useCallback((appId: string, iTunesId: string, country: string, keyword: string) => {
-    const key = sharedTopFiveKey(appId, country, keyword);
-    if (sharedTopFiveRef.current[key] || topFiveInFlightRef.current.has(key)) return;
-    topFiveInFlightRef.current.add(key);
-    setSharedTopFiveStatus((current) => ({ ...current, [key]: 'loading' }));
-    topFiveWorkRef.current = topFiveWorkRef.current.catch(() => undefined).then(async () => {
-      const makeFallback = async () => {
-        const results = await api.itunesSearch(keyword, country.toLocaleLowerCase());
-        return {
-          locale: country.toLocaleLowerCase(), keyword, today: null, yesterday: null, w1: null, w4: null, trend: [], lastUpdated: Date.now(),
-          top5: results.slice(0, 5).map((result, index) => ({ id: result.bundleId ?? String(result.trackId), name: result.trackName ?? result.bundleId ?? `Приложение ${index + 1}`, dev: result.artistName ?? '', tid: result.trackId, pos: index + 1 })),
-        } satisfies RankingRow;
-      };
-      try {
-        const cached = await api.cachedTopFiveBatch({ appId: Number(iTunesId), locales: [country.toLocaleLowerCase()], terms: [keyword], limit: 1 });
-        const item = cached.items[0];
-        const ranking: RankingRow = item ? {
-          locale: item.locale, keyword: item.term, today: item.yourRank, yesterday: null, w1: null, w4: null, trend: [], lastUpdated: item.observedAt ? new Date(item.observedAt).getTime() : null,
-          top5: item.apps.map((candidate) => {
-            const numericId = Number(candidate.iTunesId);
-            return { id: candidate.bundleId ?? String(candidate.iTunesId ?? candidate.name), name: candidate.name, dev: candidate.developer ?? '', tid: Number.isSafeInteger(numericId) && numericId > 0 ? numericId : undefined, pos: candidate.rank };
-          }),
-        } : await makeFallback();
-        setSharedTopFive((current) => {
-          const next = { ...current, [key]: ranking };
-          sharedTopFiveRef.current = next;
-          return next;
-        });
-        setSharedTopFiveStatus((current) => ({ ...current, [key]: ranking.top5.length ? 'ready' : 'empty' }));
-        if (ranking.top5.length) ensureArtworkForTop5(ranking.top5, country.toLocaleLowerCase());
-      } catch {
-        try {
-          const ranking = await makeFallback();
-          setSharedTopFive((current) => {
-            const next = { ...current, [key]: ranking };
-            sharedTopFiveRef.current = next;
-            return next;
-          });
-          setSharedTopFiveStatus((current) => ({ ...current, [key]: ranking.top5.length ? 'ready' : 'empty' }));
-          if (ranking.top5.length) ensureArtworkForTop5(ranking.top5, country.toLocaleLowerCase());
-        } catch {
-          setSharedTopFiveStatus((current) => ({ ...current, [key]: 'error' }));
-        }
-      } finally { topFiveInFlightRef.current.delete(key); }
-    });
-  }, [ensureArtworkForTop5]);
 
   // Refs so the long-lived snapshot event stream always sees the current
   // app/locale without resubscribing on every selection change.
@@ -731,7 +663,7 @@ export default function App() {
       <main className="empty-screen">
         <div className="empty-card">
           <div className="brand-mark">K</div>
-          <h1>ASO Keywords</h1>
+          <h1>Keywords</h1>
           <p>Добавьте приложение из App Store, чтобы отслеживать позиции по ключевым словам.</p>
           <button className="button button-primary" onClick={openAppDialog}>Добавить первое приложение</button>
           {dialog && <InputDialog dialog={dialog} busy={dialogBusy} existingLocales={Object.keys(keywordMap)} onClose={() => setDialog(null)} onSubmit={submitDialog} />}
@@ -746,12 +678,12 @@ export default function App() {
         <div className="sidebar-titlebar">
           <button className="brand-mark brand-button" onClick={() => setStudioMenuOpen((open) => !open)} aria-label="Переключить инструмент студии">K</button>
           <div className="brand-copy">
-            <strong>ASO Studio</strong>
+            <strong>Keywords</strong>
             <span>Аналитика ключевых слов</span>
           </div>
           {studioMenuOpen && (
             <div className="menu studio-menu" onMouseLeave={() => setStudioMenuOpen(false)}>
-              <div className="menu-label">ASO Studio</div>
+              <div className="menu-label">Studio</div>
               {STUDIO_LINKS.map((link) => (
                 <a key={link.id} href={link.href} className={link.id === 'aso' ? 'active' : ''}>
                   <strong>{link.label}</strong>
@@ -779,18 +711,10 @@ export default function App() {
           <button className={view === 'experiments' ? 'selected' : ''} onClick={() => { setView('experiments'); setMobileNavOpen(false); }} disabled={!selectedApp}>
             <span className="nav-label">Эксперименты</span>
           </button>
-          {/* Apple Ads screens stay here until they move into the Apple Ads product. */}
-          <div className="sidebar-section-label nav-group-label">Apple Ads</div>
-          <button className={view === 'matrix' ? 'selected' : ''} onClick={() => { setView('matrix'); setMobileNavOpen(false); }} disabled={!selectedApp || !locale}>
-            <span className="nav-label">Матрица решений</span>
-          </button>
-          <button className={view === 'traffic' ? 'selected' : ''} onClick={() => { setView('traffic'); setMobileNavOpen(false); }}>
-            <span className="nav-label">Аналитика трафика</span>
-          </button>
         </nav>
 
         <div className="rail-spacer" />
-        <a className="rail-link" href="/asa/">Apple Ads</a>
+        <a className="rail-link" href="/asa/">Ads</a>
         <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>
           {theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
         </button>
@@ -810,7 +734,7 @@ export default function App() {
               </select>
             </label>
           )}
-          {locale && view !== 'overview' && view !== 'funnel' && view !== 'matrix' && view !== 'traffic' && view !== 'experiments' && (
+          {locale && view !== 'overview' && view !== 'funnel' && view !== 'experiments' && (
             <label className="context-control">
               <span className="sr-only">Витрина</span>
               <select value={locale} onChange={(event) => setLocale(event.target.value)} aria-label="Витрина">
@@ -984,29 +908,10 @@ export default function App() {
       </section>
       ) : view === 'competitors' ? (
         selectedApp ? <Competitors app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} /> : null
-      ) : view === 'matrix' ? (
-        selectedApp ? <ConnectGate requires={['asa']} title="Матрица решений"><DecisionMatrix app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId, bundle: selectedApp.bundle, iconUrl: selectedApp.iconUrl }} locale={locale} artworks={artworks} sharedTopFive={sharedTopFive} sharedTopFiveStatus={sharedTopFiveStatus} onResolveTopFive={resolveTopFive} onEnsureArtworks={ensureArtworkForTop5} /></ConnectGate> : null
       ) : view === 'funnel' ? (
         selectedApp ? <ConnectGate requires={['adapty', 'asc']} title="Воронка"><AcquisitionFunnel app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId }} locale={locale} countries={Object.keys(keywordMap)} /></ConnectGate> : null
-      ) : view === 'experiments' ? (
-        selectedApp ? <Experiments app={{ id: selectedApp.id, name: selectedApp.name }} locales={Object.keys(keywordMap)} activeLocale={locale} /> : null
       ) : (
-        selectedApp ? (
-          <ConnectGate requires={['asa']} title="Аналитика трафика">
-          <TrafficIntelligence
-            className="content"
-            app={{ id: selectedApp.id, name: selectedApp.name, iTunesId: selectedApp.iTunesId, bundle: selectedApp.bundle, iconUrl: selectedApp.iconUrl }}
-            locale={locale}
-            rankings={rankings}
-            artworks={artworks}
-            sharedTopFive={sharedTopFive}
-            sharedTopFiveStatus={sharedTopFiveStatus}
-            onResolveTopFive={resolveTopFive}
-            onEnsureArtworks={ensureArtworkForTop5}
-            onOpenCompetitor={(bundleID) => setCompetitorBundle(bundleID)}
-          />
-          </ConnectGate>
-        ) : null
+        selectedApp ? <Experiments app={{ id: selectedApp.id, name: selectedApp.name }} locales={Object.keys(keywordMap)} activeLocale={locale} /> : null
       )}
       </div>
       {dialog && <InputDialog dialog={dialog} busy={dialogBusy} existingLocales={Object.keys(keywordMap)} onClose={() => setDialog(null)} onSubmit={submitDialog} />}

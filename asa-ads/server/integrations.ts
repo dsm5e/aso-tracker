@@ -10,7 +10,7 @@ interface ProviderInfo { name: string; purpose: string; where: string; fields: F
 const INFO: Record<Provider, ProviderInfo> = {
   asa: {
     name: "Apple Ads",
-    purpose: "ставки, показы и доля показов по ключам: Матрица решений, Аналитика трафика, Apple Ads",
+    purpose: "ставки, показы и доля показов по ключам: все экраны Ads (матрицы, трафик, экономика)",
     where: "ads.apple.com → Account Settings → API → Create API user; Client ID, Team ID и Key ID показываются после загрузки публичного ключа",
     fields: [
       { key: "client_id", label: "Client ID", hint: "SEARCHADS.…" },
@@ -57,7 +57,7 @@ function adaptyInSecretManager(): boolean {
 function agentPrompt(p: Provider, info: ProviderInfo, base: string): string {
   const body = info.fields.map((f) => `"${f.key}": "<${f.label}>"`).join(", ");
   return [
-    `Подключи ${info.name} в ASO Studio.`,
+    `Подключи ${info.name} в студии.`,
     `1. Возьми ключи: ${info.where}. Не печатай значения в чат и не коммить их в git.`,
     `2. Сохрани их в сервер студии одним запросом (значения из файла/переменных, не из истории чата):`,
     `   curl -s -X PUT ${base}/asa-api/credentials/${p} -H 'content-type: application/json' -d '{${body}}'`,
