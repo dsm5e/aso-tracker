@@ -1,4 +1,4 @@
-/* Chart kit styles — mirror the Roomvi admin analytics dashboard. Needs shared/ds.css. */
+/* Chart kit styles — mirror an Adapty-style admin analytics dashboard. Needs shared/ds.css. */
 .dsc { width: 100%; }
 .dsc svg { display: block; width: 100%; overflow: visible; }
 .dsc svg text { fill: var(--ds-muted); font-size: 11px; font-family: var(--ds-font); font-variant-numeric: tabular-nums; }

@@ -1,4 +1,4 @@
-/* Studio components — a 1:1 copy of the Roomvi admin analytics dashboard look.
+/* Studio components — a 1:1 copy of an Adapty-style admin analytics dashboard look.
    Rules (see DESIGN.md): radius 8 everywhere, 6 inside controls, pills only for tiny badges;
    controls 40px tall with a .75px border; cards have no border, a soft shadow, 16px padding;
    active state = accent-soft background + accent text. Needs shared/ds.css. */

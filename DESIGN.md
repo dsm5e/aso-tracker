@@ -1,7 +1,7 @@
 # Studio design system
 
 One look for every product (Keywords, Ads, Screenshots, Video, In-App), copied 1:1 from the
-Roomvi admin analytics dashboard (`interior-ai/admin-web/components/analytics/dashboard.css`).
+an Adapty-style admin analytics dashboard.
 Code: `shared/ds.css` (tokens), `shared/ds-components.css` (component classes),
 `shared/charts/` (charts). Each product imports them and maps its own classes in `ds-bridge.css`.
 

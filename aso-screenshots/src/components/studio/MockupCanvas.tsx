@@ -14,7 +14,7 @@ import { getCanvasDimensions, type IPhoneModel } from '../../lib/deviceProfiles'
 /** Render a headline string, coloring any *asterisk-wrapped* run with the
  *  accent color (amma / HiMommy formula: one emotional word recolored).
  *  `==run==` draws a highlighter plate behind the run — the marker-pen device
- *  the Roomvi arch hero uses on the word "AI". Parsed before the others so a
+ *  the arch hero uses on the word "AI". Parsed before the others so a
  *  highlighted run can still be bold. */
 /** Letter-spacing is a Latin typography tool. Chromium applies tracking by
  *  splitting the shaping run per cluster, which breaks scripts whose glyphs
@@ -764,7 +764,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
           position: 'relative',
         }}
       >
-        {/* --- Roomvi `arch`: фото + белая арка с акцентной каёмкой + диагональные
+        {/* --- `arch`: фото + белая арка с акцентной каёмкой + диагональные
             полосы. Заголовок сюда НЕ входит: его рисует штатный оверлей ниже,
             чтобы шрифт и выравнивание слушались инспектора. --- */}
         {isArch && (() => {

@@ -91,7 +91,7 @@ export interface Screenshot {
    * phone; `full-bleed` treats an already-designed preview as the final artwork
    * and only layers the editable headline over it. */
   sourceLayout?: 'device' | 'full-bleed' | 'arch' | 'before-after';
-  /** `arch` layout (Roomvi): фото сверху, белая арка-карточка с акцентной
+  /** `arch` layout: фото сверху, белая арка-карточка с акцентной
    *  каёмкой, снизу диагональные полосы «одна комната — разные стили».
    *  Текст рисует ШТАТНЫЙ оверлей заголовка, поэтому шрифт/размер/цвет/
    *  выравнивание берутся из инспектора, как у всех остальных макетов. */

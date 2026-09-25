@@ -1,4 +1,4 @@
-// Studio chart kit — the look of the Roomvi admin analytics dashboard (plain SVG,
+// Studio chart kit — the look of an Adapty-style admin analytics dashboard (plain SVG,
 // 2px lines, rounded data-ends, recessive grid, hover tooltips with every series).
 // Colors come from shared/ds.css: pass 'var(--ds-c1)'…'var(--ds-c4)' or semantic tokens.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
