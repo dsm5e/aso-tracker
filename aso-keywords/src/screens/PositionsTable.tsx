@@ -134,7 +134,12 @@ export default function PositionsTable({
   onRefresh,
   onRemove,
   onKeywordsChanged,
+  toolbarLead,
+  toolbarTrail,
 }: {
+  /** Page actions rendered at the start / end of the table's single toolbar row. */
+  toolbarLead?: ReactNode;
+  toolbarTrail?: ReactNode;
   appId: string;
   appName: string;
   locale: string;
@@ -393,27 +398,30 @@ export default function PositionsTable({
 
   return (
     <div className="pt">
-      <div className="pt-filters" role="group" aria-label="Фильтры">
-        <span className="pt-filter" {...tipProps('Позиция в диапазоне', [[null, 'Только ключи в выдаче', 'от — до включительно']])}>
-          Позиция
-          <input className="ds-input pt-num" inputMode="numeric" value={rankMin} onChange={(event) => setRankMin(event.target.value.replace(/\D/g, ''))} placeholder="от" aria-label="Позиция от" />
-          –
-          <input className="ds-input pt-num" inputMode="numeric" value={rankMax} onChange={(event) => setRankMax(event.target.value.replace(/\D/g, ''))} placeholder="до" aria-label="Позиция до" />
-        </span>
-        <label className="pt-filter">
-          Популярность ≥
-          <select className="ds-select pt-select" value={popMin} onChange={(event) => setPopMin(Number(event.target.value))} aria-label="Популярность не ниже">
-            {[0, 6, 10, 20, 25, 30, 40, 50, 60].map((value) => <option key={value} value={value}>{value === 0 ? 'любая' : value === 6 ? '>5' : value}</option>)}
-          </select>
-        </label>
-        <label className="pt-filter">
-          Тег
-          <select className="ds-select pt-select" value={tagFilter} onChange={(event) => setTagFilter(event.target.value)} aria-label="Тег">
-            <option value="">все</option>
-            <option value="__none">без тега</option>
-            {tags.map((tag) => <option key={tag.tag} value={tag.tag}>{tag.tag} · {tag.count}</option>)}
-          </select>
-        </label>
+      <div className="toolbar pt-filters" role="group" aria-label="Действия и фильтры">
+        {toolbarLead}
+        <FilterMenu active={[rankMin || rankMax, popMin, tagFilter].filter(Boolean).length}>
+          <span className="pt-filter" {...tipProps('Позиция в диапазоне', [[null, 'Только ключи в выдаче', 'от — до включительно']])}>
+            <span className="pt-filter-label">Позиция</span>
+            <input className="ds-input pt-num" inputMode="numeric" value={rankMin} onChange={(event) => setRankMin(event.target.value.replace(/\D/g, ''))} placeholder="от" aria-label="Позиция от" />
+            –
+            <input className="ds-input pt-num" inputMode="numeric" value={rankMax} onChange={(event) => setRankMax(event.target.value.replace(/\D/g, ''))} placeholder="до" aria-label="Позиция до" />
+          </span>
+          <label className="pt-filter">
+            <span className="pt-filter-label">Популярность ≥</span>
+            <select className="ds-select pt-select" value={popMin} onChange={(event) => setPopMin(Number(event.target.value))} aria-label="Популярность не ниже">
+              {[0, 6, 10, 20, 25, 30, 40, 50, 60].map((value) => <option key={value} value={value}>{value === 0 ? 'любая' : value === 6 ? '>5' : value}</option>)}
+            </select>
+          </label>
+          <label className="pt-filter">
+            <span className="pt-filter-label">Тег</span>
+            <select className="ds-select pt-select" value={tagFilter} onChange={(event) => setTagFilter(event.target.value)} aria-label="Тег">
+              <option value="">все</option>
+              <option value="__none">без тега</option>
+              {tags.map((tag) => <option key={tag.tag} value={tag.tag}>{tag.tag} · {tag.count}</option>)}
+            </select>
+          </label>
+        </FilterMenu>
         <div className="ds-seg pt-seg" role="tablist" aria-label="Движение за 7 дней">
           {([['all', 'Все'], ['entered', 'Вошли за 7 дн'], ['dropped', 'Выпали за 7 дн']] as const).map(([id, label]) => (
             <button key={id} type="button" role="tab" aria-selected={move === id} onClick={() => setMove(id)}>{label}</button>
@@ -421,11 +429,12 @@ export default function PositionsTable({
         </div>
         {filtersOn && <button type="button" className="ds-btn ds-btn-sm ds-btn-ghost" onClick={resetFilters}>Сбросить</button>}
         <span className="toolbar-spacer" />
-        <span className="pt-count">{rows.length === allRows.length ? `${rows.length}` : `${rows.length} из ${allRows.length}`}</span>
-        <button type="button" className="ds-btn ds-btn-sm" onClick={exportCsv} disabled={!rows.length} title="Экспорт видимых строк (или выделенных) в CSV">
-          <Icon name="external" size={14} /> CSV
-        </button>
+        {rows.length !== allRows.length && <span className="pt-count">{rows.length} из {allRows.length}</span>}
         <ColumnMenu layout={layout} onChange={updateLayout} />
+        <button type="button" className="ds-icon-btn pt-csv" onClick={exportCsv} disabled={!rows.length} title="Экспорт видимых строк (или выделенных) в CSV" aria-label="Экспорт в CSV">
+          <Icon name="external" size={16} />
+        </button>
+        {toolbarTrail}
       </div>
 
       {selected.size > 0 && (
@@ -474,9 +483,10 @@ export default function PositionsTable({
               <tr><td colSpan={visible.length + 3}><div className="table-empty">{allRows.length ? 'Нет ключей под фильтр.' : 'В этом регионе пока нет ключевых слов.'}</div></td></tr>
             ) : <>
               {start > 0 && <tr className="mx-spacer" style={{ height: start * ROW_H }}><td colSpan={visible.length + 3} /></tr>}
-              {windowRows.map((row) => (
+              {windowRows.map((row, offset) => (
                 <PositionRow
                   key={row.key}
+                  alt={(start + offset) % 2 === 1}
                   row={row}
                   columns={visible}
                   selected={selected.has(row.key)}
@@ -528,9 +538,10 @@ export default function PositionsTable({
 const EMPTY: string[] = [];
 
 const PositionRow = memo(function PositionRow({
-  row, columns, selected, updateState, trendDates, popularityUnavailable, onSelect,
+  alt, row, columns, selected, updateState, trendDates, popularityUnavailable, onSelect,
   renderKeywordExtra, renderTop5, renderUpdated, onOpenDetail, onRefresh, onRemove, onSaveNote,
 }: {
+  alt: boolean;
   row: RowModel;
   columns: ColumnDef[];
   selected: boolean;
@@ -622,7 +633,7 @@ const PositionRow = memo(function PositionRow({
     }
   };
   return (
-    <tr className={selected ? 'pt-row-selected' : ''} onClick={onRowClick} aria-selected={selected}>
+    <tr className={[selected ? 'pt-row-selected' : '', alt ? 'pt-alt' : ''].filter(Boolean).join(' ') || undefined} onClick={onRowClick} aria-selected={selected}>
       <td className="pt-sel pt-sticky-0">
         <input type="checkbox" checked={selected} aria-label={`Выделить ${row.keyword}`}
           onClick={(event) => { event.preventDefault(); onSelect(row.key, event.shiftKey ? 'range' : 'toggle'); }} onChange={() => { /* handled on click */ }} />
@@ -671,6 +682,25 @@ function NoteCell({ keyword, note, onSave }: { keyword: string; note: string; on
   );
 }
 
+function FilterMenu({ active, children }: { active: number; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const close = useCallback(() => setOpen(false), []);
+  useDismiss(rootRef, open, close);
+  return (
+    <div className="picker" ref={rootRef}>
+      <button type="button" className={`ds-btn ${active ? 'pt-filter-on' : ''}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+        <Icon name="filter" size={14} /> Фильтр {active ? <span className="mx-count">{active}</span> : null}
+      </button>
+      {open && (
+        <div className="ds-pop picker-pop pt-filter-pop" role="dialog" aria-label="Фильтры">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ColumnMenu({ layout, onChange }: { layout: Layout; onChange: (layout: Layout) => void }) {
   const [open, setOpen] = useState(false);
   const [dragging, setDragging] = useState<ColId | null>(null);
@@ -687,7 +717,7 @@ function ColumnMenu({ layout, onChange }: { layout: Layout; onChange: (layout: L
   const shown = layout.order.length - layout.hidden.length;
   return (
     <div className="picker" ref={rootRef}>
-      <button type="button" className="ds-btn ds-btn-sm" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
+      <button type="button" className="ds-btn" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((value) => !value)}>
         <Icon name="columns" size={14} /> Колонки <span className="mx-count">{shown}</span>
       </button>
       {open && (

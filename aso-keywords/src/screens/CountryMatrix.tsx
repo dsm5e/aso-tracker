@@ -17,6 +17,8 @@ import {
 import './CountryMatrix.css';
 
 const ROW_H = 40;
+const BEST_W = 92;
+const COL_W = 88;
 const OVERSCAN = 10;
 
 type SortKey = { by: 'best' | 'keyword' | 'locale'; locale?: string; dir: 1 | -1 };
@@ -253,11 +255,11 @@ export default function CountryMatrix({
         ) : !loading && data && rows.length === 0 ? (
           <div className="mx-empty">{query || onlyTop10 ? 'Нет ключей под фильтр.' : 'В выбранных странах пока нет ключевых слов.'}</div>
         ) : (
-          <table className="mx-table" style={{ width: `calc(var(--mx-kw-w) + ${64 + visibleColumns.length * 84}px)` }}>
+          <table className="mx-table" style={{ width: `calc(var(--mx-kw-w) + ${BEST_W + visibleColumns.length * COL_W}px)` }}>
             <colgroup>
               <col style={{ width: 'var(--mx-kw-w)' }} />
-              <col style={{ width: 64 }} />
-              {visibleColumns.map((code) => <col key={code} style={{ width: 84 }} />)}
+              <col style={{ width: BEST_W }} />
+              {visibleColumns.map((code) => <col key={code} style={{ width: COL_W }} />)}
             </colgroup>
             <thead>
               <tr>
@@ -297,8 +299,8 @@ export default function CountryMatrix({
                 <tr key={index} className="mx-skeleton"><td className="mx-sticky"><i /></td><td className="mx-sticky-2" />{columns.slice(0, 12).map((code) => <td key={code}><i /></td>)}</tr>
               )) : <>
                 {start > 0 && <tr className="mx-spacer" style={{ height: start * ROW_H }}><td colSpan={2 + visibleColumns.length} /></tr>}
-                {windowRows.map((row) => (
-                  <MatrixRow key={row.index} row={row} columns={visibleColumns} lookup={lookup} dates={data?.dates ?? EMPTY_DATES} onOpen={onOpenCell} />
+                {windowRows.map((row, offset) => (
+                  <MatrixRow key={row.index} alt={(start + offset) % 2 === 1} row={row} columns={visibleColumns} lookup={lookup} dates={data?.dates ?? EMPTY_DATES} onOpen={onOpenCell} />
                 ))}
                 {end < rows.length && <tr className="mx-spacer" style={{ height: (rows.length - end) * ROW_H }}><td colSpan={2 + visibleColumns.length} /></tr>}
               </>}
@@ -313,7 +315,8 @@ export default function CountryMatrix({
 const EMPTY_DATES: string[] = [];
 
 /** One keyword row. Memoized: scrolling only renders rows entering the window. */
-const MatrixRow = memo(function MatrixRow({ row, columns, lookup, dates, onOpen }: {
+const MatrixRow = memo(function MatrixRow({ alt, row, columns, lookup, dates, onOpen }: {
+  alt: boolean;
   row: RowModel;
   columns: string[];
   lookup: Map<string, Array<MatrixCell | undefined>>;
@@ -321,7 +324,7 @@ const MatrixRow = memo(function MatrixRow({ row, columns, lookup, dates, onOpen 
   onOpen: (keyword: string, locale: string) => void;
 }) {
   return (
-    <tr>
+    <tr className={alt ? 'mx-alt' : undefined}>
       <td className="mx-sticky mx-kw" title={row.keyword}>{row.keyword}</td>
       <td className="mx-sticky-2 mx-best">
         {row.best === Infinity ? <span className="mx-out-text">—</span> : (

@@ -21,7 +21,8 @@ function localeFlag(locale: string) {
 }
 
 function formatDelta(value: number | null | undefined) {
-  if (value === null || value === undefined || value === 0) return 'Без изменений';
+  if (value === null || value === undefined) return 'нет базы за неделю';
+  if (value === 0) return 'Без изменений';
   return value > 0 ? `↑ ${value}` : `↓ ${Math.abs(value)}`;
 }
 
@@ -115,9 +116,9 @@ export function Overview({ apps, localeAvgByApp, onOpenApp, onDeleteApp, onRunAl
                   <button className="overview2-card-open" type="button" onClick={() => onOpenApp(app.id)} aria-label={`Открыть ${app.name}`}>
                     <header className="overview2-card-header"><AppArtwork app={app} /><div><strong>{app.name}</strong><small>{app.keywords} ключей · {app.locales.length} регионов</small></div><span className={`overview2-data-status ${app.lastSnapshot ? 'overview2-data-status-ready' : 'overview2-data-status-empty'}`}>{dataStatus}</span></header>
                     <div className="overview2-card-metrics">
-                      <span><b>{app.avgPos ? `#${Math.round(app.avgPos)}` : '—'}</b><small>ср. позиция</small><em className={app.weekDelta.avg > 0 ? 'overview2-delta-up' : app.weekDelta.avg < 0 ? 'overview2-delta-down' : ''}>{formatDelta(app.weekDelta.avg)}</em></span>
-                      <span><b>{app.top10}</b><small>в топ-10</small><em className={app.weekDelta.top10 > 0 ? 'overview2-delta-up' : app.weekDelta.top10 < 0 ? 'overview2-delta-down' : ''}>{formatDelta(app.weekDelta.top10)}</em></span>
-                      <span><b>{app.top50}</b><small>в топ-50</small><em className={app.weekDelta.top50 > 0 ? 'overview2-delta-up' : app.weekDelta.top50 < 0 ? 'overview2-delta-down' : ''}>{formatDelta(app.weekDelta.top50)}</em></span>
+                      <span><b>{app.avgPos ? `#${Math.round(app.avgPos)}` : '—'}</b><small>ср. позиция</small><em className={(app.weekDelta.avg ?? 0) > 0 ? 'overview2-delta-up' : (app.weekDelta.avg ?? 0) < 0 ? 'overview2-delta-down' : ''}>{formatDelta(app.weekDelta.avg)}</em></span>
+                      <span><b>{app.top10}</b><small>в топ-10</small><em className={(app.weekDelta.top10 ?? 0) > 0 ? 'overview2-delta-up' : (app.weekDelta.top10 ?? 0) < 0 ? 'overview2-delta-down' : ''}>{formatDelta(app.weekDelta.top10)}</em></span>
+                      <span><b>{app.top50}</b><small>в топ-50</small><em className={(app.weekDelta.top50 ?? 0) > 0 ? 'overview2-delta-up' : (app.weekDelta.top50 ?? 0) < 0 ? 'overview2-delta-down' : ''}>{formatDelta(app.weekDelta.top50)}</em></span>
                     </div>
                     <div className="overview2-locales" aria-label="Регионы">
                       {locales.slice(0, 6).map((entry) => <span key={entry.code} title={`${entry.code.toUpperCase()}: ${entry.avg == null ? 'нет в выдаче' : `средняя позиция ${Math.round(entry.avg)}`}`}>{localeFlag(entry.code)} {entry.avg == null ? '—' : `#${Math.round(entry.avg)}`}</span>)}

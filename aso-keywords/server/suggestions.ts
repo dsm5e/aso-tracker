@@ -510,7 +510,10 @@ export async function keywordSuggestions(appId: string, locale: string, options:
   const cached = resultCache.get(cacheKey);
   if (!options.refresh && cached && cached.expiresAt > Date.now()) return cached.value;
   const value = await computeSuggestions(appId, locale);
-  resultCache.set(cacheKey, { expiresAt: Date.now() + 10 * 60_000, value });
+  // The Ads service starts lazily with the studio: a cold miss must not pin
+  // «popularity unavailable» on the ideas for ten minutes.
+  const ttl = value.signals.asaPopularity === 'unavailable' ? 30_000 : 10 * 60_000;
+  resultCache.set(cacheKey, { expiresAt: Date.now() + ttl, value });
   return value;
 }
 

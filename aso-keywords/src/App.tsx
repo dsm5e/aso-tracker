@@ -245,6 +245,23 @@ export default function App() {
   const [countrySets, setCountrySets] = useState<CountrySetsResponse | null>(null);
   const [matrixSetId, setMatrixSetId] = useState<string | null>(() => new URLSearchParams(window.location.search).get('set'));
   const [paletteOpen, setPaletteOpen] = useState(false);
+  // The page header folds away once the table under it is scrolled, so long lists get the height.
+  const [compactHeader, setCompactHeader] = useState(false);
+  const contentRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    setCompactHeader(false);
+    const node = contentRef.current;
+    if (!node) return;
+    // scroll does not bubble: listen in the capture phase for whichever list scrolls inside
+    const onScroll = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || target.scrollHeight - target.clientHeight < 160) return;
+      // hysteresis: fold after 48px, unfold only back at the top — no flicker at the edge
+      setCompactHeader((compact) => (compact ? target.scrollTop > 4 : target.scrollTop > 48));
+    };
+    node.addEventListener('scroll', onScroll, true);
+    return () => node.removeEventListener('scroll', onScroll, true);
+  }, [view, keywordView]);
   const [recentTick, setRecentTick] = useState(0);
   const [matrixRefreshKey, setMatrixRefreshKey] = useState(0);
   const [cellDetail, setCellDetail] = useState<{ keyword: string; locale: string; ranking?: RankingRow; loading: boolean } | null>(null);
@@ -880,6 +897,67 @@ export default function App() {
     setKeywordView('positions');
   };
 
+  const positionsLead = (<>
+          <div className="split-btn" ref={updateMenuRef}>
+            <button className="split-btn-main" onClick={refresh} disabled={refreshing} aria-label="Обновить позиции">
+              <Icon name="refresh" className={refreshing ? 'spinning' : ''} /> Обновить
+            </button>
+            <button className="split-btn-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Параметры обновления" aria-haspopup="menu" aria-expanded={updateMenuOpen}>
+              <Icon name="chevronDown" />
+            </button>
+            {updateMenuOpen && (
+              <div className="menu update-menu" role="menu">
+                <div className="menu-label">Область обновления позиций</div>
+                <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>Этот регион ({locale.toUpperCase()})</strong><small>только ключевые слова текущего региона</small></button>
+                <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Всё приложение ({selectedApp?.name})</strong><small>все регионы этого приложения</small></button>
+                <button onClick={() => startSnapshot('all')} disabled={refreshing}><strong>Все приложения</strong><small>каждое приложение и каждый регион</small></button>
+                <button onClick={() => startSnapshot('app', true)} disabled={refreshing}>
+                  <strong>Только изменяемые (дельта)</strong>
+                  <small>
+                    {selectedApp?.name}: топ-50, новые и ключи этого дня недели
+                    {schedule && selectedApp ? ` · ${schedule.todayPlan.byApp[selectedApp.id] ?? 0} ${pluralKeys(schedule.todayPlan.byApp[selectedApp.id] ?? 0)}` : ''}
+                  </small>
+                </button>
+                {schedule && <div className="menu-label gate-status">{nightlyLine(schedule)}</div>}
+                <div className="menu-separator" />
+                <div className="menu-label">Скорость обновления</div>
+                {(Object.keys(SPEED_PRESETS) as SnapshotSpeed[]).map((speed) => (
+                  <button key={speed} onClick={() => changeSpeed(speed)}>
+                    <strong>{SPEED_PRESETS[speed].label}</strong>
+                    <small>{SPEED_PRESETS[speed].note}</small>
+                    {snapshotSpeed === speed && <b><Icon name="check" /></b>}
+                  </button>
+                ))}
+                <div className="menu-separator" />
+                <div className="menu-label">Источник позиций</div>
+                {RANK_SOURCES.map(({ value, label, note }) => (
+                  <button key={value} onClick={() => changeRankSource(value)}>
+                    <strong>{label}</strong>
+                    <small>{note}</small>
+                    {snapshotSettings?.rankSource === value && <b><Icon name="check" /></b>}
+                  </button>
+                ))}
+                {rankGate && (
+                  <div className="menu-label gate-status">
+                    Лимит Apple: {rankGate.effectivePerMin}/мин · в очереди {rankGate.queued.interactive + rankGate.queued.top + rankGate.queued.tail}
+                    {rankGate.pausedUntil ? ` · пауза до ${new Date(rankGate.pausedUntil).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <button className="ds-btn" onClick={openLocaleDialog} aria-label="Добавить регион"><Icon name="plus" /> Регион</button>
+  </>);
+  const positionsTrail = (<>
+
+          <button
+            className={`ds-btn relevance-toggle ${relevanceOn ? 'active' : ''}`}
+            onClick={() => setRelevanceOn((on) => !on)}
+            aria-pressed={relevanceOn}
+            title="Показывает, совпадает ли жанр приложений из топ-5 с жанром вашего приложения"
+          ><Icon name="target" /> Жанр</button>
+  </>);
+
   if (!loading && apps.length === 0) {
     return (
       <main className="empty-screen">
@@ -986,98 +1064,25 @@ export default function App() {
           progress={progress}
         />
       ) : view === 'keywords' ? (
-      <section className="content">
+      <section className={`content ${compactHeader ? 'is-compact' : ''}`} ref={contentRef}>
         <header className="view-header">
           <div className="page-title-row">
-            <div>
-              <h1 className="ds-page-title">Ключевые слова</h1>
-              <div className="ds-seg page-tabs" role="tablist" aria-label="Раздел ключевых слов">
-                {([['matrix', 'Матрица'], ['positions', 'Позиции'], ['ideas', 'Идеи'], ['analytics', 'Динамика']] as const).map(([id, label]) => (
-                  <button key={id} role="tab" aria-selected={keywordView === id}
-                    disabled={id !== 'positions' && (!selectedApp || (id === 'ideas' && !locale))}
-                    onClick={() => openKeywordView(id)}>{label}</button>
-                ))}
-              </div>
-              <p className="ds-page-sub">{keywordView === 'matrix'
-                ? 'Позиции каждого ключа во всех странах набора. Клик по ячейке — история и выдача, ⌘K — выбор страны.'
-                : keywordView === 'positions'
-                ? `Позиции в витрине ${storefrontOf(locale).flag} ${storefrontOf(locale).name}: релевантность и приложения, лидирующие по каждому запросу.`
-                : keywordView === 'analytics'
-                  ? 'Сравнивайте рост, падение и видимость ключевых слов за выбранный период.'
-                  : 'Проверяйте подсказки Apple и запросы конкурентов перед добавлением в отслеживание.'}</p>
+            <h1 className="ds-page-title">Ключевые слова</h1>
+            <div className="ds-seg page-tabs" role="tablist" aria-label="Раздел ключевых слов">
+              {KEYWORD_TABS.map(([id, label, hint]) => (
+                <button key={id} role="tab" aria-selected={keywordView === id} title={hint}
+                  disabled={id !== 'positions' && (!selectedApp || (id === 'ideas' && !locale))}
+                  onClick={() => openKeywordView(id)}>{label}</button>
+              ))}
             </div>
-            {keywordView === 'positions' ? <button className="ds-btn ds-btn-primary" onClick={openKeywordsDialog}>Добавить ключевые слова</button> : null}
+            {keywordView === 'positions' ? <>
+              <label className="search-field">
+                <Icon name="search" />
+                <input id="kw-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск ключевых слов (⌘F)" />
+              </label>
+              <button className="ds-btn ds-btn-primary" onClick={openKeywordsDialog}><Icon name="plus" /> Ключевые слова</button>
+            </> : null}
           </div>
-        {keywordView === 'positions' && <div className="toolbar">
-          <div className="split-btn" ref={updateMenuRef}>
-            <button className="split-btn-main" onClick={refresh} disabled={refreshing} aria-label="Обновить позиции">
-              <Icon name="refresh" className={refreshing ? 'spinning' : ''} /> Обновить
-            </button>
-            <button className="split-btn-caret" onClick={() => setUpdateMenuOpen((open) => !open)} aria-label="Параметры обновления" aria-haspopup="menu" aria-expanded={updateMenuOpen}>
-              <Icon name="chevronDown" />
-            </button>
-            {updateMenuOpen && (
-              <div className="menu update-menu" role="menu">
-                <div className="menu-label">Область обновления позиций</div>
-                <button onClick={() => startSnapshot('locale')} disabled={refreshing}><strong>Этот регион ({locale.toUpperCase()})</strong><small>только ключевые слова текущего региона</small></button>
-                <button onClick={() => startSnapshot('app')} disabled={refreshing}><strong>Всё приложение ({selectedApp?.name})</strong><small>все регионы этого приложения</small></button>
-                <button onClick={() => startSnapshot('all')} disabled={refreshing}><strong>Все приложения</strong><small>каждое приложение и каждый регион</small></button>
-                <button onClick={() => startSnapshot('app', true)} disabled={refreshing}>
-                  <strong>Только изменяемые (дельта)</strong>
-                  <small>
-                    {selectedApp?.name}: топ-50, новые и ключи этого дня недели
-                    {schedule && selectedApp ? ` · ${schedule.todayPlan.byApp[selectedApp.id] ?? 0} ${pluralKeys(schedule.todayPlan.byApp[selectedApp.id] ?? 0)}` : ''}
-                  </small>
-                </button>
-                {schedule && <div className="menu-label gate-status">{nightlyLine(schedule)}</div>}
-                <div className="menu-separator" />
-                <div className="menu-label">Скорость обновления</div>
-                {(Object.keys(SPEED_PRESETS) as SnapshotSpeed[]).map((speed) => (
-                  <button key={speed} onClick={() => changeSpeed(speed)}>
-                    <strong>{SPEED_PRESETS[speed].label}</strong>
-                    <small>{SPEED_PRESETS[speed].note}</small>
-                    {snapshotSpeed === speed && <b><Icon name="check" /></b>}
-                  </button>
-                ))}
-                <div className="menu-separator" />
-                <div className="menu-label">Источник позиций</div>
-                {RANK_SOURCES.map(({ value, label, note }) => (
-                  <button key={value} onClick={() => changeRankSource(value)}>
-                    <strong>{label}</strong>
-                    <small>{note}</small>
-                    {snapshotSettings?.rankSource === value && <b><Icon name="check" /></b>}
-                  </button>
-                ))}
-                {rankGate && (
-                  <div className="menu-label gate-status">
-                    Лимит Apple: {rankGate.effectivePerMin}/мин · в очереди {rankGate.queued.interactive + rankGate.queued.top + rankGate.queued.tail}
-                    {rankGate.pausedUntil ? ` · пауза до ${new Date(rankGate.pausedUntil).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-          <button className="ds-btn" onClick={openLocaleDialog} aria-label="Добавить регион"><Icon name="plus" /> Регион</button>
-
-          <span className="toolbar-spacer" />
-
-          {refreshing && (
-            <span className="snapshot-status">
-              <i /> {snapshotStatusText(progress, rows.length)}
-              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Остановить обновление"><Icon name="stop" size={12} /> Стоп</button>
-            </span>
-          )}
-          <button
-            className={`ds-btn relevance-toggle ${relevanceOn ? 'active' : ''}`}
-            onClick={() => setRelevanceOn((on) => !on)}
-            aria-pressed={relevanceOn}
-            title="Показывает, совпадает ли жанр приложений из топ-5 с жанром вашего приложения"
-          ><Icon name="target" /> Релевантность</button>
-          <label className="search-field">
-            <Icon name="search" />
-            <input id="kw-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск ключевых слов (⌘F)" />
-          </label>
-        </div>}
         </header>
 
         {keywordView === 'matrix' ? (
@@ -1095,11 +1100,17 @@ export default function App() {
             />
           ) : null
         ) : keywordView === 'positions' ? <>
-        <section className="rankings-summary" aria-label="Сводка позиций">
-          <div><span>Отслеживается</span><strong>{positionSummary.total}</strong><small>ключевых слов</small></div>
-          <div><span>В выдаче</span><strong>{positionSummary.ranked}</strong><small>из {positionSummary.total}</small></div>
-          <div><span>В топ-10</span><strong>{positionSummary.top10}</strong><small>Рост за сутки: {positionSummary.improved}</small></div>
-          <div><span>Средняя позиция</span><strong>{positionSummary.average == null ? 'Нет данных' : `#${positionSummary.average.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`}</strong><small>по найденным ключам</small></div>
+        <section className={`kw-stats ${refreshing ? 'kw-stats-busy' : ''}`} aria-label="Сводка позиций">
+          <span><b>{positionSummary.total}</b> {pluralKeys(positionSummary.total)}</span>
+          <span>в выдаче <b>{positionSummary.ranked}</b></span>
+          <span>в топ-10 <b>{positionSummary.top10}</b>{positionSummary.improved ? <em className="kw-stats-up">↑{positionSummary.improved} за сутки</em> : null}</span>
+          {refreshing && (
+            <span className="snapshot-status">
+              <i /> {snapshotStatusText(progress, rows.length)}
+              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Остановить обновление"><Icon name="stop" size={12} /> Стоп</button>
+            </span>
+          )}
+          <span>средняя <b>{positionSummary.average == null ? '—' : `#${positionSummary.average.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`}</b></span>
         </section>
         {selectedApp && (
           <PositionsTable
@@ -1129,6 +1140,8 @@ export default function App() {
             onRefresh={(keyword) => void refreshOne(keyword)}
             onRemove={(keyword) => void removeKeyword(keyword)}
             onKeywordsChanged={(map) => { setKeywordMap(map); setMatrixRefreshKey((key) => key + 1); loadApps().catch(() => {}); }}
+            toolbarLead={positionsLead}
+            toolbarTrail={positionsTrail}
           />
         )}
         </> : keywordView === 'ideas' ? (
@@ -1224,6 +1237,13 @@ export default function App() {
     </div>
   );
 }
+
+const KEYWORD_TABS = [
+  ['matrix', 'Матрица', 'Позиции каждого ключа во всех странах набора. Клик по ячейке — история и выдача, ⌘K — выбор страны'],
+  ['positions', 'Позиции', 'Одна витрина: позиции, релевантность и лидеры выдачи по каждому запросу'],
+  ['ideas', 'Идеи', 'Подсказки Apple и запросы конкурентов перед добавлением в отслеживание'],
+  ['analytics', 'Динамика', 'Рост, падение и видимость ключевых слов за период'],
+] as const;
 
 const RELEVANCE_LABEL: Record<RelevanceRow['flag'], string> = {
   match: 'Релевантно',

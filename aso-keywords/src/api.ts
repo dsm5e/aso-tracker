@@ -18,7 +18,7 @@ export interface AppStats {
   unranked: number;
   lastSnapshot: string | null;
   locales: string[];
-  weekDelta: { top10: number; top50: number; avg: number; ranked: number };
+  weekDelta: { top10: number | null; top50: number | null; avg: number | null; ranked: number | null };
   winners: Array<{ kw: string; delta: number; from: number; to: number }>;
   losers: Array<{ kw: string; delta: number; from: number; to: number }>;
   history: { top10: number[]; top50: number[]; unranked: number[]; avg: number[] };
