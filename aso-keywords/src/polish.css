@@ -98,3 +98,13 @@
 .competitors-list { grid-template-columns: minmax(0, 1fr); }
 .competitors-list button { min-width: 0; }
 .competitors-list button small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Positions: resizable columns ---------- */
+.pt-table th { position: sticky; }
+.pt-resizer { position: absolute; top: 8px; right: -5px; bottom: 8px; z-index: 4; width: 10px; cursor: col-resize; touch-action: none; }
+.pt-resizer::after { content: ''; position: absolute; top: 0; bottom: 0; left: 4px; width: 2px; border-radius: 1px; background: transparent; transition: background .12s ease; }
+.pt-table th:hover .pt-resizer::after { background: var(--ds-dim); }
+.pt-resizer:hover::after, body.pt-resizing .pt-resizer:hover::after { background: var(--ds-accent); }
+body.pt-resizing, body.pt-resizing * { cursor: col-resize !important; user-select: none !important; }
+/* top-5: five 30px icons always fit; never clip the last one */
+.pt-table td .top-apps { min-width: 0; flex-wrap: nowrap; }

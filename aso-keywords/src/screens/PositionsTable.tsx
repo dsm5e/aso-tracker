@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import Icon from '../components/Icon';
 import { useDismiss } from '../components/useDismiss';
 import StorefrontSelect, { type StorefrontPreset } from '../components/StorefrontSelect';
@@ -31,7 +31,7 @@ const COLUMNS: ColumnDef[] = [
   { id: 'chance', label: 'Шанс', width: 76, align: 'right' },
   { id: 'opp', label: 'Возможность', width: 112, align: 'right' },
   { id: 'total', label: 'Результатов', width: 108, align: 'right' },
-  { id: 'top5', label: 'Топ‑5', width: 176 },
+  { id: 'top5', label: 'Топ‑5', width: 204 },
   { id: 'tags', label: 'Теги', width: 160 },
   { id: 'note', label: 'Заметка', width: 200 },
   { id: 'updated', label: 'Обновлено', width: 120 },
@@ -42,10 +42,14 @@ const ROW_H = 44;
 const OVERSCAN = 10;
 const VIRTUALIZE_AFTER = 200;
 
-interface Layout { order: ColId[]; hidden: ColId[]; sort: { by: SortId; dir: 1 | -1 } }
+type WidthId = ColId | 'keyword';
+interface Layout { order: ColId[]; hidden: ColId[]; sort: { by: SortId; dir: 1 | -1 }; widths: Partial<Record<WidthId, number>> }
+const KEYWORD_W = 260;
+const MIN_COL_W = 56;
+const MAX_COL_W = 520;
 const layoutKey = (appId: string) => `aso-keywords.positions-layout.v1.${appId}`;
 function loadLayout(appId: string): Layout {
-  const fallback: Layout = { order: COLUMNS.map((column) => column.id), hidden: DEFAULT_HIDDEN, sort: { by: 'rank', dir: 1 } };
+  const fallback: Layout = { order: COLUMNS.map((column) => column.id), hidden: DEFAULT_HIDDEN, sort: { by: 'rank', dir: 1 }, widths: {} };
   try {
     const raw = JSON.parse(localStorage.getItem(layoutKey(appId)) || 'null') as Partial<Layout> | null;
     if (!raw) return fallback;
@@ -53,7 +57,11 @@ function loadLayout(appId: string): Layout {
     const order = [...known, ...COLUMNS.map((column) => column.id).filter((id) => !known.includes(id))];
     const hidden = (raw.hidden ?? DEFAULT_HIDDEN).filter((id): id is ColId => BY_ID.has(id as ColId));
     const sort = raw.sort && (raw.sort.by === 'keyword' || BY_ID.has(raw.sort.by as ColId)) ? raw.sort : fallback.sort;
-    return { order, hidden, sort };
+    const widths: Layout['widths'] = {};
+    for (const [id, value] of Object.entries(raw.widths ?? {})) {
+      if ((id === 'keyword' || BY_ID.has(id as ColId)) && typeof value === 'number') widths[id as WidthId] = Math.min(MAX_COL_W, Math.max(MIN_COL_W, value));
+    }
+    return { order, hidden, sort, widths };
   } catch {
     return fallback;
   }
@@ -392,7 +400,40 @@ export default function PositionsTable({
   };
 
   const tags = data?.palette ?? [];
-  const tableWidth = 44 + 260 + visible.reduce((sum, column) => sum + column.width, 0) + 76;
+  const widthOf = (id: WidthId) => layout.widths[id] ?? (id === 'keyword' ? KEYWORD_W : BY_ID.get(id)!.width);
+  const tableWidth = 44 + widthOf('keyword') + visible.reduce((sum, column) => sum + widthOf(column.id), 0) + 76;
+  // Drag the right edge of a header to resize; double-click resets. Saved with the layout.
+  const startResize = (id: WidthId) => (event: ReactPointerEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const startX = event.clientX;
+    const startW = widthOf(id);
+    let latest = layout;
+    const move = (ev: PointerEvent) => {
+      const w = Math.round(Math.min(MAX_COL_W, Math.max(MIN_COL_W, startW + ev.clientX - startX)));
+      latest = { ...layout, widths: { ...layout.widths, [id]: w } };
+      setLayout(latest);
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      document.body.classList.remove('pt-resizing');
+      saveLayout(appId, latest);
+    };
+    document.body.classList.add('pt-resizing');
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  };
+  const resetWidth = (id: WidthId) => {
+    const widths = { ...layout.widths };
+    delete widths[id];
+    updateLayout({ ...layout, widths });
+  };
+  const resizer = (id: WidthId, label: string) => (
+    <span className="pt-resizer" role="separator" aria-orientation="vertical" aria-label={`Ширина колонки «${label}»`}
+      title="Потяните, чтобы изменить ширину · двойной клик — по умолчанию"
+      onPointerDown={startResize(id)} onDoubleClick={() => resetWidth(id)} onClick={(event) => event.stopPropagation()} />
+  );
   const sortMark = (by: SortId) => (layout.sort.by === by ? <Icon name={layout.sort.dir === 1 ? 'arrowUp' : 'arrowDown'} size={12} className="mx-sort-mark" /> : null);
   const storefront = storefrontOf(locale);
 
@@ -454,8 +495,8 @@ export default function PositionsTable({
         <table className="pt-table" style={{ width: tableWidth }}>
           <colgroup>
             <col style={{ width: 44 }} />
-            <col style={{ width: 260 }} />
-            {visible.map((column) => <col key={column.id} style={{ width: column.width }} />)}
+            <col style={{ width: widthOf('keyword') }} />
+            {visible.map((column) => <col key={column.id} style={{ width: widthOf(column.id) }} />)}
             <col style={{ width: 76 }} />
           </colgroup>
           <thead>
@@ -465,12 +506,14 @@ export default function PositionsTable({
               </th>
               <th className="pt-kw pt-sticky-1">
                 <button type="button" onClick={() => toggleSort('keyword')}>Ключевое слово {sortMark('keyword')}</button>
+                {resizer('keyword', 'Ключевое слово')}
               </th>
               {visible.map((column) => (
                 <th key={column.id} className={`pt-th-${column.align ?? 'left'} ${layout.sort.by === column.id ? 'pt-sorted' : ''}`}>
                   <button type="button" onClick={() => toggleSort(column.id)} {...tipProps(headerTips[column.id][0], headerTips[column.id][1])}>
                     {column.label}{column.id === 'pop' && pop?.pending ? <i className="pt-dot" aria-label="догружается" /> : null} {sortMark(column.id)}
                   </button>
+                  {resizer(column.id, column.label)}
                 </th>
               ))}
               <th aria-label="Действия" />
@@ -744,7 +787,7 @@ function ColumnMenu({ layout, onChange }: { layout: Layout; onChange: (layout: L
               </label>
             ))}
           </div>
-          <button type="button" className="ds-btn ds-btn-sm ds-btn-ghost" onClick={() => onChange({ ...layout, order: COLUMNS.map((column) => column.id), hidden: DEFAULT_HIDDEN })}>Сбросить колонки</button>
+          <button type="button" className="ds-btn ds-btn-sm ds-btn-ghost" onClick={() => onChange({ ...layout, order: COLUMNS.map((column) => column.id), hidden: DEFAULT_HIDDEN, widths: {} })}>Сбросить колонки</button>
         </div>
       )}
     </div>
