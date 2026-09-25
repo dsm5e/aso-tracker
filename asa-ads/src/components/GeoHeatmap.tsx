@@ -17,11 +17,15 @@ interface GeoRow {
 // The API reports unavailable money as null (partial data stays visible), not 0.
 function fmtUsd(n: number | null | undefined): string { return n == null ? "—" : `$${n.toFixed(2)}`; }
 
-const FLAGS: Record<string, string> = {
-  US: "🇺🇸", GB: "🇬🇧", CA: "🇨🇦", AU: "🇦🇺", DE: "🇩🇪", FR: "🇫🇷", IT: "🇮🇹", ES: "🇪🇸",
-  NL: "🇳🇱", CH: "🇨🇭", IL: "🇮🇱", SE: "🇸🇪", NO: "🇳🇴", DK: "🇩🇰", FI: "🇫🇮", JP: "🇯🇵",
-  TR: "🇹🇷", BR: "🇧🇷", MX: "🇲🇽", SA: "🇸🇦", KR: "🇰🇷", ID: "🇮🇩", TW: "🇹🇼", IE: "🇮🇪",
-};
+/** Regional-indicator flag for any ISO-3166 alpha-2 code (a fixed table left most countries flagless). */
+function flag(code: string): string {
+  const cc = code.toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc) || cc === "WW") return "🌐";
+  return String.fromCodePoint(...[...cc].map((c) => c.charCodeAt(0) + 127397));
+}
+
+/** Two rows of the grid before «Показать все»: the long tail is a few cents each. */
+const COLLAPSED = 16;
 
 const METRIC_LABEL = { spend: "Расход", installs: "Установки", cpi: "CPI", trials: "Триалы" } as const;
 
@@ -33,6 +37,7 @@ export default function GeoHeatmap({ days }: Props) {
   const { selected } = useApp();
   const [rows, setRows] = useState<GeoRow[]>([]);
   const [metric, setMetric] = useState<"spend" | "installs" | "cpi" | "trials">("spend");
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     api.geo(days, selected).then(setRows);
@@ -41,6 +46,8 @@ export default function GeoHeatmap({ days }: Props) {
   if (rows.length === 0) return null;
 
   const values = rows.map((r) => Number(r[metric] ?? 0));
+  const sorted = [...rows].sort((a, b) => Number(b[metric] ?? 0) - Number(a[metric] ?? 0));
+  const shown = showAll ? sorted : sorted.slice(0, COLLAPSED);
   const max = Math.max(...values, 0.0001);
 
   function intensity(v: number): number {
@@ -73,17 +80,17 @@ export default function GeoHeatmap({ days }: Props) {
         </div>
       </div>
       <div className="geo-grid">
-        {rows.map((r) => {
+        {shown.map((r) => {
           const v = Number(r[metric] ?? 0);
           return (
             <div
               key={r.country}
-              {...tipProps(`${FLAGS[r.country] ?? "🏳"} ${r.country}`, tipRows(r))}
+              {...tipProps(`${flag(r.country)} ${r.country}`, tipRows(r))}
               className="geo-cell"
               style={{ background: color(v) }}
             >
               <div className="geo-cell-head">
-                <span className="geo-flag">{FLAGS[r.country] ?? "🏳"}</span>
+                <span className="geo-flag">{flag(r.country)}</span>
                 <span className="geo-code">{r.country}</span>
                 <span className="geo-count">×{r.campaigns}</span>
               </div>
@@ -94,6 +101,11 @@ export default function GeoHeatmap({ days }: Props) {
           );
         })}
       </div>
+      {sorted.length > COLLAPSED && (
+        <button className="compact geo-more" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? "Свернуть" : `Показать все ${sorted.length}`}
+        </button>
+      )}
     </div>
   );
 }

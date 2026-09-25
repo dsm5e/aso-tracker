@@ -40,7 +40,7 @@ export default function Alerts({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <div><h1 className="ds-page-title">Оповещения</h1><p className="ds-page-sub">Контроль расхода, CPI и остановившихся кампаний</p></div>
+        <h1 className="ds-page-title" title="Контроль расхода, CPI и остановившихся кампаний">Оповещения</h1>
         <div className="controls">
           <button onClick={runCheck} disabled={checking}>{checking ? "Проверяем…" : "Проверить сейчас"}</button>
         </div>
@@ -74,7 +74,7 @@ export default function Alerts({ reloadKey }: Props) {
           <tbody>
             {rows.map((a) => (
               <tr key={a.id}>
-                <td className="muted nowrap">{new Date(a.sent_at).toLocaleString()}</td>
+                <td className="muted nowrap">{new Date(a.sent_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
                 <td><span className="badge">{a.alert_type}</span></td>
                 <td dangerouslySetInnerHTML={{ __html: a.message }} />
                 <td>

@@ -3,6 +3,7 @@ import { api, asaApiUrl, type DataQualityPayload } from '../api.ts';
 import { keywordsApiUrl, type RankingRow } from '../lib/keywordsApi.ts';
 import type { ShareEstimate, TrafficIntelligencePayload, TrafficKeywordInput } from './TrafficIntelligence.tsx';
 import DataQuality from '../components/DataQuality.tsx';
+import { useFoldOnScroll } from '../components/FillPage.tsx';
 import KeywordResultsDrawer, { KeywordTopFiveInline } from '../components/KeywordResultsDrawer.tsx';
 import { appStoreCountry } from '../lib/appStoreLocales.ts';
 import './DecisionMatrix.css';
@@ -667,6 +668,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
   const [selected, setSelected] = useState<DecisionRow | null>(null);
   const [resultsRow, setResultsRow] = useState<DecisionRow | null>(null);
   const requestKey = `${app.id}:${app.iTunesId}:${countryScope}:${refresh}`;
+  const [compactHeader, workspaceRef] = useFoldOnScroll();
   const top5ContextLocale = locale.toLocaleLowerCase();
   const localeCountry = appStoreCountry(locale);
   const top5Country = countryScope === 'all' || countryScope.toLocaleLowerCase() === localeCountry
@@ -832,11 +834,11 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
   }
 
   return (
-    <main className={`decision-workspace ${className}`.trim()}>
+    <main ref={workspaceRef} className={`decision-workspace ${compactHeader ? 'is-compact' : ''} ${className}`.trim()}>
       <header className="decision-header">
         <div>
           <div className="decision-title-line"><h1 className="ds-page-title">Матрица ключей</h1>{stale ? <span className="decision-stale">Устаревший снимок</span> : null}</div>
-          <p className="ds-page-sub">Apple Ads · только чтение · {app.name} · {countryScope === 'all' ? 'все страны' : `${countryName(countryScope)} (${countryScope.toUpperCase()})`} · {app.bundle}</p>
+          <p className="ds-page-sub fold" title={`Apple Ads · только чтение · ${app.bundle}`}>{app.name} · {countryScope === 'all' ? 'все страны' : `${countryName(countryScope)} (${countryScope.toUpperCase()})`} · только чтение</p>
         </div>
         <div className="decision-header-actions">
           <label className="decision-country-select">
@@ -851,12 +853,12 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
         </div>
       </header>
 
-      <section className="decision-rules" aria-label="Правила решений">
+      <section className="decision-rules fold" aria-label="Правила решений">
         <div><strong>Высокий спрос</strong><span>популярность ≥{HIGH_DEMAND}</span></div>
         <div><strong>Низкая доля</strong><span>захвачено &lt;{LOW_SHARE}%</span></div>
         <div><strong>Высокая доля</strong><span>захвачено ≥{HIGH_SHARE}%</span></div>
         <div><strong>Изменение ставки</strong><span>тест 10–20%</span></div>
-        <p>Масштабирование и сокращение требуют наблюдаемой зрелой экономики. Популярность Apple — индекс, доля передаётся диапазоном или моделью; это не абсолютный объём поиска.</p>
+        <p title="Масштабирование и сокращение требуют наблюдаемой зрелой экономики. Популярность Apple — индекс, доля передаётся диапазоном или моделью; это не абсолютный объём поиска.">Масштабирование и сокращение требуют наблюдаемой зрелой экономики. Популярность Apple — индекс, доля передаётся диапазоном или моделью; это не абсолютный объём поиска.</p>
       </section>
 
       {loading ? <div className="decision-loading"><span /><strong>Собираем спрос, долю и фактические показатели…</strong></div> : null}
@@ -868,7 +870,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
 
       {!loading && !traffic.error ? (
         <>
-          <section className="decision-summary" aria-label="Итоги среза">
+          <section className="decision-summary fold" aria-label="Итоги среза">
             <article><span>Страны</span><strong>{formatInteger(finite(summary?.countries))}</strong><small>{countryScope === 'all' ? 'в агрегате' : 'выбрана одна'}</small></article>
             <article><span>Активные ключи</span><strong>{formatInteger(finite(summary?.keywords))}</strong><small>текущий аккаунт</small></article>
             <article><span>Установки Adapty</span><strong>{formatInteger(finite(summary?.attributedInstalls))}</strong><small>Apple Ads attribution</small></article>

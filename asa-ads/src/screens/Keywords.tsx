@@ -7,6 +7,7 @@ import BulkApplyConfirm from "../components/BulkApplyConfirm.tsx";
 import { exportRows } from "../lib/csv.ts";
 import { campaignDisplayName } from "../lib/campaignNames.ts";
 import Dropdown from "../components/Dropdown.tsx";
+import FillPage from "../components/FillPage.tsx";
 
 interface Props { reloadKey: number }
 
@@ -189,50 +190,47 @@ export default function Keywords({ reloadKey }: Props) {
   const selectedWithRec = [...selected].filter((id) => recMap.has(id)).length;
 
   return (
-    <>
+    <FillPage>
       <div className="topbar">
-        <div><h1 className="ds-page-title">Ключевые слова</h1><p className="ds-page-sub">Все страны выбранного приложения · ставки меняются только после подтверждения</p></div>
+        <h1 className="ds-page-title" title="Все страны выбранного приложения · ставки меняются только после подтверждения">Ключевые слова</h1>
         <div className="controls">
           <input type="text" aria-label="Поиск ключевых слов" placeholder="Найти ключ или кампанию" value={filter} onChange={(e) => setFilter(e.target.value)} />
-          <div className="ds-seg" title="Filter by keyword status">
+          <div className="ds-seg" title="Фильтр по статусу ключа">
             <button className={statusFilter === "all" ? "on" : ""} onClick={() => setStatusFilter("all")}>Все {rows.length}</button>
             <button className={statusFilter === "active" ? "on" : ""} onClick={() => setStatusFilter("active")}>Активные {counts.active}</button>
             <button className={statusFilter === "paused" ? "on" : ""} onClick={() => setStatusFilter("paused")}>Пауза {counts.paused}</button>
           </div>
-          {counts.orphan > 0 && (
-            <span className="badge warn" title="Активные ключи в неработающих кампаниях; расходов и показов по ним не будет.">⚠ без показа: {counts.orphan}</span>
-          )}
           <Dropdown ariaLabel="Сортировка" value={sortBy} onChange={(v) => setSortBy(v as typeof sortBy)} options={[{ value: "spend", label: "↓ Расход" }, { value: "installs", label: "↓ Установки" }, { value: "cpt", label: "↓ CPT" }, { value: "imp", label: "↓ Показы" }]} />
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 3, label: "3 дня" }, { value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }]} />
-          <button onClick={() => exportRows(
-            `keywords-${new Date().toISOString().slice(0, 10)}.csv`,
-            ["text", "campaign_name", "country", "match_type", "bid", "status", "impressions", "taps", "installs", "spend", "cpt"],
-            filtered as unknown as Array<Record<string, unknown>>,
-          )}>Экспорт CSV</button>
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-toolbar card-toolbar-flush">
-          <div>
-            <strong>{recs.length}</strong> рекомендаций
-            {selected.size > 0 && <> · выбрано с рекомендацией: {selectedWithRec}</>}
-            <div className="note">Отметьте ключи или выберите группой справа — ставки меняются только после подтверждения.</div>
-          </div>
-          <div className="btn-group">
-            <button className="compact" onClick={() => selectByConfidence("high")} title="Только рекомендации с высокой уверенностью (winners)">Только надёжные</button>
-            <button className="compact" onClick={() => selectAllVisible(true)} title="Все ключи у которых есть рекомендация">Все с рекомендацией</button>
-            <button className="compact" onClick={() => setSelected(new Set())} disabled={selected.size === 0}>Снять выбор</button>
-            <button
-              className="compact primary"
-              disabled={selectedWithRec === 0 || bulkRunning}
-              onClick={requestBulkApply}
-              title="Покажет окно с прогнозом impact и подтверждением перед применением"
-            >
-              {bulkRunning ? `Применяю… (${selected.size})` : `Применить выбранные (${selectedWithRec})`}
-            </button>
-          </div>
+      <div className="list-bar">
+        <span className="list-bar-count" title="Отметьте ключи или выберите группой — ставки меняются только после подтверждения.">
+          <b>{recs.length}</b> рекомендаций{selected.size > 0 && <> · выбрано: <b>{selectedWithRec}</b></>}
+        </span>
+        <div className="btn-group">
+          <button className="compact" onClick={() => selectByConfidence("high")} title="Только рекомендации с высокой уверенностью">Только надёжные</button>
+          <button className="compact" onClick={() => selectAllVisible(true)} title="Все ключи, у которых есть рекомендация">Все с рекомендацией</button>
+          <button className="compact" onClick={() => setSelected(new Set())} disabled={selected.size === 0}>Снять выбор</button>
+          <button
+            className="compact primary"
+            disabled={selectedWithRec === 0 || bulkRunning}
+            onClick={requestBulkApply}
+            title="Покажет окно с прогнозом и подтверждением перед применением"
+          >
+            {bulkRunning ? `Применяю… (${selected.size})` : `Применить (${selectedWithRec})`}
+          </button>
         </div>
+        <span className="spacer" />
+        {counts.orphan > 0 && (
+          <span className="badge warn" title="Активные ключи в неработающих кампаниях; расходов и показов по ним не будет.">без показа: {counts.orphan}</span>
+        )}
+        <button className="compact" title="Экспорт отфильтрованных ключей в CSV" onClick={() => exportRows(
+          `keywords-${new Date().toISOString().slice(0, 10)}.csv`,
+          ["text", "campaign_name", "country", "match_type", "bid", "status", "impressions", "taps", "installs", "spend", "cpt"],
+          filtered as unknown as Array<Record<string, unknown>>,
+        )}>CSV</button>
       </div>
 
       {pendingChange && (
@@ -270,7 +268,7 @@ export default function Keywords({ reloadKey }: Props) {
               </th>
               <th>Ключевое слово</th>
               <th>Кампания</th>
-              <th>Тип соответствия</th>
+              <th title="Тип соответствия">Тип</th>
               <th>Статус</th>
               <th className="num">Ставка</th>
               <th className="num">Показы</th>
@@ -353,6 +351,6 @@ export default function Keywords({ reloadKey }: Props) {
         </table>
         </div>
       )}
-    </>
+    </FillPage>
   );
 }

@@ -108,9 +108,9 @@ export default function Profitability({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <div><h1 className="ds-page-title">Экономика</h1><p className="ds-page-sub">Все страны выбранного приложения · факт выручки и прогноз показываются раздельно</p></div>
+        <h1 className="ds-page-title" title={`Все страны выбранного приложения · факт выручки и прогноз показываются раздельно · ${hasRevenue ? "расход Apple Ads × атрибуция Adapty" : "расход Apple Ads × триалы App Store Connect"}`}>Экономика</h1>
         <div className="controls">
-          <span className="meta">{hasRevenue ? "Расход Apple Ads × атрибуция Adapty" : "Расход Apple Ads × триалы App Store Connect"}</span>
+          <span className="meta">{hasRevenue ? "Apple Ads × Adapty" : "Apple Ads × App Store Connect"}</span>
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }, { value: 90, label: "90 дней" }]} />
         </div>
       </div>
@@ -125,7 +125,7 @@ export default function Profitability({ reloadKey }: Props) {
         {hasRevenue ? (
           <Sparkline title="ROAS" value={t.roas > 0 ? `${(t.roas * 100).toFixed(0)}%` : "—"} data={dailyRoas} labels={dates} color="var(--ds-c3)" format={fmtPct} />
         ) : (
-          <Sparkline title="Цена триала" value={t.cpt > 0 ? fmtUsd(t.cpt) : "—"} data={dailyCpt} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
+          <Sparkline title="Цена триала" lowerIsBetter value={t.cpt > 0 ? fmtUsd(t.cpt) : "—"} data={dailyCpt} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
         )}
         <Sparkline title="Установки" value={String(t.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--ds-c4)" format={(n) => String(Math.round(n))} />
       </div>
@@ -193,7 +193,7 @@ export default function Profitability({ reloadKey }: Props) {
       <p className="note">{hasRevenue ? "Триалы из Apple Ads по атрибуции Adapty (страна профиля). " : ""}Страны с расходом от ${MIN_CHART_SPEND}; остальные — в «Прочие».</p>
       {revError && <div className="callout bad callout-block">Adapty недоступен ({revError}) — триалы и выручка показаны без атрибуции. Обновите страницу через минуту.</div>}
       {!hasRevenue && merged.length > 0 && (
-        <div className="note section-foot">
+        <div className="callout warn callout-block">
           Нет атрибуции Adapty для этого выбора: триалы — все старты триала App Store Connect в стране, включая органику,
           поэтому цена триала здесь занижена. Точная цена триала из Apple Ads — у приложения с подключённым Adapty (выберите его слева).
         </div>
@@ -217,7 +217,7 @@ export default function Profitability({ reloadKey }: Props) {
       </div>
 
       {merged.length > 0 && (
-        <div className="table-wrap">
+        <div className="table-wrap table-tall">
         <table>
           <thead>
             <tr>

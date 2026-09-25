@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type ActionRow } from "../api.ts";
+import FillPage from "../components/FillPage.tsx";
 
 interface Props { reloadKey: number }
 
@@ -38,6 +39,23 @@ function summarizePayload(payload: string): string {
   }
 }
 
+/** Apple readback as words; the raw JSON stays in the cell tooltip. */
+function summarizeResult(result: string | null, error: string | null): string {
+  if (error) return error;
+  if (!result) return "—";
+  try {
+    const r = JSON.parse(result) as { verified?: unknown };
+    if (r.verified === true) return "подтверждено Apple";
+    if (r.verified === false) return "не подтверждено";
+  } catch { /* not JSON — show as is */ }
+  return result;
+}
+
+/** "24.09.2026, 14:10" — same-length timestamps keep the column steady. */
+function fmtWhen(iso: string): string {
+  return new Date(iso).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
 export default function Actions({ reloadKey }: Props) {
   const [rows, setRows] = useState<ActionRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,9 +88,10 @@ export default function Actions({ reloadKey }: Props) {
   }
 
   return (
-    <>
+    <FillPage>
       <div className="topbar">
-        <div><h1 className="ds-page-title">Очередь действий</h1><p className="ds-page-sub">Все изменения проходят через подтверждение, журнал и readback Apple Ads</p></div>
+        <h1 className="ds-page-title" title="Все изменения проходят через подтверждение, журнал и readback Apple Ads">Очередь действий</h1>
+        {rows.length > 0 && <span className="meta">{rows.length} записей</span>}
       </div>
       {loading ? <div className="data-state loading">Загружаем очередь…</div> : rows.length === 0 ? (
         <div className="empty">Очередь пуста. Действия появятся здесь после подтверждения на экранах ключевых слов и поисковых запросов.</div>
@@ -81,13 +100,13 @@ export default function Actions({ reloadKey }: Props) {
         <table className="actions-table">
           <thead>
             <tr>
-              <th>ID</th><th>Тип</th><th>Параметры</th><th>Статус</th><th>Создано</th><th>Применено</th><th>Результат</th><th />
+              <th>ID</th><th>Тип</th><th>Параметры</th><th>Статус</th><th>Создано → применено</th><th>Результат</th><th />
             </tr>
           </thead>
           <tbody>
             {rows.map((a) => (
               <tr key={a.id} className={flashed.has(a.id) ? "flash" : ""}>
-                <td>#{a.id}</td>
+                <td className="muted">#{a.id}</td>
                 <td><span className="badge" title={a.type}>{ACTION_LABEL[a.type] ?? a.type}</span></td>
                 <td className="cell-clip" title={a.payload}>
                   {summarizePayload(a.payload)}
@@ -97,9 +116,14 @@ export default function Actions({ reloadKey }: Props) {
                     {STATUS_LABEL[a.status] ?? a.status}
                   </span>
                 </td>
-                <td className="muted nowrap">{new Date(a.created_at).toLocaleString()}</td>
-                <td className="muted nowrap">{a.applied_at ? new Date(a.applied_at).toLocaleString() : "—"}</td>
-                <td className="muted cell-clip" title={a.result ?? a.error ?? undefined}>{a.result ?? a.error ?? "—"}</td>
+                <td
+                  className="muted nowrap"
+                  title={`Создано: ${new Date(a.created_at).toLocaleString("ru-RU")}${a.applied_at ? `\nПрименено: ${new Date(a.applied_at).toLocaleString("ru-RU")}` : ""}`}
+                >
+                  {fmtWhen(a.created_at)}
+                  {a.applied_at && fmtWhen(a.applied_at) !== fmtWhen(a.created_at) && <> → {fmtWhen(a.applied_at).slice(-5)}</>}
+                </td>
+                <td className="muted cell-clip cell-flex" title={a.result ?? a.error ?? undefined}>{summarizeResult(a.result, a.error)}</td>
                 <td className="nowrap">
                   {a.status === "pending" && (
                     <div className="btn-group">
@@ -114,6 +138,6 @@ export default function Actions({ reloadKey }: Props) {
         </table>
         </div>
       )}
-    </>
+    </FillPage>
   );
 }

@@ -1,0 +1,354 @@
+/* Adapty-style polish for the Ads product (loaded last, see main.tsx).
+   No hard dividers: surfaces separate by tone, shadow and spacing; tables read
+   by a soft header band and alternating rows instead of grid lines.
+   Same approach as aso-keywords/src/polish.css. */
+
+.app {
+  /* every divider in the product is drawn with these — retire them in one place.
+     ds-bridge.css resolves --line / --line-soft on :root, so re-declare them here */
+  --ds-hairline: transparent;
+  --line: transparent;
+  --line-soft: transparent;
+  --ds-head-bg: var(--ds-panel-2);
+  --ds-row-alt: color-mix(in srgb, var(--ds-panel-2) 55%, var(--ds-panel));
+}
+
+/* ---------- shell ---------- */
+.sidebar { box-shadow: 1px 0 0 0 color-mix(in srgb, var(--ds-panel-2) 60%, transparent); }
+.sidebar .status { padding-top: 8px; }
+
+/* ---------- page header: title + controls in one row, no rule under it ---------- */
+.topbar {
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.topbar > .ds-page-title { margin: 0; font-size: 20px; line-height: 28px; white-space: nowrap; cursor: default; }
+.topbar > div:first-child .ds-page-title { font-size: 20px; line-height: 28px; }
+.topbar .controls { margin-left: auto; flex-wrap: wrap; }
+.topbar .controls input[type=text] { width: clamp(160px, 16vw, 240px); }
+.topbar > .meta { margin-left: auto; }
+.back-link { margin-bottom: 2px; }
+
+/* section titles sit closer to their content */
+.ds-h2 { margin-top: 28px; }
+.ds-h2 + .card, .ds-h2 + .table-wrap, .ds-h2 + .spark-row { margin-top: 12px; }
+.section-head { margin: 28px 0 12px; }
+.section-head .ds-h2 { display: flex; align-items: center; gap: 2px; margin: 0; }
+
+/* ---------- list screens: fill the viewport, the table scrolls inside its card ---------- */
+.main:has(> .page-fill) { padding-bottom: 24px; }
+.page-fill { display: flex; flex-direction: column; height: calc(100vh - 48px); min-height: 480px; }
+.page-fill > * { flex: none; }
+.page-fill > .table-wrap { flex: 0 1 auto; min-height: 0; }
+.page-fill > .data-state, .page-fill > .empty { flex: 1 1 auto; }
+.page-fill > .section-head { margin: 4px 0 12px; }
+.page-fill > .section-head .ds-h2 { font-size: 16px; line-height: 24px; }
+
+/* folding summary: collapses while the list is scrolled */
+.fold { max-height: 96px; transition: max-height .2s ease, opacity .15s ease, margin .2s ease, padding .2s ease; }
+.is-compact .fold { max-height: 0; margin-top: 0; margin-bottom: 0; padding-top: 0; padding-bottom: 0; overflow: clip; opacity: 0; }
+
+/* compact stat line (Command center) — replaces a two-row KPI card grid */
+.stat-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  padding: 10px 16px;
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-panel);
+  box-shadow: var(--ds-shadow);
+}
+.stat-tile > span { display: inline-flex; align-items: center; color: var(--ds-muted); font-size: 13px; line-height: 18px; font-weight: 500; white-space: nowrap; }
+.stat-tile > b { color: var(--ds-strong); font-size: 20px; line-height: 26px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stat-tile > b.good { color: var(--ds-good); }
+.stat-tile > b.bad { color: var(--ds-bad); }
+.stat-tile > b.warn { color: var(--ds-warn); }
+.stat-tile > b.muted { color: var(--ds-muted); font-size: 16px; }
+.stat-tile .info-tooltip-trigger { width: 16px; height: 16px; min-height: 16px; font-size: 11px; }
+
+/* one-line page stats (Negatives) */
+.page-stats {
+  display: flex;
+  align-items: baseline;
+  gap: 4px 20px;
+  margin: -4px 0 12px;
+  color: var(--ds-muted);
+  font-size: 13px;
+  line-height: 20px;
+  white-space: nowrap;
+}
+.page-stats b { margin-left: 4px; color: var(--ds-strong); font-weight: 600; }
+.page-stats-note { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* action row above a table (Keywords: selection + bulk apply + export) */
+.list-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin: 0 0 12px;
+  min-height: var(--ds-control-h-sm);
+  color: var(--ds-muted);
+  font-size: 13px;
+}
+.list-bar-count { color: var(--ds-muted); white-space: nowrap; cursor: default; }
+.list-bar-count b { color: var(--ds-strong); font-weight: 600; }
+.list-bar .btn-group { flex-wrap: nowrap; }
+
+/* ---------- tables: soft card, header band, zebra rows ---------- */
+.table-wrap { border: 0; background: var(--ds-panel); box-shadow: var(--ds-shadow); }
+.card .table-wrap { box-shadow: none; }
+:where(table):not(:where(.kw-scope *)) { border: 0; }
+:where(th):not(:where(.kw-scope *)) {
+  height: 40px;
+  padding: 0 12px;
+  background: var(--ds-head-bg);
+  border-bottom: 0;
+  color: var(--ds-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+:where(td):not(:where(.kw-scope *)) { border-bottom: 0; }
+/* zebra ignores the inserted expand rows so the rhythm survives opening one */
+table:not(:where(.kw-scope *)) > tbody > tr:nth-child(even of :not(.expand-row)) > td { background: var(--ds-row-alt); }
+table:not(:where(.kw-scope *)) > tbody > tr:not(.expand-row):hover > td { background: var(--ds-accent-soft); }
+table:not(:where(.kw-scope *)) > tbody > tr.expanded > td { background: var(--ds-accent-soft); }
+table:not(:where(.kw-scope *)) > tbody > tr.tot > td,
+table:not(:where(.kw-scope *)) > tbody > tr.total > td { background: var(--ds-row-total); }
+.expand-row > td { border-bottom: 0; }
+th .info-tooltip-trigger { width: 16px; height: 16px; min-height: 16px; font-size: 11px; }
+
+/* long cells: one line, full text in the title tooltip */
+.cell-clip { max-width: 260px; }
+.keywords-table .cell-clip { max-width: 240px; }
+.rec-cell { max-width: 300px; }
+td.cell-campaign { max-width: 170px; }
+td.col-reason { min-width: 0; max-width: 340px; }
+td.cell-organic { max-width: 420px; }
+td.cell-organic .small { white-space: nowrap; }
+.actions-table td.cell-clip:not(.cell-flex) { max-width: 240px; }
+
+/* ---------- cards / tiles ---------- */
+.card h3 { margin-bottom: 6px; }
+.geo-cell { box-shadow: none; }
+.drawer-head, .dialog-head { border-bottom: 0; padding-bottom: 4px; }
+
+/* ---------- Settings → API explorer / sources ---------- */
+.api-live-list, .api-catalog-list { border-top: 0; }
+.api-method { border-bottom: 0; padding: 10px 12px; border-radius: var(--ds-radius-inner); }
+.api-method:nth-child(even) { background: var(--ds-row-alt); }
+.source-status { border: 0; background: var(--ds-panel-2); }
+
+/* ---------- second pass ---------- */
+/* every header row is one control tall, with or without controls */
+.topbar { min-height: var(--ds-control-h); }
+.stat-tile { flex: 1 1 0; }
+/* a flexible clipped column takes whatever width is left and ellipsizes into it */
+td.cell-flex { width: 100%; min-width: 120px; max-width: 0; }
+.geo-more { margin-top: 12px; }
+
+/* ======================================================================
+   Keyword screens (Матрица ключей, Трафик) — moved in from Keywords with
+   8.75–11.5px type and 1px grids. Same soft look + readable type here.
+   ====================================================================== */
+.kw-scope {
+  --line: transparent;
+  --ds-hairline: transparent;
+}
+/* one viewport tall: the list scrolls inside, the header stays and folds */
+.kw-screen { height: 100vh; min-height: 0; }
+.kw-screen-context { padding: 8px 20px; border-bottom: 0; background: var(--ds-bg); }
+.kw-screen-note { border: 0; box-shadow: var(--ds-shadow); }
+.kw-screen .ds-page-title { font-size: 20px; line-height: 28px; }
+
+/* shared soft card for the formerly bordered panels */
+.decision-rules, .decision-summary article, .decision-panel, .decision-quality,
+.traffic-scope-summary, .traffic-kpi, .traffic-panel, .traffic-discovery-intro,
+.data-quality { border: 0; box-shadow: var(--ds-shadow); }
+
+/* ---------- Матрица ключей ---------- */
+.decision-workspace { display: flex; flex-direction: column; padding: 12px 20px 12px; font-size: 13px; }
+.decision-workspace > * { flex: none; }
+.decision-header { min-height: 0; align-items: center; padding: 0 0 12px; }
+.decision-header .ds-page-sub { margin-top: 2px; font-size: 13px; line-height: 20px; }
+.decision-stale { border: 0; font-size: 12px; }
+
+/* rules legend: one light row instead of a boxed four-cell grid */
+.decision-rules {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 20px;
+  margin-bottom: 12px; padding: 10px 14px; overflow: hidden;
+}
+.decision-rules > div { min-height: 0; padding: 0; border: 0; display: flex; gap: 6px; align-items: baseline; }
+.decision-rules strong, .decision-rules span { display: inline; }
+.decision-rules strong { color: var(--ds-muted); font-size: 13px; font-weight: 500; }
+.decision-rules strong::after { content: ":"; }
+.decision-rules span { margin: 0; font-size: 13px; font-weight: 600; }
+.decision-rules p { flex: 1 1 100%; min-width: 0; padding: 0; border: 0; background: none; color: var(--ds-subtle); font-size: 12px; line-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* summary: separate soft tiles instead of a divided strip */
+.decision-summary { gap: 8px; margin-bottom: 12px; border: 0; background: none; box-shadow: none; overflow: visible; }
+.decision-summary article { min-height: 0; padding: 10px 14px; border: 0; border-radius: var(--ds-radius-card); background: var(--ds-panel); }
+.decision-summary span { color: var(--ds-muted); font-size: 13px; line-height: 18px; }
+.decision-summary strong { margin-top: 2px; font-size: 20px; line-height: 26px; font-weight: 600; }
+.decision-summary small { margin-top: 2px; font-size: 12px; line-height: 16px; color: var(--ds-subtle); }
+.is-compact .decision-summary.fold { overflow: clip; }
+
+/* action filter chips: one height, readable */
+.decision-action-filters { gap: 6px; margin-bottom: 12px; padding: 0; }
+.decision-action-filters button { min-height: 32px; padding: 0 10px; border: 0; background: var(--ds-panel); box-shadow: var(--ds-shadow); color: var(--ds-text); font-size: 13px; font-weight: 500; }
+.decision-action-filters button:hover { background: var(--ds-accent-soft); }
+.decision-action-filters button span { min-width: 20px; min-height: 18px; background: var(--ds-panel-2); color: var(--ds-muted); font-size: 12px; }
+.decision-action-filters .decision-filter-active { box-shadow: none; font-weight: 600; }
+
+/* the table card takes the rest of the screen; rows scroll inside it */
+.decision-panel { flex: 1 1 auto; min-height: 320px; display: flex; flex-direction: column; }
+.decision-panel > * { flex: none; }
+.decision-panel-header { min-height: 0; padding: 12px 14px; border-bottom: 0; }
+.decision-panel-header h2 { font-size: 16px; line-height: 24px; font-weight: 600; letter-spacing: 0; }
+.decision-panel-header .decision-eyebrow { display: none; }
+.decision-scope-note { color: var(--ds-muted); font-size: 12px; }
+.decision-organic-loading { border-bottom: 0; font-size: 12px; }
+.decision-panel > .decision-table-scroll { flex: 1 1 auto; min-height: 0; max-height: none; }
+.decision-table { min-width: 2040px; }
+.decision-table th {
+  height: 40px; padding: 0 10px; border-bottom: 0;
+  background: var(--ds-panel-2); color: var(--ds-muted); font-size: 13px; font-weight: 600;
+}
+.decision-table th:first-child { background: var(--ds-panel-2); }
+.decision-table td { height: 60px; padding: 8px 10px; border-bottom: 0; color: var(--ds-text); font-size: 13px; line-height: 18px; }
+.decision-table td:first-child { box-shadow: none; }
+.decision-table tbody tr:nth-child(even) td { background: var(--ds-row-alt); }
+.decision-table tbody tr:hover td { background: var(--ds-accent-soft); }
+.decision-table td > strong { font-size: 13px; font-weight: 600; }
+.decision-table td > small { font-size: 12px; line-height: 16px; color: var(--ds-muted); }
+.decision-table th:first-child, .decision-table td:first-child { width: 250px; }
+.decision-table th:nth-child(2) { width: 130px; }
+.decision-table th:nth-child(3) { width: 200px; }
+.decision-table th:nth-child(4) { width: 110px; }
+.decision-table th:nth-child(5) { width: 190px; }
+.decision-table th:nth-child(6) { width: 130px; }
+.decision-table th:nth-child(7) { width: 180px; }
+.decision-table th:nth-child(8) { width: 200px; }
+.decision-table th:nth-child(9) { width: 140px; }
+.decision-table th:nth-child(10) { width: 140px; }
+.decision-table th:nth-child(11) { width: 220px; }
+.decision-keyword > span { min-width: 34px; font-size: 11px; letter-spacing: 0; border-radius: var(--ds-radius-inner); }
+.decision-keyword-open { font-size: 14px; font-weight: 600; }
+.decision-keyword small { font-size: 12px; color: var(--ds-muted); }
+.decision-demand { font-size: 14px !important; }
+.decision-no-data { font-size: 12px; }
+.decision-action { min-height: 20px; padding: 0 8px; font-size: 11px; }
+.decision-table td > .decision-action + small { margin-top: 4px; }
+.decision-footer { min-height: 0; padding: 10px 2px 0; color: var(--ds-muted); font-size: 12px; }
+.decision-quality { margin-top: 8px; }
+.decision-quality > summary { min-height: 36px; font-size: 13px; }
+.decision-notice { border: 0; }
+.decision-notice strong { font-size: 13px; }
+.decision-notice small { font-size: 12px; }
+.decision-loading strong, .decision-empty strong { font-size: 14px; }
+.decision-empty span { font-size: 13px; }
+
+/* ---------- Трафик ---------- */
+.traffic-header { min-height: 0; padding: 12px 20px 8px; background: var(--ds-bg); }
+.traffic-title-block .ds-page-sub { margin-top: 2px; font-size: 13px; line-height: 20px; }
+.traffic-stale-badge { font-size: 12px; }
+.traffic-tabs { height: 40px; gap: 4px; align-items: center; padding: 0 20px 4px; border-bottom: 0; background: var(--ds-bg); }
+.traffic-tabs button { height: 32px; padding: 0 12px; border: 0; border-radius: var(--ds-radius-inner); color: var(--ds-text); font-size: 14px; }
+.traffic-tabs button:hover { background: var(--ds-accent-soft); }
+.traffic-tabs button.traffic-tab-active { background: var(--ds-accent-soft); color: var(--ds-accent); font-weight: 600; }
+.traffic-tabs button span { font-size: 12px; }
+.traffic-content { padding: 8px 20px 24px; }
+
+.traffic-scope-summary { gap: 0; }
+.traffic-scope-summary > div { min-height: 0; padding: 10px 14px; border: 0; }
+.traffic-scope-summary span { color: var(--ds-muted); font-size: 13px; }
+.traffic-scope-summary strong { margin-top: 2px; color: var(--ds-strong); font-size: 14px; font-weight: 600; }
+.traffic-scope-summary > p { padding: 8px 14px; border: 0; background: var(--ds-panel-2); color: var(--ds-muted); font-size: 12px; line-height: 18px; }
+
+.traffic-kpi { min-height: 0; padding: 12px 14px; }
+.traffic-kpi-label { color: var(--ds-muted); font-size: 13px; }
+.traffic-kpi-label span { border: var(--ds-control-border); border-radius: var(--ds-radius-inner); font-size: 11px; }
+.traffic-kpi > strong { margin: 8px 0 4px; }
+.traffic-kpi > small { color: var(--ds-subtle); font-size: 12px; }
+
+.traffic-section-header { min-height: 0; padding: 12px 14px; border-bottom: 0; }
+.traffic-section-header h2, .traffic-discovery-intro h2 { font-size: 16px; line-height: 24px; font-weight: 600; }
+.traffic-section-header .traffic-eyebrow { display: none; }
+.traffic-muted, .traffic-discovery-intro p { font-size: 13px; line-height: 20px; }
+.traffic-row-count { color: var(--ds-muted); font-size: 13px; }
+.traffic-notice { border: 0; }
+.traffic-notice strong { font-size: 13px; }
+.traffic-notice small { font-size: 12px; }
+.traffic-discovery-intro > div + div { border: 0; }
+.traffic-discovery-rule strong { font-size: 13px; }
+.traffic-discovery-rule span { font-size: 12px; }
+
+.traffic-filters { min-height: 0; align-items: center; padding: 0 14px 12px; border-bottom: 0; background: none; }
+.traffic-formula-strip { min-height: 0; padding: 0 14px 10px; border-bottom: 0; color: var(--ds-subtle); font-size: 12px; }
+.traffic-formula-strip strong { color: var(--ds-muted); font-weight: 600; }
+
+.traffic-table { min-width: 1440px; }
+.traffic-table th { height: 40px; border-bottom: 0; background: var(--ds-panel-2); color: var(--ds-muted); font-size: 13px; font-weight: 600; }
+.traffic-table th:first-child { background: var(--ds-panel-2); }
+.traffic-table td { height: 52px; border-bottom: 0; font-size: 13px; }
+.traffic-table tbody tr:nth-child(even) td { background: var(--ds-row-alt); }
+.traffic-table tbody tr:hover td { background: var(--ds-accent-soft); }
+.traffic-table th:first-child, .traffic-table td:first-child { width: 240px; }
+.traffic-table th:nth-child(2) { width: 110px; }
+.traffic-table th:nth-child(3), .traffic-table th:nth-child(4) { width: 120px; }
+.traffic-table th:nth-child(5), .traffic-table th:nth-child(8) { width: 96px; }
+.traffic-table th:nth-child(6), .traffic-table th:nth-child(7) { width: 116px; }
+.traffic-table th:nth-child(9) { width: 220px; }
+.traffic-table th:nth-child(10) { width: 116px; }
+.traffic-keyword-cell strong { font-size: 14px; }
+.traffic-keyword-cell span { font-size: 12px; color: var(--ds-muted); }
+.traffic-cell-note { font-size: 12px; }
+.traffic-score { font-size: 12px; }
+.traffic-relevance-label { font-size: 11px; }
+.traffic-organic-loading, .traffic-organic-request { font-size: 12px; }
+.traffic-loading strong, .traffic-empty strong { font-size: 14px; }
+.traffic-loading small, .traffic-empty span { font-size: 13px; }
+
+/* data-quality list (both screens) */
+.data-quality-header, .data-quality-item { border-bottom: 0; }
+.data-quality-item:nth-child(even) { background: var(--ds-row-alt); }
+.traffic-kpi-label { white-space: nowrap; }
+.decision-table th { overflow: hidden; text-overflow: ellipsis; }
+/* the keyword table scrolls both ways inside its card once it reaches the top,
+   so the column header sticks and the horizontal scrollbar stays in view */
+.traffic-table-scroll { max-height: calc(100vh - 180px); }
+.traffic-table th { overflow: hidden; text-overflow: ellipsis; }
+.traffic-table th:nth-child(5), .traffic-table th:nth-child(8) { width: 140px; }
+/* hint bubbles: out of layout until hovered (an invisible ::after still widened
+   the scroll area and pushed a horizontal scrollbar), readable type, DS radius */
+.traffic-info-button { border-radius: var(--ds-radius-inner); }
+.traffic-info-button::after { display: none; font-size: 13px; line-height: 18px; border: 0; }
+.traffic-info-button:hover::after, .traffic-info-button:focus-visible::after { display: block; }
+.ds-h2 + p.note { margin: 0 0 12px; }
+.ds-h2 + p.note + .callout-block { margin-top: -4px; }
+/* 10px cell sides: a 1280 screen fits the list tables without a sideways scroll */
+:where(th):not(:where(.kw-scope *)) { padding: 0 10px; }
+:where(td):not(:where(.kw-scope *)) { padding: 10px; }
+/* campaign name + technical line: one line each, full name in the tooltip */
+td.cell-name { max-width: 380px; }
+td.cell-name > .row-link, td.cell-name > .cell-sub { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* campaign name and recommendation columns absorb the spare width and ellipsize */
+td.cell-name { width: 100%; min-width: 180px; max-width: 0; }
+td.cell-rec { width: 100%; min-width: 160px; max-width: 0; }
+td.cell-rec .rec-cell { max-width: 100%; }
+.col-bid { min-width: 0; }
+td.cell-kw { max-width: 200px; }
+/* long tables on scrolling pages: once scrolled into view the table fills the
+   screen and scrolls inside — the column header sticks, the sideways scrollbar stays visible */
+.table-wrap.table-tall { max-height: calc(100vh - 48px); }

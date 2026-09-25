@@ -9,6 +9,8 @@ import { AppProvider } from "./lib/AppContext.tsx";
 import "../../shared/ds.css";
 import "./styles.css";
 import "./ds-bridge.css";
+// Adapty-style polish (no dividers, soft tables, compact headers) — must load last.
+import "./polish.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

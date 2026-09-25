@@ -106,20 +106,18 @@ export default function CampaignDetail() {
       <div className="spark-row">
         <Sparkline title="Расход" value={fmtUsd(campaign.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--ds-c1)" format={fmtUsd} />
         <Sparkline title="Установки" value={String(campaign.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--ds-c2)" format={(n) => String(Math.round(n))} />
-        <Sparkline title="CPI" value={campaign.cpi > 0 ? fmtUsd(campaign.cpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
+        <Sparkline title="CPI" lowerIsBetter value={campaign.cpi > 0 ? fmtUsd(campaign.cpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
         <Sparkline title="Показы" value={String(campaign.impressions)} data={daily.map((d) => d.impressions)} labels={dates} color="var(--ds-c4)" format={(n) => String(Math.round(n))} />
       </div>
 
-      <div className="card">
-        <h3>Ключевые слова ({keywords.length}) · рекомендаций: {recs.length}</h3>
-      </div>
+      <h2 className="ds-h2">Ключевые слова · {keywords.length} <span className="muted">· рекомендаций: {recs.length}</span></h2>
 
-      <div className="table-wrap">
+      <div className="table-wrap table-tall">
       <table>
         <thead>
           <tr>
             <th>Ключевое слово</th>
-            <th>Тип соответствия</th>
+            <th title="Тип соответствия">Тип</th>
             <th>Статус</th>
             <th className="num">Ставка</th>
             <th className="num">Показы</th>
@@ -141,16 +139,16 @@ export default function CampaignDetail() {
             const delta = rec ? rec.recommended_bid - rec.current_bid : 0;
             return (
               <tr key={k.id}>
-                <td>{k.text}</td>
+                <td className="cell-clip cell-kw" title={k.text}>{k.text}</td>
                 <td><span className="badge">{k.match_type}</span></td>
-                <td><span className={`badge ${k.status === "ACTIVE" ? "ok" : "warn"}`}>{k.status.toLowerCase()}</span></td>
+                <td><span className={`badge ${k.status === "ACTIVE" ? "ok" : "warn"}`}>{k.status === "ACTIVE" ? "активен" : k.status === "PAUSED" ? "пауза" : k.status.toLowerCase()}</span></td>
                 <td className="num">{fmtUsd(k.bid)}</td>
                 <td className="num">{k.impressions}</td>
                 <td className="num">{k.taps}</td>
                 <td className="num">{k.installs}</td>
                 <td className="num">{k.cpt > 0 ? fmtUsd(k.cpt) : "—"}</td>
                 <td className="num">{fmtUsd(k.spend)}</td>
-                <td>
+                <td className="cell-rec">
                   {rec && !alreadyAtRec ? (
                     <span title={rec.reason} className="rec-cell">
                       <span className={`badge ${rec.confidence === "high" ? "ok" : rec.confidence === "medium" ? "warn" : ""}`}>

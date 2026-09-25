@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Keyword, type Projection } from "../api.ts";
 import Sparkline from "./Sparkline.tsx";
+import { verdictLabel } from "../lib/verdictLabel.ts";
 
 interface Props {
   keyword: Keyword;
@@ -66,6 +67,7 @@ export default function KeywordExpand({ keyword }: Props) {
           />
           <Sparkline
             title="CPT"
+            lowerIsBetter
             value={daily.length ? fmtUsd(daily.reduce((a, d) => a + d.spend, 0) / Math.max(1, daily.reduce((a, d) => a + d.taps, 0))) : "—"}
             data={daily.map((d) => d.cpt)}
             labels={daily.map((d) => d.date)}
@@ -88,7 +90,7 @@ export default function KeywordExpand({ keyword }: Props) {
 
         {loading || !proj ? <div className="loading">Считаем прогноз…</div> : (
           <>
-            <div className={`roi ${proj.verdict.kind}`}>{proj.verdict.label}</div>
+            <div className={`roi ${proj.verdict.kind}`}>{verdictLabel(proj.verdict.label)}</div>
             <div className="note kw-expand-block">{proj.verdict.reason}</div>
 
             {proj.next_step && (

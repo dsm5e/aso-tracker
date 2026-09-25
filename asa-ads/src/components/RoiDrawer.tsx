@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type Projection } from "../api.ts";
+import { verdictLabel } from "../lib/verdictLabel.ts";
 
 interface Props {
   campaignId: number;
@@ -56,7 +57,7 @@ export default function RoiDrawer({ campaignId, campaignName, onClose }: Props) 
             <div className="divider">Решение</div>
             <div className="drawer-block">
               <div className={`roi roi-lg ${proj.verdict.kind}`}>
-                {proj.verdict.label}
+                {verdictLabel(proj.verdict.label)}
               </div>
               <div className="note">
                 {proj.verdict.reason}

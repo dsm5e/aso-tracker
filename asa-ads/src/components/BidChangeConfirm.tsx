@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, type Keyword, type Projection } from "../api.ts";
 import { campaignDisplayName } from "../lib/campaignNames.ts";
+import { verdictLabel } from "../lib/verdictLabel.ts";
 
 interface Props {
   keyword: Keyword;
@@ -118,7 +119,7 @@ export default function BidChangeConfirm({ keyword, newBid, reason, onConfirm, o
         {loading ? <div className="loading">Считаем…</div> : projAvailable && proj ? (
           <div className="dialog-block">
             <div className="row dialog-verdict">
-              <span className={`roi ${proj.verdict.kind}`}>{proj.verdict.label}</span>
+              <span className={`roi ${proj.verdict.kind}`}>{verdictLabel(proj.verdict.label)}</span>
               <span className="note">{proj.verdict.reason}</span>
             </div>
             <div className="note">

@@ -3,6 +3,7 @@ import { api } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
 import { exportRows } from "../lib/csv.ts";
 import { campaignDisplayName } from "../lib/campaignNames.ts";
+import FillPage from "../components/FillPage.tsx";
 
 interface NegRow {
   id: number;
@@ -41,20 +42,19 @@ export default function Negatives() {
   }
 
   return (
-    <>
+    <FillPage>
       <div className="topbar">
-        <div><h1 className="ds-page-title">Минус-слова</h1><p className="ds-page-sub">Все страны выбранного приложения · защита от нерелевантных запросов и пересечения кампаний</p></div>
+        <h1 className="ds-page-title" title="Все страны выбранного приложения · защита от нерелевантных запросов и пересечения кампаний">Минус-слова</h1>
         <div className="controls">
           <input type="text" aria-label="Поиск минус-слов" placeholder="Найти слово или кампанию" value={filter} onChange={(e) => setFilter(e.target.value)} />
           <button onClick={doExport} disabled={filtered.length === 0}>Экспорт CSV</button>
         </div>
       </div>
 
-      <div className="card">
-        <div className="hint">
-          Минус-слова блокируют нерелевантные показы и пересечение владельцев ключей. Добавляются из поиска запросов или через подтверждённую очередь.
-          Всего: <strong>{rows.length}</strong>. По фильтру: <strong>{filtered.length}</strong>.
-        </div>
+      <div className="page-stats fold">
+        <span>Всего <b>{rows.length}</b></span>
+        {filter && <span>По фильтру <b>{filtered.length}</b></span>}
+        <span className="page-stats-note">Блокируют нерелевантные показы и пересечение владельцев ключей · добавляются из поисковых запросов или через подтверждённую очередь</span>
       </div>
 
       {loading ? <div className="data-state loading">Загружаем минус-слова…</div> : filtered.length === 0 ? (
@@ -65,7 +65,7 @@ export default function Negatives() {
           <thead>
             <tr>
               <th>Слово</th>
-              <th>Тип соответствия</th>
+              <th title="Тип соответствия">Тип</th>
               <th>Кампания</th>
               <th>Страна</th>
               <th>Добавлено</th>
@@ -77,9 +77,9 @@ export default function Negatives() {
               <tr key={r.id}>
                 <td><strong>{r.text}</strong></td>
                 <td><span className="badge">{r.match_type}</span></td>
-                <td className="muted">{r.campaign_name ? campaignDisplayName(r.campaign_name) : "—"}</td>
+                <td className="muted cell-clip" title={r.campaign_name ? campaignDisplayName(r.campaign_name) : undefined}>{r.campaign_name ? campaignDisplayName(r.campaign_name) : "—"}</td>
                 <td>{r.country === "WW" ? "Мультигео" : r.country ?? "—"}</td>
-                <td className="muted nowrap">{new Date(r.added_at).toLocaleString()}</td>
+                <td className="muted nowrap">{new Date(r.added_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
                 <td className="num muted">{r.remote_id ?? "—"}</td>
               </tr>
             ))}
@@ -87,6 +87,6 @@ export default function Negatives() {
         </table>
         </div>
       )}
-    </>
+    </FillPage>
   );
 }

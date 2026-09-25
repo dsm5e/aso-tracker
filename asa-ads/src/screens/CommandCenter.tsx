@@ -4,6 +4,7 @@ import { useApp } from "../lib/AppContext.tsx";
 import { exportRows } from "../lib/csv.ts";
 import InfoTooltip from "../components/InfoTooltip.tsx";
 import Dropdown from "../components/Dropdown.tsx";
+import FillPage from "../components/FillPage.tsx";
 
 interface Props { reloadKey: number }
 
@@ -72,18 +73,20 @@ export default function CommandCenter({ reloadKey }: Props) {
   }
 
   return (
-    <>
+    <FillPage>
       <div className="topbar">
-        <div>
-          <h1 className="ds-page-title">Матрица решений</h1>
-          <p className="ds-page-sub">
-            {shortAppName(shownApp?.app_name) ?? `Приложение ${appId}`} · страны × Apple Ads × органика × выручка
-            {selected === "all" && localApp === null ? " · выбрано по наибольшему расходу за 14 дней" : ""}
-          </p>
-        </div>
+        <h1
+          className="ds-page-title"
+          title={`${shortAppName(shownApp?.app_name) ?? `Приложение ${appId}`} · страны × Apple Ads × органика × выручка · источники: Apple Ads, Adapty, ASO${selected === "all" && localApp === null ? " · приложение выбрано по наибольшему расходу за 14 дней" : ""}`}
+        >
+          Матрица решений
+        </h1>
         <div className="controls">
-          <span className="meta">Источник: Apple Ads, Adapty, ASO</span>
-          {appOptions.length > 1 && <Dropdown ariaLabel="Приложение" value={appId} onChange={pickApp} options={appOptions} />}
+          {appOptions.length > 1 && (
+            <span title={selected === "all" && localApp === null ? "Выбрано по наибольшему расходу за 14 дней" : undefined}>
+              <Dropdown ariaLabel="Приложение" value={appId} onChange={pickApp} options={appOptions} />
+            </span>
+          )}
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }, { value: 90, label: "90 дней" }]} />
         </div>
       </div>
@@ -97,23 +100,29 @@ export default function CommandCenter({ reloadKey }: Props) {
         </div>
       )}
 
-      <div className="spark-row">
-        <div className="card stat"><div className="muted">Расход · {days} дней</div><div className="big">{fmtUsd(totals.spend)}</div></div>
-        <div className="card stat"><div className="muted">Установки</div><div className="big">{totals.installs}</div></div>
-        <div className="card stat"><div className="muted">Выручка</div><div className={`big${data?.revenueSource ? " good" : ""}`}>{data?.revenueSource ? fmtUsd(totals.revenue) : "нет источника"}</div></div>
-        <div className="card stat"><div className="muted">Смешанный ROAS <InfoTooltip title="ROAS">Фактическая выручка, делённая на расход за одинаковое окно. Без подключённой выручки показатель не строится.</InfoTooltip></div><div className={`big ${!data?.revenueSource ? "" : totals.roas >= 1 ? "good" : "bad"}`}>{data?.revenueSource ? `${(totals.roas * 100).toFixed(0)}%` : "—"}</div></div>
-        <div className="card stat">
-          <div className="muted">Снимок ASO</div>
-          <div className={`big big-sm ${snapAge !== null && snapAge > 7 ? "warn" : ""}`}>
+      {data && <div className="stat-strip fold">
+        <div className="stat-tile"><span>Расход · {days} дней</span><b>{fmtUsd(totals.spend)}</b></div>
+        <div className="stat-tile"><span>Установки</span><b>{totals.installs}</b></div>
+        <div className="stat-tile"><span>Выручка</span><b className={data?.revenueSource ? "good" : "muted"}>{data?.revenueSource ? fmtUsd(totals.revenue) : "нет источника"}</b></div>
+        <div className="stat-tile"><span>Смешанный ROAS <InfoTooltip title="ROAS">Фактическая выручка, делённая на расход за одинаковое окно. Без подключённой выручки показатель не строится.</InfoTooltip></span><b className={!data?.revenueSource ? "" : totals.roas >= 1 ? "good" : "bad"}>{data?.revenueSource ? `${(totals.roas * 100).toFixed(0)}%` : "—"}</b></div>
+        <div className="stat-tile">
+          <span>Снимок ASO</span>
+          <b className={snapAge !== null && snapAge > 7 ? "warn" : ""}>
             {data?.aso.snapshotDate ? `${data.aso.snapshotDate}${snapAge !== null && snapAge > 7 ? ` · устарел на ${snapAge} дн.` : ""}` : "нет данных"}
-          </div>
+          </b>
         </div>
-      </div>
+      </div>}
 
       {data?.revenueError && <div className="callout bad callout-block">Ошибка источника выручки: {data.revenueError}</div>}
 
       <div className="section-head">
-        <h2 className="ds-h2">Решения по странам · {data?.rows.length ?? 0}</h2>
+        <h2 className="ds-h2">
+          Решения по странам · {data?.rows.length ?? 0}
+          <InfoTooltip title="Как читать">
+            Выручка считается по стране стора и включает органику там, где атрибуция смешанная, — это ориентир, а не точная выручка по ключу.
+            Органика — последний снимок позиций Keywords для этого стора; если он устарел, обновите снимок в Keywords.
+          </InfoTooltip>
+        </h2>
         {data && data.rows.length > 0 && (
           <button className="compact" onClick={() => exportRows(
             `command-center-${new Date().toISOString().slice(0, 10)}.csv`,
@@ -146,7 +155,7 @@ export default function CommandCenter({ reloadKey }: Props) {
               <th className="num">Выручка</th>
               <th className="num">ROAS</th>
               <th>Решение</th>
-              <th>Органика (топ-10 / средняя / лучшие)</th>
+              <th title="Позиции Keywords: ключей в топ-10 / средняя позиция / лучшие ключи">Органика</th>
             </tr>
           </thead>
           <tbody>
@@ -163,14 +172,17 @@ export default function CommandCenter({ reloadKey }: Props) {
                   <td className="num">{r.cpi > 0 ? fmtUsd(r.cpi) : "—"}</td>
                   <td className="num">{r.trials}</td>
                   <td className="num">{r.paid}</td>
-                  <td className={`num ${r.revenue > 0 ? "good" : "muted"}`}>{r.revenue > 0 ? fmtUsd(r.revenue) : "—"}</td>
+                  <td className={`num ${r.revenue > 0 ? "good" : "muted"}`}>{r.revenue > 0 || data?.revenueSource ? fmtUsd(r.revenue) : "—"}</td>
                   <td className={`num ${r.roas === null ? "muted" : r.roas >= 1 ? "good" : r.roas >= 0.5 ? "warn" : "bad"}`}>
                     {r.roas === null ? "—" : `${(r.roas * 100).toFixed(0)}%`}
                   </td>
                   <td>
                     <span className={`roi ${v.kind}`} title={r.reason}>{v.label}</span>
                   </td>
-                  <td>
+                  <td
+                    className="cell-clip cell-flex"
+                    title={r.aso && r.aso.best.length > 0 ? r.aso.best.map((b) => `${b.keyword} #${b.position}`).join(" · ") : undefined}
+                  >
                     {r.aso ? (
                       <span className="small">
                         <b>{r.aso.top10}</b>/{r.aso.tracked} в топ-10 · средняя {r.aso.avgPos ?? "—"}
@@ -190,10 +202,6 @@ export default function CommandCenter({ reloadKey }: Props) {
         </div>
       )}
 
-      <div className="note section-foot">
-        Выручка считается по стране стора и включает органику там, где атрибуция смешанная, — это ориентир, а не точная выручка по ключу.
-        Органика — последний снимок позиций Keywords для этого стора; если он устарел, обновите снимок в Keywords.
-      </div>
-    </>
+    </FillPage>
   );
 }

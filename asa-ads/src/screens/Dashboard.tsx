@@ -11,6 +11,7 @@ import { exportRows } from "../lib/csv.ts";
 import InfoTooltip from "../components/InfoTooltip.tsx";
 import { campaignDisplayName, campaignTechnicalName } from "../lib/campaignNames.ts";
 import Dropdown from "../components/Dropdown.tsx";
+import { verdictLabel } from "../lib/verdictLabel.ts";
 
 interface Props { reloadKey: number }
 
@@ -104,12 +105,8 @@ export default function Dashboard({ reloadKey }: Props) {
   return (
     <>
       <div className="topbar">
-        <div>
-          <h1 className="ds-page-title">Обзор Apple Ads</h1>
-          <p className="ds-page-sub">Все страны · Apple Ads reports · обновляется после синхронизации</p>
-        </div>
+        <h1 className="ds-page-title" title="Все страны · источник: отчёты Apple Ads · обновляется после синхронизации">Обзор Apple Ads</h1>
         <div className="controls">
-          <span className="meta">Источник: Apple Ads</span>
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 1, label: "Сегодня" }, { value: 3, label: "3 дня" }, { value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }]} />
         </div>
       </div>
@@ -117,7 +114,7 @@ export default function Dashboard({ reloadKey }: Props) {
       <div className="spark-row">
         <Sparkline title="Расход" value={fmtUsd(totals.spend)} data={daily.map((d) => d.spend)} labels={dates} color="var(--ds-c1)" format={fmtUsd} />
         <Sparkline title="Установки" value={String(totals.installs)} data={daily.map((d) => d.installs)} labels={dates} color="var(--ds-c2)" format={(n) => String(Math.round(n))} />
-        <Sparkline title="CPI" value={overallCpi > 0 ? fmtUsd(overallCpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
+        <Sparkline title="CPI" lowerIsBetter value={overallCpi > 0 ? fmtUsd(overallCpi) : "—"} data={daily.map((d) => d.cpi)} labels={dates} color="var(--ds-c3)" format={fmtUsd} />
         <Sparkline title="Старты триала" value={String(totals.trials)} data={daily.map((d) => d.trial_starts)} labels={dates} color="var(--ds-c4)" format={(n) => String(Math.round(n))} />
       </div>
 
@@ -141,14 +138,13 @@ export default function Dashboard({ reloadKey }: Props) {
       ) : rows.length === 0 ? (
         <div className="data-state">Нет данных за этот период. Запустите синхронизацию.</div>
       ) : (
-        <div className="table-wrap">
+        <div className="table-wrap table-tall">
         <table>
           <thead>
             <tr>
               <th className="col-toggle" />
               <th>Кампания</th>
               <th>Статус</th>
-              <th className="num">Дневной лимит</th>
               <th className="num">Расход</th>
               <th className="num">Установки</th>
               <th className="num">CPI</th>
@@ -165,7 +161,7 @@ export default function Dashboard({ reloadKey }: Props) {
                   <td className="col-toggle">
                     <span className={`expand-toggle ${isExp ? "open" : ""}`} onClick={() => toggleExpand(r.id)}>▸</span>
                   </td>
-                  <td>
+                  <td className="cell-name" title={r.name}>
                     <Link to={`/campaigns/${r.id}`} className="row-link">{campaignDisplayName(r.name)}</Link>
                     <div className="cell-sub">
                       {r.country}{campaignTechnicalName(r.name) ? ` · ${r.name}` : ""}
@@ -176,14 +172,13 @@ export default function Dashboard({ reloadKey }: Props) {
                       {r.serving_status === "RUNNING" ? "работает" : r.status === "PAUSED" ? "пауза" : "на проверке"}
                     </span>
                   </td>
-                  <td className="num">{fmtUsd(r.daily_budget)}</td>
                   <td className="num">{fmtUsd(r.spend)}</td>
                   <td className="num">{r.installs}</td>
                   <td className={`num ${cls(r.cpi)}`}>{r.cpi > 0 ? fmtUsd(r.cpi) : "—"}</td>
                   <td>
                     {v ? (
                       <button className="compact" onClick={() => setDrawerCid(r.id)} title={v.reason}>
-                        <span className={`roi ${v.kind}`}>{v.label}</span>
+                        <span className={`roi ${v.kind}`}>{verdictLabel(v.label)}</span>
                       </button>
                     ) : <span className="muted">…</span>}
                   </td>
@@ -193,7 +188,7 @@ export default function Dashboard({ reloadKey }: Props) {
                 </tr>,
                 isExp && (
                   <tr key={`${r.id}-exp`} className="expand-row">
-                    <td colSpan={9}>
+                    <td colSpan={8}>
                       <div className="expand-grid">
                         <div className="field"><span className="k">Показы</span><span className="v">{r.impressions.toLocaleString()}</span></div>
                         <div className="field"><span className="k">Тапы</span><span className="v">{r.taps}</span></div>
@@ -206,7 +201,7 @@ export default function Dashboard({ reloadKey }: Props) {
                       </div>
                       {v?.reason && (
                         <div className={`callout callout-gap ${v.kind === "scale" ? "good" : v.kind === "cut" ? "bad" : v.kind === "hold" ? "warn" : ""}`}>
-                          <span className={`roi ${v.kind} inline-label`}>{v.label}</span>
+                          <span className={`roi ${v.kind} inline-label`}>{verdictLabel(v.label)}</span>
                           {v.reason}
                         </div>
                       )}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { asaApiUrl } from '../api.ts';
 import type { RankingRow } from '../lib/keywordsApi.ts';
 import { KeywordTopFiveInline } from '../components/KeywordResultsDrawer.tsx';
+import { useFoldOnScroll } from '../components/FillPage.tsx';
 import { appStoreCountry } from '../lib/appStoreLocales.ts';
 import { SERIES, hbarPath, tipProps, useWidth, type TipRow } from '../../../shared/charts/Charts.tsx';
 import './TrafficIntelligence.css';
@@ -834,6 +835,7 @@ function ApiCoverage({ payload, loading, error }: {
 
 export default function TrafficIntelligence({ app, locale, rankings = [], artworks: sharedArtworks = {}, sharedTopFive = {}, sharedTopFiveStatus = {}, onResolveTopFive, onEnsureArtworks, className = '', onOpenCompetitor }: TrafficIntelligenceProps) {
   const [view, setView] = useState<View>('traffic');
+  const [compactHeader, workspaceRef] = useFoldOnScroll();
   const [countryByApp, setCountryByApp] = useState<Record<string, string>>({});
   const [countriesByApp, setCountriesByApp] = useState<Record<string, NonNullable<TrafficIntelligencePayload['availableCountries']>>>({});
   const [trafficRemote, setTrafficRemote] = useState<{
@@ -1048,11 +1050,11 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
   }, [loading, payload, trafficRemote.requestKey]);
 
   return (
-    <main className={`traffic-workspace ${className}`.trim()}>
+    <main ref={workspaceRef} className={`traffic-workspace ${compactHeader ? 'is-compact' : ''} ${className}`.trim()}>
       <header className="traffic-header">
         <div className="traffic-title-block">
           <div className="traffic-title-line"><h1 className="ds-page-title">Аналитика трафика</h1>{isStale(payload) ? <span className="traffic-stale-badge">Данные устарели</span> : null}</div>
-          <p className="ds-page-sub">{app.name} · {countryScope === 'ALL' ? 'Все страны' : countryScope} · последние 30 дней · Apple ID {app.iTunesId}</p>
+          <p className="ds-page-sub fold">{app.name} · {countryScope === 'ALL' ? 'Все страны' : countryScope} · последние 30 дней · Apple ID {app.iTunesId}</p>
         </div>
         <div className="traffic-header-actions">
           <label className="traffic-country-control">
@@ -1107,8 +1109,8 @@ export default function TrafficIntelligence({ app, locale, rankings = [], artwor
               <>
                 <section className="traffic-kpi-grid" aria-label="Обзор трафика">
                   <KpiCard label="Ключи с измеренной долей" value={`${measured}/${trafficRows.length}`} note="есть данные о доле показов" tooltip="Учитываются только ключи, для которых Apple передала или позволила оценить долю показов." />
-                  <KpiCard label="Смоделированная захваченная доля" value={formatPercent(weighted, true)} note="с весом по популярности" tone={weighted != null && weighted >= 50 ? 'positive' : 'neutral'} tooltip="Взвешено по относительному индексу популярности Apple; это не оценка размера рынка." />
-                  <KpiCard label="Смоделированная доступная доля" value={formatPercent(available, true)} note="остаток модели или диапазона" tone={available != null && available >= 40 ? 'warning' : 'neutral'} tooltip="Незахваченные показы не означают гарантированно доступный трафик." />
+                  <KpiCard label="Захваченная доля · модель" value={formatPercent(weighted, true)} note="с весом по популярности" tone={weighted != null && weighted >= 50 ? 'positive' : 'neutral'} tooltip="Взвешено по относительному индексу популярности Apple; это не оценка размера рынка." />
+                  <KpiCard label="Доступная доля · модель" value={formatPercent(available, true)} note="остаток модели или диапазона" tone={available != null && available >= 40 ? 'warning' : 'neutral'} tooltip="Незахваченные показы не означают гарантированно доступный трафик." />
                   <KpiCard label="Высокий потенциал" value={String(highOpportunity)} note="расчётный балл ≥25" tone={highOpportunity ? 'warning' : 'neutral'} tooltip={`${BACKEND_SCORE_NOTE} Расчёт интерфейса используется, только когда сервер не передал показатель.`} />
                 </section>
                 <section className="traffic-panel traffic-chart-panel">

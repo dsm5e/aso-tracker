@@ -11,6 +11,8 @@ interface Props {
   color?: string;
   format?: (n: number) => string;
   onClick?: () => void;
+  /** Cost metrics (CPI, CPT, trial price): a rise is bad, so the delta colours invert. */
+  lowerIsBetter?: boolean;
 }
 
 /** KPI tile: title, headline value, day-over-day delta and the shared-kit sparkline
@@ -24,6 +26,7 @@ export default function Sparkline({
   color = "var(--ds-c1)",
   format = (n) => n.toFixed(2),
   onClick,
+  lowerIsBetter = false,
 }: Props) {
   if (data.length === 0) {
     return (
@@ -48,7 +51,10 @@ export default function Sparkline({
         <div className="spark-label">{title}</div>
         <div className="spark-value">{value}</div>
         {data.length > 1 && (
-          <div className={`spark-delta ${delta > 0 ? "good" : delta < 0 ? "bad" : "muted"}`}>
+          <div
+            className={`spark-delta ${delta === 0 ? "muted" : (delta > 0) !== lowerIsBetter ? "good" : "bad"}`}
+            title="Последний день к предыдущему"
+          >
             {delta > 0 ? "↑" : delta < 0 ? "↓" : "·"} {Math.abs(deltaPct).toFixed(0)}%
           </div>
         )}

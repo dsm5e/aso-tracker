@@ -68,7 +68,7 @@ export default function CampaignControls({ campaign, onChange }: Props) {
         </>
       ) : (
         <button className="compact" onClick={() => setEditing(true)} title="Изменить дневной лимит">
-          Лимит ${campaign.daily_budget.toFixed(0)}
+          Лимит ${Number.isInteger(campaign.daily_budget) ? campaign.daily_budget.toFixed(0) : campaign.daily_budget.toFixed(2)}
         </button>
       )}
       <button

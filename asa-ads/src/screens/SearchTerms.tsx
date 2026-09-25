@@ -3,6 +3,7 @@ import { api, type SearchTermSuggestion } from "../api.ts";
 import { useApp } from "../lib/AppContext.tsx";
 import { campaignDisplayName } from "../lib/campaignNames.ts";
 import Dropdown from "../components/Dropdown.tsx";
+import FillPage from "../components/FillPage.tsx";
 
 interface Props { reloadKey: number }
 
@@ -32,9 +33,9 @@ export default function SearchTerms({ reloadKey }: Props) {
   }
 
   return (
-    <>
+    <FillPage>
       <div className="topbar">
-        <div><h1 className="ds-page-title">Поисковые запросы</h1><p className="ds-page-sub">Фактические запросы Apple Ads: чистка нерелевантного трафика и поиск новых ключей</p></div>
+        <h1 className="ds-page-title" title="Фактические запросы Apple Ads: чистка нерелевантного трафика и поиск новых ключей">Поисковые запросы</h1>
         <div className="controls">
           <Dropdown ariaLabel="Фильтр" value={filter} onChange={(v) => setFilter(v as typeof filter)} options={[{ value: "all", label: `Все (${recs.length})` }, { value: "negative", label: `В минус-слова (${recs.filter((r) => r.suggestion === "negative").length})` }, { value: "add_as_keyword", label: `Кандидаты (${recs.filter((r) => r.suggestion === "add_as_keyword").length})` }]} />
           <Dropdown ariaLabel="Период" value={days} onChange={(v) => setDays(v)} options={[{ value: 7, label: "7 дней" }, { value: 14, label: "14 дней" }, { value: 30, label: "30 дней" }]} />
@@ -62,8 +63,8 @@ export default function SearchTerms({ reloadKey }: Props) {
           <tbody>
             {filtered.map((r, idx) => (
               <tr key={`${r.campaign_id}-${r.term}-${idx}`}>
-                <td><strong>{r.term}</strong></td>
-                <td className="muted">{campaignDisplayName(r.campaign_name)}</td>
+                <td className="nowrap"><strong>{r.term}</strong></td>
+                <td className="muted cell-clip cell-campaign" title={campaignDisplayName(r.campaign_name)}>{campaignDisplayName(r.campaign_name)}</td>
                 <td>
                   <span className={`badge ${r.suggestion === "negative" ? "bad" : "ok"}`}>
                     {r.suggestion === "negative" ? "→ в минус-слова" : "→ проверить ключ"}
@@ -73,13 +74,13 @@ export default function SearchTerms({ reloadKey }: Props) {
                 <td className="num">{r.taps}</td>
                 <td className="num">{r.installs}</td>
                 <td className="num">${r.spend.toFixed(2)}</td>
-                <td className="muted col-reason">{r.reason}</td>
-                <td>
+                <td className="muted cell-clip cell-flex" title={r.reason}>{r.reason}</td>
+                <td className="nowrap">
                   {r.suggestion === "negative" && (
-                    <button className="danger" onClick={() => applyNegative(r)}>Добавить минус-слово</button>
+                    <button className="compact danger" onClick={() => applyNegative(r)} title="Добавить запрос минус-словом (EXACT) в эту кампанию">В минус</button>
                   )}
                   {r.suggestion === "add_as_keyword" && (
-                    <span className="note">Добавить после проверки владельца и группы</span>
+                    <span className="note" title="Добавить после проверки владельца и группы">вручную</span>
                   )}
                 </td>
               </tr>
@@ -88,6 +89,6 @@ export default function SearchTerms({ reloadKey }: Props) {
         </table>
         </div>
       )}
-    </>
+    </FillPage>
   );
 }
