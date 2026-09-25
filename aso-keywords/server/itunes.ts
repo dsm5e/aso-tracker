@@ -197,9 +197,11 @@ export async function searchAppStore(
   const header = storeFrontHeader(cc);
   if (!header) throw new Error(`App Store storefront id for "${cc}" unknown`);
   const gate = hostGate('search.itunes.apple.com');
-  if (gate.isPaused()) throw new RateLimited('search.itunes.apple.com paused after a rate limit');
-
   const { priority = 'top', signal } = opts;
+  // UI requests fail fast during a rate-limit pause; background work (snapshots,
+  // nightly, spy) waits for the pause to end inside the gate instead of spinning.
+  if (gate.isPaused() && priority === 'interactive') throw new RateLimited('search.itunes.apple.com paused after a rate limit');
+
   let payload: unknown;
   try {
     payload = await gate.run(async (via) => {

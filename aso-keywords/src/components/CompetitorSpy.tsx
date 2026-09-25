@@ -201,7 +201,7 @@ export default function CompetitorSpy({
               onClick={startCheck}
               {...tipProps('Новые запросы в App Store', [
                 [null, 'Сначала фразы из названия и подзаголовка конкурента, которых нет в наших выдачах,', ''], [null, `затем перепроверка неглубоких выдач (топ-5/15, iTunes) по App Store до топ-${MAX_DEPTH}`, ''], [null, 'Свежие (< 12 ч) выдачи App Store не запрашиваются повторно', ''],
-                [null, 'Скорость', 'до 55 запросов в минуту, общий лимит с позициями'],
+                [null, 'Скорость', 'до 45 запросов в минуту, общий лимит с позициями'],
                 ...report.candidates.slice(0, CHECK_BATCH).slice(0, 8).map((term): TipRow => [null, term, '']),
               ])}
             >

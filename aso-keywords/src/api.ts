@@ -615,7 +615,7 @@ export interface SnapshotEvent {
 export type SnapshotSpeed = 'medium' | 'slow';
 
 export const SPEED_PRESETS: Record<SnapshotSpeed, { workers: number; sleepMs: number; label: string; note: string }> = {
-  medium: { workers: 2, sleepMs: 3250, label: 'Обычная', note: 'Адаптивно: 45–55 запросов в минуту (лимит Apple ≈60)' },
+  medium: { workers: 2, sleepMs: 3250, label: 'Обычная', note: 'Адаптивно: 30–45 запросов в минуту' },
   slow:   { workers: 1, sleepMs: 5000, label: 'Бережная', note: 'Не больше 12 в минуту — для больших обновлений' },
 };
 
