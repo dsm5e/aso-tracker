@@ -144,3 +144,14 @@ body.pt-resizing, body.pt-resizing * { cursor: col-resize !important; user-selec
 /* calmer header: flag + code on one line, avg below */
 .mx-col-flag { font-size: 14px; }
 .mx-cell-btn:hover .mx-rank, .mx-cell-btn:focus-visible .mx-rank { box-shadow: 0 0 0 2px var(--ds-panel), 0 0 0 3.5px var(--ds-accent); }
+
+/* ---------- Global refresh progress (every Keywords screen, incl. the nightly job) ---------- */
+.kw-progress { flex: none; background: var(--ds-bg); }
+.kw-progress-track { height: 3px; background: var(--ds-panel-2); overflow: hidden; }
+.kw-progress-track i { display: block; height: 100%; background: var(--rk-top3-bg); border-radius: 0 2px 2px 0; transition: width .6s ease; }
+.kw-progress-done .kw-progress-track i { background: var(--rk-up); }
+.kw-progress-row { display: flex; align-items: center; gap: 6px 16px; flex-wrap: wrap; min-height: 32px; padding: 4px 20px; color: var(--ds-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.kw-progress-row b { color: var(--ds-strong); font-weight: 600; }
+.kw-progress-kw { min-width: 0; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ds-subtle); }
+.kw-progress-warn { color: var(--ds-warn); font-weight: 500; }
+.kw-progress-spacer { flex: 1; }

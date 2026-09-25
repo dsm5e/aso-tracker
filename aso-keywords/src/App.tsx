@@ -136,24 +136,6 @@ function nightlyLine(s: ScheduleSummary) {
   return `Ночное обновление: ${hh} · ${n} ${pluralKeys(n)} · ~${s.estimate.minutes} мин · последнее: ${last}`;
 }
 
-function snapshotStatusText(progress: SnapshotEvent | null, fallbackTotal: number | string) {
-  const completed = progress?.completed ?? 0;
-  const total = progress?.total ?? fallbackTotal;
-  if (progress?.type === 'throttle') {
-    return `Пауза из-за лимита Apple · ${progress.cooldownSec ?? 60} с · ${completed}/${total}`;
-  }
-  if (progress?.type === 'retry') {
-    const attempt = progress.attempt && progress.maxAttempts
-      ? ` · попытка ${progress.attempt}/${progress.maxAttempts}`
-      : '';
-    return `Повтор: ${progress.keyword ?? 'запрос'}${attempt} · ${completed}/${total}`;
-  }
-  if (progress?.type === 'keyword-start' && progress.keyword) {
-    return `Запрашиваем: ${progress.keyword} · ${completed}/${total}`;
-  }
-  return `Обновление ${completed}/${total}`;
-}
-
 function rankTone(rank: number | null) {
   if (rank == null) return 'muted';
   if (rank <= 10) return 'positive';
@@ -460,6 +442,7 @@ export default function App() {
     setProgress(event);
     if (event.type === 'done' || event.type === 'abort') {
       setRefreshing(false);
+      setRunFinishedAt(Date.now());
       setRowUpdates({});
       setMatrixRefreshKey((key) => key + 1);
       const app = selectedAppRef.current;
@@ -512,24 +495,38 @@ export default function App() {
     }
   }, [loadApps]);
 
-  // A snapshot is a server-side singleton that survives page reloads. On mount,
-  // reattach to any run started in a previous session so progress keeps flowing.
+  // A snapshot is a server-side singleton that survives page reloads. Attach on mount
+  // and keep polling while idle, so runs started elsewhere (the 04:00 nightly job,
+  // another tab) show up in the progress bar too.
+  const [runInfo, setRunInfo] = useState<{ startedAt: number; kind: 'full' | 'delta' | 'nightly'; apps: number } | null>(null);
+  const [runFinishedAt, setRunFinishedAt] = useState<number | null>(null);
+  const refreshingRef = useRef(false);
+  useEffect(() => { refreshingRef.current = refreshing; }, [refreshing]);
   useEffect(() => {
     let unsubscribe: (() => void) | null = null;
-    getSnapshotState()
-      .then((state) => {
-        if (!state.running) {
-          setRefreshing(false);
-          setRowUpdates({});
-          if (state.finalEvent) setProgress(state.finalEvent);
-          return;
-        }
-        setRefreshing(true);
-        if (state.lastProgress) setProgress(state.lastProgress);
-        unsubscribe = subscribeToSnapshot(applySnapshotEvent);
-      })
-      .catch(() => { /* server not up yet; the manual refresh path still works */ });
-    return () => { if (unsubscribe) unsubscribe(); };
+    let alive = true;
+    const attach = () => {
+      if (refreshingRef.current) return;
+      getSnapshotState()
+        .then((state) => {
+          if (!alive || refreshingRef.current) return;
+          if (!state.running) {
+            if (!unsubscribe) { setRowUpdates({}); if (state.finalEvent) setProgress(state.finalEvent); }
+            return;
+          }
+          const options = state.options as (typeof state.options & { kind?: 'full' | 'delta' | 'nightly' }) | null;
+          setRunInfo({ startedAt: state.startedAt ?? Date.now(), kind: options?.kind ?? 'full', apps: options?.appIds?.length ?? 0 });
+          setRunFinishedAt(null);
+          setRefreshing(true);
+          if (state.lastProgress) setProgress(state.lastProgress);
+          unsubscribe?.();
+          unsubscribe = subscribeToSnapshot(applySnapshotEvent);
+        })
+        .catch(() => { /* server not up yet; the manual refresh path still works */ });
+    };
+    attach();
+    const timer = setInterval(attach, 15_000);
+    return () => { alive = false; clearInterval(timer); if (unsubscribe) unsubscribe(); };
   }, [applySnapshotEvent]);
 
   const changeSpeed = (speed: SnapshotSpeed) => {
@@ -563,6 +560,8 @@ export default function App() {
     setUpdateMenuOpen(false);
     setRefreshing(true);
     setProgress(null);
+    setRunInfo({ startedAt: Date.now(), kind: delta ? 'delta' : 'full', apps: scope === 'all' ? apps.length : 1 });
+    setRunFinishedAt(null);
     setRowUpdates(scope === 'locale'
       ? Object.fromEntries((keywordMap[locale] ?? []).map((keyword) => [keyword, { status: 'queued' as const }]))
       : {});
@@ -1056,6 +1055,13 @@ export default function App() {
           <span className="context-spacer" />
           <button className="ds-btn" onClick={openAppDialog}><Icon name="plus" /> Добавить приложение</button>
         </header>
+        <UpdateProgressBar
+          running={refreshing}
+          progress={progress}
+          info={runInfo}
+          finishedAt={runFinishedAt}
+          onStop={() => abortSnapshot().catch(() => {})}
+        />
 
       {view === 'overview' ? (
         <Overview
@@ -1103,26 +1109,14 @@ export default function App() {
               refreshKey={matrixRefreshKey}
               toolbarLead={<>
                 {updateSplit('app')}
-                {refreshing && (
-                  <span className="snapshot-status">
-                    <i /> {snapshotStatusText(progress, rows.length)}
-                    <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Остановить обновление"><Icon name="stop" size={12} /> Стоп</button>
-                  </span>
-                )}
               </>}
             />
           ) : null
         ) : keywordView === 'positions' ? <>
-        <section className={`kw-stats ${refreshing ? 'kw-stats-busy' : ''}`} aria-label="Сводка позиций">
+        <section className="kw-stats" aria-label="Сводка позиций">
           <span><b>{positionSummary.total}</b> {pluralKeys(positionSummary.total)}</span>
           <span>в выдаче <b>{positionSummary.ranked}</b></span>
           <span>в топ-10 <b>{positionSummary.top10}</b>{positionSummary.improved ? <em className="kw-stats-up">↑{positionSummary.improved} за сутки</em> : null}</span>
-          {refreshing && (
-            <span className="snapshot-status">
-              <i /> {snapshotStatusText(progress, rows.length)}
-              <button className="snapshot-stop" onClick={() => abortSnapshot().catch(() => {})} title="Остановить обновление"><Icon name="stop" size={12} /> Стоп</button>
-            </span>
-          )}
           <span>средняя <b>{positionSummary.average == null ? '—' : `#${positionSummary.average.toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}`}</b></span>
         </section>
         {selectedApp && (
@@ -1247,6 +1241,53 @@ export default function App() {
           onClose={() => setCompetitorBundle(null)}
         />
       )}
+    </div>
+  );
+}
+
+/** Thin bar under the context bar on every Keywords screen while ranks refresh
+ * (manual, delta or the nightly job): share done, count, time left, stop. */
+function UpdateProgressBar({ running, progress, info, finishedAt, onStop }: {
+  running: boolean;
+  progress: SnapshotEvent | null;
+  info: { startedAt: number; kind: 'full' | 'delta' | 'nightly'; apps: number } | null;
+  finishedAt: number | null;
+  onStop: () => void;
+}) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!running && !finishedAt) return;
+    const timer = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, [running, finishedAt]);
+  const showDone = !running && finishedAt != null && Date.now() - finishedAt < 8000;
+  if (!running && !showDone) return null;
+  const total = progress?.total ?? 0;
+  const done = Math.min(progress?.completed ?? 0, total || Infinity);
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  const elapsed = info ? (Date.now() - info.startedAt) / 1000 : 0;
+  const eta = running && done >= 5 && total > done ? Math.round((elapsed / done) * (total - done)) : null;
+  const fmt = (sec: number) => (sec >= 3600 ? `${Math.floor(sec / 3600)} ч ${Math.round((sec % 3600) / 60)} мин` : sec >= 60 ? `${Math.round(sec / 60)} мин` : `${Math.max(1, Math.round(sec))} с`);
+  const kind = info?.kind === 'nightly' ? 'Ночное обновление' : info?.kind === 'delta' ? 'Обновление изменяемых ключей' : info && info.apps > 1 ? 'Обновление всех приложений' : 'Обновление позиций';
+  const aborted = progress?.type === 'abort';
+  return (
+    <div className={`kw-progress ${showDone ? 'kw-progress-done' : ''}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={showDone ? 100 : pct} aria-label={kind}>
+      <div className="kw-progress-track"><i style={{ width: `${showDone ? 100 : pct}%` }} /></div>
+      <div className="kw-progress-row">
+        {showDone ? (
+          <span><b>{aborted ? 'Остановлено' : 'Готово'}</b> · {kind.toLowerCase()} · {done} из {total}{info ? ` за ${fmt((finishedAt! - info.startedAt) / 1000)}` : ''}</span>
+        ) : (
+          <>
+            <span><b>{kind}</b> · {total ? `${done} из ${total} · ${pct}%` : 'готовим список…'}</span>
+            {progress?.type === 'throttle'
+              ? <span className="kw-progress-warn">пауза из-за лимита Apple · {progress.cooldownSec ?? 60} с</span>
+              : eta != null ? <span>осталось ~{fmt(eta)}</span> : <span>считаем время…</span>}
+            {progress?.keyword && progress.type !== 'throttle' ? <span className="kw-progress-kw">{progress.locale?.toUpperCase()} · {progress.keyword}</span> : null}
+            <span className="kw-progress-spacer" />
+            <button type="button" className="snapshot-stop" onClick={onStop} title="Остановить обновление"><Icon name="stop" size={12} /> Стоп</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }
