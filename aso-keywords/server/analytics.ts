@@ -18,17 +18,23 @@ export interface Move {
 export interface MoversSummary {
   totalRanked: number;
   prevRanked: number;
-  rankedDelta: number;
+  rankedDelta: number | null;
   top10: number;
   prevTop10: number;
-  top10Delta: number;
+  top10Delta: number | null;
   top50: number;
   prevTop50: number;
-  top50Delta: number;
+  top50Delta: number | null;
   avgPosition: number | null;
   prevAvgPosition: number | null;
   avgDelta: number | null;
   combos: number;
+  /** Combos that have a snapshot at or before the period start — the only ones deltas are computed on. */
+  baselineCombos: number;
+  /** Latest snapshot date used as the baseline (≤ anchor − period), null when none. */
+  baseDate: string | null;
+  /** Current counts over the baseline combos only — what the deltas compare against `prev*`. */
+  onBase: { ranked: number; top10: number; top50: number };
 }
 
 export interface MoversResponse {
@@ -49,6 +55,9 @@ interface RawRow {
   keyword: string;
   to: number | null;
   from: number | null;
+  /** 1 when a baseline snapshot exists (its position may still be null = not ranked). */
+  hasPast: number;
+  pastDate: string | null;
 }
 
 /**
@@ -78,7 +87,7 @@ function fetchMatrix(appId: string | undefined, locale: string | undefined, days
       ) lx ON s.id = lx.mid
     ),
     past AS (
-      SELECT s.app, s.locale, s.keyword, s.position
+      SELECT s.app, s.locale, s.keyword, s.position, s.date
       FROM snapshots s
       JOIN (
         SELECT app, locale, keyword, MAX(id) AS mid
@@ -90,7 +99,9 @@ function fetchMatrix(appId: string | undefined, locale: string | undefined, days
     SELECT
       l.app, l.locale, l.keyword,
       l.position AS "to",
-      p.position AS "from"
+      p.position AS "from",
+      CASE WHEN p.date IS NULL THEN 0 ELSE 1 END AS "hasPast",
+      p.date AS "pastDate"
     FROM latest l
     LEFT JOIN past p USING (app, locale, keyword)
   `;
@@ -100,45 +111,44 @@ function fetchMatrix(appId: string | undefined, locale: string | undefined, days
 }
 
 function summarize(rows: RawRow[]): MoversSummary {
-  let totalRanked = 0, prevRanked = 0;
-  let top10 = 0, prevTop10 = 0;
-  let top50 = 0, prevTop50 = 0;
-  let sumPos = 0, sumPrev = 0;
-  let nPos = 0, nPrev = 0;
-  for (const r of rows) {
-    if (r.to && r.to > 0) {
-      totalRanked++;
-      if (r.to <= 10) top10++;
-      if (r.to <= 50) top50++;
-      sumPos += r.to; nPos++;
+  const count = (list: RawRow[], pick: (r: RawRow) => number | null) => {
+    let ranked = 0, top10 = 0, top50 = 0, sum = 0;
+    for (const r of list) {
+      const v = pick(r);
+      if (!v || v <= 0) continue;
+      ranked++; sum += v;
+      if (v <= 10) top10++;
+      if (v <= 50) top50++;
     }
-    if (r.from && r.from > 0) {
-      prevRanked++;
-      if (r.from <= 10) prevTop10++;
-      if (r.from <= 50) prevTop50++;
-      sumPrev += r.from; nPrev++;
-    }
-  }
-  const avgPosition = nPos ? +(sumPos / nPos).toFixed(1) : null;
-  const prevAvgPosition = nPrev ? +(sumPrev / nPrev).toFixed(1) : null;
+    return { ranked, top10, top50, avg: ranked ? +(sum / ranked).toFixed(1) : null };
+  };
+  // Headline = the current state of every combo. Deltas compare like with like:
+  // only combos that already had a snapshot at the period start — otherwise a
+  // keyword first tracked this week would count as «+1 in the top-10».
+  const now = count(rows, (r) => r.to);
+  const based = rows.filter((r) => r.hasPast);
+  const nowOnBase = count(based, (r) => r.to);
+  const prev = count(based, (r) => r.from);
+  const hasBase = based.length > 0;
+  const baseDate = based.reduce<string | null>((max, r) => (r.pastDate && (!max || r.pastDate > max) ? r.pastDate : max), null);
   return {
-    totalRanked,
-    prevRanked,
-    rankedDelta: totalRanked - prevRanked,
-    top10,
-    prevTop10,
-    top10Delta: top10 - prevTop10,
-    top50,
-    prevTop50,
-    top50Delta: top50 - prevTop50,
-    avgPosition,
-    prevAvgPosition,
-    // Lower is better; show as "improvement" — positive number means we got better
-    avgDelta:
-      avgPosition != null && prevAvgPosition != null
-        ? +(prevAvgPosition - avgPosition).toFixed(1)
-        : null,
+    totalRanked: now.ranked,
+    prevRanked: prev.ranked,
+    rankedDelta: hasBase ? nowOnBase.ranked - prev.ranked : null,
+    top10: now.top10,
+    prevTop10: prev.top10,
+    top10Delta: hasBase ? nowOnBase.top10 - prev.top10 : null,
+    top50: now.top50,
+    prevTop50: prev.top50,
+    top50Delta: hasBase ? nowOnBase.top50 - prev.top50 : null,
+    avgPosition: now.avg,
+    prevAvgPosition: prev.avg,
+    // Lower is better; positive = improvement. Same combo set on both sides.
+    avgDelta: nowOnBase.avg != null && prev.avg != null ? +(prev.avg - nowOnBase.avg).toFixed(1) : null,
     combos: rows.length,
+    baselineCombos: based.length,
+    baseDate,
+    onBase: { ranked: nowOnBase.ranked, top10: nowOnBase.top10, top50: nowOnBase.top50 },
   };
 }
 
@@ -179,8 +189,9 @@ export function getMovers(opts: { appId?: string; locale?: string; period: Perio
     .slice(0, limit);
 
   // Newly ranked: didn't rank before, now ranks
+  const hasPast = new Set(rows.filter((r) => r.hasPast).map((r) => `${r.app}|${r.locale}|${r.keyword}`));
   const newlyRanked = moves
-    .filter((m) => m.from == null && m.to != null)
+    .filter((m) => m.from == null && m.to != null && hasPast.has(`${m.app}|${m.locale}|${m.keyword}`))
     .sort((a, b) => (a.to ?? 999) - (b.to ?? 999))
     .slice(0, limit);
 

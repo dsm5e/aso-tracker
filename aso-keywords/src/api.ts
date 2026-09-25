@@ -534,17 +534,20 @@ export interface ScheduleSummary {
 export interface MoversSummary {
   totalRanked: number;
   prevRanked: number;
-  rankedDelta: number;
+  rankedDelta: number | null;
   top10: number;
   prevTop10: number;
-  top10Delta: number;
+  top10Delta: number | null;
   top50: number;
   prevTop50: number;
-  top50Delta: number;
+  top50Delta: number | null;
   avgPosition: number | null;
   prevAvgPosition: number | null;
   avgDelta: number | null;
   combos: number;
+  baselineCombos: number;
+  baseDate: string | null;
+  onBase: { ranked: number; top10: number; top50: number };
 }
 
 export interface Mover {

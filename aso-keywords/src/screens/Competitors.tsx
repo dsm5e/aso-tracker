@@ -141,6 +141,7 @@ function HistoryLine({ rows }: { rows: CompetitorKeywordRow[] }) {
 
 export default function Competitors({ app, locale, onKeywordsChanged }: CompetitorsProps) {
   const [competitors, setCompetitors] = useState<CompetitorSummary[]>([]);
+  const [listQuery, setListQuery] = useState('');
   const [manualByApp, setManualByApp] = useState<Record<string, CompetitorSummary[]>>({});
   const manual = useMemo(() => manualByApp[app.id] ?? [], [manualByApp, app.id]);
   const [tab, setTab] = useState<DetailTab>('profile');
@@ -334,6 +335,12 @@ export default function Competitors({ app, locale, onKeywordsChanged }: Competit
     return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
   }, [detail.repository]);
 
+  // Typing filters the list at once; Enter in the same field searches the whole App Store.
+  const listNeedle = listQuery.trim().toLocaleLowerCase();
+  const matches = (competitor: CompetitorSummary) => !listNeedle || `${competitor.name} ${competitor.dev} ${competitor.bundleId}`.toLocaleLowerCase().includes(listNeedle);
+  const visibleCompetitors = competitors.filter(matches);
+  const visibleManual = manual.filter(matches);
+
   return (
     <section className="content" aria-label="Конкуренты">
       <header className="view-header">
@@ -351,10 +358,10 @@ export default function Competitors({ app, locale, onKeywordsChanged }: Competit
             <h2>В органической выдаче</h2><FactBadge kind="fact" />
           </div>
           <p className="competitor-muted">Показы — число появлений в отслеживаемом топе; средняя позиция — агрегированная оценка по снимкам.</p>
-          <CompetitorFind country={locale.split('-')[0]} ownTrackId={app.iTunesId} onPick={addManual} />
-          {manual.length ? (
+          <CompetitorFind country={locale.split('-')[0]} ownTrackId={app.iTunesId} onPick={addManual} onQueryChange={setListQuery} />
+          {visibleManual.length ? (
             <div className="competitors-list">
-              {manual.map((competitor) => (
+              {visibleManual.map((competitor) => (
                 <button key={competitor.bundleId} onClick={() => setSelectedBundle(competitor.bundleId)} aria-pressed={selectedBundle === competitor.bundleId} className={selectedBundle === competitor.bundleId ? 'selected' : ''}>
                   <strong>{competitor.name}</strong>
                   <small>{competitor.dev} · добавлен вручную</small>
@@ -362,9 +369,9 @@ export default function Competitors({ app, locale, onKeywordsChanged }: Competit
               ))}
             </div>
           ) : null}
-          {listLoading ? <p>Загрузка конкурентов…</p> : listError ? <p role="alert">Не удалось загрузить список: {listError}</p> : competitors.length === 0 ? <p>Конкуренты пока не обнаружены. Сначала обновите позиции ключевых слов.</p> : (
+          {listLoading ? <p>Загрузка конкурентов…</p> : listError ? <p role="alert">Не удалось загрузить список: {listError}</p> : competitors.length === 0 ? <p>Конкуренты пока не обнаружены. Сначала обновите позиции ключевых слов.</p> : visibleCompetitors.length === 0 ? <p className="competitor-muted">В списке нет «{listQuery.trim()}» — Enter найдёт приложение в App Store.</p> : (
             <div className="competitors-list">
-              {competitors.map((competitor) => (
+              {visibleCompetitors.map((competitor) => (
                 <button key={competitor.bundleId} onClick={() => setSelectedBundle(competitor.bundleId)} aria-pressed={selectedBundle === competitor.bundleId} className={selectedBundle === competitor.bundleId ? 'selected' : ''}>
                   <strong>{competitor.name}</strong>
                   <small>{competitor.dev} · ср. {position(competitor.avgRank)} · {competitor.appearances} появл.</small>
@@ -625,8 +632,9 @@ type StoreHit = Awaited<ReturnType<typeof api.itunesSearch>>[number];
 
 /** Pick any App Store app as a competitor: name, numeric id, bundle id or an
  * apps.apple.com URL. Searches on Enter to spare the shared iTunes rate limit. */
-function CompetitorFind({ country, ownTrackId, onPick }: { country: string; ownTrackId: string; onPick: (item: CompetitorSummary) => void }) {
+function CompetitorFind({ country, ownTrackId, onPick, onQueryChange }: { country: string; ownTrackId: string; onPick: (item: CompetitorSummary) => void; onQueryChange?: (query: string) => void }) {
   const [value, setValue] = useState('');
+  useEffect(() => { onQueryChange?.(value); }, [value, onQueryChange]);
   const [hits, setHits] = useState<StoreHit[] | null>(null);
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle');
   const rootRef = useRef<HTMLDivElement>(null);
@@ -661,7 +669,7 @@ function CompetitorFind({ country, ownTrackId, onPick }: { country: string; ownT
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => { if (event.key === 'Enter') void search(); }}
-        placeholder={state === 'loading' ? 'Ищем в App Store…' : 'Любое приложение: название, id или ссылка ↵'}
+        placeholder={state === 'loading' ? 'Ищем в App Store…' : 'Фильтр списка · ↵ — любое приложение из App Store'}
         aria-label="Найти конкурента в App Store"
       />
       {hits != null ? (

@@ -1869,10 +1869,19 @@ function KeywordDrawer({
 }
 
 const PERIOD_LABEL: Record<'day' | 'week' | 'month', string> = {
-  day: 'сравнение со вчера',
-  week: 'сравнение с 7 днями назад',
-  month: 'сравнение с 30 днями назад',
+  day: 'день',
+  week: 'неделя',
+  month: 'месяц',
 };
+
+/** Which snapshot the deltas are measured from — the real date, not the nominal period. */
+function baselineLabel(summary: MoversResponse['summary'] | undefined, period: 'day' | 'week' | 'month') {
+  if (!summary) return `период: ${PERIOD_LABEL[period]}`;
+  if (!summary.baselineCombos || !summary.baseDate) return `за ${PERIOD_LABEL[period]} нет более раннего снимка — изменения не считаются`;
+  const date = new Date(`${summary.baseDate}T00:00:00`).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  const partial = summary.baselineCombos < summary.combos ? ` · изменения по ${summary.baselineCombos} из ${summary.combos} ключей (у остальных нет снимка на ту дату)` : '';
+  return `сравнение со снимком ${date}${partial}`;
+}
 
 function AnalyticsPanel({
   apps,
@@ -1904,7 +1913,7 @@ function AnalyticsPanel({
       <section className="analytics-page" aria-labelledby="analytics-title">
         <h2 id="analytics-title" className="sr-only">Динамика позиций</h2>
         <div className="page-commandbar">
-          <span className="page-scope">Отслеживаемые ключевые слова · {PERIOD_LABEL[period]} · все регионы</span>
+          <span className="page-scope">Все регионы · {baselineLabel(summary, period)}</span>
           <div className="analytics-controls">
             <div className="ds-seg" role="group" aria-label="Период">
               {(['day', 'week', 'month'] as const).map((value) => (
@@ -1942,7 +1951,7 @@ function AnalyticsPanel({
                   <Delta value={summary.avgDelta != null ? Math.round(summary.avgDelta) : null} />
                 </div>
               </div>
-              <AnalyticsComparison summary={summary} />
+              {summary.baselineCombos > 0 && <AnalyticsComparison summary={summary} />}
               </>
             )}
             <div className="movers-grid">
@@ -1959,9 +1968,10 @@ function AnalyticsPanel({
 
 function AnalyticsComparison({ summary }: { summary: MoversResponse['summary'] }) {
   const metrics = [
-    { label: 'В выдаче', current: summary.totalRanked, previous: summary.prevRanked },
-    { label: 'Топ-50', current: summary.top50, previous: summary.prevTop50 },
-    { label: 'Топ-10', current: summary.top10, previous: summary.prevTop10 },
+    // Same combo set on both bars: keywords that already had a snapshot at the baseline date.
+    { label: 'В выдаче', current: summary.onBase.ranked, previous: summary.prevRanked },
+    { label: 'Топ-50', current: summary.onBase.top50, previous: summary.prevTop50 },
+    { label: 'Топ-10', current: summary.onBase.top10, previous: summary.prevTop10 },
   ];
   const max = Math.max(1, ...metrics.flatMap((metric) => [metric.current, metric.previous]));
   const rows = metrics.flatMap((metric) => {
