@@ -52,8 +52,8 @@ const FRAMES = {
     file: '01-hook.png', padEnd: { iphone: 30, ipad: 28 },
     decor: {
       // Peek pose: its straight bottom cut sits on the device's top edge, right side.
-      iphone: [{ kind: 'image', src: 'peek.png', xFrac: 0.8, yFrac: 0.186, widthFrac: 0.34, layer: 'front', shadow: false, mirrorRtl: true }],
-      ipad: [{ kind: 'image', src: 'peek.png', xFrac: 0.8, yFrac: 0.15, widthFrac: 0.24, layer: 'front', shadow: false, mirrorRtl: true }],
+      iphone: [{ kind: 'image', src: 'peek.png', xFrac: 0.775, yFrac: 0.19, widthFrac: 0.30, layer: 'front', shadow: false, mirrorRtl: true }],
+      ipad: [{ kind: 'image', src: 'peek.png', xFrac: 0.76, yFrac: 0.136, widthFrac: 0.24, layer: 'front', shadow: false, mirrorRtl: true }],
     },
     chips: { iphone: [{ key: 'hook', ...CHIP.blue, xFrac: 0.28, yFrac: 0.44, rotate: -4 }],
              ipad: [{ key: 'hook', ...CHIP.blue, xFrac: 0.18, yFrac: 0.42, rotate: -4 }] },
