@@ -14,7 +14,7 @@
 import path from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { LAURELS, QUOTE, VARIANTS } from './ossidex-copy.mjs';
+import { COMPAT, QUOTE, VARIANTS } from './ossidex-copy.mjs';
 
 const API = process.env.ASO_API ?? 'http://localhost:5173/studio-api';
 const BASE = '/studio/uploads/ossidex';
@@ -41,13 +41,14 @@ const STYLE = {
 
 function heroDecor(dev, lang, v = 'A') {
   const st = STYLE[v];
-  const L = LAURELS[lang] ?? LAURELS.en;
+  const [eyebrow, vendors] = COMPAT[lang] ?? COMPAT.en;
   const ip = dev === 'ipad';
-  const w = ip ? 0.22 : 0.3;
-  const y = ip ? 0.05 : 0.06;
-  const xs = ip ? [0.28, 0.5, 0.72] : [0.19, 0.5, 0.81];
+  const ink = st.preset === 'ossidex-light' ? ['#5B6B84', '#0B1B33'] : ['#8FA3BF', '#FFFFFF'];
   return [
-    ...xs.map((x, i) => ({ kind: 'laurel', xFrac: x, yFrac: y, widthFrac: w, fontPx: ip ? 46 : 36, layer: 'top', text: L[i], ...(st.laurel ? { color: st.laurel } : {}) })),
+    { kind: 'bubble', xFrac: 0.5, yFrac: ip ? 0.036 : 0.045, widthFrac: 0.9, layer: 'top', text: eyebrow,
+      bg: 'transparent', color: ink[0], fontPx: ip ? 30 : 26, tail: 'none', shadow: false },
+    { kind: 'bubble', xFrac: 0.5, yFrac: ip ? 0.066 : 0.078, widthFrac: 0.94, layer: 'top', text: vendors,
+      bg: 'transparent', color: ink[1], fontPx: ip ? 44 : 40, tail: 'none', shadow: false },
     { kind: 'image', src: `${BASE}/decor/${st.band}.png`, xFrac: 0.5, yFrac: ip ? 0.93 : 0.925, widthFrac: 1.02, layer: 'top', shadow: false },
     { kind: 'bubble', xFrac: ip ? 0.74 : 0.66, yFrac: ip ? 0.78 : 0.76, widthFrac: ip ? 0.34 : 0.56, rotate: -3, layer: 'top',
       text: QUOTE[lang] ?? QUOTE.en, bg: st.quoteBg, color: st.quoteFg, fontPx: ip ? 44 : 42, tail: 'none' },

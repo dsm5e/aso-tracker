@@ -8,6 +8,13 @@
  *   D «In seconds»     — no time to fight software while the next patient waits
  * Only verifiable product facts: no prices, no rankings, no "free".
  */
+// Compatibility line over the hero headline (owner 2026-09-26: no laurels).
+// Vendor names as plain text only — no logos.
+export const COMPAT = {
+  en: ['WORKS WITH ANY CBCT', 'Planmeca · Carestream · Vatech · Sirona'],
+  ru: ['РАБОТАЕТ С ЛЮБЫМ КЛКТ', 'Planmeca · Carestream · Vatech · Sirona'],
+};
+
 export const LAURELS = {
   en: ['Any\nCBCT scanner', 'DICOM\n& NIfTI', 'Private\nno sign-up'],
   ru: ['Любой\nКЛКТ-томограф', 'DICOM\nи NIfTI', 'Приватно\nбез регистрации'],
@@ -22,7 +29,7 @@ export const QUOTE = {
 export const VARIANTS = {
   en: {
     A: [
-      ['arch', 'Panoramic arch', 'Cross-sections from any CBCT'],
+      ['arch', 'Panoramic arch', 'Cross-sections along the arch'],
       ['mpr', 'Three planes at once', 'Axial · Sagittal · Coronal'],
       ['3d', '3D volume rendering', 'Rotate, clip & explore'],
       ['measure', 'Measure in mm', 'Ruler · Angle · HU'],
@@ -56,7 +63,7 @@ export const VARIANTS = {
   },
   ru: {
     A: [
-      ['arch', 'Панорама дуги', 'Срезы из любого КЛКТ'],
+      ['arch', 'Панорама дуги', 'Срезы вдоль зубной дуги'],
       ['mpr', 'Три плоскости сразу', 'Аксиальная · Сагиттальная · Корональная'],
       ['3d', '3D-реконструкция', 'Вращайте, режьте, изучайте'],
       ['measure', 'Измерения в мм', 'Линейка · Угол · HU'],
