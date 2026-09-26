@@ -1,0 +1,62 @@
+{
+  "id": "ossidex-blue",
+  "name": "Ossidex Brand Blue",
+  "kind": "real",
+  "description": "Energetic brand blue: saturated blue gradient, white uppercase headline, tilted phone.",
+  "recommendedFor": "medical imaging / dental / professional tools",
+  "background": {
+    "type": "linear",
+    "css": "linear-gradient(160deg,#3D8BFD 0%,#1D4ED8 55%,#1E3A8A 100%)"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 900,
+    "color": "#FFFFFF",
+    "uppercase": true,
+    "align": "center",
+    "titleShadow": "0 0.3u 1.4u rgba(0,0,10,.5)",
+    "subtitleFont": "Inter",
+    "subtitleColor": "#DCEBFF",
+    "subtitleWeight": 600,
+    "subtitleUppercase": true,
+    "titleLineHeight": 1.04,
+    "titleLetterSpacing": "-0.01em",
+    "subtitleGapU": 1.6,
+    "sidePaddingU": 6,
+    "textWrap": "balance"
+  },
+  "layout": {
+    "deviceAnchor": "below-headline",
+    "deviceGapU": 5,
+    "headlineMaxFraction": 0.3
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": true,
+  "suggestedAccent": "#3D8BFD",
+  "decorationsHint": "clinical and calm: deep navy, one soft blue glow behind the phone, no clutter, no icons.",
+  "device": {
+    "asset": "iphone",
+    "scale": 1.1,
+    "ipad": {
+      "scale": 1.0
+    },
+    "shadow": "0 4u 9u rgba(10,20,60,.5)",
+    "frameStyle": "apple",
+    "bezelColor": {
+      "iphone": "silver",
+      "ipad": "silver"
+    }
+  },
+  "samples": [
+    {
+      "verb": "THREE PLANES AT ONCE",
+      "descriptor": "AXIAL · SAGITTAL · CORONAL",
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 124,
+        "subPx": 56
+      }
+    }
+  ]
+}

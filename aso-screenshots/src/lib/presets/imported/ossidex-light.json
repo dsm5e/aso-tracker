@@ -1,0 +1,62 @@
+{
+  "id": "ossidex-light",
+  "name": "Ossidex Light",
+  "kind": "real",
+  "description": "Light clinical: white-to-ice background, navy sentence-case headline, blue subline.",
+  "recommendedFor": "medical imaging / dental / professional tools",
+  "background": {
+    "type": "linear",
+    "css": "linear-gradient(180deg,#FFFFFF 0%,#EEF3FA 60%,#DCE7F7 100%)"
+  },
+  "text": {
+    "font": "Inter",
+    "weight": 800,
+    "color": "#0B1B33",
+    "uppercase": false,
+    "align": "center",
+    "titleShadow": "none",
+    "subtitleFont": "Inter",
+    "subtitleColor": "#2563EB",
+    "subtitleWeight": 600,
+    "subtitleUppercase": false,
+    "titleLineHeight": 1.04,
+    "titleLetterSpacing": "-0.01em",
+    "subtitleGapU": 1.6,
+    "sidePaddingU": 6,
+    "textWrap": "balance"
+  },
+  "layout": {
+    "deviceAnchor": "below-headline",
+    "deviceGapU": 5,
+    "headlineMaxFraction": 0.3
+  },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": true,
+  "suggestedAccent": "#3D8BFD",
+  "decorationsHint": "clinical and calm: deep navy, one soft blue glow behind the phone, no clutter, no icons.",
+  "device": {
+    "asset": "iphone",
+    "scale": 1.1,
+    "ipad": {
+      "scale": 1.0
+    },
+    "shadow": "0 3u 7u rgba(20,40,80,.28)",
+    "frameStyle": "apple",
+    "bezelColor": {
+      "iphone": "silver",
+      "ipad": "silver"
+    }
+  },
+  "samples": [
+    {
+      "verb": "THREE PLANES AT ONCE",
+      "descriptor": "AXIAL · SAGITTAL · CORONAL",
+      "text": {
+        "yFraction": 0.06,
+        "titlePx": 124,
+        "subPx": 56
+      }
+    }
+  ]
+}

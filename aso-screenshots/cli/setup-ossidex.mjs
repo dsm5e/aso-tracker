@@ -26,46 +26,62 @@ const DEVICE = {
   ipad: { titlePx: 150, subPx: 66, yFrac: 0.045, heroYFrac: 0.13, scale: 1 },
 };
 const BG = 'radial-gradient(120% 70% at 50% 62%, #1B3A7A 0%, #0E1A33 45%, #070A10 100%)';
+// Visual theory per variant (owner 2026-09-26: same copy, test colours and layout).
+const STYLE = {
+  A: { preset: 'ossidex-clinical', bg: BG, band: 'band', press: 'press', quoteBg: 'rgba(14,26,51,.94)', quoteFg: '#FFFFFF' },
+  B: { preset: 'ossidex-light', bg: 'linear-gradient(180deg,#FFFFFF 0%,#EEF3FA 60%,#DCE7F7 100%)', band: 'band-light', press: 'press-dark',
+       quoteBg: '#FFFFFF', quoteFg: '#0B1B33', laurel: '#8A5E0F', bezel: 'silver' },
+  C: { preset: 'ossidex-blue', bg: 'linear-gradient(160deg,#3D8BFD 0%,#1D4ED8 55%,#1E3A8A 100%)', band: 'band-blue', press: 'press-white',
+       quoteBg: 'rgba(8,20,60,.9)', quoteFg: '#FFFFFF', laurel: '#FFFFFF', tilt: 6, bezel: 'silver', scale: 0.94 },
+  D: { preset: 'ossidex-editorial', bg: '#05070C', band: 'band-black', press: 'press', quoteBg: 'rgba(255,255,255,.08)', quoteFg: '#FFFFFF',
+       align: 'left', frame: 'frameless', scale: 1.1, dy: { iphone: 60, ipad: 50 } },
+};
 
-function heroDecor(dev, lang) {
+function heroDecor(dev, lang, v = 'A') {
+  const st = STYLE[v];
   const L = LAURELS[lang] ?? LAURELS.en;
   const ip = dev === 'ipad';
   const w = ip ? 0.22 : 0.3;
   const y = ip ? 0.05 : 0.06;
   const xs = ip ? [0.28, 0.5, 0.72] : [0.19, 0.5, 0.81];
   return [
-    ...xs.map((x, i) => ({ kind: 'laurel', xFrac: x, yFrac: y, widthFrac: w, fontPx: ip ? 46 : 36, layer: 'top', text: L[i] })),
-    { kind: 'image', src: `${BASE}/decor/band.png`, xFrac: 0.5, yFrac: ip ? 0.93 : 0.925, widthFrac: 1.02, layer: 'top', shadow: false },
+    ...xs.map((x, i) => ({ kind: 'laurel', xFrac: x, yFrac: y, widthFrac: w, fontPx: ip ? 46 : 36, layer: 'top', text: L[i], ...(st.laurel ? { color: st.laurel } : {}) })),
+    { kind: 'image', src: `${BASE}/decor/${st.band}.png`, xFrac: 0.5, yFrac: ip ? 0.93 : 0.925, widthFrac: 1.02, layer: 'top', shadow: false },
     { kind: 'bubble', xFrac: ip ? 0.74 : 0.66, yFrac: ip ? 0.78 : 0.76, widthFrac: ip ? 0.34 : 0.56, rotate: -3, layer: 'top',
-      text: QUOTE[lang] ?? QUOTE.en, bg: 'rgba(14,26,51,.94)', color: '#FFFFFF', fontPx: ip ? 44 : 42, tail: 'none' },
-    { kind: 'image', src: `${BASE}/decor/press.png`, xFrac: 0.5, yFrac: 0.962, widthFrac: ip ? 0.6 : 0.86, layer: 'top', shadow: false, opacity: 1 },
+      text: QUOTE[lang] ?? QUOTE.en, bg: st.quoteBg, color: st.quoteFg, fontPx: ip ? 44 : 42, tail: 'none' },
+    { kind: 'image', src: `${BASE}/decor/${st.press}.png`, xFrac: 0.5, yFrac: 0.962, widthFrac: ip ? 0.6 : 0.86, layer: 'top', shadow: false, opacity: 1 },
   ];
 }
 
 function slot(variant, dev, frame, idx, head, sub) {
   const d = DEVICE[dev];
   const hero = idx === 0;
+  const st = STYLE[variant];
+  const tilt = st.tilt ? (idx % 2 ? -st.tilt : st.tilt) : 0;
   return {
     id: `ox-${variant}-${dev}-${frame}`,
     filename: `${dev}-${FRAME_FILE[frame]}.png`,
     device: dev,
     kind: 'regular',
     sourceLayout: 'device',
-    presetId: 'ossidex-clinical',
+    presetId: st.preset,
     sourceUrl: `${BASE}/${dev}-${FRAME_FILE[frame]}.png`,
     enhancedUrl: null,
-    backgroundOverride: BG,
+    backgroundOverride: st.bg,
+    ...(st.align ? { textAlignOverride: st.align } : {}),
+    ...(st.frame ? { deviceFrameStyle: st.frame } : {}),
+    ...(st.bezel ? { deviceBezelColor: st.bezel } : {}),
     headline: { verb: head, descriptor: sub, subhead: '' },
     font: 'Inter',
     fontSize: d.titlePx,
     titlePx: d.titlePx,
     subPx: d.subPx,
     textYFraction: hero ? d.heroYFrac : d.yFrac,
-    textX: 0, textY: 0, deviceX: 0, deviceY: 0,
-    deviceScale: hero ? 0.84 : d.scale,
-    tiltDeg: 0, tiltX: 0, tiltY: 0,
+    textX: 0, textY: 0, deviceX: 0, deviceY: st.dy?.[dev] ?? 0,
+    deviceScale: (hero ? 0.84 : d.scale) * (st.scale ?? 1),
+    tiltDeg: tilt, tiltX: 0, tiltY: 0,
     breakout: false, pulseScreen: 0, enhanceState: 'idle',
-    ...(hero ? { decor: heroDecor(dev, 'en') } : {}),
+    ...(hero ? { decor: heroDecor(dev, 'en', variant) } : {}),
   };
 }
 
@@ -94,7 +110,7 @@ const locales = LOCALES.map((code) => {
       copy[v].forEach(([frame, head, sub], i) => {
         const id = `ox-${v}-${dev}-${frame}`;
         translations[id] = { verb: head, descriptor: sub, subhead: '' };
-        if (i === 0) decorTranslations[id] = heroDecor(dev, lang).map((it) => it.text ?? null);
+        if (i === 0) decorTranslations[id] = heroDecor(dev, lang, v).map((it) => it.text ?? null);
       });
     }
   }
