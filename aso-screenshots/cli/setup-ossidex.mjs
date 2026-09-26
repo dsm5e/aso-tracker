@@ -1,0 +1,129 @@
+#!/usr/bin/env node
+/**
+ * Ossidex (ex-MedScan, DICOM / CBCT viewer) — builds the Studio project: 6 frames
+ * per variant for iPhone + iPad on the `ossidex-clinical` preset.
+ *   A — main set; B/C/D — PPO treatments (copy in cli/ossidex-copy.mjs).
+ * Every variant has its own slots (same captures, own captions), and a layout
+ * variant lists them in order, so `render-export --variants A,B,C,D` renders all.
+ *
+ *   node cli/setup-ossidex.mjs [--locales en-US,en-GB]
+ *
+ * Sources: public/uploads/ossidex/<device>-<frame>.png — raw frames from the app's
+ * StoreScreenshotsE2ETests (real anonymised CBCT). Decor: public/uploads/ossidex/decor.
+ */
+import path from 'node:path';
+import { LAURELS, QUOTE, VARIANTS } from './ossidex-copy.mjs';
+
+const API = process.env.ASO_API ?? 'http://localhost:5173/studio-api';
+const BASE = '/studio/uploads/ossidex';
+const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > -1 ? process.argv[i + 1] : d; };
+const LOCALES = arg('locales', 'en-US').split(',');
+const LOCALE_COPY = { 'en-US': 'en', 'en-GB': 'en', 'en-AU': 'en', 'en-CA': 'en', ru: 'ru' };
+
+const FRAME_FILE = { arch: 'arch', mpr: 'mpr', '3d': 'full-3d', measure: 'measure', library: 'library', import: 'import' };
+const DEVICE = {
+  iphone: { titlePx: 124, subPx: 56, yFrac: 0.055, heroYFrac: 0.15, scale: 1 },
+  ipad: { titlePx: 150, subPx: 66, yFrac: 0.045, heroYFrac: 0.13, scale: 1 },
+};
+const BG = 'radial-gradient(120% 70% at 50% 62%, #1B3A7A 0%, #0E1A33 45%, #070A10 100%)';
+
+function heroDecor(dev, lang) {
+  const L = LAURELS[lang] ?? LAURELS.en;
+  const ip = dev === 'ipad';
+  const w = ip ? 0.22 : 0.3;
+  const y = ip ? 0.05 : 0.06;
+  const xs = ip ? [0.28, 0.5, 0.72] : [0.19, 0.5, 0.81];
+  return [
+    ...xs.map((x, i) => ({ kind: 'laurel', xFrac: x, yFrac: y, widthFrac: w, fontPx: ip ? 46 : 36, layer: 'top', text: L[i] })),
+    { kind: 'image', src: `${BASE}/decor/band.png`, xFrac: 0.5, yFrac: ip ? 0.93 : 0.925, widthFrac: 1.02, layer: 'top', shadow: false },
+    { kind: 'bubble', xFrac: ip ? 0.74 : 0.66, yFrac: ip ? 0.78 : 0.76, widthFrac: ip ? 0.34 : 0.56, rotate: -3, layer: 'top',
+      text: QUOTE[lang] ?? QUOTE.en, bg: 'rgba(14,26,51,.94)', color: '#FFFFFF', fontPx: ip ? 44 : 42, tail: 'none' },
+    { kind: 'image', src: `${BASE}/decor/press.png`, xFrac: 0.5, yFrac: 0.962, widthFrac: ip ? 0.6 : 0.86, layer: 'top', shadow: false, opacity: 1 },
+  ];
+}
+
+function slot(variant, dev, frame, idx, head, sub) {
+  const d = DEVICE[dev];
+  const hero = idx === 0;
+  return {
+    id: `ox-${variant}-${dev}-${frame}`,
+    filename: `${dev}-${FRAME_FILE[frame]}.png`,
+    device: dev,
+    kind: 'regular',
+    sourceLayout: 'device',
+    presetId: 'ossidex-clinical',
+    sourceUrl: `${BASE}/${dev}-${FRAME_FILE[frame]}.png`,
+    enhancedUrl: null,
+    backgroundOverride: BG,
+    headline: { verb: head, descriptor: sub, subhead: '' },
+    font: 'Inter',
+    fontSize: d.titlePx,
+    titlePx: d.titlePx,
+    subPx: d.subPx,
+    textYFraction: hero ? d.heroYFrac : d.yFrac,
+    textX: 0, textY: 0, deviceX: 0, deviceY: 0,
+    deviceScale: hero ? 0.84 : d.scale,
+    tiltDeg: 0, tiltX: 0, tiltY: 0,
+    breakout: false, pulseScreen: 0, enhanceState: 'idle',
+    ...(hero ? { decor: heroDecor(dev, 'en') } : {}),
+  };
+}
+
+const screenshots = [];
+const layoutVariants = [];
+for (const v of Object.keys(VARIANTS.en)) {
+  const ids = [];
+  for (const dev of ['iphone', 'ipad']) {
+    VARIANTS.en[v].forEach(([frame, head, sub], i) => {
+      const s = slot(v, dev, frame, i, head, sub);
+      screenshots.push(s);
+      ids.push(s.id);
+    });
+  }
+  layoutVariants.push({ id: v, title: { A: 'Main', B: 'No laptop', C: 'Any scanner', D: 'In seconds' }[v], slotIds: ids });
+}
+
+const NAMES = new Intl.DisplayNames(['en'], { type: 'language' });
+const locales = LOCALES.map((code) => {
+  const lang = LOCALE_COPY[code] ?? 'en';
+  const copy = VARIANTS[lang] ?? VARIANTS.en;
+  const translations = {};
+  const decorTranslations = {};
+  for (const v of Object.keys(copy)) {
+    for (const dev of ['iphone', 'ipad']) {
+      copy[v].forEach(([frame, head, sub], i) => {
+        const id = `ox-${v}-${dev}-${frame}`;
+        translations[id] = { verb: head, descriptor: sub, subhead: '' };
+        if (i === 0) decorTranslations[id] = heroDecor(dev, lang).map((it) => it.text ?? null);
+      });
+    }
+  }
+  return { id: code, code, name: NAMES.of(code), flag: '', translations, decorTranslations, variant: 'A' };
+});
+
+const state = await fetch(`${API}/studio-state`).then((r) => r.json());
+const next = {
+  ...state,
+  appName: 'Ossidex',
+  appColor: '#0E1A33',
+  appIconUrl: null,
+  bundleId: 'com.medscan.dicom.ct.mri.radiology.scan.viewer',
+  devices: 'both',
+  iphoneModel: 'iphone-17-pro-max',
+  ipadModel: 'ipad-pro-13',
+  sourceLocale: 'en-US',
+  selectedPresetId: 'ossidex-clinical',
+  screenshots,
+  layoutVariants,
+  locales,
+  activeLocaleId: 'en-US',
+  localizedSources: null,
+  outputFolder: path.join(process.env.HOME, 'Desktop', 'Ossidex-release'),
+  activeScreenshotId: screenshots[0].id,
+  ppo: null,
+};
+const res = await fetch(`${API}/studio-state/push`, {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next),
+});
+console.log(res.status, await res.text());
+console.log(`${screenshots.length} slots, variants ${layoutVariants.map((v) => v.id).join('/')}, locales ${LOCALES.join(',')}`);
