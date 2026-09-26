@@ -112,11 +112,15 @@ const SCRIPT = {
 };
 const NAMES = new Intl.DisplayNames(['en'], { type: 'language' });
 
-// Store locale → app UI language folder (everything else: en root). Filled once
-// the fresh captures land; languages without a folder fall back to en.
+// Store locale → app UI language folder = the app's xcstrings language (38 in PAW 1.3).
+// Only the prey picker (frame 4) carries UI text; the game frames are language-neutral,
+// so a missing folder simply falls back to en. Locales the app lacks → en.
 const LOCALE_MAP = {
-  'de-DE': 'de', 'fr-FR': 'fr', 'fr-CA': 'fr', 'es-MX': 'es', 'es-ES': 'es', 'pt-BR': 'pt', 'pt-PT': 'pt',
-  it: 'it', ja: 'ja', ko: 'ko', 'zh-Hans': 'zh', 'zh-Hant': 'zh', ru: 'ru', uk: 'uk', tr: 'tr',
+  'ar-SA': 'ar', ca: 'ca', cs: 'cs', da: 'da', 'de-DE': 'de', el: 'el', 'en-AU': 'en-AU', 'en-CA': 'en-CA',
+  'en-GB': 'en-GB', 'en-US': 'en', 'es-ES': 'es', 'es-MX': 'es-MX', fi: 'fi', 'fr-FR': 'fr', 'fr-CA': 'fr-CA',
+  he: 'he', hi: 'hi', hr: 'hr', hu: 'hu', id: 'id', it: 'it', ja: 'ja', ko: 'ko', ms: 'ms', no: 'nb',
+  'nl-NL': 'nl', pl: 'pl', 'pt-BR': 'pt-BR', 'pt-PT': 'pt-PT', ro: 'ro', ru: 'ru', sk: 'sk', sv: 'sv', th: 'th',
+  tr: 'tr', uk: 'uk', vi: 'vi', 'zh-Hans': 'zh-Hans', 'zh-Hant': 'zh-Hant',
 };
 
 function decorFor(items, dev) {
