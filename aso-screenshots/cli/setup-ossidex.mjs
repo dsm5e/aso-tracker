@@ -12,6 +12,8 @@
  * StoreScreenshotsE2ETests (real anonymised CBCT). Decor: public/uploads/ossidex/decor.
  */
 import path from 'node:path';
+import { existsSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { LAURELS, QUOTE, VARIANTS } from './ossidex-copy.mjs';
 
 const API = process.env.ASO_API ?? 'http://localhost:5173/studio-api';
@@ -133,7 +135,13 @@ const next = {
   layoutVariants,
   locales,
   activeLocaleId: 'en-US',
-  localizedSources: null,
+  localizedSources: (() => {
+    // Per-language UI captures: public/uploads/ossidex/<lang>/<device>-<frame>.png
+    const up = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'public', 'uploads', 'ossidex');
+    const files = {};
+    for (const lang of ['ru']) if (existsSync(path.join(up, lang))) files[lang] = readdirSync(path.join(up, lang)).filter((f) => f.endsWith('.png')).sort();
+    return Object.keys(files).length ? { dir: 'ossidex', rootLang: 'en', files, localeMap: { ru: 'ru' }, fallback: ['en'], defaultLang: 'en' } : null;
+  })(),
   outputFolder: path.join(process.env.HOME, 'Desktop', 'Ossidex-release'),
   activeScreenshotId: screenshots[0].id,
   ppo: null,
