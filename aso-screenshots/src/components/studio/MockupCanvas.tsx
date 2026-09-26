@@ -1140,7 +1140,11 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
             left: 0,
             right: 0,
             top: headlineTop,
-            padding: isElaraHeroText ? '0 190px' : isFatherEditorialText ? '0 108px' : isFatherProductText ? '0 88px' : isCppCenteredText || isCppEditorialText ? '0 96px' : `0 ${pt?.sidePaddingU != null ? pt.sidePaddingU * u : 60}px`,
+            padding: isElaraHeroText ? '0 190px' : isFatherEditorialText ? '0 108px' : isFatherProductText ? '0 88px' : isCppCenteredText || isCppEditorialText ? '0 96px' : (() => {
+              const side = pt?.sidePaddingU != null ? pt.sidePaddingU * u : 60;
+              const end = side + (ss.headlinePadEndU ?? 0) * u;
+              return textDir === 'rtl' ? `0 ${side}px 0 ${end}px` : `0 ${end}px 0 ${side}px`;
+            })(),
             textAlign,
             fontFamily: `"${textFont}", Inter, sans-serif`,
             color: textColor,
@@ -1225,7 +1229,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
               whiteSpace: fitLines ? 'pre' : 'pre-wrap',
               textWrapStyle: pt?.textWrap,
               overflowWrap: 'normal',
-              wordBreak: 'normal',
+              wordBreak: pt?.wordBreak ?? 'normal',
               hyphens: 'none',
             }}
           >
@@ -1248,7 +1252,7 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
                 whiteSpace: fitLines ? 'pre' : 'pre-wrap',
                 textWrapStyle: pt?.textWrap,
                 overflowWrap: 'break-word',
-                wordBreak: 'normal',
+                wordBreak: pt?.wordBreak ?? 'normal',
               }}
             >
               {renderAccented(descDisplay, ss.headlineAccent ?? preset?.suggestedAccent)}

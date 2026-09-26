@@ -240,6 +240,10 @@ export interface Screenshot {
   subPx?: number;
   /** Explicit bottom edge of the headline safe zone on full-bleed art. */
   headlineSafeBottomFraction?: number;
+  /** Extra right padding of the headline column in `u` (1% of canvas width) —
+   *  keeps a left-aligned headline clear of a mascot/decor at the top right.
+   *  Mirrors to the left side for RTL locales (pair with decor `mirrorRtl`). */
+  headlinePadEndU?: number;
   /** Vertically center localized copy inside the bounded headline safe zone. */
   headlineVerticalAlign?: 'start' | 'center';
   /** Screenshots sharing the same groupId mirror the same sourceUrl (cross-slot pair). */
@@ -300,6 +304,11 @@ export interface DecorItem {
   shadow?: boolean;
   /** kind=bubble / laurel: copy (localised via decorTranslations). */
   text?: string;
+  /** kind=bubble: render as a rounded pill chip (full radius, soft neutral
+   *  shadow) — e.g. «No ads» badges overlapping the screen edge. */
+  chip?: boolean;
+  /** Swap sides (x → 1 − x, mirrored) for RTL locales. */
+  mirrorRtl?: boolean;
   /** kind=bubble: tail direction. */
   tail?: 'left' | 'right' | 'bottom-left' | 'bottom-right' | 'none';
   bg?: string;

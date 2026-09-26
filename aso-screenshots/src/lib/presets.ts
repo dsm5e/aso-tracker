@@ -37,6 +37,9 @@ export interface PresetText {
   /** CSS `text-wrap` for title + subtitle, e.g. 'balance' — evens out
    *  two-line headlines instead of leaving an orphan word (default: none). */
   textWrap?: 'balance' | 'pretty';
+  /** CSS `word-break` for title + subtitle. 'keep-all' stops CJK headlines
+   *  breaking inside a word (lines break at spaces / punctuation only). */
+  wordBreak?: 'keep-all';
   /** Title line-height (default 1.02). */
   titleLineHeight?: number;
   /** Title letter-spacing (default -0.02em). */

@@ -126,14 +126,16 @@ function Bubble({ item, fontFamily, u, rtl, lang }: { item: DecorItem; fontFamil
         boxSizing: 'border-box',
         background: bg,
         color: item.color ?? '#22305E',
-        borderRadius: 4 * u,
-        padding: `${1.8 * u}px ${3 * u}px`,
+        borderRadius: item.chip ? 999 : 4 * u,
+        padding: item.chip ? `${1.5 * u}px ${3.4 * u}px` : `${1.8 * u}px ${3 * u}px`,
         fontFamily: `"${fontFamily}", Inter, sans-serif`,
         fontWeight: 900,
         lineHeight: 1.08,
         textAlign: 'center',
         direction: rtl ? 'rtl' : undefined,
-        boxShadow: item.shadow === false ? undefined : `0 ${0.7 * u}px 0 rgba(11,95,168,.55), 0 ${1.6 * u}px ${3.4 * u}px rgba(0,40,100,.28)`,
+        boxShadow: item.shadow === false ? undefined : item.chip
+          ? `0 ${0.8 * u}px ${2.6 * u}px rgba(20,30,60,.22)`
+          : `0 ${0.7 * u}px 0 rgba(11,95,168,.55), 0 ${1.6 * u}px ${3.4 * u}px rgba(0,40,100,.28)`,
       }}
     >
       <div ref={textRef} lang={lang} style={{ fontSize: initialPx, whiteSpace: 'pre', lineHeight: 1.18 }}>{item.text}</div>
@@ -236,13 +238,18 @@ export function DecorLayer({ items, layer, width, height, fontFamily, rtl, lang 
     >
       {list.map((d, i) => {
         const w = d.widthFrac * width;
-        const transform = `translate(-50%, -50%) rotate(${d.rotate ?? 0}deg)${d.flipX ? ' scaleX(-1)' : ''}`;
+        // `mirrorRtl`: the item swaps sides (and faces the other way) for RTL locales,
+        // e.g. a mascot that must stay clear of a right-aligned headline.
+        const mirror = rtl && d.mirrorRtl;
+        const flip = mirror ? !d.flipX : d.flipX;
+        const xFrac = mirror ? 1 - d.xFrac : d.xFrac;
+        const transform = `translate(-50%, -50%) rotate(${(mirror ? -1 : 1) * (d.rotate ?? 0)}deg)${flip ? ' scaleX(-1)' : ''}`;
         return (
           <div
             key={i}
             style={{
               position: 'absolute',
-              left: d.xFrac * width,
+              left: xFrac * width,
               top: d.yFrac * height,
               width: w,
               transform,

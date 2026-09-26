@@ -290,11 +290,16 @@ before each shot and retries a job once if a dev-server reload tears the page do
 ## Meowzy (added 2026-09-26, branch `meowzy-media`)
 
 - `node cli/setup-meowzy.mjs [--copy <screens-copy.json>]` — 6 frames × iPhone/iPad on preset
-  `meowzy-pastel` (YAZIO-like: pastel tint per slot via `backgroundOverride`, Nunito 900 navy
-  headline + orange subline, Deep Blue / Space Black Apple bezels, orange-cat mascot decor).
-  50 locales from `public/uploads/meowzy/screens-copy.json` (source: `~/Desktop/Meowzy-rebrand/`).
-- Hook slot uses `deviceAnchor: 'free'` + fixed `deviceY` so the peek mascot always sits on the
-  phone's top edge whatever the headline wraps to; decor items take `yFracIpad` (script-side).
-- Sources `public/uploads/meowzy/<device>-0N-<name>.png` (gitignored) are PLACEHOLDERS built from
-  PAW art until the fresh simulator capture lands; mascot poses in `uploads/meowzy/decor/`.
+  `meowzy-pastel`, layout v2 after owner feedback (YAZIO composition): ONE light background for all
+  frames, big heavy LEFT-aligned headline, device upright + large + bleeding off the bottom at the
+  same place on every frame (`deviceAnchor: 'free'`, fixed `deviceY`, `headlineSafeBottomFraction`),
+  mascot on all six frames around the device edges, facts as chips (`decor` bubble with `chip: true`),
+  «Premium» as the slot pill on the CatCam frame. 50 locales from `public/uploads/meowzy/screens-copy.json`
+  (`locales` = headlines, `chips` = chip / pill copy).
+- Generic knobs added for it: decor `chip` (full-radius pill, neutral shadow) and `mirrorRtl`
+  (item swaps sides for RTL locales); slot `headlinePadEndU` (extra end padding so a left-aligned
+  headline clears a top-right mascot; mirrors for RTL); preset `text.wordBreak: 'keep-all'`
+  (CJK headlines break at spaces/punctuation only — ja uses explicit `\n` in the copy).
+- Sources `public/uploads/meowzy/<device>-0N-<name>.png` (gitignored) are PLACEHOLDERS until the fresh
+  simulator capture lands; mascot poses in `uploads/meowzy/decor/`.
 - The Studio holds one project: back up `~/.aso-studio/state.json` first, restore after.

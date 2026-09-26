@@ -31,69 +31,80 @@ const UPLOADS = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..',
 const dry = process.argv.includes('--dry');
 const ci = process.argv.indexOf('--copy');
 const copyPath = ci > -1 ? process.argv[ci + 1] : path.join(UPLOADS, 'screens-copy.json');
-const COPY = JSON.parse(await readFile(copyPath, 'utf8')).locales;
+const COPY_FILE = JSON.parse(await readFile(copyPath, 'utf8'));
+const COPY = COPY_FILE.locales;
+const CHIPS = COPY_FILE.chips;
 
-// Frame catalogue — source capture, pastel tint and the composition (fractions of canvas width/height).
-// Geometry is authored for iPhone; iPad derives from it in decorFor().
+// Layout v2 (owner feedback 2026-09-26, YAZIO composition): ONE light background for
+// every frame, big heavy LEFT-aligned headline, the device UPRIGHT, large and bleeding
+// off the bottom edge at the same place on every frame; the mascot stays on all six
+// frames, peeking around the device edges; facts as rounded chips over the screen edge.
+// All geometry is per device family (fractions of the canvas); `chip` = localized chip
+// copy key (copy.chips[locale][key]).
+const BG = 'radial-gradient(85% 48% at 50% 64%, #FFFFFF 0%, #F3F6FB 55%, #E9EEF6 100%)';
+const CHIP = {
+  blue: { bg: '#1E63F0', color: '#FFFFFF' },
+  orange: { bg: '#F2770F', color: '#FFFFFF' },
+  yellow: { bg: '#FFC21A', color: '#1B2340' },
+};
 const FRAMES = {
   hook: {
-    file: '01-hook.png', tint: '#FFE9D2',
-    // Fixed (not headline-anchored) so the peek pose lines up with the phone's top
-    // edge in every locale, whatever the headline wraps to.
-    anchor: 'free',
-    device: { dx: 0, scale: 0.9, dy: 0.256, dyIpad: 0.0935 },
-    decor: [
-      // Peek pose: straight bottom cut sits on the phone's top edge (paws over the bezel).
-      { kind: 'image', src: 'peek.png', xFrac: 0.5, yFrac: 0.263, yFracIpad: 0.225, widthFrac: 0.44, layer: 'front', shadow: false },
-      { kind: 'doodle', shape: 'sparkle', xFrac: 0.12, yFrac: 0.3, widthFrac: 0.07, stroke: '#FFC21A', layer: 'top' },
-      { kind: 'doodle', shape: 'sparkle', xFrac: 0.9, yFrac: 0.26, widthFrac: 0.05, stroke: '#FFC21A', layer: 'top' },
-    ],
+    file: '01-hook.png', padEnd: { iphone: 30, ipad: 28 },
+    decor: {
+      // Peek pose: its straight bottom cut sits on the device's top edge, right side.
+      iphone: [{ kind: 'image', src: 'peek.png', xFrac: 0.8, yFrac: 0.186, widthFrac: 0.34, layer: 'front', shadow: false, mirrorRtl: true }],
+      ipad: [{ kind: 'image', src: 'peek.png', xFrac: 0.8, yFrac: 0.15, widthFrac: 0.24, layer: 'front', shadow: false, mirrorRtl: true }],
+    },
+    chips: { iphone: [{ key: 'hook', ...CHIP.blue, xFrac: 0.28, yFrac: 0.44, rotate: -4 }],
+             ipad: [{ key: 'hook', ...CHIP.blue, xFrac: 0.18, yFrac: 0.42, rotate: -4 }] },
   },
   fish: {
-    file: '02-fish.png', tint: '#DDF3FF',
-    device: { dx: 0.1, scale: 0.86, tilt: 4 },
-    decor: [
-      { kind: 'image', src: 'chase-fish.png', xFrac: 0.24, yFrac: 0.8, widthFrac: 0.54, layer: 'front' },
-      { kind: 'doodle', shape: 'sparkle', xFrac: 0.1, yFrac: 0.56, widthFrac: 0.06, stroke: '#FFC21A', layer: 'top' },
-    ],
+    file: '02-fish.png',
+    decor: {
+      iphone: [{ kind: 'image', src: 'chase-fish.png', xFrac: 0.2, yFrac: 0.87, widthFrac: 0.44, layer: 'front' }],
+      ipad: [{ kind: 'image', src: 'chase-fish.png', xFrac: 0.14, yFrac: 0.86, widthFrac: 0.3, layer: 'front' }],
+    },
   },
   laser: {
-    file: '03-laser.png', tint: '#EFE8FF',
-    device: { dx: -0.1, scale: 0.86, tilt: -4 },
-    decor: [
-      { kind: 'image', src: 'pounce.png', xFrac: 0.72, yFrac: 0.66, widthFrac: 0.6, layer: 'front', flipX: true },
-      { kind: 'doodle', shape: 'burst', xFrac: 0.88, yFrac: 0.44, widthFrac: 0.12, stroke: '#FF5A7A', layer: 'top' },
-    ],
+    file: '03-laser.png', padEnd: { iphone: 30, ipad: 26 },
+    decor: {
+      iphone: [{ kind: 'image', src: 'pounce.png', xFrac: 0.8, yFrac: 0.255, widthFrac: 0.42, layer: 'front', flipX: true, mirrorRtl: true }],
+      ipad: [{ kind: 'image', src: 'pounce.png', xFrac: 0.85, yFrac: 0.225, widthFrac: 0.3, layer: 'front', flipX: true, mirrorRtl: true }],
+    },
   },
   prey: {
-    file: '04-prey.png', tint: '#E3F6EA',
-    device: { dx: -0.08, scale: 0.86, tilt: -3 },
-    decor: [
-      { kind: 'image', src: 'surprised.png', xFrac: 0.8, yFrac: 0.83, widthFrac: 0.44, layer: 'front' },
-      { kind: 'doodle', shape: 'star', xFrac: 0.9, yFrac: 0.5, widthFrac: 0.07, stroke: '#FFC21A', layer: 'top' },
-    ],
+    file: '04-prey.png',
+    decor: {
+      iphone: [{ kind: 'image', src: 'surprised.png', xFrac: 0.83, yFrac: 0.88, widthFrac: 0.34, layer: 'front' }],
+      ipad: [{ kind: 'image', src: 'surprised.png', xFrac: 0.88, yFrac: 0.86, widthFrac: 0.22, layer: 'front' }],
+    },
+    chips: { iphone: [{ key: 'prey', ...CHIP.orange, xFrac: 0.34, yFrac: 0.8, rotate: -3 }],
+             ipad: [{ key: 'prey', ...CHIP.orange, xFrac: 0.24, yFrac: 0.84, rotate: -3 }] },
   },
   lock: {
-    file: '05-lock.png', tint: '#FFF3C9',
-    device: { dx: 0.1, scale: 0.86, tilt: 3 },
-    decor: [
-      { kind: 'image', src: 'sleeping.png', xFrac: 0.22, yFrac: 0.86, widthFrac: 0.48, layer: 'front' },
-    ],
+    file: '05-lock.png',
+    decor: {
+      iphone: [{ kind: 'image', src: 'sleeping.png', xFrac: 0.78, yFrac: 0.89, widthFrac: 0.4, layer: 'front' }],
+      ipad: [{ kind: 'image', src: 'sleeping.png', xFrac: 0.87, yFrac: 0.87, widthFrac: 0.26, layer: 'front' }],
+    },
+    chips: { iphone: [{ key: 'lock', ...CHIP.yellow, xFrac: 0.42, yFrac: 0.76, rotate: -3 }],
+             ipad: [{ key: 'lock', ...CHIP.yellow, xFrac: 0.3, yFrac: 0.8, rotate: -3 }] },
   },
   catcam: {
-    file: '06-catcam.png', tint: '#FFE3EC',
-    device: { dx: -0.08, scale: 0.86, tilt: -3 },
-    decor: [
-      { kind: 'image', src: 'paw-tap.png', xFrac: 0.78, yFrac: 0.82, widthFrac: 0.5, layer: 'front', flipX: true },
-      { kind: 'doodle', shape: 'heart', xFrac: 0.9, yFrac: 0.52, widthFrac: 0.07, stroke: '#FF6B8B', rotate: 12, layer: 'top' },
-    ],
+    file: '06-catcam.png', pill: 'catcamPill',
+    decor: {
+      iphone: [{ kind: 'image', src: 'paw-tap.png', xFrac: 0.17, yFrac: 0.88, widthFrac: 0.4, layer: 'front' }],
+      ipad: [{ kind: 'image', src: 'paw-tap.png', xFrac: 0.12, yFrac: 0.87, widthFrac: 0.26, layer: 'front' }],
+    },
   },
 };
 const ORDER = ['hook', 'fish', 'laser', 'prey', 'lock', 'catcam'];
 
+// Same device placement on every frame: `free` anchor (the headline length never moves
+// the device), fixed top, scale ≈ 80 % (iPhone) / 88 % (iPad) of the canvas width.
 const DEVICE = {
-  iphone: { W: 1320, titlePx: 150, subPx: 66, yFrac: 0.055, decorScale: 1 },
-  ipad: { W: 2064, titlePx: 150, subPx: 64, yFrac: 0.045, decorScale: 0.62 },
+  iphone: { W: 1320, titlePx: 165, subPx: 64, yFrac: 0.05, safeBottom: 0.218, scale: 1.0, dy: 0.174, chipPx: 60 },
+  ipad: { W: 2064, titlePx: 175, subPx: 70, yFrac: 0.04, safeBottom: 0.19, scale: 1.08, dy: 0.113, chipPx: 70 },
 };
 
 // Store locales: the 50 keys of the copy file (= meowzy-metadata-v1.json).
@@ -123,21 +134,14 @@ const LOCALE_MAP = {
   tr: 'tr', uk: 'uk', vi: 'vi', 'zh-Hans': 'zh-Hans', 'zh-Hant': 'zh-Hant',
 };
 
-function decorFor(items, dev) {
-  const d = DEVICE[dev];
-  return items.map((it) => {
-    const { yFracIpad, ...rest } = it;
-    const out = { ...rest };
-    if (it.src) out.src = `${DECOR}/${it.src}`;
-    if (dev === 'ipad') {
-      // The iPad canvas is far less tall relative to its width: shrink overlays and
-      // pull them towards the side gutters so they frame the wider tablet.
-      out.widthFrac = +(it.widthFrac * d.decorScale).toFixed(3);
-      out.xFrac = +(0.5 + (it.xFrac - 0.5) * 1.12).toFixed(3);
-      if (yFracIpad != null) out.yFrac = yFracIpad;
-    }
-    return out;
-  });
+function decorFor(key, dev, chips) {
+  const f = FRAMES[key];
+  const items = (f.decor?.[dev] ?? []).map((it) => ({ ...it, src: `${DECOR}/${it.src}` }));
+  for (const c of f.chips?.[dev] ?? []) {
+    items.push({ kind: 'bubble', chip: true, tail: 'none', text: chips[c.key], bg: c.bg, color: c.color,
+      xFrac: c.xFrac, yFrac: c.yFrac, widthFrac: 0.8, rotate: c.rotate ?? 0, fontPx: DEVICE[dev].chipPx, layer: 'top' });
+  }
+  return items;
 }
 
 function slot(key, dev) {
@@ -153,26 +157,29 @@ function slot(key, dev) {
     presetId: 'meowzy-pastel',
     sourceUrl: `${BASE}/${dev}-${f.file}`,
     enhancedUrl: null,
-    backgroundOverride: `radial-gradient(120% 62% at 50% 52%, #FFFFFF 0%, ${f.tint} 62%, ${f.tint} 100%)`,
+    backgroundOverride: BG,
     headline: { verb, descriptor, subhead: '' },
+    ...(f.pill ? { pill: CHIPS['en-US'][f.pill] } : {}),
     font: 'Nunito',
     fontSize: d.titlePx,
     titlePx: d.titlePx,
     subPx: d.subPx,
     textYFraction: d.yFrac,
+    headlineSafeBottomFraction: d.safeBottom,
+    ...(f.padEnd ? { headlinePadEndU: f.padEnd[dev] } : {}),
     textX: 0,
     textY: 0,
-    deviceX: Math.round((f.device.dx ?? 0) * d.W),
-    deviceY: Math.round(((dev === 'ipad' ? f.device.dyIpad : undefined) ?? f.device.dy ?? 0) * d.W),
-    deviceScale: f.device.scale ?? 1,
-    tiltDeg: f.device.tilt ?? 0,
+    deviceAnchor: 'free',
+    deviceX: 0,
+    deviceY: Math.round(d.dy * d.W),
+    deviceScale: d.scale,
+    tiltDeg: 0,
     tiltX: 0,
     tiltY: 0,
     breakout: false,
     pulseScreen: 0,
     enhanceState: 'idle',
-    ...(f.anchor ? { deviceAnchor: f.anchor } : {}),
-    decor: decorFor(f.decor, dev),
+    decor: decorFor(key, dev, CHIPS['en-US']),
   };
 }
 
@@ -189,9 +196,19 @@ const locales = LOCALES.map((code) => {
     const [verb, descriptor] = copy[key];
     translations[s.id] = { verb, descriptor, subhead: '' };
   }
+  const decorTranslations = {};
+  const pillTranslations = {};
+  for (const s of screenshots) {
+    const key = s.id.split('-').pop();
+    const f = FRAMES[key];
+    decorTranslations[s.id] = decorFor(key, s.device, CHIPS[code]).map((it) => (it.kind === 'bubble' ? it.text : null));
+    if (f.pill) pillTranslations[s.id] = CHIPS[code][f.pill];
+  }
   const meta = SCRIPT[code] ?? {};
   return {
     id: code, code, name: NAMES.of(code), flag: '',
+    decorTranslations,
+    pillTranslations,
     ...(meta.rtl ? { rtl: true } : {}),
     ...(meta.font ? { fontOverride: meta.font } : {}),
     translations,
