@@ -133,3 +133,15 @@ export const UI_LANG = {
   ru: 'ru', 'ar-SA': 'ar', ro: 'ro', uk: 'uk', tr: 'tr', 'fr-FR': 'fr', 'fr-CA': 'fr', pl: 'pl', vi: 'vi', ja: 'ja', el: 'el',
   cs: 'cs', id: 'id', hu: 'hu', he: 'he', it: 'it', th: 'th', no: 'nb', 'sl-SI': 'sl', 'nl-NL': 'nl', 'ur-PK': 'ur', ms: 'ms',
 };
+
+// Hero: the doctor's pain, handwritten next to the device (replaces «Open a case»).
+export const PAIN = {
+  en: 'No laptop needed', ru: 'Ноутбук не нужен', uk: 'Ноутбук не потрібен', de: 'Kein Laptop nötig', fr: 'Plus besoin d’ordinateur',
+  es: 'Sin portátil', 'pt-BR': 'Sem notebook', 'pt-PT': 'Sem portátil', it: 'Niente portatile', ca: 'Sense portàtil', ro: 'Fără laptop',
+  pl: 'Bez laptopa', cs: 'Bez notebooku', sk: 'Bez notebooku', hu: 'Laptop nélkül', hr: 'Bez laptopa', sl: 'Brez prenosnika',
+  el: 'Χωρίς λάπτοπ', tr: 'Laptop gerekmez', nl: 'Geen laptop nodig', sv: 'Ingen laptop behövs', da: 'Ingen bærbar nødvendig',
+  no: 'Ingen PC nødvendig', fi: 'Ei läppäriä', he: 'בלי מחשב נייד', 'ar-SA': 'بلا حاسوب محمول', hi: 'लैपटॉप की ज़रूरत नहीं',
+  id: 'Tanpa laptop', ms: 'Tanpa komputer riba', vi: 'Không cần laptop', th: 'ไม่ต้องใช้โน้ตบุ๊ก', ja: 'ノートPC不要', ko: '노트북 필요 없음',
+  'zh-Hans': '无需笔记本电脑', 'zh-Hant': '無需筆電',
+};
+export const VENDORS = 'Vatech · Planmeca · Carestream · Sirona · Philips · Siemens · GE · Canon';

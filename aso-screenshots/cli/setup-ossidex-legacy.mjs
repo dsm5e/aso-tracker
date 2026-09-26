@@ -14,7 +14,7 @@
 import path from 'node:path';
 import { existsSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { FRAMES, LEGACY, LOCALE_COPY, QUOTE, UI_LANG } from './ossidex-legacy-copy.mjs';
+import { FRAMES, LEGACY, LOCALE_COPY, PAIN, VENDORS } from './ossidex-legacy-copy.mjs';
 
 const API = process.env.ASO_API ?? 'http://localhost:5173/studio-api';
 const BASE = '/studio/uploads/ossidex';
@@ -38,8 +38,13 @@ const GLOW = 'radial-gradient(95% 55% at 50% 34%, #2F5BA6 0%, #1A3566 42%, #0F1C
 function heroDecor(dev, lang) {
   const ip = dev === 'ipad';
   return [
-    { kind: 'bubble', xFrac: ip ? 0.77 : 0.7, yFrac: ip ? 0.8 : 0.79, widthFrac: ip ? 0.34 : 0.56, rotate: -3, layer: 'top',
-      text: QUOTE[lang] ?? QUOTE.en, bg: 'rgba(14,26,51,.94)', color: '#FFFFFF', fontPx: ip ? 44 : 42, tail: 'none' },
+    // Pain line + hand-drawn arrow where «Open a case» was.
+    { kind: 'bubble', xFrac: ip ? 0.3 : 0.3, yFrac: ip ? 0.205 : 0.215, widthFrac: ip ? 0.5 : 0.56, rotate: -5, layer: 'top',
+      text: PAIN[lang] ?? PAIN.en, bg: 'transparent', color: '#9CC8FF', fontPx: ip ? 72 : 62, tail: 'none', shadow: false },
+    { kind: 'doodle', shape: 'arrow-curly', xFrac: ip ? 0.6 : 0.66, yFrac: ip ? 0.225 : 0.235, widthFrac: ip ? 0.08 : 0.13, rotate: 35, layer: 'top', color: '#9CC8FF' },
+    // Vendors, just above the «As seen in» footer.
+    { kind: 'bubble', xFrac: 0.5, yFrac: ip ? 0.885 : 0.9, widthFrac: 0.96, layer: 'top', text: VENDORS,
+      bg: 'transparent', color: 'rgba(220,233,255,.92)', fontPx: ip ? 40 : 34, tail: 'none', shadow: false },
   ];
 }
 
@@ -52,9 +57,10 @@ function slot(dev, frame, idx) {
     filename: `${dev}-${FILE[frame]}.png`,
     device: dev,
     kind: 'regular',
-    sourceLayout: 'device',
+    sourceLayout: hero ? 'full-bleed' : 'device',
     presetId: 'ossidex-clinical',
-    sourceUrl: `${BASE}/${dev}-${FILE[frame]}.png`,
+    sourceUrl: hero ? `${BASE}/decor/hero-final-${dev}.png` : `${BASE}/${dev}-${FILE[frame]}.png`,
+    ...(hero ? { sourceScale: 1, sourceOffsetX: 0, sourceOffsetY: 0 } : {}),
     enhancedUrl: null,
     backgroundOverride: hero ? `#1E4FD8 url("${BASE}/decor/legacy-hero-bg-${dev}.png") center / cover no-repeat` : GLOW,
     headline: { verb: head, descriptor: sub, subhead: '' },
@@ -62,7 +68,7 @@ function slot(dev, frame, idx) {
     fontSize: d.titlePx, titlePx: hero ? d.titlePx * 1.12 : d.titlePx, subPx: d.subPx,
     textYFraction: d.yFrac,
     textX: 0, textY: 0, deviceX: hero ? Math.round(d.W * 0.03) : 0, deviceY: 0,
-    deviceScale: hero ? 0.72 : 0.78,
+    deviceScale: hero ? 0.72 : (dev === 'ipad' ? 0.95 : 0.78),
     subtitleColorOverride: '#FFFFFF',
     // The live hero device leans a little to the right.
     tiltDeg: hero ? 5 : 0, tiltX: 0, tiltY: 0,
@@ -91,20 +97,12 @@ const locales = LOCALES.map((code) => {
     const frame = s.id.split('-').slice(2).join('-');
     const [verb, descriptor] = copy[frame];
     translations[s.id] = { verb, descriptor, subhead: '' };
-    if (FRAMES.indexOf(frame) === 0) decorTranslations[s.id] = heroDecor(s.device, lang === 'ru' ? 'ru' : 'en').map((it) => it.text ?? null);
+    if (FRAMES.indexOf(frame) === 0) decorTranslations[s.id] = heroDecor(s.device, lang).map((it) => it.text ?? null);
   }
   const meta = SCRIPT[code] ?? {};
   return { id: code, code, name: NAMES.of(code), flag: '', ...(meta.rtl ? { rtl: true } : {}), ...(meta.font ? { fontOverride: meta.font } : {}),
     translations, decorTranslations, variant: 'L' };
 });
-
-// Localized UI captures: public/uploads/ossidex/<lang>/<device>-<frame>.png
-const files = {};
-for (const lang of new Set(Object.values(UI_LANG))) {
-  const dir = path.join(UPLOADS, lang);
-  if (existsSync(dir)) files[lang] = readdirSync(dir).filter((f) => f.endsWith('.png')).sort();
-}
-const localeMap = Object.fromEntries(ASC.map((c) => [c, UI_LANG[c] ?? 'en']));
 
 const state = await fetch(`${API}/studio-state`).then((r) => r.json());
 const next = {
@@ -114,10 +112,10 @@ const next = {
   devices: 'both', iphoneModel: 'iphone-17-pro-max', ipadModel: 'ipad-pro-12.9',
   sourceLocale: 'en-US', selectedPresetId: 'ossidex-clinical',
   screenshots, layoutVariants, locales, activeLocaleId: LOCALES[0],
-  localizedSources: Object.keys(files).length ? { dir: 'ossidex', rootLang: 'en', files, localeMap, fallback: ['en'], defaultLang: 'en' } : null,
+  localizedSources: null,   // UI captured in English only (owner 2026-09-26); copy is localized
   outputFolder: path.join(process.env.HOME, 'Desktop', 'Ossidex-release'),
   activeScreenshotId: screenshots[0].id, ppo: null,
 };
 const res = await fetch(`${API}/studio-state/push`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) });
 console.log(res.status, await res.text());
-console.log(`${screenshots.length} slots, ${locales.length} locales, UI langs: ${Object.keys(files).join(' ') || 'en only'}`);
+console.log(`${screenshots.length} slots, ${locales.length} locales, UI: en`);
