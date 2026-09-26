@@ -73,6 +73,8 @@ function slot(dev, frame, idx) {
     // The live hero device leans a little to the right.
     tiltDeg: hero ? 5 : 0, tiltX: 0, tiltY: 0,
     breakout: false, pulseScreen: 0, enhanceState: 'idle',
+    // Same device top and same text band on every frame (owner 2026-09-26: no jumping).
+    ...(hero ? {} : { deviceAnchor: 'fixed', deviceY: Math.round((dev === 'ipad' ? 2732 : 2868) * 0.215), headlineSafeBottomFraction: 0.2 }),
     ...(hero ? { decor: heroDecor(dev, 'en') } : {}),
   };
 }
