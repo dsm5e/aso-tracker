@@ -308,7 +308,10 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const u = CANVAS_W / 100;
   const pt = preset?.text;
   // `below-headline`: the device hangs under the MEASURED headline block.
-  const deviceAnchor = ss.deviceAnchor === 'free' ? undefined : (ss.deviceAnchor ?? preset?.layout?.deviceAnchor);
+  const deviceAnchor = ss.deviceAnchor === 'free' || ss.deviceAnchor === 'fixed' ? undefined : (ss.deviceAnchor ?? preset?.layout?.deviceAnchor);
+  // `fixed`: deviceY is the frame's absolute top (canvas px), the same on every slot
+  // and locale whatever the headline does — mascots/chips can then sit on its edges.
+  const isFixed = ss.deviceAnchor === 'fixed';
   const isAnchored = deviceAnchor === 'below-headline';
   const [measuredHeadlineH, setMeasuredHeadlineH] = useState<number | null>(null);
 
@@ -336,7 +339,9 @@ export function MockupCanvas({ screenshot: ss, device = 'iphone', iphoneModel: i
   const textZoneBottom = headlineTop + headlineHeight; // boundary: text must stay above this
   const deviceX = (CANVAS_W - D.width) / 2 + presetOffX;
   const anchorScale = presetScale * (ss.deviceScale ?? 1);
-  const deviceY = isAnchored
+  const deviceY = isFixed
+    ? presetOffY
+    : isAnchored
     // Top edge of the (scaled) frame sits `deviceGapU` below the headline.
     // Scaling happens around the centre, hence the (1 - scale) correction.
     ? headlineTop + (ss.textY || 0) + (measuredHeadlineH ?? headlineHeight)

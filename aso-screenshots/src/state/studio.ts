@@ -161,7 +161,7 @@ export interface Screenshot {
   decor?: DecorItem[];
   /** Per-slot device anchoring override: `free` ignores the preset's
    *  below-headline anchoring and uses the classic formula. */
-  deviceAnchor?: 'below-headline' | 'free';
+  deviceAnchor?: 'below-headline' | 'free' | 'fixed';
   /** Transform for an already-designed full-bleed preview. */
   sourceScale?: number;
   sourceOffsetX?: number;

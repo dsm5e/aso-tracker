@@ -103,8 +103,9 @@ const ORDER = ['hook', 'fish', 'laser', 'prey', 'lock', 'catcam'];
 // Same device placement on every frame: `free` anchor (the headline length never moves
 // the device), fixed top, scale ≈ 80 % (iPhone) / 88 % (iPad) of the canvas width.
 const DEVICE = {
-  iphone: { W: 1320, titlePx: 165, subPx: 64, yFrac: 0.05, safeBottom: 0.218, scale: 1.0, dy: 0.174, chipPx: 60 },
-  ipad: { W: 2064, titlePx: 175, subPx: 70, yFrac: 0.04, safeBottom: 0.19, scale: 1.08, dy: 0.113, chipPx: 70 },
+  // top = the frame's absolute top (canvas px, `fixed` anchor): identical on all frames.
+  iphone: { W: 1320, titlePx: 165, subPx: 64, yFrac: 0.05, safeBottom: 0.2, scale: 1.0, top: 640, chipPx: 60 },
+  ipad: { W: 2064, titlePx: 175, subPx: 70, yFrac: 0.04, safeBottom: 0.19, scale: 1.08, top: 640, chipPx: 70 },
 };
 
 // Store locales: the 50 keys of the copy file (= meowzy-metadata-v1.json).
@@ -169,9 +170,9 @@ function slot(key, dev) {
     ...(f.padEnd ? { headlinePadEndU: f.padEnd[dev] } : {}),
     textX: 0,
     textY: 0,
-    deviceAnchor: 'free',
+    deviceAnchor: 'fixed',
     deviceX: 0,
-    deviceY: Math.round(d.dy * d.W),
+    deviceY: d.top,
     deviceScale: d.scale,
     tiltDeg: 0,
     tiltX: 0,
