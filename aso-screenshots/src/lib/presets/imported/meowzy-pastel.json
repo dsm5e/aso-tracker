@@ -1,0 +1,45 @@
+{
+  "id": "meowzy-pastel",
+  "name": "Meowzy Pastel Mascot",
+  "kind": "real",
+  "description": "Cartoony mascot look in the spirit of YAZIO for Meowzy (games for cats): light pastel background with a soft white glow behind the phone, chunky rounded dark-navy headline (Nunito 900), orange subline, Apple bezel (Deep Blue iPhone / Space Black iPad) hanging under the headline and clipped by the bottom edge; the orange-cat mascot is layered around the device per slot (decor).",
+  "recommendedFor": "pets / kids / casual apps with a mascot",
+  "background": {
+    "type": "radial",
+    "css": "radial-gradient(120% 70% at 50% 45%, #FFFFFF 0%, #F4F1FF 55%, #ECE7FF 100%)"
+  },
+  "text": {
+    "font": "Nunito",
+    "weight": 900,
+    "color": "#1B2340",
+    "uppercase": false,
+    "align": "center",
+    "subtitleColor": "#F2770F",
+    "subtitleWeight": 800,
+    "subtitleUppercase": false,
+    "titleLineHeight": 1.0,
+    "titleLetterSpacing": "-0.015em",
+    "subtitleGapU": 1.4,
+    "sidePaddingU": 6,
+    "textWrap": "balance",
+    "pill": { "bg": "#FFC21A", "fg": "#1B2340", "weight": 900, "sizeFrac": 0.2, "letterSpacing": "0.03em" }
+  },
+  "layout": { "deviceAnchor": "below-headline", "deviceGapU": 5, "headlineMaxFraction": 0.27 },
+  "tiltDeg": 0,
+  "breakout": "none",
+  "isGradient": true,
+  "suggestedAccent": "#F2770F",
+  "decorationsHint": "light pastel canvas (lavender, mint, butter, peach, sky), one soft white glow behind the phone, a few yellow sparkles; the orange tabby mascot peeks over, pounces on or naps next to the phone.",
+  "device": {
+    "asset": "iphone",
+    "scale": 1.0,
+    "ipad": { "scale": 0.94 },
+    "shadow": "0 2.4u 6u rgba(40,30,90,.22)",
+    "frameStyle": "apple",
+    "bezelColor": { "iphone": "deep-blue", "ipad": "space-black" }
+  },
+  "samples": [
+    { "verb": "Cat games for cats", "descriptor": "Your cat hunts on the screen", "text": { "yFraction": 0.055, "titlePx": 150, "subPx": 66 } },
+    { "verb": "Catch the fish", "descriptor": "Fish swim like real prey", "text": { "yFraction": 0.055, "titlePx": 150, "subPx": 66 } }
+  ]
+}
