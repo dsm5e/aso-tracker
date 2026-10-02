@@ -368,9 +368,9 @@ export class PlatformReadService {
   async reports(appId: number, days = 30, force = false) {
     if (!Number.isSafeInteger(appId) || appId <= 0) throw new Error("appId must be a positive integer");
     const range = dateRange(days);
-    // AppsReportingRequest requires campaignId for every report entity. Resolve
-    // those ids from an app-scoped campaign query first so a report can never
-    // leak rows from another promoted app in the same ad account.
+    // Resolve ids from an app-scoped campaign query before reading reports.
+    // Campaign reports filter their own metadata.id; child reports use
+    // campaignId. The live API rejects campaignId on campaign reports.
     const campaigns = await this.collect<JsonRecord[]>("reportCampaignScope", {
       methodId: "POST /campaigns/query",
       body: queryBody([
@@ -397,12 +397,12 @@ export class PlatformReadService {
     const collected = new Map<string, { rows: JsonRecord[]; meta: PlatformSource["meta"]; failures: PlatformSourceError[]; successes: number }>();
     for (const [source] of routes) collected.set(source, { rows: [], meta: null, failures: [], successes: 0 });
 
-    // Apple documents campaignId as a single-campaign EQUALS scope. Fan out
+    // Scope each report to one campaign with an EQUALS filter. Fan out
     // over the already app-scoped ids; PlatformApiClient keeps transport
     // concurrency bounded and each campaign/entity response cached separately.
     await Promise.all(campaignIds.flatMap((campaignId) => routes.map(async ([source, id]) => {
       const body = {
-        filters: [appleFilter("campaignId", "EQUALS", campaignId)],
+        filters: [appleFilter(source === "campaigns" ? "id" : "campaignId", "EQUALS", campaignId)],
         groupBy: ["countryOrRegion"],
         timeRange: { ...range, timeZone: "ORTZ", granularity: "DAILY" },
       };

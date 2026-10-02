@@ -88,20 +88,32 @@ test("reports resolve app campaigns and use the AppsReportingRequest contract", 
     const path = new URL(url).pathname;
     const body = JSON.parse(init.body ?? "{}") as Record<string, unknown>;
     seen.push({ path, body });
-    if (path.endsWith("/campaigns/query")) {
+    if (path === "/v1/campaigns/query") {
       return response(200, { result: [{ id: 101 }, { id: 102 }], pagination: { offset: 0, pageSize: 2, totalCount: 2 } });
+    }
+    if (path === "/v1/reports/apps/campaigns/query") {
+      const filters = body.filters as Array<{ field: string; value: unknown }>;
+      // Captured live API behavior: campaign-level metadata uses `id`.
+      if (filters.some((filter) => filter.field === "campaignId")) {
+        return response(400, { error: { code: "VALIDATION_ERROR", message: "Filters contain unsupported fields campaignId" } });
+      }
+      const id = Number(filters.find((filter) => filter.field === "id")?.value);
+      return response(200, { result: { rows: [{ metadata: { id }, totalMetrics: { impressions: id } }] }, pagination: { offset: 0, pageSize: 1, totalCount: 1 } });
     }
     return response(200, { result: [], pagination: { offset: 0, pageSize: 1, totalCount: 0 } });
   });
 
   const result = await reads.reports(6762091560, 30, true);
   assert.equal(Object.values(result.sources).every((source) => source.status === "ok"), true);
+  const campaignRows = result.sources.campaigns.data;
+  assert.ok(Array.isArray(campaignRows));
+  assert.deepEqual(campaignRows.map((row) => (row.metadata as { id: number }).id).sort(), [101, 102]);
   const reportCalls = seen.filter((call) => call.path.includes("/reports/apps/"));
   assert.equal(reportCalls.length, 10);
   for (const call of reportCalls) {
     const filters = call.body.filters as Array<{ field?: string; operator?: string; value?: unknown }>;
     assert.equal(filters.length, 1);
-    assert.equal(filters[0].field, "campaignId");
+    assert.equal(filters[0].field, call.path === "/v1/reports/apps/campaigns/query" ? "id" : "campaignId");
     assert.equal(filters[0].operator, "EQUALS");
     assert.ok(filters[0].value === "101" || filters[0].value === "102");
     assert.deepEqual(call.body.groupBy, ["countryOrRegion"]);
