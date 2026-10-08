@@ -680,7 +680,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
   useEffect(() => {
     if (!scopeReady) return;
     const controller = new AbortController();
-    const params = new URLSearchParams({ app_id: app.iTunesId, country: countryScope === 'all' ? 'ALL' : countryScope, days: '30' });
+    const params = new URLSearchParams({ app_id: app.iTunesId, country: countryScope === 'all' ? 'ALL' : countryScope, days: '84' });
     fetchJson(asaApiUrl(`/api/decision-matrix?${params}`), controller.signal)
       .then((value) => setTraffic({ key: requestKey, data: unwrapTraffic(value) as DecisionMatrixPayload, error: null }))
       .catch((reason: unknown) => {
@@ -836,7 +836,7 @@ export default function DecisionMatrix({ app, locale, artworks = {}, sharedTopFi
       <header className="decision-header">
         <div>
           <div className="decision-title-line"><h1 className="ds-page-title">Матрица ключей</h1>{stale ? <span className="decision-stale">Устаревший снимок</span> : null}</div>
-          <p className="ds-page-sub fold" title={`Apple Ads · только чтение · ${app.bundle}`}>{app.name} · {countryScope === 'all' ? 'все страны' : `${countryName(countryScope)} (${countryScope.toUpperCase()})`} · только чтение</p>
+          <p className="ds-page-sub fold" title={`Apple Ads · 12 недель · только чтение · ${app.bundle}`}>{app.name} · {countryScope === 'all' ? 'все страны' : `${countryName(countryScope)} (${countryScope.toUpperCase()})`} · 12 недель · только чтение</p>
         </div>
         <div className="decision-header-actions">
           <ScopeBadge />
