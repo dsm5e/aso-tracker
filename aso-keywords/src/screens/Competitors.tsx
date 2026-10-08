@@ -226,7 +226,7 @@ export default function Competitors({ app, locale, onKeywordsChanged }: Competit
     setAppleSourceStatus('loading');
     const storefront = locale.split('-')[0].toUpperCase();
     const country = keywordScope === 'all' ? 'ALL' : storefront;
-    const params = new URLSearchParams({ app_id: app.iTunesId, country, days: '30' });
+    const params = new URLSearchParams({ app_id: app.iTunesId, country, days: '84' });
     fetch(`/asa-api/decision-matrix?${params}`, { signal: controller.signal })
       .then(async (response) => {
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);

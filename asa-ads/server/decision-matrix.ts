@@ -305,7 +305,7 @@ export function buildDecisionMatrix(
 ): JsonRecord {
   const country = input.country && input.country.toUpperCase() !== "ALL" ? input.country.toUpperCase() : undefined;
   if (country && !/^[A-Z]{2}$/.test(country)) throw new Error("country must be ALL or an ISO 3166-1 alpha-2 code");
-  const days = Math.max(1, Math.min(180, Math.floor(input.days ?? 30)));
+  const days = Math.max(1, Math.min(180, Math.floor(input.days ?? 84)));
   const end = latestDeliveryDate(db, input.appId);
   const startDate = new Date(`${end}T00:00:00.000Z`);
   startDate.setUTCDate(startDate.getUTCDate() - days + 1);
@@ -510,7 +510,7 @@ export async function getDecisionMatrix(db: Database.Database, input: DecisionMa
   const country = input.country && input.country.toUpperCase() !== "ALL" ? input.country.toUpperCase() : undefined;
   if (!country) return buildDecisionMatrix(db, input);
   const end = latestDeliveryDate(db, input.appId);
-  const days = Math.max(1, Math.min(180, Math.floor(input.days ?? 30)));
+  const days = Math.max(1, Math.min(180, Math.floor(input.days ?? 84)));
   const startDate = new Date(`${end}T00:00:00.000Z`);
   startDate.setUTCDate(startDate.getUTCDate() - days + 1);
   const window = { start: isoDate(startDate), end };
